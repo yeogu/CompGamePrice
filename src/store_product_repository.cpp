@@ -121,6 +121,22 @@ void StoreProductRepository::initializeSchema() const {
                 REFERENCES store_products(store, external_product_id)
                 ON DELETE CASCADE
         );
+
+        CREATE TABLE IF NOT EXISTS price_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            store TEXT NOT NULL,
+            external_product_id TEXT NOT NULL,
+            price_minor INTEGER NOT NULL CHECK (price_minor >= 0),
+            currency TEXT NOT NULL,
+            purchasable INTEGER NOT NULL CHECK (purchasable IN (0, 1)),
+            observed_at TEXT NOT NULL,
+            FOREIGN KEY (store, external_product_id)
+                REFERENCES store_products(store, external_product_id)
+                ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_price_history_product_time
+            ON price_history(store, external_product_id, observed_at);
     )sql");
 }
 
@@ -149,6 +165,35 @@ void StoreProductRepository::saveNormalizedProducts(
             }
 
             const std::string store = toString(product.store);
+            const std::string currency = toString(product.currentPrice.currency);
+            bool shouldRecordHistory = true;
+            {
+                Statement statement(database_.handle(), R"sql(
+                    SELECT price_minor, currency, purchasable,
+                           EXISTS(
+                               SELECT 1
+                               FROM price_history
+                               WHERE store = ? AND external_product_id = ?
+                           )
+                    FROM store_products
+                    WHERE store = ? AND external_product_id = ?;
+                )sql");
+                bindText(statement.get(), 1, store);
+                bindText(statement.get(), 2, product.productId);
+                bindText(statement.get(), 3, store);
+                bindText(statement.get(), 4, product.productId);
+
+                if (statement.next()) {
+                    const bool hasHistory = sqlite3_column_int(statement.get(), 3) != 0;
+                    const bool stateIsUnchanged =
+                        sqlite3_column_int64(statement.get(), 0) ==
+                            product.currentPrice.minorAmount &&
+                        columnText(statement.get(), 1) == currency &&
+                        (sqlite3_column_int(statement.get(), 2) != 0) == product.purchasable;
+                    shouldRecordHistory = !hasHistory || !stateIsUnchanged;
+                }
+            }
+
             {
                 Statement statement(database_.handle(), R"sql(
                     INSERT INTO store_products(
@@ -165,8 +210,23 @@ void StoreProductRepository::saveNormalizedProducts(
                 bindText(statement.get(), 2, product.productId);
                 bindText(statement.get(), 3, product.gameId);
                 bindInt64(statement.get(), 4, product.currentPrice.minorAmount);
-                bindText(statement.get(), 5, toString(product.currentPrice.currency));
+                bindText(statement.get(), 5, currency);
                 bindInt64(statement.get(), 6, product.purchasable ? 1 : 0);
+                statement.execute();
+            }
+
+            if (shouldRecordHistory) {
+                Statement statement(database_.handle(), R"sql(
+                    INSERT INTO price_history(
+                        store, external_product_id, price_minor,
+                        currency, purchasable, observed_at)
+                    VALUES(?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+                )sql");
+                bindText(statement.get(), 1, store);
+                bindText(statement.get(), 2, product.productId);
+                bindInt64(statement.get(), 3, product.currentPrice.minorAmount);
+                bindText(statement.get(), 4, currency);
+                bindInt64(statement.get(), 5, product.purchasable ? 1 : 0);
                 statement.execute();
             }
 
