@@ -2,8 +2,10 @@
 
 #include "game_price/database.h"
 #include "game_price/game.h"
+#include "game_price/price_history.h"
 #include "game_price/store_product.h"
 
+#include <string>
 #include <vector>
 
 namespace game_price {
@@ -17,6 +19,9 @@ public:
         const Game& game,
         const std::vector<StoreProduct>& products) const;
     std::vector<StoreProduct> findProductsByGameId(const std::string& gameId) const;
+    std::vector<PriceObservation> findPriceHistory(
+        Store store,
+        const std::string& productId) const;
 
 private:
     Database& database_;

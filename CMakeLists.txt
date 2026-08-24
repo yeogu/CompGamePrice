@@ -18,6 +18,7 @@ add_executable(game_price_tracker
     src/google_play_provider.cpp
     src/apple_app_store_provider.cpp
     src/price_comparison_service.cpp
+    src/price_history_service.cpp
 )
 
 target_include_directories(game_price_tracker PRIVATE include)

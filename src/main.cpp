@@ -3,6 +3,7 @@
 #include "game_price/game_catalog.h"
 #include "game_price/google_play_provider.h"
 #include "game_price/price_comparison_service.h"
+#include "game_price/price_history_service.h"
 #include "game_price/steam_provider.h"
 #include "game_price/store_product_repository.h"
 
@@ -67,6 +68,21 @@ int main() {
         std::cout << "Cheapest: " << toString(result->cheapestProduct->store)
                   << " - " << result->cheapestProduct->currentPrice.minorAmount
                   << ' ' << toString(result->cheapestProduct->currentPrice.currency) << '\n';
+
+        PriceHistoryService historyService(repository);
+        std::cout << "Price history summary:\n";
+        for (const auto& product : result->products) {
+            const auto summary = historyService.analyze(product);
+            if (!summary) continue;
+            std::cout << "- " << toString(summary->store)
+                      << ": current=" << summary->currentPrice.minorAmount
+                      << ", low=" << summary->lowestPrice.minorAmount
+                      << ", high=" << summary->highestPrice.minorAmount
+                      << ", average=" << summary->averagePrice.minorAmount
+                      << ' ' << toString(summary->currentPrice.currency)
+                      << ", trend=" << toString(summary->trend)
+                      << ", observations=" << summary->observationCount << '\n';
+        }
     } catch (const std::exception& error) {
         std::cerr << "Error: " << error.what() << '\n';
         return 1;

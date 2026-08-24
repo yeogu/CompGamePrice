@@ -305,4 +305,28 @@ std::vector<StoreProduct> StoreProductRepository::findProductsByGameId(
     return products;
 }
 
+std::vector<PriceObservation> StoreProductRepository::findPriceHistory(
+    Store store,
+    const std::string& productId) const {
+    Statement statement(database_.handle(), R"sql(
+        SELECT price_minor, currency, purchasable, observed_at
+        FROM price_history
+        WHERE store = ? AND external_product_id = ?
+        ORDER BY id;
+    )sql");
+    bindText(statement.get(), 1, toString(store));
+    bindText(statement.get(), 2, productId);
+
+    std::vector<PriceObservation> observations;
+    while (statement.next()) {
+        observations.push_back(PriceObservation{
+            Money{
+                sqlite3_column_int64(statement.get(), 0),
+                parseCurrency(columnText(statement.get(), 1))},
+            sqlite3_column_int(statement.get(), 2) != 0,
+            columnText(statement.get(), 3)});
+    }
+    return observations;
+}
+
 }  // namespace game_price
