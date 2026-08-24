@@ -6,6 +6,22 @@ AI를 활용하여 개발하는 크로스 플랫폼 게임 가격 비교 Prototy
 `StoreProduct` 모델로 정규화하고, 공통 Provider 인터페이스를 통해
 Stardew Valley의 최저가를 비교합니다.
 
+## Project structure
+
+```text
+include/game_price/
+├── domain/          # Game, StoreProduct, Money 등 핵심 모델
+├── catalog/         # 게임 이름과 canonical Game 조회
+├── collection/      # Store Provider, 수집 실행과 상태 기록
+├── persistence/     # SQLite 연결과 Repository
+├── pricing/         # 가격 비교와 가격 이력 분석
+├── recommendation/  # 구매 추천 규칙과 결과
+└── support/         # 공통 문자열 처리 도구
+
+src/                 # include 구조와 대응하는 구현 파일
+tests/               # CTest에서 실행하는 자동화 테스트
+```
+
 ## Build and run
 
 ```sh

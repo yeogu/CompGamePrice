@@ -9,18 +9,18 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_library(game_price_core
-    src/domain_types.cpp
-    src/crawl_run.cpp
-    src/collection_service.cpp
-    src/database.cpp
-    src/store_product_repository.cpp
-    src/game_catalog.cpp
-    src/steam_provider.cpp
-    src/google_play_provider.cpp
-    src/apple_app_store_provider.cpp
-    src/price_comparison_service.cpp
-    src/price_history_service.cpp
-    src/purchase_recommendation_service.cpp
+    src/domain/domain_types.cpp
+    src/catalog/game_catalog.cpp
+    src/collection/apple_app_store_provider.cpp
+    src/collection/collection_service.cpp
+    src/collection/crawl_run.cpp
+    src/collection/google_play_provider.cpp
+    src/collection/steam_provider.cpp
+    src/persistence/database.cpp
+    src/persistence/store_product_repository.cpp
+    src/pricing/price_comparison_service.cpp
+    src/pricing/price_history_service.cpp
+    src/recommendation/purchase_recommendation_service.cpp
 )
 
 target_include_directories(game_price_core PUBLIC include)

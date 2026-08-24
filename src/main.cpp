@@ -1,13 +1,13 @@
-#include "game_price/apple_app_store_provider.h"
-#include "game_price/collection_service.h"
-#include "game_price/database.h"
-#include "game_price/game_catalog.h"
-#include "game_price/google_play_provider.h"
-#include "game_price/price_comparison_service.h"
-#include "game_price/price_history_service.h"
-#include "game_price/purchase_recommendation_service.h"
-#include "game_price/steam_provider.h"
-#include "game_price/store_product_repository.h"
+#include "game_price/collection/apple_app_store_provider.h"
+#include "game_price/collection/collection_service.h"
+#include "game_price/persistence/database.h"
+#include "game_price/catalog/game_catalog.h"
+#include "game_price/collection/google_play_provider.h"
+#include "game_price/pricing/price_comparison_service.h"
+#include "game_price/pricing/price_history_service.h"
+#include "game_price/recommendation/purchase_recommendation_service.h"
+#include "game_price/collection/steam_provider.h"
+#include "game_price/persistence/store_product_repository.h"
 
 #include <functional>
 #include <iostream>
