@@ -16,6 +16,7 @@ public:
 
     sqlite3* handle() const noexcept;
     void execute(const std::string& sql) const;
+    int userVersion() const;
 
 private:
     sqlite3* handle_{nullptr};

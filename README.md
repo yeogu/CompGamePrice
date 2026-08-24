@@ -69,6 +69,9 @@ C++17과 SQLite3 개발 라이브러리가 필요합니다. 실행하면 Provide
 신규 상품이거나 가격, 통화, 구매 가능 상태가 변경되면 `price_history`에
 관측 시각과 함께 이력을 추가합니다. 동일한 데이터를 다시 적재하면 이력은
 중복으로 추가되지 않습니다.
+DB schema는 SQLite `user_version`으로 관리하며 현재 버전은 1입니다. 기존
+버전 0 DB는 시작 시 version 1로 초기화되고, 프로그램보다 새로운 DB version은
+데이터 손상을 피하기 위해 실행을 중단합니다.
 `PriceHistoryService`는 저장된 이력으로 현재가, 최저가, 최고가, 정수 기반
 평균가와 직전 관측 대비 가격 추이를 계산합니다.
 `PurchaseRecommendationService`는 이 통계만 사용해 `StrongBuy`, `Buy`,

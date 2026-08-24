@@ -131,6 +131,30 @@ void testHistoryDeduplicationAndAnalysis() {
            "A future history boundary should return no summary");
 }
 
+void testDatabaseSchemaVersion() {
+    Database database(":memory:");
+    StoreProductRepository repository(database);
+    expect(database.userVersion() == 0, "A new SQLite database should start at version 0");
+
+    repository.initializeSchema();
+    expect(database.userVersion() == StoreProductRepository::CurrentSchemaVersion,
+           "Schema initialization should record the current version");
+    repository.initializeSchema();
+    expect(database.userVersion() == StoreProductRepository::CurrentSchemaVersion,
+           "Schema initialization should be idempotent");
+
+    Database futureDatabase(":memory:");
+    futureDatabase.execute("PRAGMA user_version = 999;");
+    StoreProductRepository futureRepository(futureDatabase);
+    bool rejectedFutureSchema = false;
+    try {
+        futureRepository.initializeSchema();
+    } catch (const std::runtime_error&) {
+        rejectedFutureSchema = true;
+    }
+    expect(rejectedFutureSchema, "A newer unsupported schema should be rejected");
+}
+
 void testPriceComparisonReadsRepository() {
     const std::string dataDirectory = TEST_SAMPLE_DATA_DIR;
     GameCatalog catalog(dataDirectory + "/games.txt");
@@ -319,6 +343,7 @@ int main() {
     const std::vector<std::pair<std::string, std::function<void()>>> tests{
         {"Provider normalization", testProviderNormalization},
         {"History deduplication and analysis", testHistoryDeduplicationAndAnalysis},
+        {"Database schema version", testDatabaseSchemaVersion},
         {"Repository-backed comparison", testPriceComparisonReadsRepository},
         {"Game catalog search", testGameCatalogSearch},
         {"Recommendation rules", testRecommendationRules},

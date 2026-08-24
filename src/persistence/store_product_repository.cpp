@@ -101,7 +101,18 @@ CrawlRunStatus parseCrawlRunStatus(const std::string& value) {
 StoreProductRepository::StoreProductRepository(Database& database) : database_(database) {}
 
 void StoreProductRepository::initializeSchema() const {
-    database_.execute(R"sql(
+    const int existingVersion = database_.userVersion();
+    if (existingVersion > CurrentSchemaVersion) {
+        throw std::runtime_error(
+            "Database schema version " + std::to_string(existingVersion) +
+            " is newer than supported version " +
+            std::to_string(CurrentSchemaVersion));
+    }
+    if (existingVersion == CurrentSchemaVersion) return;
+
+    database_.execute("BEGIN IMMEDIATE TRANSACTION;");
+    try {
+        database_.execute(R"sql(
         CREATE TABLE IF NOT EXISTS games (
             id TEXT PRIMARY KEY,
             title TEXT NOT NULL,
@@ -154,7 +165,17 @@ void StoreProductRepository::initializeSchema() const {
             products_found INTEGER NOT NULL DEFAULT 0 CHECK (products_found >= 0),
             error_message TEXT NOT NULL DEFAULT ''
         );
-    )sql");
+
+        )sql");
+        database_.execute("PRAGMA user_version = 1;");
+        database_.execute("COMMIT;");
+    } catch (...) {
+        try {
+            database_.execute("ROLLBACK;");
+        } catch (...) {
+        }
+        throw;
+    }
 }
 
 void StoreProductRepository::saveNormalizedProducts(
