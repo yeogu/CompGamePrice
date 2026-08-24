@@ -134,6 +134,18 @@ bool printPriceHistory(
         const auto recommendation = recommendationService.recommend(*summary);
         std::cout << "  Recommendation: "
                   << toString(recommendation.recommendation) << '\n';
+        std::cout << "  Price metrics: "
+                  << recommendation.amountAboveHistoricalLow << ' '
+                  << toString(summary->currentPrice.currency)
+                  << " above historical low ("
+                  << recommendation.percentAboveHistoricalLow << "%), "
+                  << recommendation.percentComparedToAverage
+                  << "% vs average";
+        if (recommendation.priceRangePositionPercent) {
+            std::cout << ", range position="
+                      << *recommendation.priceRangePositionPercent << '%';
+        }
+        std::cout << '\n';
         for (const auto& reason : recommendation.reasons) {
             std::cout << "  - " << reason << '\n';
         }

@@ -178,15 +178,29 @@ void testRecommendationRules() {
         Store::Steam, "413150", Money{11200, Currency::KRW},
         Money{11200, Currency::KRW}, Money{17500, Currency::KRW},
         Money{13300, Currency::KRW}, 3, PriceTrend::Falling};
-    expect(service.recommend(strongBuy).recommendation == PurchaseRecommendation::StrongBuy,
+    const auto strongBuyResult = service.recommend(strongBuy);
+    expect(strongBuyResult.recommendation == PurchaseRecommendation::StrongBuy,
            "Historical low after a fall should be a strong buy");
+    expect(strongBuyResult.amountAboveHistoricalLow == 0,
+           "Historical low should have no price difference");
+    expect(strongBuyResult.percentComparedToAverage == -15,
+           "Recommendation should expose percent below average");
+    expect(strongBuyResult.priceRangePositionPercent == std::optional<int>{0},
+           "Historical low should be at the bottom of its range");
 
     const PriceHistorySummary wait{
         Store::Steam, "413150", Money{17000, Currency::KRW},
         Money{10000, Currency::KRW}, Money{18000, Currency::KRW},
         Money{14000, Currency::KRW}, 4, PriceTrend::Rising};
-    expect(service.recommend(wait).recommendation == PurchaseRecommendation::Wait,
+    const auto waitResult = service.recommend(wait);
+    expect(waitResult.recommendation == PurchaseRecommendation::Wait,
            "A rising above-average price should recommend waiting");
+    expect(waitResult.amountAboveHistoricalLow == 7000,
+           "Recommendation should expose amount above historical low");
+    expect(waitResult.percentAboveHistoricalLow == 70,
+           "Recommendation should expose percent above historical low");
+    expect(waitResult.priceRangePositionPercent == std::optional<int>{87},
+           "Recommendation should expose position within historical range");
 }
 
 void testCollectionRunTrackingAndFailureIsolation() {

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -15,6 +17,10 @@ enum class PurchaseRecommendation {
 struct PurchaseRecommendationResult {
     PurchaseRecommendation recommendation{PurchaseRecommendation::InsufficientData};
     std::vector<std::string> reasons;
+    std::int64_t amountAboveHistoricalLow{};
+    int percentAboveHistoricalLow{};
+    int percentComparedToAverage{};
+    std::optional<int> priceRangePositionPercent;
 };
 
 std::string toString(PurchaseRecommendation recommendation);

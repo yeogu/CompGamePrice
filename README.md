@@ -74,6 +74,8 @@ C++17과 SQLite3 개발 라이브러리가 필요합니다. 실행하면 Provide
 `PurchaseRecommendationService`는 이 통계만 사용해 `StrongBuy`, `Buy`,
 `Wait`, `InsufficientData` 중 하나와 판단 근거를 생성합니다. 외부 AI가
 추가되더라도 가격 계산과 추천 판정은 이 결정적 규칙의 결과를 사용합니다.
+추천 결과에는 역대 최저가보다 높은 금액과 비율, 평균가 대비 비율,
+역대 최저·최고 범위 내 현재가 위치도 포함되어 판단 근거를 확인할 수 있습니다.
 
 `CollectionService`는 Store별 Provider 실행을 독립적으로 관리합니다. 각 실행의
 시작·종료 시각, 성공/실패, 발견 상품 수, 오류 메시지는 `crawl_runs`에
