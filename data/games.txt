@@ -1,0 +1,2 @@
+# canonical_game_id|display_title
+stardew-valley|Stardew Valley

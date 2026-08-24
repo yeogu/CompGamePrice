@@ -1,0 +1,2 @@
+# app_id|canonical_game_id|final_price_krw|platform_flags|available
+413150|stardew-valley|11200|windows,mac,linux|true

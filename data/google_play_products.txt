@@ -1,0 +1,5 @@
+# Google Play uses key=value product blocks and prices in micros.
+package_name=com.chucklefish.stardewvalley
+game_id=stardew-valley
+price_micros=6500000000
+published=true

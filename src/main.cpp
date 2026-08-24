@@ -1,0 +1,54 @@
+#include "game_price/apple_app_store_provider.h"
+#include "game_price/game_catalog.h"
+#include "game_price/google_play_provider.h"
+#include "game_price/price_comparison_service.h"
+#include "game_price/steam_provider.h"
+
+#include <functional>
+#include <iostream>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
+int main() {
+    using namespace game_price;
+
+    try {
+        const std::string dataDirectory = SAMPLE_DATA_DIR;
+        GameCatalog catalog(dataDirectory + "/games.txt");
+        SteamProvider steam(dataDirectory + "/steam_products.txt");
+        GooglePlayProvider googlePlay(dataDirectory + "/google_play_products.txt");
+        AppleAppStoreProvider appleAppStore(dataDirectory + "/apple_app_store_products.csv");
+
+        std::vector<std::reference_wrapper<const StoreProductProvider>> providers{
+            steam, googlePlay, appleAppStore};
+        PriceComparisonService service(catalog, std::move(providers));
+
+        const auto result = service.compareByGameName("Stardew Valley");
+        if (!result) {
+            std::cout << "Game not found.\n";
+            return 1;
+        }
+
+        std::cout << result->game.title << " prices:\n";
+        for (const auto& product : result->products) {
+            std::cout << "- " << toString(product.store) << ": "
+                      << product.currentPrice.minorAmount << ' '
+                      << toString(product.currentPrice.currency) << '\n';
+        }
+
+        if (!result->cheapestProduct) {
+            std::cout << "No purchasable product found.\n";
+            return 1;
+        }
+
+        std::cout << "Cheapest: " << toString(result->cheapestProduct->store)
+                  << " - " << result->cheapestProduct->currentPrice.minorAmount
+                  << ' ' << toString(result->cheapestProduct->currentPrice.currency) << '\n';
+    } catch (const std::exception& error) {
+        std::cerr << "Error: " << error.what() << '\n';
+        return 1;
+    }
+
+    return 0;
+}

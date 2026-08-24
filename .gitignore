@@ -1,0 +1,15 @@
+# CMake build outputs
+build/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Local scratch and generated deliverables
+work/
+outputs/
+
+# Editor and operating-system files
+.vscode/
+.DS_Store
