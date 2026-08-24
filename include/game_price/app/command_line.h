@@ -13,6 +13,15 @@ enum class AppCommand {
     Help
 };
 
+enum class AppExitCode {
+    Success = 0,
+    RuntimeError = 1,
+    UsageError = 2,
+    GameNotFound = 3,
+    NoData = 4,
+    CollectionFailed = 5
+};
+
 struct CommandLineOptions {
     AppCommand command{AppCommand::Demo};
     std::string gameName{"Stardew Valley"};

@@ -235,6 +235,13 @@ void testCollectionRetryAfterTemporaryFailure() {
 }
 
 void testCommandLineModes() {
+    expect(static_cast<int>(AppExitCode::Success) == 0,
+           "Success exit code should be zero");
+    expect(static_cast<int>(AppExitCode::UsageError) == 2,
+           "Usage errors should have a distinct exit code");
+    expect(static_cast<int>(AppExitCode::CollectionFailed) == 5,
+           "Collection failures should have a distinct exit code");
+
     const auto defaults = parseCommandLine({});
     expect(defaults.command == AppCommand::Demo, "No arguments should select demo mode");
     expect(defaults.gameName == "Stardew Valley", "Default game should be Stardew Valley");
