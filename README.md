@@ -11,6 +11,7 @@ Stardew Valley의 최저가를 비교합니다.
 ```text
 include/game_price/
 ├── domain/          # Game, StoreProduct, Money 등 핵심 모델
+├── app/             # CLI 명령과 입력 해석
 ├── catalog/         # 게임 이름과 canonical Game 조회
 ├── collection/      # Store Provider, 수집 실행과 상태 기록
 ├── persistence/     # SQLite 연결과 Repository
@@ -28,6 +29,16 @@ tests/               # CTest에서 실행하는 자동화 테스트
 cmake -S . -B build
 cmake --build build
 ./build/game_price_tracker
+```
+
+인자 없이 실행하면 수집, 비교, 이력 분석을 모두 수행합니다. 외부 스케줄러와
+조회 작업을 분리할 때는 다음 CLI 명령을 사용합니다.
+
+```sh
+./build/game_price_tracker collect "Stardew Valley"
+./build/game_price_tracker compare "Stardew Valley"
+./build/game_price_tracker history "Stardew Valley"
+./build/game_price_tracker --help
 ```
 
 빌드와 전체 테스트는 한 줄로 실행할 수 있습니다.

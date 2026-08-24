@@ -9,6 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_library(game_price_core
+    src/app/command_line.cpp
     src/domain/domain_types.cpp
     src/catalog/game_catalog.cpp
     src/collection/apple_app_store_provider.cpp

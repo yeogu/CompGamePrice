@@ -1,3 +1,4 @@
+#include "game_price/app/command_line.h"
 #include "game_price/collection/apple_app_store_provider.h"
 #include "game_price/collection/collection_service.h"
 #include "game_price/persistence/database.h"
@@ -233,6 +234,31 @@ void testCollectionRetryAfterTemporaryFailure() {
            "Successful retry attempt should be persisted");
 }
 
+void testCommandLineModes() {
+    const auto defaults = parseCommandLine({});
+    expect(defaults.command == AppCommand::Demo, "No arguments should select demo mode");
+    expect(defaults.gameName == "Stardew Valley", "Default game should be Stardew Valley");
+
+    const auto collect = parseCommandLine({"collect", "Stardew", "Valley"});
+    expect(collect.command == AppCommand::Collect, "collect should select collection mode");
+    expect(collect.gameName == "Stardew Valley", "Unquoted game words should be joined");
+
+    expect(parseCommandLine({"compare"}).command == AppCommand::Compare,
+           "compare should select comparison mode");
+    expect(parseCommandLine({"history"}).command == AppCommand::History,
+           "history should select history mode");
+    expect(parseCommandLine({"--help"}).command == AppCommand::Help,
+           "--help should select help mode");
+
+    bool rejectedUnknownCommand = false;
+    try {
+        parseCommandLine({"unknown"});
+    } catch (const std::invalid_argument&) {
+        rejectedUnknownCommand = true;
+    }
+    expect(rejectedUnknownCommand, "Unknown CLI commands should be rejected");
+}
+
 }  // namespace
 
 int main() {
@@ -244,7 +270,8 @@ int main() {
         {"Collection run tracking and failure isolation",
          testCollectionRunTrackingAndFailureIsolation},
         {"Collection retry after temporary failure",
-         testCollectionRetryAfterTemporaryFailure}};
+         testCollectionRetryAfterTemporaryFailure},
+        {"Command line modes", testCommandLineModes}};
 
     std::size_t passed = 0;
     for (const auto& test : tests) {
