@@ -151,6 +151,16 @@ void testPriceComparisonReadsRepository() {
            "Google Play should be the cheapest DB product");
 }
 
+void testGameCatalogSearch() {
+    GameCatalog catalog(std::string(TEST_SAMPLE_DATA_DIR) + "/games.txt");
+    const auto matches = catalog.searchByName("  VALLEY ");
+    expect(matches.size() == 1, "Partial normalized title should find one game");
+    expect(matches.front().id == "stardew-valley", "Search should return Stardew Valley");
+    expect(catalog.searchByName("missing").empty(),
+           "Unknown partial title should return no games");
+    expect(catalog.searchByName("   ").empty(), "Empty search should return no games");
+}
+
 void testRecommendationRules() {
     PurchaseRecommendationService service;
     const PriceHistorySummary insufficient{
@@ -258,6 +268,9 @@ void testCommandLineModes() {
     expect(runs.command == AppCommand::CollectionRuns,
            "runs should select collection run history mode");
     expect(runs.gameName.empty(), "runs should not require a game name");
+    const auto search = parseCommandLine({"search", "star", "dew"});
+    expect(search.command == AppCommand::Search, "search should select catalog search mode");
+    expect(search.gameName == "star dew", "search query words should be joined");
     expect(parseCommandLine({"--help"}).command == AppCommand::Help,
            "--help should select help mode");
 
@@ -277,6 +290,7 @@ int main() {
         {"Provider normalization", testProviderNormalization},
         {"History deduplication and analysis", testHistoryDeduplicationAndAnalysis},
         {"Repository-backed comparison", testPriceComparisonReadsRepository},
+        {"Game catalog search", testGameCatalogSearch},
         {"Recommendation rules", testRecommendationRules},
         {"Collection run tracking and failure isolation",
          testCollectionRunTrackingAndFailureIsolation},

@@ -163,6 +163,20 @@ int main(int argc, char* argv[]) {
 
         const std::string dataDirectory = SAMPLE_DATA_DIR;
         GameCatalog catalog(dataDirectory + "/games.txt");
+
+        if (options.command == AppCommand::Search) {
+            const auto matches = catalog.searchByName(options.gameName);
+            if (matches.empty()) {
+                std::cout << "No games found for: " << options.gameName << '\n';
+                return static_cast<int>(AppExitCode::NoData);
+            }
+            std::cout << "Games matching \"" << options.gameName << "\":\n";
+            for (const auto& match : matches) {
+                std::cout << "- " << match.title << " (" << match.id << ")\n";
+            }
+            return static_cast<int>(AppExitCode::Success);
+        }
+
         const auto game = catalog.findByName(options.gameName);
         if (!game) {
             std::cout << "Game not found: " << options.gameName << '\n';

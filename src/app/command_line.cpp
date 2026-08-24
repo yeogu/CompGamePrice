@@ -33,6 +33,7 @@ CommandLineOptions parseCommandLine(const std::vector<std::string>& arguments) {
     if (command == "compare") return CommandLineOptions{AppCommand::Compare, gameName};
     if (command == "history") return CommandLineOptions{AppCommand::History, gameName};
     if (command == "runs") return CommandLineOptions{AppCommand::CollectionRuns, ""};
+    if (command == "search") return CommandLineOptions{AppCommand::Search, gameName};
     throw std::invalid_argument("Unknown command: " + command);
 }
 
@@ -46,6 +47,7 @@ std::string commandLineHelp() {
         "  compare   Compare prices already stored in SQLite\n"
         "  history   Show price history and purchase recommendations\n"
         "  runs      Show Store collection run history\n"
+        "  search    Search the local game catalog by partial name\n"
         "  help      Show this help\n"
         "\n"
         "Default game name: Stardew Valley\n";

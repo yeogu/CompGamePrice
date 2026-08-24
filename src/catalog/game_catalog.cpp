@@ -34,4 +34,17 @@ std::optional<Game> GameCatalog::findByName(const std::string& name) const {
     return found == games_.end() ? std::nullopt : std::optional<Game>{*found};
 }
 
+std::vector<Game> GameCatalog::searchByName(const std::string& query) const {
+    const auto normalized = normalizeName(query);
+    if (normalized.empty()) return {};
+
+    std::vector<Game> matches;
+    for (const auto& game : games_) {
+        if (game.normalizedTitle.find(normalized) != std::string::npos) {
+            matches.push_back(game);
+        }
+    }
+    return matches;
+}
+
 }  // namespace game_price

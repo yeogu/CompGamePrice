@@ -11,6 +11,7 @@ enum class AppCommand {
     Compare,
     History,
     CollectionRuns,
+    Search,
     Help
 };
 

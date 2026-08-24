@@ -13,6 +13,7 @@ public:
     explicit GameCatalog(const std::string& dataPath);
 
     std::optional<Game> findByName(const std::string& name) const;
+    std::vector<Game> searchByName(const std::string& query) const;
 
 private:
     std::vector<Game> games_;
