@@ -38,16 +38,31 @@ CommandLineOptions parseCommandLine(const std::vector<std::string>& arguments) {
 
     const auto& command = arguments.front();
     if (command == "--help" || command == "-h" || command == "help") {
-        return CommandLineOptions{AppCommand::Help, "", std::nullopt};
+        return CommandLineOptions{AppCommand::Help, "", std::nullopt, std::nullopt};
     }
 
     const std::string gameName = joinArguments(arguments, 1);
-    if (command == "demo") return CommandLineOptions{AppCommand::Demo, gameName, std::nullopt};
+    if (command == "demo") {
+        return CommandLineOptions{
+            AppCommand::Demo, gameName, std::nullopt, std::nullopt};
+    }
     if (command == "collect") {
-        return CommandLineOptions{AppCommand::Collect, gameName, std::nullopt};
+        if (arguments.size() > 1 && arguments[1] == "--data-dir") {
+            if (arguments.size() < 3 || arguments[2].empty()) {
+                throw std::invalid_argument("collect --data-dir requires a directory path");
+            }
+            return CommandLineOptions{
+                AppCommand::Collect,
+                joinArguments(arguments, 3),
+                std::nullopt,
+                arguments[2]};
+        }
+        return CommandLineOptions{
+            AppCommand::Collect, gameName, std::nullopt, std::nullopt};
     }
     if (command == "compare") {
-        return CommandLineOptions{AppCommand::Compare, gameName, std::nullopt};
+        return CommandLineOptions{
+            AppCommand::Compare, gameName, std::nullopt, std::nullopt};
     }
     if (command == "history") {
         if (arguments.size() > 1 && arguments[1] == "--since") {
@@ -58,15 +73,21 @@ CommandLineOptions parseCommandLine(const std::vector<std::string>& arguments) {
                 throw std::invalid_argument("Invalid --since date: " + arguments[2]);
             }
             return CommandLineOptions{
-                AppCommand::History, joinArguments(arguments, 3), arguments[2]};
+                AppCommand::History,
+                joinArguments(arguments, 3),
+                arguments[2],
+                std::nullopt};
         }
-        return CommandLineOptions{AppCommand::History, gameName, std::nullopt};
+        return CommandLineOptions{
+            AppCommand::History, gameName, std::nullopt, std::nullopt};
     }
     if (command == "runs") {
-        return CommandLineOptions{AppCommand::CollectionRuns, "", std::nullopt};
+        return CommandLineOptions{
+            AppCommand::CollectionRuns, "", std::nullopt, std::nullopt};
     }
     if (command == "search") {
-        return CommandLineOptions{AppCommand::Search, gameName, std::nullopt};
+        return CommandLineOptions{
+            AppCommand::Search, gameName, std::nullopt, std::nullopt};
     }
     throw std::invalid_argument("Unknown command: " + command);
 }
@@ -78,6 +99,7 @@ std::string commandLineHelp() {
         "Commands:\n"
         "  demo      Collect, compare, and show history (default)\n"
         "  collect   Collect Store data and save it to SQLite\n"
+        "            Optional: collect --data-dir PATH [game name]\n"
         "  compare   Compare prices already stored in SQLite\n"
         "  history   Show price history and purchase recommendations\n"
         "            Optional: history --since YYYY-MM-DD [game name]\n"

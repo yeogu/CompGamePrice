@@ -178,8 +178,8 @@ int main(int argc, char* argv[]) {
                                         : AppExitCode::NoData);
         }
 
-        const std::string dataDirectory = SAMPLE_DATA_DIR;
-        GameCatalog catalog(dataDirectory + "/games.txt");
+        const std::string defaultDataDirectory = SAMPLE_DATA_DIR;
+        GameCatalog catalog(defaultDataDirectory + "/games.txt");
 
         if (options.command == AppCommand::Search) {
             const auto matches = catalog.searchByName(options.gameName);
@@ -203,7 +203,10 @@ int main(int argc, char* argv[]) {
         bool collectionSucceeded = true;
         if (options.command == AppCommand::Collect || options.command == AppCommand::Demo) {
             collectionSucceeded = collectionCompletedSuccessfully(
-                collectStoreProducts(*game, repository, dataDirectory));
+                collectStoreProducts(
+                    *game,
+                    repository,
+                    options.dataDirectory.value_or(defaultDataDirectory)));
             if (options.command == AppCommand::Collect && !collectionSucceeded) {
                 return static_cast<int>(AppExitCode::CollectionFailed);
             }

@@ -300,6 +300,13 @@ void testCommandLineModes() {
     const auto collect = parseCommandLine({"collect", "Stardew", "Valley"});
     expect(collect.command == AppCommand::Collect, "collect should select collection mode");
     expect(collect.gameName == "Stardew Valley", "Unquoted game words should be joined");
+    const auto snapshotCollect = parseCommandLine(
+        {"collect", "--data-dir", "/tmp/store snapshot", "Stardew", "Valley"});
+    expect(snapshotCollect.dataDirectory ==
+               std::optional<std::string>{"/tmp/store snapshot"},
+           "collect should parse a snapshot data directory");
+    expect(snapshotCollect.gameName == "Stardew Valley",
+           "collect should parse the game after the data directory");
 
     expect(parseCommandLine({"compare"}).command == AppCommand::Compare,
            "compare should select comparison mode");
@@ -318,6 +325,14 @@ void testCommandLineModes() {
         rejectedInvalidDate = true;
     }
     expect(rejectedInvalidDate, "history should reject an invalid since date");
+    bool rejectedMissingDataDirectory = false;
+    try {
+        parseCommandLine({"collect", "--data-dir"});
+    } catch (const std::invalid_argument&) {
+        rejectedMissingDataDirectory = true;
+    }
+    expect(rejectedMissingDataDirectory,
+           "collect should reject a missing snapshot data directory");
     const auto runs = parseCommandLine({"runs"});
     expect(runs.command == AppCommand::CollectionRuns,
            "runs should select collection run history mode");

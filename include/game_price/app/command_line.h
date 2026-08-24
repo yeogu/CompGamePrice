@@ -29,6 +29,7 @@ struct CommandLineOptions {
     AppCommand command{AppCommand::Demo};
     std::string gameName{"Stardew Valley"};
     std::optional<std::string> historySince;
+    std::optional<std::string> dataDirectory;
 };
 
 CommandLineOptions parseCommandLine(const std::vector<std::string>& arguments);

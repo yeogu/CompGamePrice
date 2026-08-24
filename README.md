@@ -36,6 +36,7 @@ cmake --build build
 
 ```sh
 ./build/game_price_tracker collect "Stardew Valley"
+./build/game_price_tracker collect --data-dir ./snapshots/latest "Stardew Valley"
 ./build/game_price_tracker compare "Stardew Valley"
 ./build/game_price_tracker history "Stardew Valley"
 ./build/game_price_tracker history --since 2026-01-01 "Stardew Valley"
@@ -46,6 +47,9 @@ cmake --build build
 
 `runs`는 `crawl_runs`에 저장된 Store별 수집 시도와 성공·실패 결과를 보여줍니다.
 `search`는 로컬 게임 카탈로그에서 이름 일부가 일치하는 게임을 찾습니다.
+`collect --data-dir`는 외부 수집기가 저장한 snapshot 디렉터리를 입력으로 받습니다.
+디렉터리에는 Provider가 담당하는 `steam_products.txt`,
+`google_play_products.txt`, `apple_app_store_products.csv`가 있어야 합니다.
 
 프로세스 종료 코드는 자동 실행 환경에서 결과를 구분할 수 있도록 정의되어 있다.
 
