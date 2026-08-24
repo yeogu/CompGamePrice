@@ -37,11 +37,12 @@ int main() {
         StoreProductRepository repository(database);
         repository.initializeSchema();
 
-        CollectionService collectionService(repository, std::move(providers));
+        CollectionService collectionService(repository, std::move(providers), 2);
         const auto collectionResult = collectionService.collect(*game);
         std::cout << "Collection runs:\n";
         for (const auto& run : collectionResult.runs) {
             std::cout << "- " << toString(run.store) << ": " << toString(run.status)
+                      << ", attempt=" << run.attemptNumber
                       << ", products=" << run.productsFound;
             if (!run.errorMessage.empty()) {
                 std::cout << ", error=" << run.errorMessage;

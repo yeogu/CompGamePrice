@@ -52,6 +52,8 @@ C++17과 SQLite3 개발 라이브러리가 필요합니다. 실행하면 Provide
 `CollectionService`는 Store별 Provider 실행을 독립적으로 관리합니다. 각 실행의
 시작·종료 시각, 성공/실패, 발견 상품 수, 오류 메시지는 `crawl_runs`에
 기록되며 한 Store가 실패해도 나머지 Store 수집은 계속됩니다.
+Store별 최대 시도 횟수를 설정할 수 있고, 실패한 각 시도도 별도의
+`crawl_runs` 레코드로 남습니다. 현재 Prototype은 지연 없이 즉시 재시도합니다.
 
 DB 적재 결과는 다음 명령으로 확인할 수 있습니다.
 

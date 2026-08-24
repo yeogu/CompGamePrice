@@ -54,6 +54,24 @@ public:
     }
 };
 
+class FlakyTestProvider final : public StoreProductProvider {
+public:
+    Store store() const noexcept override { return Store::AppleAppStore; }
+
+    std::vector<StoreProduct> findProducts(const std::string& gameId) const override {
+        ++attempts_;
+        if (attempts_ == 1) {
+            throw std::runtime_error("temporary failure");
+        }
+        return {StoreProduct{
+            "retry-product", gameId, Store::AppleAppStore, {Platform::IOS},
+            Money{6600, Currency::KRW}, true}};
+    }
+
+private:
+    mutable std::size_t attempts_{};
+};
+
 void testProviderNormalization() {
     const std::string dataDirectory = TEST_SAMPLE_DATA_DIR;
     SteamProvider steam(dataDirectory + "/steam_products.txt");
@@ -187,6 +205,34 @@ void testCollectionRunTrackingAndFailureIsolation() {
            "A failed Store must not roll back another Store's products");
 }
 
+void testCollectionRetryAfterTemporaryFailure() {
+    Database database(":memory:");
+    StoreProductRepository repository(database);
+    repository.initializeSchema();
+
+    FlakyTestProvider provider;
+    std::vector<std::reference_wrapper<const StoreProductProvider>> providers{provider};
+    CollectionService service(repository, std::move(providers), 2);
+
+    const Game game{"stardew-valley", "Stardew Valley", "stardew valley"};
+    const auto result = service.collect(game);
+    expect(result.runs.size() == 2, "A temporary failure should produce two attempts");
+    expect(result.runs[0].status == CrawlRunStatus::Failed,
+           "First collection attempt should fail");
+    expect(result.runs[0].attemptNumber == 1, "First attempt number should be 1");
+    expect(result.runs[1].status == CrawlRunStatus::Succeeded,
+           "Second collection attempt should succeed");
+    expect(result.runs[1].attemptNumber == 2, "Second attempt number should be 2");
+    expect(result.totalProducts == 1, "Successful retry should save one product");
+
+    const auto persistedRuns = repository.findCrawlRuns();
+    expect(persistedRuns.size() == 2, "Both retry attempts should be persisted");
+    expect(persistedRuns[0].status == CrawlRunStatus::Failed,
+           "Failed retry attempt should remain in crawl history");
+    expect(persistedRuns[1].status == CrawlRunStatus::Succeeded,
+           "Successful retry attempt should be persisted");
+}
+
 }  // namespace
 
 int main() {
@@ -196,7 +242,9 @@ int main() {
         {"Repository-backed comparison", testPriceComparisonReadsRepository},
         {"Recommendation rules", testRecommendationRules},
         {"Collection run tracking and failure isolation",
-         testCollectionRunTrackingAndFailureIsolation}};
+         testCollectionRunTrackingAndFailureIsolation},
+        {"Collection retry after temporary failure",
+         testCollectionRetryAfterTemporaryFailure}};
 
     std::size_t passed = 0;
     for (const auto& test : tests) {

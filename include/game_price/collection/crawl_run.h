@@ -28,6 +28,7 @@ struct CrawlRunRecord {
 struct CollectionRunResult {
     Store store;
     CrawlRunStatus status{CrawlRunStatus::Running};
+    std::size_t attemptNumber{};
     std::size_t productsFound{};
     std::string errorMessage;
 };
