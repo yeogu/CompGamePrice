@@ -27,6 +27,10 @@ SteamProvider::SteamProvider(const std::string& dataPath) {
     }
 }
 
+Store SteamProvider::store() const noexcept {
+    return Store::Steam;
+}
+
 std::vector<StoreProduct> SteamProvider::findProducts(const std::string& gameId) const {
     std::vector<StoreProduct> result;
     for (const auto& raw : products_) {

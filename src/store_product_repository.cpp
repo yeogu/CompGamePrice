@@ -89,6 +89,13 @@ Currency parseCurrency(const std::string& value) {
     throw std::runtime_error("Unknown Currency value in database: " + value);
 }
 
+CrawlRunStatus parseCrawlRunStatus(const std::string& value) {
+    if (value == "RUNNING") return CrawlRunStatus::Running;
+    if (value == "SUCCEEDED") return CrawlRunStatus::Succeeded;
+    if (value == "FAILED") return CrawlRunStatus::Failed;
+    throw std::runtime_error("Unknown crawl run status in database: " + value);
+}
+
 }  // namespace
 
 StoreProductRepository::StoreProductRepository(Database& database) : database_(database) {}
@@ -137,6 +144,16 @@ void StoreProductRepository::initializeSchema() const {
 
         CREATE INDEX IF NOT EXISTS idx_price_history_product_time
             ON price_history(store, external_product_id, observed_at);
+
+        CREATE TABLE IF NOT EXISTS crawl_runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            store TEXT NOT NULL,
+            started_at TEXT NOT NULL,
+            finished_at TEXT,
+            status TEXT NOT NULL CHECK (status IN ('RUNNING', 'SUCCEEDED', 'FAILED')),
+            products_found INTEGER NOT NULL DEFAULT 0 CHECK (products_found >= 0),
+            error_message TEXT NOT NULL DEFAULT ''
+        );
     )sql");
 }
 
@@ -327,6 +344,62 @@ std::vector<PriceObservation> StoreProductRepository::findPriceHistory(
             columnText(statement.get(), 3)});
     }
     return observations;
+}
+
+std::int64_t StoreProductRepository::startCrawlRun(Store store) const {
+    Statement statement(database_.handle(), R"sql(
+        INSERT INTO crawl_runs(store, started_at, status)
+        VALUES(?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'RUNNING');
+    )sql");
+    bindText(statement.get(), 1, toString(store));
+    statement.execute();
+    return sqlite3_last_insert_rowid(database_.handle());
+}
+
+void StoreProductRepository::finishCrawlRun(
+    std::int64_t runId,
+    CrawlRunStatus status,
+    std::size_t productsFound,
+    const std::string& errorMessage) const {
+    if (status == CrawlRunStatus::Running) {
+        throw std::runtime_error("A finished crawl run cannot remain RUNNING");
+    }
+    Statement statement(database_.handle(), R"sql(
+        UPDATE crawl_runs
+        SET finished_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+            status = ?, products_found = ?, error_message = ?
+        WHERE id = ? AND status = 'RUNNING';
+    )sql");
+    bindText(statement.get(), 1, toString(status));
+    bindInt64(statement.get(), 2, static_cast<std::int64_t>(productsFound));
+    bindText(statement.get(), 3, errorMessage);
+    bindInt64(statement.get(), 4, runId);
+    statement.execute();
+    if (sqlite3_changes(database_.handle()) != 1) {
+        throw std::runtime_error("Crawl run was not found or already finished");
+    }
+}
+
+std::vector<CrawlRunRecord> StoreProductRepository::findCrawlRuns() const {
+    Statement statement(database_.handle(), R"sql(
+        SELECT id, store, status, products_found, started_at,
+               COALESCE(finished_at, ''), error_message
+        FROM crawl_runs
+        ORDER BY id;
+    )sql");
+
+    std::vector<CrawlRunRecord> runs;
+    while (statement.next()) {
+        runs.push_back(CrawlRunRecord{
+            sqlite3_column_int64(statement.get(), 0),
+            parseStore(columnText(statement.get(), 1)),
+            parseCrawlRunStatus(columnText(statement.get(), 2)),
+            static_cast<std::size_t>(sqlite3_column_int64(statement.get(), 3)),
+            columnText(statement.get(), 4),
+            columnText(statement.get(), 5),
+            columnText(statement.get(), 6)});
+    }
+    return runs;
 }
 
 }  // namespace game_price

@@ -33,6 +33,10 @@ C++17과 SQLite3 개발 라이브러리가 필요합니다. 실행하면 Provide
 `Wait`, `InsufficientData` 중 하나와 판단 근거를 생성합니다. 외부 AI가
 추가되더라도 가격 계산과 추천 판정은 이 결정적 규칙의 결과를 사용합니다.
 
+`CollectionService`는 Store별 Provider 실행을 독립적으로 관리합니다. 각 실행의
+시작·종료 시각, 성공/실패, 발견 상품 수, 오류 메시지는 `crawl_runs`에
+기록되며 한 Store가 실패해도 나머지 Store 수집은 계속됩니다.
+
 DB 적재 결과는 다음 명령으로 확인할 수 있습니다.
 
 ```sh

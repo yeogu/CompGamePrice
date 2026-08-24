@@ -10,6 +10,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_library(game_price_core
     src/domain_types.cpp
+    src/crawl_run.cpp
+    src/collection_service.cpp
     src/database.cpp
     src/store_product_repository.cpp
     src/game_catalog.cpp

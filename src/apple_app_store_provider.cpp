@@ -27,6 +27,10 @@ AppleAppStoreProvider::AppleAppStoreProvider(const std::string& dataPath) {
     }
 }
 
+Store AppleAppStoreProvider::store() const noexcept {
+    return Store::AppleAppStore;
+}
+
 std::vector<StoreProduct> AppleAppStoreProvider::findProducts(const std::string& gameId) const {
     std::vector<StoreProduct> result;
     for (const auto& raw : products_) {

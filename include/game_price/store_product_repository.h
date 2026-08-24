@@ -1,6 +1,7 @@
 #pragma once
 
 #include "game_price/database.h"
+#include "game_price/crawl_run.h"
 #include "game_price/game.h"
 #include "game_price/price_history.h"
 #include "game_price/store_product.h"
@@ -22,6 +23,13 @@ public:
     std::vector<PriceObservation> findPriceHistory(
         Store store,
         const std::string& productId) const;
+    std::int64_t startCrawlRun(Store store) const;
+    void finishCrawlRun(
+        std::int64_t runId,
+        CrawlRunStatus status,
+        std::size_t productsFound,
+        const std::string& errorMessage) const;
+    std::vector<CrawlRunRecord> findCrawlRuns() const;
 
 private:
     Database& database_;

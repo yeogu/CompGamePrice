@@ -1,4 +1,5 @@
 #include "game_price/apple_app_store_provider.h"
+#include "game_price/collection_service.h"
 #include "game_price/database.h"
 #include "game_price/game_catalog.h"
 #include "game_price/google_play_provider.h"
@@ -34,6 +35,24 @@ StoreProduct makeSteamProduct(std::int64_t price) {
         Money{price, Currency::KRW},
         true};
 }
+
+class StaticTestProvider final : public StoreProductProvider {
+public:
+    Store store() const noexcept override { return Store::Steam; }
+
+    std::vector<StoreProduct> findProducts(const std::string&) const override {
+        return {makeSteamProduct(11200)};
+    }
+};
+
+class FailingTestProvider final : public StoreProductProvider {
+public:
+    Store store() const noexcept override { return Store::GooglePlay; }
+
+    std::vector<StoreProduct> findProducts(const std::string&) const override {
+        throw std::runtime_error("simulated collection failure");
+    }
+};
 
 void testProviderNormalization() {
     const std::string dataDirectory = TEST_SAMPLE_DATA_DIR;
@@ -138,6 +157,36 @@ void testRecommendationRules() {
            "A rising above-average price should recommend waiting");
 }
 
+void testCollectionRunTrackingAndFailureIsolation() {
+    Database database(":memory:");
+    StoreProductRepository repository(database);
+    repository.initializeSchema();
+
+    StaticTestProvider successfulProvider;
+    FailingTestProvider failingProvider;
+    std::vector<std::reference_wrapper<const StoreProductProvider>> providers{
+        successfulProvider, failingProvider};
+    CollectionService service(repository, std::move(providers));
+
+    const Game game{"stardew-valley", "Stardew Valley", "stardew valley"};
+    const auto result = service.collect(game);
+    expect(result.runs.size() == 2, "Both Store collection runs should be reported");
+    expect(result.totalProducts == 1, "Successful Store product should still be saved");
+    expect(result.runs[0].status == CrawlRunStatus::Succeeded,
+           "First collection run should succeed");
+    expect(result.runs[1].status == CrawlRunStatus::Failed,
+           "Second collection run should fail without stopping the first");
+
+    const auto persistedRuns = repository.findCrawlRuns();
+    expect(persistedRuns.size() == 2, "Both crawl runs should be persisted");
+    expect(persistedRuns[0].productsFound == 1,
+           "Successful crawl run should record its product count");
+    expect(persistedRuns[1].errorMessage == "simulated collection failure",
+           "Failed crawl run should persist its error message");
+    expect(repository.findProductsByGameId(game.id).size() == 1,
+           "A failed Store must not roll back another Store's products");
+}
+
 }  // namespace
 
 int main() {
@@ -145,7 +194,9 @@ int main() {
         {"Provider normalization", testProviderNormalization},
         {"History deduplication and analysis", testHistoryDeduplicationAndAnalysis},
         {"Repository-backed comparison", testPriceComparisonReadsRepository},
-        {"Recommendation rules", testRecommendationRules}};
+        {"Recommendation rules", testRecommendationRules},
+        {"Collection run tracking and failure isolation",
+         testCollectionRunTrackingAndFailureIsolation}};
 
     std::size_t passed = 0;
     for (const auto& test : tests) {

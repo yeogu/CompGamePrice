@@ -44,6 +44,10 @@ GooglePlayProvider::GooglePlayProvider(const std::string& dataPath) {
     appendProduct();
 }
 
+Store GooglePlayProvider::store() const noexcept {
+    return Store::GooglePlay;
+}
+
 std::vector<StoreProduct> GooglePlayProvider::findProducts(const std::string& gameId) const {
     std::vector<StoreProduct> result;
     for (const auto& raw : products_) {

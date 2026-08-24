@@ -1,4 +1,5 @@
 #include "game_price/apple_app_store_provider.h"
+#include "game_price/collection_service.h"
 #include "game_price/database.h"
 #include "game_price/game_catalog.h"
 #include "game_price/google_play_provider.h"
@@ -32,19 +33,22 @@ int main() {
             return 1;
         }
 
-        std::vector<StoreProduct> normalizedProducts;
-        for (const auto& provider : providers) {
-            const auto products = provider.get().findProducts(game->id);
-            normalizedProducts.insert(
-                normalizedProducts.end(), products.begin(), products.end());
-        }
-
         Database database(GAME_PRICE_DATABASE_PATH);
         StoreProductRepository repository(database);
         repository.initializeSchema();
-        repository.saveNormalizedProducts(*game, normalizedProducts);
 
-        std::cout << "Saved " << normalizedProducts.size()
+        CollectionService collectionService(repository, std::move(providers));
+        const auto collectionResult = collectionService.collect(*game);
+        std::cout << "Collection runs:\n";
+        for (const auto& run : collectionResult.runs) {
+            std::cout << "- " << toString(run.store) << ": " << toString(run.status)
+                      << ", products=" << run.productsFound;
+            if (!run.errorMessage.empty()) {
+                std::cout << ", error=" << run.errorMessage;
+            }
+            std::cout << '\n';
+        }
+        std::cout << "Saved " << collectionResult.totalProducts
                   << " normalized products to SQLite.\n";
 
         PriceComparisonService service(catalog, repository);

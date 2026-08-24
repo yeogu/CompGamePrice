@@ -11,6 +11,7 @@ namespace game_price {
 class GooglePlayProvider final : public StoreProductProvider {
 public:
     explicit GooglePlayProvider(const std::string& dataPath);
+    Store store() const noexcept override;
     std::vector<StoreProduct> findProducts(const std::string& gameId) const override;
 
 private:
