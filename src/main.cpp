@@ -110,15 +110,18 @@ std::optional<PriceComparisonResult> printPriceComparison(
     return result;
 }
 
-void printPriceHistory(
+bool printPriceHistory(
     const PriceComparisonResult& comparison,
-    const StoreProductRepository& repository) {
+    const StoreProductRepository& repository,
+    const std::optional<std::string>& observedSince = std::nullopt) {
     PriceHistoryService historyService(repository);
     PurchaseRecommendationService recommendationService;
+    bool foundHistory = false;
     std::cout << "Price history summary:\n";
     for (const auto& product : comparison.products) {
-        const auto summary = historyService.analyze(product);
+        const auto summary = historyService.analyze(product, observedSince);
         if (!summary) continue;
+        foundHistory = true;
         std::cout << "- " << toString(summary->store)
                   << ": current=" << summary->currentPrice.minorAmount
                   << ", low=" << summary->lowestPrice.minorAmount
@@ -135,6 +138,8 @@ void printPriceHistory(
             std::cout << "  - " << reason << '\n';
         }
     }
+    if (!foundHistory) std::cout << "No observations found in the requested period.\n";
+    return foundHistory;
 }
 
 }  // namespace
@@ -207,8 +212,10 @@ int main(int argc, char* argv[]) {
                           << options.gameName << ".\n";
                 return static_cast<int>(AppExitCode::NoData);
             }
-            printPriceHistory(*comparison, repository);
-            return static_cast<int>(AppExitCode::Success);
+            return static_cast<int>(
+                printPriceHistory(*comparison, repository, options.historySince)
+                    ? AppExitCode::Success
+                    : AppExitCode::NoData);
         }
 
         if (options.command == AppCommand::Demo) {

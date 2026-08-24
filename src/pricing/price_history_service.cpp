@@ -20,8 +20,12 @@ PriceHistoryService::PriceHistoryService(const StoreProductRepository& repositor
     : repository_(repository) {}
 
 std::optional<PriceHistorySummary> PriceHistoryService::analyze(
-    const StoreProduct& product) const {
-    const auto observations = repository_.findPriceHistory(product.store, product.productId);
+    const StoreProduct& product,
+    const std::optional<std::string>& observedSince) const {
+    const auto observations = observedSince
+        ? repository_.findPriceHistorySince(
+              product.store, product.productId, *observedSince)
+        : repository_.findPriceHistory(product.store, product.productId);
     if (observations.empty()) {
         return std::nullopt;
     }

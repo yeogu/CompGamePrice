@@ -38,6 +38,7 @@ cmake --build build
 ./build/game_price_tracker collect "Stardew Valley"
 ./build/game_price_tracker compare "Stardew Valley"
 ./build/game_price_tracker history "Stardew Valley"
+./build/game_price_tracker history --since 2026-01-01 "Stardew Valley"
 ./build/game_price_tracker runs
 ./build/game_price_tracker search "Valley"
 ./build/game_price_tracker --help

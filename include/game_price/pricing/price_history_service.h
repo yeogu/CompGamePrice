@@ -12,7 +12,9 @@ class PriceHistoryService {
 public:
     explicit PriceHistoryService(const StoreProductRepository& repository);
 
-    std::optional<PriceHistorySummary> analyze(const StoreProduct& product) const;
+    std::optional<PriceHistorySummary> analyze(
+        const StoreProduct& product,
+        const std::optional<std::string>& observedSince = std::nullopt) const;
 
 private:
     const StoreProductRepository& repository_;

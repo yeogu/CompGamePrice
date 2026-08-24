@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <optional>
 #include <vector>
 
 namespace game_price {
@@ -27,6 +28,7 @@ enum class AppExitCode {
 struct CommandLineOptions {
     AppCommand command{AppCommand::Demo};
     std::string gameName{"Stardew Valley"};
+    std::optional<std::string> historySince;
 };
 
 CommandLineOptions parseCommandLine(const std::vector<std::string>& arguments);

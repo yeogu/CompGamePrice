@@ -126,6 +126,9 @@ void testHistoryDeduplicationAndAnalysis() {
     expect(summary->highestPrice.minorAmount == 17500, "Highest price should be 17500");
     expect(summary->averagePrice.minorAmount == 14350, "Average price should be 14350");
     expect(summary->trend == PriceTrend::Falling, "Price trend should be falling");
+
+    expect(!historyService.analyze(product, "9999-01-01").has_value(),
+           "A future history boundary should return no summary");
 }
 
 void testPriceComparisonReadsRepository() {
@@ -264,6 +267,19 @@ void testCommandLineModes() {
            "compare should select comparison mode");
     expect(parseCommandLine({"history"}).command == AppCommand::History,
            "history should select history mode");
+    const auto historySince = parseCommandLine(
+        {"history", "--since", "2026-01-01", "Stardew", "Valley"});
+    expect(historySince.historySince == std::optional<std::string>{"2026-01-01"},
+           "history should parse the since boundary");
+    expect(historySince.gameName == "Stardew Valley",
+           "history should parse the game name after the since boundary");
+    bool rejectedInvalidDate = false;
+    try {
+        parseCommandLine({"history", "--since", "not-a-date"});
+    } catch (const std::invalid_argument&) {
+        rejectedInvalidDate = true;
+    }
+    expect(rejectedInvalidDate, "history should reject an invalid since date");
     const auto runs = parseCommandLine({"runs"});
     expect(runs.command == AppCommand::CollectionRuns,
            "runs should select collection run history mode");

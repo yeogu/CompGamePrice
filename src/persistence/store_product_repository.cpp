@@ -346,6 +346,32 @@ std::vector<PriceObservation> StoreProductRepository::findPriceHistory(
     return observations;
 }
 
+std::vector<PriceObservation> StoreProductRepository::findPriceHistorySince(
+    Store store,
+    const std::string& productId,
+    const std::string& observedSince) const {
+    Statement statement(database_.handle(), R"sql(
+        SELECT price_minor, currency, purchasable, observed_at
+        FROM price_history
+        WHERE store = ? AND external_product_id = ? AND observed_at >= ?
+        ORDER BY id;
+    )sql");
+    bindText(statement.get(), 1, toString(store));
+    bindText(statement.get(), 2, productId);
+    bindText(statement.get(), 3, observedSince);
+
+    std::vector<PriceObservation> observations;
+    while (statement.next()) {
+        observations.push_back(PriceObservation{
+            Money{
+                sqlite3_column_int64(statement.get(), 0),
+                parseCurrency(columnText(statement.get(), 1))},
+            sqlite3_column_int(statement.get(), 2) != 0,
+            columnText(statement.get(), 3)});
+    }
+    return observations;
+}
+
 std::int64_t StoreProductRepository::startCrawlRun(Store store) const {
     Statement statement(database_.handle(), R"sql(
         INSERT INTO crawl_runs(store, started_at, status)
