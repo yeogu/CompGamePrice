@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.14)
 
 project(game_price_tracker LANGUAGES CXX)
 
+find_package(SQLite3 REQUIRED)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -9,6 +11,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_executable(game_price_tracker
     src/main.cpp
     src/domain_types.cpp
+    src/database.cpp
+    src/store_product_repository.cpp
     src/game_catalog.cpp
     src/steam_provider.cpp
     src/google_play_provider.cpp
@@ -18,8 +22,15 @@ add_executable(game_price_tracker
 
 target_include_directories(game_price_tracker PRIVATE include)
 
+if(TARGET SQLite3::SQLite3)
+    target_link_libraries(game_price_tracker PRIVATE SQLite3::SQLite3)
+else()
+    target_link_libraries(game_price_tracker PRIVATE SQLite::SQLite3)
+endif()
+
 target_compile_definitions(game_price_tracker PRIVATE
     SAMPLE_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data"
+    GAME_PRICE_DATABASE_PATH="${CMAKE_CURRENT_BINARY_DIR}/game_prices.db"
 )
 
 if(MSVC)

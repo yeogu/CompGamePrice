@@ -14,4 +14,14 @@ cmake --build build
 ./build/game_price_tracker
 ```
 
-외부 라이브러리는 사용하지 않으며 C++17이 필요합니다.
+C++17과 SQLite3 개발 라이브러리가 필요합니다. 실행하면 Provider가 정규화한
+상품 데이터가 빌드 디렉터리의 `game_prices.db`에 저장됩니다.
+가격 비교 서비스는 Provider를 직접 조회하지 않고, 적재가 끝난 SQLite DB에서
+정규화된 상품을 다시 읽어 최저가를 계산합니다.
+
+DB 적재 결과는 다음 명령으로 확인할 수 있습니다.
+
+```sh
+sqlite3 build/game_prices.db \
+  "SELECT store, external_product_id, price_minor, currency FROM store_products;"
+```

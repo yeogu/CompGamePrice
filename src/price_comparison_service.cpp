@@ -1,15 +1,13 @@
 #include "game_price/price_comparison_service.h"
 
-#include <algorithm>
-#include <iterator>
 #include <stdexcept>
 
 namespace game_price {
 
 PriceComparisonService::PriceComparisonService(
     const GameCatalog& catalog,
-    std::vector<std::reference_wrapper<const StoreProductProvider>> providers)
-    : catalog_(catalog), providers_(std::move(providers)) {}
+    const StoreProductRepository& repository)
+    : catalog_(catalog), repository_(repository) {}
 
 std::optional<PriceComparisonResult> PriceComparisonService::compareByGameName(
     const std::string& gameName) const {
@@ -18,11 +16,8 @@ std::optional<PriceComparisonResult> PriceComparisonService::compareByGameName(
         return std::nullopt;
     }
 
-    PriceComparisonResult result{*game, {}, std::nullopt};
-    for (const auto& provider : providers_) {
-        auto products = provider.get().findProducts(game->id);
-        std::move(products.begin(), products.end(), std::back_inserter(result.products));
-    }
+    PriceComparisonResult result{
+        *game, repository_.findProductsByGameId(game->id), std::nullopt};
 
     for (const auto& product : result.products) {
         if (!product.purchasable) continue;

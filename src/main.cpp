@@ -1,8 +1,10 @@
 #include "game_price/apple_app_store_provider.h"
+#include "game_price/database.h"
 #include "game_price/game_catalog.h"
 #include "game_price/google_play_provider.h"
 #include "game_price/price_comparison_service.h"
 #include "game_price/steam_provider.h"
+#include "game_price/store_product_repository.h"
 
 #include <functional>
 #include <iostream>
@@ -22,8 +24,28 @@ int main() {
 
         std::vector<std::reference_wrapper<const StoreProductProvider>> providers{
             steam, googlePlay, appleAppStore};
-        PriceComparisonService service(catalog, std::move(providers));
+        const auto game = catalog.findByName("Stardew Valley");
+        if (!game) {
+            std::cout << "Game not found.\n";
+            return 1;
+        }
 
+        std::vector<StoreProduct> normalizedProducts;
+        for (const auto& provider : providers) {
+            const auto products = provider.get().findProducts(game->id);
+            normalizedProducts.insert(
+                normalizedProducts.end(), products.begin(), products.end());
+        }
+
+        Database database(GAME_PRICE_DATABASE_PATH);
+        StoreProductRepository repository(database);
+        repository.initializeSchema();
+        repository.saveNormalizedProducts(*game, normalizedProducts);
+
+        std::cout << "Saved " << normalizedProducts.size()
+                  << " normalized products to SQLite.\n";
+
+        PriceComparisonService service(catalog, repository);
         const auto result = service.compareByGameName("Stardew Valley");
         if (!result) {
             std::cout << "Game not found.\n";

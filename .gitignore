@@ -5,6 +5,9 @@ CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
 Makefile
+*.db
+*.db-shm
+*.db-wal
 
 # Local scratch and generated deliverables
 work/

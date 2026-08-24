@@ -3,9 +3,8 @@
 #include "game_price/game.h"
 #include "game_price/game_catalog.h"
 #include "game_price/store_product.h"
-#include "game_price/store_product_provider.h"
+#include "game_price/store_product_repository.h"
 
-#include <functional>
 #include <optional>
 #include <string>
 #include <vector>
@@ -20,15 +19,13 @@ struct PriceComparisonResult {
 
 class PriceComparisonService {
 public:
-    PriceComparisonService(
-        const GameCatalog& catalog,
-        std::vector<std::reference_wrapper<const StoreProductProvider>> providers);
+    PriceComparisonService(const GameCatalog& catalog, const StoreProductRepository& repository);
 
     std::optional<PriceComparisonResult> compareByGameName(const std::string& gameName) const;
 
 private:
     const GameCatalog& catalog_;
-    std::vector<std::reference_wrapper<const StoreProductProvider>> providers_;
+    const StoreProductRepository& repository_;
 };
 
 }  // namespace game_price
