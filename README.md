@@ -14,6 +14,12 @@ cmake --build build
 ./build/game_price_tracker
 ```
 
+빌드와 전체 테스트는 한 줄로 실행할 수 있습니다.
+
+```sh
+cmake --build build && ctest --test-dir build --output-on-failure
+```
+
 C++17과 SQLite3 개발 라이브러리가 필요합니다. 실행하면 Provider가 정규화한
 상품 데이터가 빌드 디렉터리의 `game_prices.db`에 저장됩니다.
 가격 비교 서비스는 Provider를 직접 조회하지 않고, 적재가 끝난 SQLite DB에서
@@ -23,6 +29,9 @@ C++17과 SQLite3 개발 라이브러리가 필요합니다. 실행하면 Provide
 중복으로 추가되지 않습니다.
 `PriceHistoryService`는 저장된 이력으로 현재가, 최저가, 최고가, 정수 기반
 평균가와 직전 관측 대비 가격 추이를 계산합니다.
+`PurchaseRecommendationService`는 이 통계만 사용해 `StrongBuy`, `Buy`,
+`Wait`, `InsufficientData` 중 하나와 판단 근거를 생성합니다. 외부 AI가
+추가되더라도 가격 계산과 추천 판정은 이 결정적 규칙의 결과를 사용합니다.
 
 DB 적재 결과는 다음 명령으로 확인할 수 있습니다.
 

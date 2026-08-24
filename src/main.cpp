@@ -4,6 +4,7 @@
 #include "game_price/google_play_provider.h"
 #include "game_price/price_comparison_service.h"
 #include "game_price/price_history_service.h"
+#include "game_price/purchase_recommendation_service.h"
 #include "game_price/steam_provider.h"
 #include "game_price/store_product_repository.h"
 
@@ -70,6 +71,7 @@ int main() {
                   << ' ' << toString(result->cheapestProduct->currentPrice.currency) << '\n';
 
         PriceHistoryService historyService(repository);
+        PurchaseRecommendationService recommendationService;
         std::cout << "Price history summary:\n";
         for (const auto& product : result->products) {
             const auto summary = historyService.analyze(product);
@@ -82,6 +84,13 @@ int main() {
                       << ' ' << toString(summary->currentPrice.currency)
                       << ", trend=" << toString(summary->trend)
                       << ", observations=" << summary->observationCount << '\n';
+
+            const auto recommendation = recommendationService.recommend(*summary);
+            std::cout << "  Recommendation: "
+                      << toString(recommendation.recommendation) << '\n';
+            for (const auto& reason : recommendation.reasons) {
+                std::cout << "  - " << reason << '\n';
+            }
         }
     } catch (const std::exception& error) {
         std::cerr << "Error: " << error.what() << '\n';
