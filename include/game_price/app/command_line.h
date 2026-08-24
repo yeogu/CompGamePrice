@@ -10,6 +10,7 @@ enum class AppCommand {
     Collect,
     Compare,
     History,
+    CollectionRuns,
     Help
 };
 

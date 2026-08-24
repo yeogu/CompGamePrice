@@ -38,8 +38,11 @@ cmake --build build
 ./build/game_price_tracker collect "Stardew Valley"
 ./build/game_price_tracker compare "Stardew Valley"
 ./build/game_price_tracker history "Stardew Valley"
+./build/game_price_tracker runs
 ./build/game_price_tracker --help
 ```
+
+`runs`는 `crawl_runs`에 저장된 Store별 수집 시도와 성공·실패 결과를 보여줍니다.
 
 프로세스 종료 코드는 자동 실행 환경에서 결과를 구분할 수 있도록 정의되어 있다.
 

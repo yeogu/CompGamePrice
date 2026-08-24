@@ -65,6 +65,26 @@ bool collectionCompletedSuccessfully(const CollectionResult& result) {
         [](const auto& entry) { return entry.second == CrawlRunStatus::Succeeded; });
 }
 
+bool printCollectionRuns(const StoreProductRepository& repository) {
+    const auto runs = repository.findCrawlRuns();
+    if (runs.empty()) {
+        std::cout << "No collection runs found.\n";
+        return false;
+    }
+
+    std::cout << "Collection run history:\n";
+    for (const auto& run : runs) {
+        std::cout << "- #" << run.id << ' ' << toString(run.store)
+                  << ": " << toString(run.status)
+                  << ", products=" << run.productsFound
+                  << ", started=" << run.startedAt;
+        if (!run.finishedAt.empty()) std::cout << ", finished=" << run.finishedAt;
+        if (!run.errorMessage.empty()) std::cout << ", error=" << run.errorMessage;
+        std::cout << '\n';
+    }
+    return true;
+}
+
 std::optional<PriceComparisonResult> printPriceComparison(
     const std::string& gameName,
     const GameCatalog& catalog,
@@ -131,6 +151,16 @@ int main(int argc, char* argv[]) {
             return static_cast<int>(AppExitCode::Success);
         }
 
+        Database database(GAME_PRICE_DATABASE_PATH);
+        StoreProductRepository repository(database);
+        repository.initializeSchema();
+
+        if (options.command == AppCommand::CollectionRuns) {
+            return static_cast<int>(printCollectionRuns(repository)
+                                        ? AppExitCode::Success
+                                        : AppExitCode::NoData);
+        }
+
         const std::string dataDirectory = SAMPLE_DATA_DIR;
         GameCatalog catalog(dataDirectory + "/games.txt");
         const auto game = catalog.findByName(options.gameName);
@@ -138,10 +168,6 @@ int main(int argc, char* argv[]) {
             std::cout << "Game not found: " << options.gameName << '\n';
             return static_cast<int>(AppExitCode::GameNotFound);
         }
-
-        Database database(GAME_PRICE_DATABASE_PATH);
-        StoreProductRepository repository(database);
-        repository.initializeSchema();
 
         bool collectionSucceeded = true;
         if (options.command == AppCommand::Collect || options.command == AppCommand::Demo) {

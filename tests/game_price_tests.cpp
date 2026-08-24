@@ -254,6 +254,10 @@ void testCommandLineModes() {
            "compare should select comparison mode");
     expect(parseCommandLine({"history"}).command == AppCommand::History,
            "history should select history mode");
+    const auto runs = parseCommandLine({"runs"});
+    expect(runs.command == AppCommand::CollectionRuns,
+           "runs should select collection run history mode");
+    expect(runs.gameName.empty(), "runs should not require a game name");
     expect(parseCommandLine({"--help"}).command == AppCommand::Help,
            "--help should select help mode");
 
