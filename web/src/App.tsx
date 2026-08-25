@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, useEffect, useRef, useState } from 'react'
 import { getGamePriceHistory, getGamePrices, searchGames } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
 import type { GamePriceHistoryResponse, GamePriceResponse, GameSummary, Money } from './types'
@@ -15,42 +15,58 @@ function App() {
   const [games, setGames] = useState<GameSummary[]>([])
   const [report, setReport] = useState<GamePriceResponse | null>(null)
   const [history, setHistory] = useState<GamePriceHistoryResponse | null>(null)
+  const [selectedGameId, setSelectedGameId] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const requestSequence = useRef(0)
 
   const selectGame = async (game: GameSummary) => {
+    const requestId = ++requestSequence.current
     setLoading(true)
     setError('')
+    setSelectedGameId(game.id)
+    setReport(null)
+    setHistory(null)
     try {
       const [priceReport, priceHistory] = await Promise.all([
         getGamePrices(game.id),
         getGamePriceHistory(game.id),
       ])
-      setReport(priceReport)
-      setHistory(priceHistory)
+      if (requestId === requestSequence.current) {
+        setReport(priceReport)
+        setHistory(priceHistory)
+      }
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '가격을 불러오지 못했습니다.')
+      if (requestId === requestSequence.current) {
+        setError(reason instanceof Error ? reason.message : '가격을 불러오지 못했습니다.')
+      }
     } finally {
-      setLoading(false)
+      if (requestId === requestSequence.current) setLoading(false)
     }
   }
 
   const submitSearch = async (event?: FormEvent) => {
     event?.preventDefault()
     if (!query.trim()) return
+    const requestId = ++requestSequence.current
     setLoading(true)
     setError('')
+    setGames([])
+    setSelectedGameId('')
     setReport(null)
     setHistory(null)
     try {
       const matches = await searchGames(query.trim())
+      if (requestId !== requestSequence.current) return
       setGames(matches)
       if (matches.length === 1) await selectGame(matches[0])
       if (matches.length === 0) setError('일치하는 게임이 없습니다.')
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '검색에 실패했습니다.')
+      if (requestId === requestSequence.current) {
+        setError(reason instanceof Error ? reason.message : '검색에 실패했습니다.')
+      }
     } finally {
-      setLoading(false)
+      if (requestId === requestSequence.current) setLoading(false)
     }
   }
 
@@ -81,12 +97,18 @@ function App() {
 
       {error && <p className="notice error">{error}</p>}
 
-      {!report && games.length > 1 && (
+      {games.length > 1 && (
         <section className="panel">
           <h2>검색 결과</h2>
           <div className="game-list">
             {games.map((game) => (
-              <button key={game.id} onClick={() => void selectGame(game)}>
+              <button
+                className={selectedGameId === game.id ? 'selected' : ''}
+                aria-pressed={selectedGameId === game.id}
+                disabled={loading && selectedGameId === game.id}
+                key={game.id}
+                onClick={() => void selectGame(game)}
+              >
                 {game.title}
               </button>
             ))}
@@ -133,6 +155,9 @@ function App() {
               )
             })}
           </div>
+          {report.products.length === 0 && (
+            <p className="notice empty">아직 수집된 가격이 없습니다.</p>
+          )}
         </section>
         {history && <PriceHistoryChart histories={history.histories} />}
         </>

@@ -40,3 +40,14 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/games/missing/price-history")
 [[ "${status}" == "404" ]]
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/games?query=terraria")
+[[ "${status}" == "200" ]]
+grep -q '"id":"terraria"' "${response_body}"
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/games/terraria/prices")
+[[ "${status}" == "200" ]]
+grep -q '"title":"Terraria"' "${response_body}"
+grep -q '"products":\[\]' "${response_body}"
