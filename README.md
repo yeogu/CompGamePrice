@@ -82,8 +82,8 @@ python3 tools/collect_steam_snapshot.py && ./build/game_price_tracker collect-st
 ```sh
 python3 tools/collect_steam_snapshot.py \
   --targets data/steam_collection_targets.json && \
-./build/game_price_tracker collect-steam \
-  --data-dir snapshots/latest "Stardew Valley"
+./build/game_price_tracker collect-steam-all \
+  --data-dir snapshots/latest
 ```
 
 대상은 canonical Game ID와 Steam App ID의 명시적인 매핑으로 관리합니다.
@@ -102,6 +102,11 @@ python3 tools/collect_steam_snapshot.py \
 `steam_{appId}.error.json`에 남고 프로세스는 일부 실패를 나타내는 종료 코드 `1`을
 반환합니다. 호출 간격과 재시도는 `--request-delay`, `--max-attempts`,
 `--retry-delay`로 조정할 수 있습니다.
+
+`collect-steam-all`은 `data/games.txt`에 등록된 모든 canonical Game을 순회하고,
+하나의 `steam_products.txt`에서 각 Game에 해당하는 상품을 찾아 정규화합니다.
+따라서 새 게임을 수집하려면 `games.txt`와 `steam_collection_targets.json` 양쪽에
+동일한 canonical Game ID를 등록해야 합니다.
 
 기본 대상은 Stardew Valley Steam app `413150`, 국가 코드는 `kr`입니다. 수집기는
 Python 표준 라이브러리만 사용하며 다음 파일을 원자적으로 교체합니다.

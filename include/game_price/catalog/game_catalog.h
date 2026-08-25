@@ -15,6 +15,7 @@ public:
     std::optional<Game> findByName(const std::string& name) const;
     std::optional<Game> findById(const std::string& id) const;
     std::vector<Game> searchByName(const std::string& query) const;
+    const std::vector<Game>& allGames() const noexcept;
 
 private:
     std::vector<Game> games_;

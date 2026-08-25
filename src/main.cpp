@@ -71,6 +71,26 @@ CollectionResult collectSteamProduct(
     return result;
 }
 
+CollectionResult collectAllSteamProducts(
+    const GameCatalog& catalog,
+    StoreProductRepository& repository,
+    const std::string& dataDirectory) {
+    SteamProvider steam(dataDirectory + "/steam_products.txt");
+    std::vector<std::reference_wrapper<const StoreProductProvider>> providers{steam};
+    CollectionService service(repository, std::move(providers), 2);
+
+    CollectionResult combined;
+    for (const auto& game : catalog.allGames()) {
+        const auto result = service.collect(game);
+        combined.runs.insert(
+            combined.runs.end(), result.runs.begin(), result.runs.end());
+        combined.totalProducts += result.totalProducts;
+        std::cout << "- " << game.title << ": " << result.totalProducts
+                  << " Steam product(s) saved\n";
+    }
+    return combined;
+}
+
 bool collectionCompletedSuccessfully(const CollectionResult& result) {
     std::vector<std::pair<Store, CrawlRunStatus>> finalStatuses;
     for (const auto& run : result.runs) {
@@ -266,6 +286,18 @@ int main(int argc, char* argv[]) {
                 std::cout << "- " << match.title << " (" << match.id << ")\n";
             }
             return static_cast<int>(AppExitCode::Success);
+        }
+
+        if (options.command == AppCommand::CollectSteamAll) {
+            std::cout << "Steam catalog collection:\n";
+            const auto result = collectAllSteamProducts(
+                catalog, repository, options.dataDirectory.value());
+            std::cout << "Saved " << result.totalProducts
+                      << " normalized Steam products to SQLite.\n";
+            return static_cast<int>(
+                collectionCompletedSuccessfully(result)
+                    ? AppExitCode::Success
+                    : AppExitCode::CollectionFailed);
         }
 
         const auto game = catalog.findByName(options.gameName);

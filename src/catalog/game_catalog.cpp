@@ -54,4 +54,8 @@ std::vector<Game> GameCatalog::searchByName(const std::string& query) const {
     return matches;
 }
 
+const std::vector<Game>& GameCatalog::allGames() const noexcept {
+    return games_;
+}
+
 }  // namespace game_price

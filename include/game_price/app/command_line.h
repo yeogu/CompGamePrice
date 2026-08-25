@@ -10,6 +10,7 @@ enum class AppCommand {
     Demo,
     Collect,
     CollectSteam,
+    CollectSteamAll,
     Compare,
     History,
     CollectionRuns,

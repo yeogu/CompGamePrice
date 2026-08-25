@@ -206,6 +206,10 @@ void testGameCatalogSearch() {
            "Catalog should find a game by stable id");
     expect(!catalog.findById("missing").has_value(),
            "Catalog should reject an unknown game id");
+    expect(catalog.allGames().size() == 1,
+           "Catalog should expose all games for batch collection");
+    expect(catalog.allGames().front().id == "stardew-valley",
+           "Batch catalog should preserve canonical game ids");
 }
 
 void testGameQueryServiceReport() {
@@ -375,6 +379,13 @@ void testCommandLineModes() {
            "collect-steam should parse its snapshot directory");
     expect(steamCollect.gameName == "Stardew Valley",
            "collect-steam should parse its game name");
+    const auto allSteamCollect = parseCommandLine(
+        {"collect-steam-all", "--data-dir", "/tmp/steam snapshot"});
+    expect(allSteamCollect.command == AppCommand::CollectSteamAll,
+           "collect-steam-all should select catalog collection mode");
+    expect(allSteamCollect.dataDirectory ==
+               std::optional<std::string>{"/tmp/steam snapshot"},
+           "collect-steam-all should parse its snapshot directory");
 
     expect(parseCommandLine({"compare"}).command == AppCommand::Compare,
            "compare should select comparison mode");
@@ -409,6 +420,14 @@ void testCommandLineModes() {
     }
     expect(rejectedMissingSteamDataDirectory,
            "collect-steam should require a snapshot data directory");
+    bool rejectedMissingAllSteamDataDirectory = false;
+    try {
+        parseCommandLine({"collect-steam-all"});
+    } catch (const std::invalid_argument&) {
+        rejectedMissingAllSteamDataDirectory = true;
+    }
+    expect(rejectedMissingAllSteamDataDirectory,
+           "collect-steam-all should require a snapshot data directory");
     const auto runs = parseCommandLine({"runs"});
     expect(runs.command == AppCommand::CollectionRuns,
            "runs should select collection run history mode");
