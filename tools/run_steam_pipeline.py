@@ -56,6 +56,7 @@ def run_pipeline(
     tracker: Path,
     targets_path: Path,
     output_directory: Path,
+    catalog_path: Path | None = None,
     country: str = "kr",
     language: str = "korean",
     timeout: float = 15.0,
@@ -68,6 +69,10 @@ def run_pipeline(
     started_at = timestamp()
     with exclusive_lock(output_directory / ".steam_pipeline.lock"):
         targets = collector.load_targets(targets_path)
+        if catalog_path is not None:
+            collector.validate_targets_in_catalog(
+                targets, collector.load_catalog_game_ids(catalog_path)
+            )
         collection_arguments = {
             "targets": targets,
             "output_directory": output_directory,
@@ -121,6 +126,7 @@ def main() -> int:
     parser.add_argument(
         "--targets", default="data/steam_collection_targets.json", type=Path
     )
+    parser.add_argument("--catalog", default="data/games.txt", type=Path)
     parser.add_argument("--output-dir", default="snapshots/latest", type=Path)
     parser.add_argument("--country", default="kr")
     parser.add_argument("--language", default="korean")
@@ -149,6 +155,7 @@ def main() -> int:
             arguments.tracker,
             arguments.targets,
             arguments.output_dir,
+            arguments.catalog,
             arguments.country,
             arguments.language,
             arguments.timeout,
@@ -160,6 +167,9 @@ def main() -> int:
     except PipelineAlreadyRunning as error:
         print(error, file=sys.stderr)
         return 2
+    except (ValueError, FileNotFoundError) as error:
+        print(f"Steam pipeline configuration error: {error}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

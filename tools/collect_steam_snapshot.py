@@ -176,6 +176,35 @@ def load_targets(path: Path) -> list[tuple[str, str]]:
     return targets
 
 
+def load_catalog_game_ids(path: Path) -> set[str]:
+    game_ids: set[str] = set()
+    for line_number, raw_line in enumerate(
+        path.read_text(encoding="utf-8").splitlines(), start=1
+    ):
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        fields = line.split("|")
+        if len(fields) != 2 or not fields[0] or not fields[1]:
+            raise ValueError(f"Invalid game catalog row at line {line_number}")
+        if fields[0] in game_ids:
+            raise ValueError(f"Duplicate canonical game id: {fields[0]}")
+        game_ids.add(fields[0])
+    if not game_ids:
+        raise ValueError("Game catalog must contain at least one game")
+    return game_ids
+
+
+def validate_targets_in_catalog(
+    targets: list[tuple[str, str]], catalog_game_ids: set[str]
+) -> None:
+    unknown = sorted({game_id for _app_id, game_id in targets} - catalog_game_ids)
+    if unknown:
+        raise ValueError(
+            "Steam targets reference unknown canonical game ids: " + ", ".join(unknown)
+        )
+
+
 def write_failure(
     output_directory: Path,
     app_id: str,

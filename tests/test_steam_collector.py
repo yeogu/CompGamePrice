@@ -105,6 +105,17 @@ class SteamCollectorTest(unittest.TestCase):
             self.assertEqual(error["attempts"], 3)
             self.assertEqual(error["error"], "temporary Steam failure")
 
+    def test_validates_target_game_ids_against_catalog(self):
+        game_ids = steam_collector.load_catalog_game_ids(ROOT / "data" / "games.txt")
+        self.assertEqual(game_ids, {"stardew-valley", "terraria"})
+        steam_collector.validate_targets_in_catalog(
+            [("413150", "stardew-valley")], game_ids
+        )
+        with self.assertRaisesRegex(ValueError, "unknown-game"):
+            steam_collector.validate_targets_in_catalog(
+                [("999", "unknown-game")], game_ids
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

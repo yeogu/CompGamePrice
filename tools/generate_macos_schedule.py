@@ -27,6 +27,8 @@ def schedule_definition(project_directory: Path, hour: int, minute: int) -> dict
             str(project / "build" / "game_price_tracker"),
             "--targets",
             str(project / "data" / "steam_collection_targets.json"),
+            "--catalog",
+            str(project / "data" / "games.txt"),
             "--output-dir",
             str(project / "snapshots" / "latest"),
         ],

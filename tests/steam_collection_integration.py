@@ -53,6 +53,8 @@ def main() -> int:
             tracker,
             "--targets",
             targets,
+            "--catalog",
+            str(Path(targets).resolve().parents[2] / "data" / "games.txt"),
             "--input",
             fixture,
             "--output-dir",

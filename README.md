@@ -151,7 +151,8 @@ python3 tools/collect_steam_snapshot.py \
 `collect-steam-all`은 `data/games.txt`에 등록된 모든 canonical Game을 순회하고,
 하나의 `steam_products.txt`에서 각 Game에 해당하는 상품을 찾아 정규화합니다.
 따라서 새 게임을 수집하려면 `games.txt`와 `steam_collection_targets.json` 양쪽에
-동일한 canonical Game ID를 등록해야 합니다.
+동일한 canonical Game ID를 등록해야 합니다. 파이프라인은 네트워크 요청 전에 두
+파일의 매핑을 검증하며, target에 Catalog에 없는 Game ID가 있으면 즉시 실패합니다.
 
 기본 대상은 Stardew Valley Steam app `413150`, 국가 코드는 `kr`입니다. 수집기는
 Python 표준 라이브러리만 사용하며 다음 파일을 원자적으로 교체합니다.

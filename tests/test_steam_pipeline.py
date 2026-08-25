@@ -51,6 +51,7 @@ class SteamPipelineTest(unittest.TestCase):
                 Path("build/game_price_tracker"),
                 TEST_TARGETS,
                 output,
+                catalog_path=ROOT / "data" / "games.txt",
                 request_delay=0,
                 retry_delay=0,
                 fetcher=fixture_fetch,
@@ -76,6 +77,7 @@ class SteamPipelineTest(unittest.TestCase):
                 Path("unused"),
                 TEST_TARGETS,
                 output,
+                catalog_path=ROOT / "data" / "games.txt",
                 request_delay=0,
                 retry_delay=0,
                 max_attempts=1,
@@ -89,6 +91,24 @@ class SteamPipelineTest(unittest.TestCase):
             self.assertEqual(report["collected"], 0)
             self.assertEqual(report["importExitCode"], None)
             self.assertEqual(report["failures"][0]["error"], "offline")
+
+    def test_rejects_unknown_game_before_fetching(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            targets = root / "targets.json"
+            targets.write_text(
+                '{"targets":[{"appId":"999","gameId":"unknown-game"}]}'
+            )
+            with self.assertRaisesRegex(ValueError, "unknown-game"):
+                steam_pipeline.run_pipeline(
+                    Path("unused"),
+                    targets,
+                    root / "snapshot",
+                    catalog_path=ROOT / "data" / "games.txt",
+                    fetcher=lambda *_args: self.fail(
+                        "Configuration must fail before a network request"
+                    ),
+                )
 
 
 if __name__ == "__main__":
