@@ -1,4 +1,5 @@
 #include "game_price/app/command_line.h"
+#include "game_price/app/game_query_service.h"
 #include "game_price/collection/apple_app_store_provider.h"
 #include "game_price/collection/collection_service.h"
 #include "game_price/persistence/database.h"
@@ -188,6 +189,30 @@ void testGameCatalogSearch() {
     expect(catalog.searchByName("   ").empty(), "Empty search should return no games");
 }
 
+void testGameQueryServiceReport() {
+    GameCatalog catalog(std::string(TEST_SAMPLE_DATA_DIR) + "/games.txt");
+    const auto game = catalog.findByName("Stardew Valley");
+    expect(game.has_value(), "Test game should exist");
+    Database database(":memory:");
+    StoreProductRepository repository(database);
+    repository.initializeSchema();
+    repository.saveNormalizedProducts(*game, {makeSteamProduct(11200)});
+
+    GameQueryService service(catalog, repository);
+    const auto report = service.getGamePriceReport("Stardew Valley");
+    expect(report.has_value(), "Query service should return a game report");
+    expect(report->comparison.cheapestProduct.has_value(),
+           "Game report should contain the cheapest product");
+    expect(report->productReports.size() == 1,
+           "Game report should contain one product analysis");
+    expect(report->productReports.front().history.has_value(),
+           "Product report should contain price history");
+    expect(report->productReports.front().recommendation.has_value(),
+           "Product report should contain a recommendation");
+    expect(service.searchGames("valley").size() == 1,
+           "Query service should expose catalog search");
+}
+
 void testRecommendationRules() {
     PurchaseRecommendationService service;
     const PriceHistorySummary insufficient{
@@ -361,6 +386,7 @@ int main() {
         {"Database schema version", testDatabaseSchemaVersion},
         {"Repository-backed comparison", testPriceComparisonReadsRepository},
         {"Game catalog search", testGameCatalogSearch},
+        {"Game query service report", testGameQueryServiceReport},
         {"Recommendation rules", testRecommendationRules},
         {"Collection run tracking and failure isolation",
          testCollectionRunTrackingAndFailureIsolation},

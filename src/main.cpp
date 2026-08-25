@@ -1,4 +1,5 @@
 #include "game_price/app/command_line.h"
+#include "game_price/app/game_query_service.h"
 #include "game_price/catalog/game_catalog.h"
 #include "game_price/collection/apple_app_store_provider.h"
 #include "game_price/collection/collection_service.h"
@@ -65,8 +66,8 @@ bool collectionCompletedSuccessfully(const CollectionResult& result) {
         [](const auto& entry) { return entry.second == CrawlRunStatus::Succeeded; });
 }
 
-bool printCollectionRuns(const StoreProductRepository& repository) {
-    const auto runs = repository.findCrawlRuns();
+bool printCollectionRuns(const GameQueryService& queryService) {
+    const auto runs = queryService.getCollectionRuns();
     if (runs.empty()) {
         std::cout << "No collection runs found.\n";
         return false;
@@ -86,24 +87,21 @@ bool printCollectionRuns(const StoreProductRepository& repository) {
 }
 
 std::optional<PriceComparisonResult> printPriceComparison(
-    const std::string& gameName,
-    const GameCatalog& catalog,
-    const StoreProductRepository& repository) {
-    PriceComparisonService service(catalog, repository);
-    const auto result = service.compareByGameName(gameName);
-    if (!result) return std::nullopt;
+    const std::optional<GamePriceReport>& report) {
+    if (!report) return std::nullopt;
+    const auto& result = report->comparison;
 
-    std::cout << result->game.title << " prices:\n";
-    for (const auto& product : result->products) {
+    std::cout << result.game.title << " prices:\n";
+    for (const auto& product : result.products) {
         std::cout << "- " << toString(product.store) << ": "
                   << product.currentPrice.minorAmount << ' '
                   << toString(product.currentPrice.currency) << '\n';
     }
 
-    if (result->cheapestProduct) {
-        std::cout << "Cheapest: " << toString(result->cheapestProduct->store)
-                  << " - " << result->cheapestProduct->currentPrice.minorAmount
-                  << ' ' << toString(result->cheapestProduct->currentPrice.currency) << '\n';
+    if (result.cheapestProduct) {
+        std::cout << "Cheapest: " << toString(result.cheapestProduct->store)
+                  << " - " << result.cheapestProduct->currentPrice.minorAmount
+                  << ' ' << toString(result.cheapestProduct->currentPrice.currency) << '\n';
     } else {
         std::cout << "No purchasable product found in SQLite.\n";
     }
@@ -111,32 +109,28 @@ std::optional<PriceComparisonResult> printPriceComparison(
 }
 
 bool printPriceHistory(
-    const PriceComparisonResult& comparison,
-    const StoreProductRepository& repository,
-    const std::optional<std::string>& observedSince = std::nullopt) {
-    PriceHistoryService historyService(repository);
-    PurchaseRecommendationService recommendationService;
+    const GamePriceReport& report) {
     bool foundHistory = false;
     std::cout << "Price history summary:\n";
-    for (const auto& product : comparison.products) {
-        const auto summary = historyService.analyze(product, observedSince);
-        if (!summary) continue;
+    for (const auto& productReport : report.productReports) {
+        if (!productReport.history || !productReport.recommendation) continue;
+        const auto& summary = *productReport.history;
+        const auto& recommendation = *productReport.recommendation;
         foundHistory = true;
-        std::cout << "- " << toString(summary->store)
-                  << ": current=" << summary->currentPrice.minorAmount
-                  << ", low=" << summary->lowestPrice.minorAmount
-                  << ", high=" << summary->highestPrice.minorAmount
-                  << ", average=" << summary->averagePrice.minorAmount
-                  << ' ' << toString(summary->currentPrice.currency)
-                  << ", trend=" << toString(summary->trend)
-                  << ", observations=" << summary->observationCount << '\n';
+        std::cout << "- " << toString(summary.store)
+                  << ": current=" << summary.currentPrice.minorAmount
+                  << ", low=" << summary.lowestPrice.minorAmount
+                  << ", high=" << summary.highestPrice.minorAmount
+                  << ", average=" << summary.averagePrice.minorAmount
+                  << ' ' << toString(summary.currentPrice.currency)
+                  << ", trend=" << toString(summary.trend)
+                  << ", observations=" << summary.observationCount << '\n';
 
-        const auto recommendation = recommendationService.recommend(*summary);
         std::cout << "  Recommendation: "
                   << toString(recommendation.recommendation) << '\n';
         std::cout << "  Price metrics: "
                   << recommendation.amountAboveHistoricalLow << ' '
-                  << toString(summary->currentPrice.currency)
+                  << toString(summary.currentPrice.currency)
                   << " above historical low ("
                   << recommendation.percentAboveHistoricalLow << "%), "
                   << recommendation.percentComparedToAverage
@@ -172,17 +166,18 @@ int main(int argc, char* argv[]) {
         StoreProductRepository repository(database);
         repository.initializeSchema();
 
+        const std::string defaultDataDirectory = SAMPLE_DATA_DIR;
+        GameCatalog catalog(defaultDataDirectory + "/games.txt");
+        GameQueryService queryService(catalog, repository);
+
         if (options.command == AppCommand::CollectionRuns) {
-            return static_cast<int>(printCollectionRuns(repository)
+            return static_cast<int>(printCollectionRuns(queryService)
                                         ? AppExitCode::Success
                                         : AppExitCode::NoData);
         }
 
-        const std::string defaultDataDirectory = SAMPLE_DATA_DIR;
-        GameCatalog catalog(defaultDataDirectory + "/games.txt");
-
         if (options.command == AppCommand::Search) {
-            const auto matches = catalog.searchByName(options.gameName);
+            const auto matches = queryService.searchGames(options.gameName);
             if (matches.empty()) {
                 std::cout << "No games found for: " << options.gameName << '\n';
                 return static_cast<int>(AppExitCode::NoData);
@@ -213,29 +208,31 @@ int main(int argc, char* argv[]) {
         }
 
         if (options.command == AppCommand::Compare) {
-            const auto comparison = printPriceComparison(options.gameName, catalog, repository);
+            const auto report = queryService.getGamePriceReport(options.gameName);
+            const auto comparison = printPriceComparison(report);
             return static_cast<int>(comparison && comparison->cheapestProduct
                                         ? AppExitCode::Success
                                         : AppExitCode::NoData);
         }
 
         if (options.command == AppCommand::History) {
-            const auto comparison = PriceComparisonService(catalog, repository)
-                                        .compareByGameName(options.gameName);
-            if (!comparison || comparison->products.empty()) {
+            const auto report = queryService.getGamePriceReport(
+                options.gameName, options.historySince);
+            if (!report || report->comparison.products.empty()) {
                 std::cout << "No stored price history found for "
                           << options.gameName << ".\n";
                 return static_cast<int>(AppExitCode::NoData);
             }
             return static_cast<int>(
-                printPriceHistory(*comparison, repository, options.historySince)
+                printPriceHistory(*report)
                     ? AppExitCode::Success
                     : AppExitCode::NoData);
         }
 
         if (options.command == AppCommand::Demo) {
-            const auto comparison = printPriceComparison(options.gameName, catalog, repository);
-            if (comparison) printPriceHistory(*comparison, repository);
+            const auto report = queryService.getGamePriceReport(options.gameName);
+            printPriceComparison(report);
+            if (report) printPriceHistory(*report);
             if (!collectionSucceeded) {
                 return static_cast<int>(AppExitCode::CollectionFailed);
             }

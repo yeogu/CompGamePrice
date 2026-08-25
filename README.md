@@ -23,6 +23,10 @@ src/                 # include 구조와 대응하는 구현 파일
 tests/               # CTest에서 실행하는 자동화 테스트
 ```
 
+`GameQueryService`는 게임 검색, 가격 비교, 이력 분석, 추천 결과를 하나의
+application-level 응답으로 조합합니다. CLI와 향후 HTTP API는 이 서비스를
+공유하므로 Domain 규칙을 각 진입점에서 다시 구현하지 않습니다.
+
 ## Build and run
 
 ```sh
