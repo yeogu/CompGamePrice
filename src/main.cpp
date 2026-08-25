@@ -224,6 +224,13 @@ void seedDemoHistory(
             [&product](const auto& item) { return item.first == product.store; });
         if (series == prices.end()) continue;
         product.currentPrice.minorAmount = series->second.back();
+        if (product.store == Store::Steam) {
+            constexpr std::int64_t regularPriceWon = 17500;
+            product.regularPrice = Money{regularPriceWon, Currency::KRW};
+            product.discountPercent = static_cast<int>(
+                (regularPriceWon - product.currentPrice.minorAmount) * 100 /
+                regularPriceWon);
+        }
     }
     repository.saveNormalizedProducts(game, products);
 
@@ -234,8 +241,18 @@ void seedDemoHistory(
         if (series == prices.end()) continue;
         std::vector<PriceObservation> observations;
         for (std::size_t index = 0; index < dates.size(); ++index) {
-            observations.push_back(PriceObservation{
-                Money{series->second[index], Currency::KRW}, true, dates[index]});
+            const auto currentPrice = series->second[index];
+            if (product.store == Store::Steam) {
+                constexpr std::int64_t regularPriceWon = 17500;
+                observations.push_back(PriceObservation{
+                    Money{currentPrice, Currency::KRW}, true, dates[index],
+                    Money{regularPriceWon, Currency::KRW},
+                    static_cast<int>(
+                        (regularPriceWon - currentPrice) * 100 / regularPriceWon)});
+            } else {
+                observations.push_back(PriceObservation{
+                    Money{currentPrice, Currency::KRW}, true, dates[index]});
+            }
         }
         repository.replacePriceHistory(
             product.store, product.productId, observations);
