@@ -206,10 +206,12 @@ void testGameCatalogSearch() {
            "Catalog should find a game by stable id");
     expect(!catalog.findById("missing").has_value(),
            "Catalog should reject an unknown game id");
-    expect(catalog.allGames().size() == 1,
+    expect(catalog.allGames().size() == 2,
            "Catalog should expose all games for batch collection");
     expect(catalog.allGames().front().id == "stardew-valley",
            "Batch catalog should preserve canonical game ids");
+    expect(catalog.findByName("Terraria").has_value(),
+           "Catalog should contain the second Steam collection target");
 }
 
 void testGameQueryServiceReport() {

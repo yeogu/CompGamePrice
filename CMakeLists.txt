@@ -100,7 +100,7 @@ if(BUILD_TESTING)
                 ${Python3_EXECUTABLE}
                 ${CMAKE_CURRENT_SOURCE_DIR}/tools/run_steam_pipeline.py
                 ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/steam_appdetails_413150.json
-                ${CMAKE_CURRENT_SOURCE_DIR}/data/steam_collection_targets.json
+                ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/steam_collection_targets.json
         )
     endif()
     if(TARGET game_price_api AND UNIX)

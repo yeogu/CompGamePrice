@@ -71,8 +71,10 @@ def main() -> int:
                 raise RuntimeError("Expected normalized Steam price of 16000 KRW")
             if scalar(connection, "SELECT COUNT(*) FROM price_history") != 1:
                 raise RuntimeError("Unchanged collection must not duplicate price history")
-            if scalar(connection, "SELECT COUNT(*) FROM crawl_runs") != 2:
-                raise RuntimeError("Each successful import should record one crawl run")
+            if scalar(connection, "SELECT COUNT(*) FROM crawl_runs") != 4:
+                raise RuntimeError(
+                    "Each import should record one crawl run per catalog game"
+                )
 
     return 0
 

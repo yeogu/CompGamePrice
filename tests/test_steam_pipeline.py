@@ -7,6 +7,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
+TEST_TARGETS = ROOT / "tests" / "fixtures" / "steam_collection_targets.json"
 sys.path.insert(0, str(ROOT / "tools"))
 SPEC = importlib.util.spec_from_file_location(
     "steam_pipeline", ROOT / "tools" / "run_steam_pipeline.py"
@@ -48,7 +49,7 @@ class SteamPipelineTest(unittest.TestCase):
             output = Path(directory) / "snapshot"
             exit_code = steam_pipeline.run_pipeline(
                 Path("build/game_price_tracker"),
-                ROOT / "data" / "steam_collection_targets.json",
+                TEST_TARGETS,
                 output,
                 request_delay=0,
                 retry_delay=0,
@@ -73,7 +74,7 @@ class SteamPipelineTest(unittest.TestCase):
             output = Path(directory) / "snapshot"
             exit_code = steam_pipeline.run_pipeline(
                 Path("unused"),
-                ROOT / "data" / "steam_collection_targets.json",
+                TEST_TARGETS,
                 output,
                 request_delay=0,
                 retry_delay=0,

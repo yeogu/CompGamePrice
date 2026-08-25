@@ -135,7 +135,8 @@ python3 tools/collect_steam_snapshot.py \
 ```json
 {
   "targets": [
-    { "appId": "413150", "gameId": "stardew-valley" }
+    { "appId": "413150", "gameId": "stardew-valley" },
+    { "appId": "105600", "gameId": "terraria" }
   ]
 }
 ```

@@ -50,7 +50,10 @@ class SteamCollectorTest(unittest.TestCase):
         targets = steam_collector.load_targets(
             ROOT / "data" / "steam_collection_targets.json"
         )
-        self.assertEqual(targets, [("413150", "stardew-valley")])
+        self.assertEqual(
+            targets,
+            [("413150", "stardew-valley"), ("105600", "terraria")],
+        )
 
         with tempfile.TemporaryDirectory() as directory:
             invalid = Path(directory) / "invalid.json"
