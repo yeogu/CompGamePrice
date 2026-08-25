@@ -119,6 +119,32 @@ API 응답은 가격을 `{ "minorAmount": 6500, "currency": "KRW" }`처럼 정�
 전달합니다. Drogon이 설치되지 않은 환경에서는 CLI와 테스트만 빌드되고 API
 target은 생략됩니다.
 
+## Web client
+
+React와 TypeScript로 만든 첫 Web 화면은 게임 검색, Store별 현재가, 최저가,
+지원 Platform과 추천 상태를 API에서 조회합니다.
+
+API 서버를 실행한 뒤 별도 터미널에서 다음 명령을 실행합니다.
+
+```sh
+cd web
+npm install
+npm run dev
+```
+
+브라우저에서 `http://127.0.0.1:5173`을 열면 됩니다. API 주소를 변경할 때는
+`VITE_API_URL`을 지정합니다.
+
+```sh
+VITE_API_URL=http://127.0.0.1:8080 npm run dev
+```
+
+Web production build는 다음 명령으로 확인합니다.
+
+```sh
+cd web && npm run build
+```
+
 DB 적재 결과는 다음 명령으로 확인할 수 있습니다.
 
 ```sh

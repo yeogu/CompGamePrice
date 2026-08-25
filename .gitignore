@@ -12,6 +12,11 @@ Makefile
 # Local scratch and generated deliverables
 work/
 outputs/
+web/node_modules/
+web/dist/
+web/*.tsbuildinfo
+web/vite.config.js
+web/vite.config.d.ts
 
 # Editor and operating-system files
 .vscode/

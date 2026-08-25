@@ -1,0 +1,75 @@
+:root {
+  font-family: Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #ecf4ef;
+  background: #07110d;
+  font-synthesis: none;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; }
+button, input { font: inherit; }
+button { cursor: pointer; }
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 80% 5%, rgba(74, 222, 128, 0.13), transparent 35%),
+    linear-gradient(145deg, #07110d 0%, #0b1812 55%, #07110d 100%);
+}
+
+main { width: min(1120px, calc(100% - 40px)); margin: 0 auto; padding: 72px 0; }
+.hero { max-width: 760px; padding: 48px 0 70px; }
+.eyebrow { color: #73e2a7; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.18em; }
+h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; letter-spacing: -0.055em; }
+.intro { color: #9eb2a7; font-size: 1.08rem; }
+
+.search-form { display: flex; gap: 10px; margin-top: 34px; }
+.search-form input {
+  flex: 1; min-width: 0; padding: 17px 20px; color: #eef8f2;
+  background: #101f18; border: 1px solid #263c31; border-radius: 12px; outline: none;
+}
+.search-form input:focus { border-color: #65d99b; box-shadow: 0 0 0 3px rgba(101, 217, 155, 0.12); }
+.search-form button, .game-list button {
+  padding: 0 24px; color: #07110d; font-weight: 800; background: #73e2a7;
+  border: 0; border-radius: 12px;
+}
+.search-form button:disabled { opacity: 0.65; cursor: wait; }
+
+.notice, .panel { padding: 18px 20px; background: #111f19; border: 1px solid #263c31; border-radius: 14px; }
+.error { color: #ffb4a8; border-color: #633a34; }
+.game-list { display: flex; flex-wrap: wrap; gap: 10px; }
+.game-list button { padding: 10px 16px; }
+
+.results { padding-top: 12px; }
+.result-heading { display: flex; align-items: end; justify-content: space-between; gap: 30px; margin-bottom: 28px; }
+h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04em; }
+.best-summary { display: grid; justify-items: end; }
+.best-summary span, .best-summary small { color: #91a79b; }
+.best-summary strong { color: #73e2a7; font-size: 2rem; }
+
+.price-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.price-card {
+  min-height: 270px; padding: 24px; background: rgba(16, 31, 24, 0.88);
+  border: 1px solid #263c31; border-radius: 18px;
+}
+.price-card.cheapest { border-color: #65d99b; box-shadow: inset 0 3px 0 #73e2a7; }
+.card-topline { display: flex; align-items: center; justify-content: space-between; }
+.store { color: #a9bcb1; font-weight: 700; }
+.badge { padding: 5px 8px; color: #07110d; background: #73e2a7; border-radius: 999px; font-size: 0.7rem; font-weight: 900; }
+.price { display: block; margin: 24px 0 6px; font-size: 2.15rem; letter-spacing: -0.04em; }
+.platforms { min-height: 24px; color: #82968b; }
+.history { display: flex; justify-content: space-between; margin-top: 30px; padding-top: 18px; border-top: 1px solid #263c31; color: #91a79b; }
+.history strong { color: #dfece4; }
+.recommendation { margin: 14px 0 0; color: #73e2a7; font-weight: 800; }
+
+@media (max-width: 760px) {
+  main { width: min(100% - 28px, 620px); padding-top: 30px; }
+  .hero { padding-bottom: 46px; }
+  .search-form, .result-heading { align-items: stretch; flex-direction: column; }
+  .search-form button { padding: 16px; }
+  .best-summary { justify-items: start; }
+  .price-grid { grid-template-columns: 1fr; }
+}
