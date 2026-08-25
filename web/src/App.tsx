@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react'
-import { getGamePrices, searchGames } from './api'
-import type { GamePriceResponse, GameSummary, Money } from './types'
+import { getGamePriceHistory, getGamePrices, searchGames } from './api'
+import PriceHistoryChart from './PriceHistoryChart'
+import type { GamePriceHistoryResponse, GamePriceResponse, GameSummary, Money } from './types'
 
 const formatMoney = (money: Money) =>
   new Intl.NumberFormat('ko-KR', {
@@ -13,6 +14,7 @@ function App() {
   const [query, setQuery] = useState('Stardew Valley')
   const [games, setGames] = useState<GameSummary[]>([])
   const [report, setReport] = useState<GamePriceResponse | null>(null)
+  const [history, setHistory] = useState<GamePriceHistoryResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -20,7 +22,12 @@ function App() {
     setLoading(true)
     setError('')
     try {
-      setReport(await getGamePrices(game.id))
+      const [priceReport, priceHistory] = await Promise.all([
+        getGamePrices(game.id),
+        getGamePriceHistory(game.id),
+      ])
+      setReport(priceReport)
+      setHistory(priceHistory)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '가격을 불러오지 못했습니다.')
     } finally {
@@ -34,6 +41,7 @@ function App() {
     setLoading(true)
     setError('')
     setReport(null)
+    setHistory(null)
     try {
       const matches = await searchGames(query.trim())
       setGames(matches)
@@ -87,6 +95,7 @@ function App() {
       )}
 
       {report && (
+        <>
         <section className="results">
           <div className="result-heading">
             <div>
@@ -125,6 +134,8 @@ function App() {
             })}
           </div>
         </section>
+        {history && <PriceHistoryChart histories={history.histories} />}
+        </>
       )}
     </main>
   )

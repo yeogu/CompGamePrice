@@ -126,7 +126,8 @@ target은 생략됩니다.
 ## Web client
 
 React와 TypeScript로 만든 첫 Web 화면은 게임 검색, Store별 현재가, 최저가,
-지원 Platform과 추천 상태를 API에서 조회합니다.
+지원 Platform과 추천 상태를 API에서 조회합니다. Store 탭을 선택하면 원본
+관측 이력을 SVG 가격 추이와 날짜별 가격 목록으로 확인할 수 있습니다.
 
 API 서버를 실행한 뒤 별도 터미널에서 다음 명령을 실행합니다.
 

@@ -1,4 +1,4 @@
-import type { GamePriceResponse, GameSummary } from './types'
+import type { GamePriceHistoryResponse, GamePriceResponse, GameSummary } from './types'
 
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8080'
 
@@ -20,4 +20,14 @@ export async function searchGames(query: string): Promise<GameSummary[]> {
 
 export function getGamePrices(gameId: string): Promise<GamePriceResponse> {
   return getJson<GamePriceResponse>(`/api/games/${encodeURIComponent(gameId)}/prices`)
+}
+
+export function getGamePriceHistory(
+  gameId: string,
+  since?: string,
+): Promise<GamePriceHistoryResponse> {
+  const query = since ? `?since=${encodeURIComponent(since)}` : ''
+  return getJson<GamePriceHistoryResponse>(
+    `/api/games/${encodeURIComponent(gameId)}/price-history${query}`,
+  )
 }

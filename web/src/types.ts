@@ -44,3 +44,20 @@ export interface GamePriceResponse {
     price: Money
   }
 }
+
+export interface PriceObservation {
+  price: Money
+  purchasable: boolean
+  observedAt: string
+}
+
+export interface ProductPriceHistory {
+  productId: string
+  store: string
+  observations: PriceObservation[]
+}
+
+export interface GamePriceHistoryResponse {
+  game: GameSummary
+  histories: ProductPriceHistory[]
+}

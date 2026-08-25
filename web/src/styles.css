@@ -65,6 +65,22 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .history strong { color: #dfece4; }
 .recommendation { margin: 14px 0 0; color: #73e2a7; font-weight: 800; }
 
+.trend-panel { margin-top: 70px; padding: 30px; background: rgba(16, 31, 24, 0.88); border: 1px solid #263c31; border-radius: 20px; }
+.trend-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
+.store-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.store-tabs button { padding: 9px 13px; color: #9eb2a7; background: #14251c; border: 1px solid #2b4035; border-radius: 999px; }
+.store-tabs button.active { color: #07110d; background: #73e2a7; border-color: #73e2a7; font-weight: 800; }
+.chart-wrap { position: relative; margin-top: 32px; padding: 18px 0 0; }
+.chart-wrap svg { display: block; width: 100%; min-height: 220px; overflow: visible; }
+.chart-labels { display: flex; justify-content: space-between; color: #82968b; font-size: 0.8rem; }
+.grid-line { stroke: #2b4035; stroke-dasharray: 5 8; }
+.trend-line { fill: none; stroke: #73e2a7; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+.trend-point { fill: #07110d; stroke: #73e2a7; stroke-width: 4; }
+.data-note { color: #91a79b; text-align: center; }
+.observation-list { display: grid; gap: 8px; margin-top: 22px; }
+.observation-list div { display: flex; justify-content: space-between; gap: 16px; padding: 12px 14px; background: #0c1912; border-radius: 10px; }
+.observation-list time { color: #91a79b; }
+
 @media (max-width: 760px) {
   main { width: min(100% - 28px, 620px); padding-top: 30px; }
   .hero { padding-bottom: 46px; }
@@ -72,4 +88,8 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
   .search-form button { padding: 16px; }
   .best-summary { justify-items: start; }
   .price-grid { grid-template-columns: 1fr; }
+  .trend-panel { margin-top: 42px; padding: 20px 16px; }
+  .trend-heading { align-items: flex-start; flex-direction: column; }
+  .store-tabs { width: 100%; }
+  .store-tabs button { flex: 1; }
 }
