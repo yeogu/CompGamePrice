@@ -12,6 +12,8 @@ Makefile
 # Local scratch and generated deliverables
 work/
 outputs/
+snapshots/
+__pycache__/
 web/node_modules/
 web/dist/
 web/*.tsbuildinfo

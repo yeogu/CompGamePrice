@@ -366,6 +366,15 @@ void testCommandLineModes() {
            "collect should parse a snapshot data directory");
     expect(snapshotCollect.gameName == "Stardew Valley",
            "collect should parse the game after the data directory");
+    const auto steamCollect = parseCommandLine(
+        {"collect-steam", "--data-dir", "/tmp/steam snapshot", "Stardew", "Valley"});
+    expect(steamCollect.command == AppCommand::CollectSteam,
+           "collect-steam should select Steam-only collection mode");
+    expect(steamCollect.dataDirectory ==
+               std::optional<std::string>{"/tmp/steam snapshot"},
+           "collect-steam should parse its snapshot directory");
+    expect(steamCollect.gameName == "Stardew Valley",
+           "collect-steam should parse its game name");
 
     expect(parseCommandLine({"compare"}).command == AppCommand::Compare,
            "compare should select comparison mode");
@@ -392,6 +401,14 @@ void testCommandLineModes() {
     }
     expect(rejectedMissingDataDirectory,
            "collect should reject a missing snapshot data directory");
+    bool rejectedMissingSteamDataDirectory = false;
+    try {
+        parseCommandLine({"collect-steam"});
+    } catch (const std::invalid_argument&) {
+        rejectedMissingSteamDataDirectory = true;
+    }
+    expect(rejectedMissingSteamDataDirectory,
+           "collect-steam should require a snapshot data directory");
     const auto runs = parseCommandLine({"runs"});
     expect(runs.command == AppCommand::CollectionRuns,
            "runs should select collection run history mode");

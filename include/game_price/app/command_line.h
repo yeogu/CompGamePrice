@@ -9,6 +9,7 @@ namespace game_price {
 enum class AppCommand {
     Demo,
     Collect,
+    CollectSteam,
     Compare,
     History,
     CollectionRuns,

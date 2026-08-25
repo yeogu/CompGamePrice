@@ -41,6 +41,7 @@ cmake --build build
 ```sh
 ./build/game_price_tracker collect "Stardew Valley"
 ./build/game_price_tracker collect --data-dir ./snapshots/latest "Stardew Valley"
+./build/game_price_tracker collect-steam --data-dir ./snapshots/latest "Stardew Valley"
 ./build/game_price_tracker compare "Stardew Valley"
 ./build/game_price_tracker history "Stardew Valley"
 ./build/game_price_tracker history --since 2026-01-01 "Stardew Valley"
@@ -58,6 +59,45 @@ cmake --build build
 `seed-demo`는 Stardew Valley의 세 Store에 2026년 1월부터 6월까지 고정된
 월별 가격 6개씩을 저장합니다. 같은 명령을 다시 실행하면 기존 Demo 이력을
 교체하므로 중복되지 않으며 Web 가격 추이와 추천 규칙 확인에 사용할 수 있습니다.
+
+## Steam live collection
+
+Steam 한 Store만 실제 응답으로 수집하는 첫 Prototype을 제공합니다. 수집기는
+네트워크와 원본 보존만 담당하고, C++ `SteamProvider`가 생성된 Store 형식의
+snapshot을 공통 `StoreProduct`로 변환합니다.
+
+```sh
+python3 tools/collect_steam_snapshot.py
+./build/game_price_tracker collect-steam --data-dir snapshots/latest "Stardew Valley"
+```
+
+한 줄로 실행하려면 다음 명령을 사용합니다.
+
+```sh
+python3 tools/collect_steam_snapshot.py && ./build/game_price_tracker collect-steam --data-dir snapshots/latest "Stardew Valley"
+```
+
+기본 대상은 Stardew Valley Steam app `413150`, 국가 코드는 `kr`입니다. 수집기는
+Python 표준 라이브러리만 사용하며 다음 파일을 원자적으로 교체합니다.
+
+```text
+snapshots/latest/
+├── steam_413150.json           # Steam 원본 응답
+├── steam_413150.metadata.json  # 수집 시각, URL, HTTP 상태, SHA-256
+└── steam_products.txt          # SteamProvider 입력 snapshot
+```
+
+`snapshots/`는 실행 중 생성되는 데이터이므로 Git에서 제외됩니다. Steam Storefront
+`appdetails` 응답은 Steamworks 공식 가격 API로 문서화된 계약이 아니므로, 응답
+형식이 바뀌면 수집기가 명확히 실패하고 마지막 정상 DB 데이터는 유지하도록
+분리했습니다. 대량 호출은 피하고 후속 자동화에서도 충분한 호출 간격을 둬야 합니다.
+네트워크 없이 변환만 확인하려면 저장된 Fixture를 사용할 수 있습니다.
+
+```sh
+python3 tools/collect_steam_snapshot.py \
+  --input tests/fixtures/steam_appdetails_413150.json \
+  --output-dir snapshots/fixture
+```
 
 프로세스 종료 코드는 자동 실행 환경에서 결과를 구분할 수 있도록 정의되어 있다.
 

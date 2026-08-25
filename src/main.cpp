@@ -50,6 +50,27 @@ CollectionResult collectStoreProducts(
     return result;
 }
 
+CollectionResult collectSteamProduct(
+    const Game& game,
+    StoreProductRepository& repository,
+    const std::string& dataDirectory) {
+    SteamProvider steam(dataDirectory + "/steam_products.txt");
+    std::vector<std::reference_wrapper<const StoreProductProvider>> providers{steam};
+    CollectionService service(repository, std::move(providers), 2);
+    const auto result = service.collect(game);
+    std::cout << "Steam collection runs:\n";
+    for (const auto& run : result.runs) {
+        std::cout << "- " << toString(run.store) << ": " << toString(run.status)
+                  << ", attempt=" << run.attemptNumber
+                  << ", products=" << run.productsFound;
+        if (!run.errorMessage.empty()) std::cout << ", error=" << run.errorMessage;
+        std::cout << '\n';
+    }
+    std::cout << "Saved " << result.totalProducts
+              << " normalized Steam products to SQLite.\n";
+    return result;
+}
+
 bool collectionCompletedSuccessfully(const CollectionResult& result) {
     std::vector<std::pair<Store, CrawlRunStatus>> finalStatuses;
     for (const auto& run : result.runs) {
@@ -259,6 +280,16 @@ int main(int argc, char* argv[]) {
         }
 
         bool collectionSucceeded = true;
+        if (options.command == AppCommand::CollectSteam) {
+            collectionSucceeded = collectionCompletedSuccessfully(
+                collectSteamProduct(
+                    *game, repository, options.dataDirectory.value()));
+            if (!collectionSucceeded) {
+                return static_cast<int>(AppExitCode::CollectionFailed);
+            }
+            return static_cast<int>(AppExitCode::Success);
+        }
+
         if (options.command == AppCommand::Collect || options.command == AppCommand::Demo) {
             collectionSucceeded = collectionCompletedSuccessfully(
                 collectStoreProducts(

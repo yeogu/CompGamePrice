@@ -49,6 +49,18 @@ CommandLineOptions parseCommandLine(const std::vector<std::string>& arguments) {
         return CommandLineOptions{
             AppCommand::Collect, gameName, std::nullopt, std::nullopt};
     }
+    if (command == "collect-steam") {
+        if (arguments.size() < 3 || arguments[1] != "--data-dir" ||
+            arguments[2].empty()) {
+            throw std::invalid_argument(
+                "collect-steam requires --data-dir PATH");
+        }
+        return CommandLineOptions{
+            AppCommand::CollectSteam,
+            joinArguments(arguments, 3),
+            std::nullopt,
+            arguments[2]};
+    }
     if (command == "compare") {
         return CommandLineOptions{
             AppCommand::Compare, gameName, std::nullopt, std::nullopt};
@@ -93,6 +105,8 @@ std::string commandLineHelp() {
         "  demo      Collect, compare, and show history (default)\n"
         "  collect   Collect Store data and save it to SQLite\n"
         "            Optional: collect --data-dir PATH [game name]\n"
+        "  collect-steam  Collect only a Steam snapshot\n"
+        "            Required: collect-steam --data-dir PATH [game name]\n"
         "  compare   Compare prices already stored in SQLite\n"
         "  history   Show price history and purchase recommendations\n"
         "            Optional: history --since YYYY-MM-DD [game name]\n"

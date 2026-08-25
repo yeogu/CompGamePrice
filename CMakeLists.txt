@@ -78,6 +78,13 @@ if(BUILD_TESTING)
     )
     enable_project_warnings(game_price_tests)
     add_test(NAME game_price_tests COMMAND game_price_tests)
+    find_package(Python3 COMPONENTS Interpreter QUIET)
+    if(Python3_Interpreter_FOUND)
+        add_test(
+            NAME steam_collector_tests
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_steam_collector.py
+        )
+    endif()
     if(TARGET game_price_api AND UNIX)
         find_program(CURL_EXECUTABLE curl)
         if(CURL_EXECUTABLE)
