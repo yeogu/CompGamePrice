@@ -77,6 +77,32 @@ python3 tools/collect_steam_snapshot.py
 python3 tools/collect_steam_snapshot.py && ./build/game_price_tracker collect-steam --data-dir snapshots/latest "Stardew Valley"
 ```
 
+설정 파일에 등록한 Steam 게임을 순차 수집할 때는 다음 명령을 사용합니다.
+
+```sh
+python3 tools/collect_steam_snapshot.py \
+  --targets data/steam_collection_targets.json && \
+./build/game_price_tracker collect-steam \
+  --data-dir snapshots/latest "Stardew Valley"
+```
+
+대상은 canonical Game ID와 Steam App ID의 명시적인 매핑으로 관리합니다.
+
+```json
+{
+  "targets": [
+    { "appId": "413150", "gameId": "stardew-valley" }
+  ]
+}
+```
+
+다중 수집은 Store에 부담을 주지 않도록 요청 사이에 기본 1초를 기다립니다. 각 게임은
+일시적 실패 시 최대 3번까지 1초, 2초 간격으로 재시도하며, 한 게임의 최종 실패가
+다른 게임의 수집을 중단시키지 않습니다. 실패 내용은
+`steam_{appId}.error.json`에 남고 프로세스는 일부 실패를 나타내는 종료 코드 `1`을
+반환합니다. 호출 간격과 재시도는 `--request-delay`, `--max-attempts`,
+`--retry-delay`로 조정할 수 있습니다.
+
 기본 대상은 Stardew Valley Steam app `413150`, 국가 코드는 `kr`입니다. 수집기는
 Python 표준 라이브러리만 사용하며 다음 파일을 원자적으로 교체합니다.
 

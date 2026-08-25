@@ -46,6 +46,60 @@ class SteamCollectorTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "no KRW price"):
             steam_collector.normalized_row(raw, "413150", "stardew-valley")
 
+    def test_loads_and_validates_collection_targets(self):
+        targets = steam_collector.load_targets(
+            ROOT / "data" / "steam_collection_targets.json"
+        )
+        self.assertEqual(targets, [("413150", "stardew-valley")])
+
+        with tempfile.TemporaryDirectory() as directory:
+            invalid = Path(directory) / "invalid.json"
+            invalid.write_text(
+                '{"targets":[{"appId":"413150","gameId":"one"},'
+                '{"appId":"413150","gameId":"two"}]}'
+            )
+            with self.assertRaisesRegex(ValueError, "Duplicate"):
+                steam_collector.load_targets(invalid)
+
+    def test_batch_retries_and_isolates_failed_games(self):
+        fixture = (
+            ROOT / "tests" / "fixtures" / "steam_appdetails_413150.json"
+        ).read_bytes()
+        attempts = {}
+        sleeps = []
+
+        def fake_fetch(app_id, _country, _language, _timeout):
+            attempts[app_id] = attempts.get(app_id, 0) + 1
+            if app_id == "999":
+                raise RuntimeError("temporary Steam failure")
+            return fixture, 200, f"fixture://{app_id}"
+
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            successes, failures = steam_collector.collect_targets(
+                [("413150", "stardew-valley"), ("999", "missing-game")],
+                output,
+                "kr",
+                "korean",
+                5,
+                request_delay=2,
+                max_attempts=3,
+                retry_delay=1,
+                fetcher=fake_fetch,
+                sleeper=sleeps.append,
+            )
+
+            self.assertEqual(successes, 1)
+            self.assertEqual(len(failures), 1)
+            self.assertEqual(attempts, {"413150": 1, "999": 3})
+            self.assertEqual(sleeps, [2, 1, 2])
+            products = (output / "steam_products.txt").read_text()
+            self.assertIn("413150|stardew-valley|16000", products)
+            self.assertNotIn("missing-game", products)
+            error = json.loads((output / "steam_999.error.json").read_text())
+            self.assertEqual(error["attempts"], 3)
+            self.assertEqual(error["error"], "temporary Steam failure")
+
 
 if __name__ == "__main__":
     unittest.main()

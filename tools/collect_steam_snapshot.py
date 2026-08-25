@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fetch one Steam Storefront response and create a local Provider snapshot."""
+"""Fetch Steam Storefront responses and create local Provider snapshots."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import ssl
 import tempfile
+import time
 from datetime import datetime, timezone
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -94,23 +95,26 @@ def normalized_row(raw: bytes, app_id: str, game_id: str) -> str:
     return f"{app_id}|{game_id}|{final_price_won}|{','.join(platforms)}|true\n"
 
 
-def write_snapshot(
+def collected_at() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace(
+        "+00:00", "Z"
+    )
+
+
+def write_raw_snapshot(
     raw: bytes,
     output_directory: Path,
     app_id: str,
     game_id: str,
     source_url: str,
     http_status: int | None,
-) -> None:
+) -> str:
     row = normalized_row(raw, app_id, game_id)
-    collected_at = datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace(
-        "+00:00", "Z"
-    )
     metadata = {
         "store": "Steam",
         "appId": app_id,
         "gameId": game_id,
-        "collectedAt": collected_at,
+        "collectedAt": collected_at(),
         "sourceUrl": source_url,
         "httpStatus": http_status,
         "sha256": hashlib.sha256(raw).hexdigest(),
@@ -121,12 +125,122 @@ def write_snapshot(
         output_directory / f"steam_{app_id}.metadata.json",
         (json.dumps(metadata, ensure_ascii=False, indent=2) + "\n").encode("utf-8"),
     )
+    return row
+
+
+def write_products_snapshot(output_directory: Path, rows: list[str]) -> None:
     atomic_write(
         output_directory / "steam_products.txt",
-        ("# app_id|canonical_game_id|final_price_krw|platform_flags|available\n" + row).encode(
-            "utf-8"
-        ),
+        (
+            "# app_id|canonical_game_id|final_price_krw|platform_flags|available\n"
+            + "".join(rows)
+        ).encode("utf-8"),
     )
+
+
+def write_snapshot(
+    raw: bytes,
+    output_directory: Path,
+    app_id: str,
+    game_id: str,
+    source_url: str,
+    http_status: int | None,
+) -> None:
+    row = write_raw_snapshot(
+        raw, output_directory, app_id, game_id, source_url, http_status
+    )
+    write_products_snapshot(output_directory, [row])
+
+
+def load_targets(path: Path) -> list[tuple[str, str]]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    raw_targets = payload.get("targets") if isinstance(payload, dict) else None
+    if not isinstance(raw_targets, list) or not raw_targets:
+        raise ValueError("Steam targets must contain a non-empty targets list")
+
+    targets: list[tuple[str, str]] = []
+    seen_app_ids: set[str] = set()
+    for target in raw_targets:
+        if not isinstance(target, dict):
+            raise ValueError("Each Steam target must be an object")
+        app_id = str(target.get("appId", ""))
+        game_id = target.get("gameId")
+        if not app_id.isdigit() or not isinstance(game_id, str) or not game_id:
+            raise ValueError("Each Steam target requires numeric appId and gameId")
+        if app_id in seen_app_ids:
+            raise ValueError(f"Duplicate Steam appId: {app_id}")
+        seen_app_ids.add(app_id)
+        targets.append((app_id, game_id))
+    return targets
+
+
+def write_failure(
+    output_directory: Path,
+    app_id: str,
+    game_id: str,
+    attempts: int,
+    error: Exception,
+) -> None:
+    metadata = {
+        "store": "Steam",
+        "appId": app_id,
+        "gameId": game_id,
+        "collectedAt": collected_at(),
+        "attempts": attempts,
+        "error": str(error),
+    }
+    atomic_write(
+        output_directory / f"steam_{app_id}.error.json",
+        (json.dumps(metadata, ensure_ascii=False, indent=2) + "\n").encode("utf-8"),
+    )
+
+
+def collect_targets(
+    targets: list[tuple[str, str]],
+    output_directory: Path,
+    country: str,
+    language: str,
+    timeout: float,
+    request_delay: float,
+    max_attempts: int,
+    retry_delay: float,
+    fetcher=fetch,
+    sleeper=time.sleep,
+) -> tuple[int, list[tuple[str, str]]]:
+    if request_delay < 0 or retry_delay < 0 or max_attempts < 1:
+        raise ValueError("Delays must be non-negative and max attempts must be positive")
+
+    rows: list[str] = []
+    failures: list[tuple[str, str]] = []
+    for target_index, (app_id, game_id) in enumerate(targets):
+        if target_index > 0 and request_delay > 0:
+            sleeper(request_delay)
+
+        last_error: Exception | None = None
+        for attempt in range(1, max_attempts + 1):
+            try:
+                raw, status, source_url = fetcher(
+                    app_id, country, language, timeout
+                )
+                rows.append(
+                    write_raw_snapshot(
+                        raw, output_directory, app_id, game_id, source_url, status
+                    )
+                )
+                last_error = None
+                break
+            except Exception as error:
+                last_error = error
+                if attempt < max_attempts and retry_delay > 0:
+                    sleeper(retry_delay * (2 ** (attempt - 1)))
+
+        if last_error is not None:
+            write_failure(output_directory, app_id, game_id, max_attempts, last_error)
+            failures.append((app_id, str(last_error)))
+
+    if rows:
+        write_products_snapshot(output_directory, rows)
+    return len(rows), failures
 
 
 def main() -> int:
@@ -137,12 +251,39 @@ def main() -> int:
     parser.add_argument("--language", default="korean")
     parser.add_argument("--output-dir", default="snapshots/latest", type=Path)
     parser.add_argument("--timeout", default=15.0, type=float)
+    parser.add_argument("--targets", type=Path, help="JSON file containing Steam targets.")
+    parser.add_argument("--request-delay", default=1.0, type=float)
+    parser.add_argument("--max-attempts", default=3, type=int)
+    parser.add_argument("--retry-delay", default=1.0, type=float)
     parser.add_argument(
         "--input",
         type=Path,
         help="Read a saved response instead of using the network (for tests).",
     )
     arguments = parser.parse_args()
+
+    if arguments.targets and arguments.input:
+        parser.error("--targets and --input cannot be used together")
+
+    if arguments.targets:
+        targets = load_targets(arguments.targets)
+        success_count, failures = collect_targets(
+            targets,
+            arguments.output_dir,
+            arguments.country,
+            arguments.language,
+            arguments.timeout,
+            arguments.request_delay,
+            arguments.max_attempts,
+            arguments.retry_delay,
+        )
+        print(
+            f"Steam snapshot saved to {arguments.output_dir}: "
+            f"{success_count} succeeded, {len(failures)} failed"
+        )
+        for app_id, error in failures:
+            print(f"- app {app_id}: {error}")
+        return 1 if failures else 0
 
     if arguments.input:
         raw = arguments.input.read_bytes()
