@@ -52,6 +52,22 @@ endfunction()
 enable_project_warnings(game_price_core)
 enable_project_warnings(game_price_tracker)
 
+option(BUILD_GAME_PRICE_API "Build the Drogon HTTP API server" ON)
+if(BUILD_GAME_PRICE_API)
+    find_package(Drogon CONFIG QUIET)
+    if(Drogon_FOUND)
+        add_executable(game_price_api src/api/main.cpp)
+        target_link_libraries(game_price_api PRIVATE game_price_core Drogon::Drogon)
+        target_compile_definitions(game_price_api PRIVATE
+            SAMPLE_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data"
+            GAME_PRICE_DATABASE_PATH="${CMAKE_CURRENT_BINARY_DIR}/game_prices.db"
+        )
+        enable_project_warnings(game_price_api)
+    else()
+        message(STATUS "Drogon not found; game_price_api target will not be built")
+    endif()
+endif()
+
 include(CTest)
 if(BUILD_TESTING)
     add_executable(game_price_tests tests/game_price_tests.cpp)

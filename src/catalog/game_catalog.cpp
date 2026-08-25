@@ -34,6 +34,13 @@ std::optional<Game> GameCatalog::findByName(const std::string& name) const {
     return found == games_.end() ? std::nullopt : std::optional<Game>{*found};
 }
 
+std::optional<Game> GameCatalog::findById(const std::string& id) const {
+    const auto found = std::find_if(games_.begin(), games_.end(), [&](const Game& game) {
+        return game.id == id;
+    });
+    return found == games_.end() ? std::nullopt : std::optional<Game>{*found};
+}
+
 std::vector<Game> GameCatalog::searchByName(const std::string& query) const {
     const auto normalized = normalizeName(query);
     if (normalized.empty()) return {};

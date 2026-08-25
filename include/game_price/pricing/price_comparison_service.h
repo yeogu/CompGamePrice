@@ -22,8 +22,10 @@ public:
     PriceComparisonService(const GameCatalog& catalog, const StoreProductRepository& repository);
 
     std::optional<PriceComparisonResult> compareByGameName(const std::string& gameName) const;
+    std::optional<PriceComparisonResult> compareByGameId(const std::string& gameId) const;
 
 private:
+    PriceComparisonResult compare(const Game& game) const;
     const GameCatalog& catalog_;
     const StoreProductRepository& repository_;
 };

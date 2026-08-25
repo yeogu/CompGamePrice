@@ -34,9 +34,15 @@ public:
     std::optional<GamePriceReport> getGamePriceReport(
         const std::string& gameName,
         const std::optional<std::string>& observedSince = std::nullopt) const;
+    std::optional<GamePriceReport> getGamePriceReportById(
+        const std::string& gameId,
+        const std::optional<std::string>& observedSince = std::nullopt) const;
     std::vector<CrawlRunRecord> getCollectionRuns() const;
 
 private:
+    std::optional<GamePriceReport> buildReport(
+        const std::optional<PriceComparisonResult>& comparison,
+        const std::optional<std::string>& observedSince) const;
     const GameCatalog& catalog_;
     const StoreProductRepository& repository_;
 };

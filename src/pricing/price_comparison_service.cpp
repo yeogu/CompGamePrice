@@ -15,9 +15,19 @@ std::optional<PriceComparisonResult> PriceComparisonService::compareByGameName(
     if (!game) {
         return std::nullopt;
     }
+    return compare(*game);
+}
 
+std::optional<PriceComparisonResult> PriceComparisonService::compareByGameId(
+    const std::string& gameId) const {
+    const auto game = catalog_.findById(gameId);
+    if (!game) return std::nullopt;
+    return compare(*game);
+}
+
+PriceComparisonResult PriceComparisonService::compare(const Game& game) const {
     PriceComparisonResult result{
-        *game, repository_.findProductsByGameId(game->id), std::nullopt};
+        game, repository_.findProductsByGameId(game.id), std::nullopt};
 
     for (const auto& product : result.products) {
         if (!product.purchasable) continue;

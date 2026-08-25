@@ -94,6 +94,31 @@ DB schema는 SQLite `user_version`으로 관리하며 현재 버전은 1입니�
 Store별 최대 시도 횟수를 설정할 수 있고, 실패한 각 시도도 별도의
 `crawl_runs` 레코드로 남습니다. 현재 Prototype은 지연 없이 즉시 재시도합니다.
 
+## HTTP API
+
+Web과 Mobile client가 같은 Core 로직을 사용하도록 Drogon 기반 read-only API를
+제공합니다. macOS에서는 Drogon을 설치한 뒤 기존 빌드 명령을 실행합니다.
+
+```sh
+brew install drogon
+cmake -S . -B build
+cmake --build build
+./build/game_price_api
+```
+
+기본 주소는 `http://127.0.0.1:8080`이며 `GAME_PRICE_API_PORT` 환경 변수로
+포트를 변경할 수 있습니다.
+
+```text
+GET /health
+GET /api/games?query=valley
+GET /api/games/{gameId}/prices
+```
+
+API 응답은 가격을 `{ "minorAmount": 6500, "currency": "KRW" }`처럼 정수로
+전달합니다. Drogon이 설치되지 않은 환경에서는 CLI와 테스트만 빌드되고 API
+target은 생략됩니다.
+
 DB 적재 결과는 다음 명령으로 확인할 수 있습니다.
 
 ```sh

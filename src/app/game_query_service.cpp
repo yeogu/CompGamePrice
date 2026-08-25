@@ -19,6 +19,20 @@ std::optional<GamePriceReport> GameQueryService::getGamePriceReport(
     const std::optional<std::string>& observedSince) const {
     const auto comparison = PriceComparisonService(catalog_, repository_)
                                 .compareByGameName(gameName);
+    return buildReport(comparison, observedSince);
+}
+
+std::optional<GamePriceReport> GameQueryService::getGamePriceReportById(
+    const std::string& gameId,
+    const std::optional<std::string>& observedSince) const {
+    const auto comparison = PriceComparisonService(catalog_, repository_)
+                                .compareByGameId(gameId);
+    return buildReport(comparison, observedSince);
+}
+
+std::optional<GamePriceReport> GameQueryService::buildReport(
+    const std::optional<PriceComparisonResult>& comparison,
+    const std::optional<std::string>& observedSince) const {
     if (!comparison) return std::nullopt;
 
     PriceHistoryService historyService(repository_);

@@ -187,6 +187,10 @@ void testGameCatalogSearch() {
     expect(catalog.searchByName("missing").empty(),
            "Unknown partial title should return no games");
     expect(catalog.searchByName("   ").empty(), "Empty search should return no games");
+    expect(catalog.findById("stardew-valley").has_value(),
+           "Catalog should find a game by stable id");
+    expect(!catalog.findById("missing").has_value(),
+           "Catalog should reject an unknown game id");
 }
 
 void testGameQueryServiceReport() {
@@ -211,6 +215,8 @@ void testGameQueryServiceReport() {
            "Product report should contain a recommendation");
     expect(service.searchGames("valley").size() == 1,
            "Query service should expose catalog search");
+    expect(service.getGamePriceReportById("stardew-valley").has_value(),
+           "Query service should return a report by stable game id");
 }
 
 void testRecommendationRules() {
