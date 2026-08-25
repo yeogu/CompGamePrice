@@ -19,7 +19,9 @@ private:
     struct RawProduct {
         std::string appId;
         std::string gameId;
+        std::optional<std::int64_t> regularPriceWon;
         std::int64_t finalPriceWon{};
+        int discountPercent{};
         std::string platformFlags;
         bool available{false};
         std::optional<std::string> observedAt;

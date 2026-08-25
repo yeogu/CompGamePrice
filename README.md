@@ -195,7 +195,7 @@ C++17과 SQLite3 개발 라이브러리가 필요합니다. 실행하면 Provide
 상품 데이터가 빌드 디렉터리의 `game_prices.db`에 저장됩니다.
 가격 비교 서비스는 Provider를 직접 조회하지 않고, 적재가 끝난 SQLite DB에서
 정규화된 상품을 다시 읽어 최저가를 계산합니다.
-신규 상품이거나 가격, 통화, 구매 가능 상태가 변경되면 `price_history`에
+신규 상품이거나 현재가, 정상가, 할인율, 통화, 구매 가능 상태가 변경되면 `price_history`에
 관측 시각과 함께 이력을 추가합니다. 동일한 데이터를 다시 적재하면 이력은
 중복으로 추가되지 않습니다.
 Steam live snapshot은 Provider 입력 행에 실제 수집 시각을 함께 기록하고,
@@ -204,8 +204,10 @@ DB 적재 사이에 지연이 생겨도 그래프에는 응답을 관측한 시�
 5개 필드 로컬 sample은 호환성을 위해 DB 적재 시각을 사용합니다. 관측 시각은
 `YYYY-MM-DDTHH:MM:SS.sssZ` UTC 형식만 허용하며 잘못된 값은 트랜잭션 전체를
 롤백합니다.
-DB schema는 SQLite `user_version`으로 관리하며 현재 버전은 1입니다. 기존
-버전 0 DB는 시작 시 version 1로 초기화되고, 프로그램보다 새로운 DB version은
+DB schema는 SQLite `user_version`으로 관리하며 현재 버전은 2입니다. version 2는
+`store_products`와 `price_history`에 선택적인 정상가와 0–100 정수 할인율을
+추가합니다. 기존 version 1 DB는 상품과 이력을 보존하면서 정상가 미상(NULL),
+할인율 0으로 자동 이전됩니다. 새 DB는 바로 version 2로 초기화되며 프로그램보다 새로운 DB version은
 데이터 손상을 피하기 위해 실행을 중단합니다.
 `PriceHistoryService`는 저장된 이력으로 현재가, 최저가, 최고가, 정수 기반
 평균가와 직전 관측 대비 가격 추이를 계산합니다.
@@ -288,12 +290,12 @@ DB 적재 결과는 다음 명령으로 확인할 수 있습니다.
 
 ```sh
 sqlite3 build/game_prices.db \
-  "SELECT store, external_product_id, price_minor, currency FROM store_products;"
+  "SELECT store, external_product_id, regular_price_minor, price_minor, discount_percent, currency FROM store_products;"
 ```
 
 가격 이력은 다음 명령으로 확인할 수 있습니다.
 
 ```sh
 sqlite3 build/game_prices.db \
-  "SELECT store, price_minor, currency, observed_at FROM price_history ORDER BY observed_at;"
+  "SELECT store, regular_price_minor, price_minor, discount_percent, currency, observed_at FROM price_history ORDER BY observed_at;"
 ```

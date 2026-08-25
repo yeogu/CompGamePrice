@@ -91,6 +91,23 @@ void testProviderNormalization() {
     expect(!steamProducts.front().observedAt.has_value(),
            "Legacy Steam sample rows should use repository import time");
 
+    SteamProvider discounted(
+        std::string(TEST_SAMPLE_DATA_DIR) +
+        "/../tests/fixtures/steam_products_discounted.txt");
+    const auto discountedProducts = discounted.findProducts("stardew-valley");
+    expect(discountedProducts.size() == 1,
+           "Discounted Steam snapshot should return one product");
+    expect(discountedProducts.front().currentPrice.minorAmount == 12000,
+           "Steam final price should normalize as current price");
+    expect(discountedProducts.front().regularPrice.has_value() &&
+               discountedProducts.front().regularPrice->minorAmount == 16000,
+           "Steam initial price should normalize as regular price");
+    expect(discountedProducts.front().discountPercent == 25,
+           "Steam discount percent should be preserved");
+    expect(discountedProducts.front().observedAt ==
+               std::optional<std::string>{"2026-08-26T09:30:45.123Z"},
+           "Discounted snapshot should preserve collection time");
+
     const auto googleProducts = googlePlay.findProducts("stardew-valley");
     expect(googleProducts.size() == 1, "Google Play should return one product");
     expect(googleProducts.front().currentPrice.minorAmount == 6500,
@@ -172,6 +189,111 @@ void testDatabaseSchemaVersion() {
         rejectedFutureSchema = true;
     }
     expect(rejectedFutureSchema, "A newer unsupported schema should be rejected");
+
+    Database versionOneDatabase(":memory:");
+    versionOneDatabase.execute(R"sql(
+        CREATE TABLE store_products (
+            store TEXT NOT NULL,
+            external_product_id TEXT NOT NULL,
+            game_id TEXT NOT NULL,
+            price_minor INTEGER NOT NULL,
+            currency TEXT NOT NULL,
+            purchasable INTEGER NOT NULL,
+            PRIMARY KEY (store, external_product_id)
+        );
+        CREATE TABLE price_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            store TEXT NOT NULL,
+            external_product_id TEXT NOT NULL,
+            price_minor INTEGER NOT NULL,
+            currency TEXT NOT NULL,
+            purchasable INTEGER NOT NULL,
+            observed_at TEXT NOT NULL
+        );
+        INSERT INTO store_products VALUES(
+            'Steam', '413150', 'stardew-valley', 16000, 'KRW', 1);
+        INSERT INTO price_history(
+            store, external_product_id, price_minor,
+            currency, purchasable, observed_at)
+        VALUES('Steam', '413150', 16000, 'KRW', 1,
+               '2026-08-01T00:00:00.000Z');
+        PRAGMA user_version = 1;
+    )sql");
+    StoreProductRepository versionOneRepository(versionOneDatabase);
+    versionOneRepository.initializeSchema();
+    expect(versionOneDatabase.userVersion() == 2,
+           "Schema version 1 should migrate to version 2");
+    const auto migratedProducts =
+        versionOneRepository.findProductsByGameId("stardew-valley");
+    expect(migratedProducts.size() == 1,
+           "Version 1 migration should preserve current products");
+    expect(!migratedProducts.front().regularPrice.has_value() &&
+               migratedProducts.front().discountPercent == 0,
+           "Legacy products should migrate with unknown regular price and no discount");
+    const auto migratedHistory =
+        versionOneRepository.findPriceHistory(Store::Steam, "413150");
+    expect(migratedHistory.size() == 1,
+           "Version 1 migration should preserve price history");
+    expect(!migratedHistory.front().regularPrice.has_value() &&
+               migratedHistory.front().discountPercent == 0,
+           "Legacy history should migrate without inventing a regular price");
+}
+
+void testDiscountChangeHistory() {
+    Database database(":memory:");
+    StoreProductRepository repository(database);
+    repository.initializeSchema();
+    const Game game{"stardew-valley", "Stardew Valley", "stardew valley"};
+
+    auto product = makeSteamProduct(16000);
+    product.regularPrice = Money{16000, Currency::KRW};
+    product.observedAt = "2026-08-01T00:00:00.000Z";
+    repository.saveNormalizedProducts(game, {product});
+
+    product.currentPrice.minorAmount = 12000;
+    product.discountPercent = 25;
+    product.observedAt = "2026-08-02T00:00:00.000Z";
+    repository.saveNormalizedProducts(game, {product});
+
+    product.regularPrice = Money{17000, Currency::KRW};
+    product.discountPercent = 29;
+    product.observedAt = "2026-08-03T00:00:00.000Z";
+    repository.saveNormalizedProducts(game, {product});
+    repository.saveNormalizedProducts(game, {product});
+
+    product.currentPrice.minorAmount = 17000;
+    product.discountPercent = 0;
+    product.observedAt = "2026-08-04T00:00:00.000Z";
+    repository.saveNormalizedProducts(game, {product});
+
+    const auto history = repository.findPriceHistory(Store::Steam, "413150");
+    expect(history.size() == 4,
+           "Discount start, metadata change, and end should create observations");
+    expect(history[1].regularPrice && history[1].regularPrice->minorAmount == 16000 &&
+               history[1].discountPercent == 25,
+           "Discount start should preserve regular price and percent");
+    expect(history[2].price.minorAmount == 12000 &&
+               history[2].regularPrice &&
+               history[2].regularPrice->minorAmount == 17000 &&
+               history[2].discountPercent == 29,
+           "Regular price change should be stored even when current price is unchanged");
+    expect(history[3].price.minorAmount == 17000 &&
+               history[3].discountPercent == 0,
+           "Discount end should create a full-price observation");
+
+    product.regularPrice = std::nullopt;
+    product.discountPercent = 10;
+    product.observedAt = "2026-08-05T00:00:00.000Z";
+    bool rejectedInvalidDiscount = false;
+    try {
+        repository.saveNormalizedProducts(game, {product});
+    } catch (const std::runtime_error&) {
+        rejectedInvalidDiscount = true;
+    }
+    expect(rejectedInvalidDiscount,
+           "A discount without a regular price should be rejected");
+    expect(repository.findPriceHistory(Store::Steam, "413150").size() == 4,
+           "Invalid discount import should roll back without adding history");
 }
 
 void testPriceComparisonReadsRepository() {
@@ -497,6 +619,7 @@ int main() {
         {"Provider normalization", testProviderNormalization},
         {"History deduplication and analysis", testHistoryDeduplicationAndAnalysis},
         {"Database schema version", testDatabaseSchemaVersion},
+        {"Discount change history", testDiscountChangeHistory},
         {"Repository-backed comparison", testPriceComparisonReadsRepository},
         {"Game catalog search", testGameCatalogSearch},
         {"Game query service report", testGameQueryServiceReport},

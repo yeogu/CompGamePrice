@@ -4,14 +4,30 @@
 #include "game_price/domain/money.h"
 
 #include <cstddef>
+#include <optional>
 #include <string>
+#include <utility>
 
 namespace game_price {
 
 struct PriceObservation {
+    PriceObservation(
+        Money price,
+        bool purchasable,
+        std::string observedAt,
+        std::optional<Money> regularPrice = std::nullopt,
+        int discountPercent = 0)
+        : price(price),
+          purchasable(purchasable),
+          observedAt(std::move(observedAt)),
+          regularPrice(regularPrice),
+          discountPercent(discountPercent) {}
+
     Money price;
     bool purchasable{false};
     std::string observedAt;
+    std::optional<Money> regularPrice;
+    int discountPercent{};
 };
 
 enum class PriceTrend {

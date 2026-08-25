@@ -77,9 +77,24 @@ def normalized_row(raw: bytes, app_id: str, game_id: str) -> str:
     price = data.get("price_overview")
     if not isinstance(price, dict) or price.get("currency") != "KRW":
         raise ValueError("Steam response contains no KRW price")
+    raw_initial = price.get("initial")
     raw_final = price.get("final")
-    if not isinstance(raw_final, int) or raw_final < 0 or raw_final % 100 != 0:
-        raise ValueError("Steam KRW final price has an unexpected representation")
+    discount_percent = price.get("discount_percent")
+    if (
+        not isinstance(raw_initial, int)
+        or not isinstance(raw_final, int)
+        or raw_initial < raw_final
+        or raw_final < 0
+        or raw_initial % 100 != 0
+        or raw_final % 100 != 0
+    ):
+        raise ValueError("Steam KRW prices have an unexpected representation")
+    if (
+        not isinstance(discount_percent, int)
+        or not 0 <= discount_percent <= 100
+    ):
+        raise ValueError("Steam discount percent has an unexpected representation")
+    initial_price_won = raw_initial // 100
     final_price_won = raw_final // 100
 
     platform_data = data.get("platforms")
@@ -92,7 +107,10 @@ def normalized_row(raw: bytes, app_id: str, game_id: str) -> str:
     if not platforms:
         raise ValueError("Steam response contains no supported platform")
 
-    return f"{app_id}|{game_id}|{final_price_won}|{','.join(platforms)}|true\n"
+    return (
+        f"{app_id}|{game_id}|{initial_price_won}|{final_price_won}|"
+        f"{discount_percent}|{','.join(platforms)}|true\n"
+    )
 
 
 def collected_at() -> str:
@@ -134,7 +152,8 @@ def write_products_snapshot(output_directory: Path, rows: list[str]) -> None:
     atomic_write(
         output_directory / "steam_products.txt",
         (
-            "# app_id|canonical_game_id|final_price_krw|platform_flags|available|observed_at\n"
+            "# app_id|canonical_game_id|regular_price_krw|final_price_krw|"
+            "discount_percent|platform_flags|available|observed_at\n"
             + "".join(rows)
         ).encode("utf-8"),
     )

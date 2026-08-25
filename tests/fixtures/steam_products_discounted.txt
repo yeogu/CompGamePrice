@@ -1,0 +1,2 @@
+# app_id|canonical_game_id|regular_price_krw|final_price_krw|discount_percent|platform_flags|available|observed_at
+413150|stardew-valley|16000|12000|25|windows,mac,linux|true|2026-08-26T09:30:45.123Z

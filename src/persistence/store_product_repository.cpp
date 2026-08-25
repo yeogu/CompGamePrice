@@ -60,6 +60,16 @@ void bindInt64(sqlite3_stmt* statement, int index, std::int64_t value) {
     }
 }
 
+void bindOptionalInt64(
+    sqlite3_stmt* statement,
+    int index,
+    const std::optional<std::int64_t>& value) {
+    const int result = value
+        ? sqlite3_bind_int64(statement, index, *value)
+        : sqlite3_bind_null(statement, index);
+    if (result != SQLITE_OK) throw std::runtime_error("Cannot bind optional integer value");
+}
+
 std::string columnText(sqlite3_stmt* statement, int index) {
     const auto* text = sqlite3_column_text(statement, index);
     if (!text) {
@@ -88,6 +98,27 @@ Platform parsePlatform(const std::string& value) {
 Currency parseCurrency(const std::string& value) {
     if (value == "KRW") return Currency::KRW;
     throw std::runtime_error("Unknown Currency value in database: " + value);
+}
+
+std::optional<std::int64_t> regularPriceMinor(const StoreProduct& product) {
+    if (!product.regularPrice) return std::nullopt;
+    if (product.regularPrice->currency != product.currentPrice.currency) {
+        throw std::runtime_error("Regular and current prices must use the same currency");
+    }
+    return product.regularPrice->minorAmount;
+}
+
+void validateDiscount(const StoreProduct& product) {
+    if (product.discountPercent < 0 || product.discountPercent > 100) {
+        throw std::runtime_error("Discount percent must be between 0 and 100");
+    }
+    if (product.discountPercent > 0 && !product.regularPrice) {
+        throw std::runtime_error("A discounted product requires a regular price");
+    }
+    if (product.regularPrice &&
+        product.regularPrice->minorAmount < product.currentPrice.minorAmount) {
+        throw std::runtime_error("Regular price cannot be lower than current price");
+    }
 }
 
 CrawlRunStatus parseCrawlRunStatus(const std::string& value) {
@@ -125,6 +156,9 @@ void StoreProductRepository::initializeSchema() const {
             external_product_id TEXT NOT NULL,
             game_id TEXT NOT NULL,
             price_minor INTEGER NOT NULL CHECK (price_minor >= 0),
+            regular_price_minor INTEGER CHECK (regular_price_minor >= 0),
+            discount_percent INTEGER NOT NULL DEFAULT 0
+                CHECK (discount_percent BETWEEN 0 AND 100),
             currency TEXT NOT NULL,
             purchasable INTEGER NOT NULL CHECK (purchasable IN (0, 1)),
             PRIMARY KEY (store, external_product_id),
@@ -146,6 +180,9 @@ void StoreProductRepository::initializeSchema() const {
             store TEXT NOT NULL,
             external_product_id TEXT NOT NULL,
             price_minor INTEGER NOT NULL CHECK (price_minor >= 0),
+            regular_price_minor INTEGER CHECK (regular_price_minor >= 0),
+            discount_percent INTEGER NOT NULL DEFAULT 0
+                CHECK (discount_percent BETWEEN 0 AND 100),
             currency TEXT NOT NULL,
             purchasable INTEGER NOT NULL CHECK (purchasable IN (0, 1)),
             observed_at TEXT NOT NULL,
@@ -168,7 +205,23 @@ void StoreProductRepository::initializeSchema() const {
         );
 
         )sql");
-        database_.execute("PRAGMA user_version = 1;");
+        if (existingVersion == 1) {
+            database_.execute(R"sql(
+                ALTER TABLE store_products
+                    ADD COLUMN regular_price_minor INTEGER
+                    CHECK (regular_price_minor >= 0);
+                ALTER TABLE store_products
+                    ADD COLUMN discount_percent INTEGER NOT NULL DEFAULT 0
+                    CHECK (discount_percent BETWEEN 0 AND 100);
+                ALTER TABLE price_history
+                    ADD COLUMN regular_price_minor INTEGER
+                    CHECK (regular_price_minor >= 0);
+                ALTER TABLE price_history
+                    ADD COLUMN discount_percent INTEGER NOT NULL DEFAULT 0
+                    CHECK (discount_percent BETWEEN 0 AND 100);
+            )sql");
+        }
+        database_.execute("PRAGMA user_version = 2;");
         database_.execute("COMMIT;");
     } catch (...) {
         try {
@@ -203,12 +256,16 @@ void StoreProductRepository::saveNormalizedProducts(
                 throw std::runtime_error("StoreProduct gameId does not match Game id");
             }
 
+            validateDiscount(product);
+            const auto regularPrice = regularPriceMinor(product);
+
             const std::string store = toString(product.store);
             const std::string currency = toString(product.currentPrice.currency);
             bool shouldRecordHistory = true;
             {
                 Statement statement(database_.handle(), R"sql(
-                    SELECT price_minor, currency, purchasable,
+                    SELECT price_minor, regular_price_minor, discount_percent,
+                           currency, purchasable,
                            EXISTS(
                                SELECT 1
                                FROM price_history
@@ -223,12 +280,21 @@ void StoreProductRepository::saveNormalizedProducts(
                 bindText(statement.get(), 4, product.productId);
 
                 if (statement.next()) {
-                    const bool hasHistory = sqlite3_column_int(statement.get(), 3) != 0;
+                    const bool hasHistory = sqlite3_column_int(statement.get(), 5) != 0;
+                    const bool storedRegularIsNull =
+                        sqlite3_column_type(statement.get(), 1) == SQLITE_NULL;
+                    const bool regularPriceIsUnchanged = regularPrice
+                        ? !storedRegularIsNull &&
+                            sqlite3_column_int64(statement.get(), 1) == *regularPrice
+                        : storedRegularIsNull;
                     const bool stateIsUnchanged =
                         sqlite3_column_int64(statement.get(), 0) ==
                             product.currentPrice.minorAmount &&
-                        columnText(statement.get(), 1) == currency &&
-                        (sqlite3_column_int(statement.get(), 2) != 0) == product.purchasable;
+                        regularPriceIsUnchanged &&
+                        sqlite3_column_int(statement.get(), 2) ==
+                            product.discountPercent &&
+                        columnText(statement.get(), 3) == currency &&
+                        (sqlite3_column_int(statement.get(), 4) != 0) == product.purchasable;
                     shouldRecordHistory = !hasHistory || !stateIsUnchanged;
                 }
             }
@@ -237,11 +303,14 @@ void StoreProductRepository::saveNormalizedProducts(
                 Statement statement(database_.handle(), R"sql(
                     INSERT INTO store_products(
                         store, external_product_id, game_id,
-                        price_minor, currency, purchasable)
-                    VALUES(?, ?, ?, ?, ?, ?)
+                        price_minor, regular_price_minor, discount_percent,
+                        currency, purchasable)
+                    VALUES(?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(store, external_product_id) DO UPDATE SET
                         game_id = excluded.game_id,
                         price_minor = excluded.price_minor,
+                        regular_price_minor = excluded.regular_price_minor,
+                        discount_percent = excluded.discount_percent,
                         currency = excluded.currency,
                         purchasable = excluded.purchasable;
                 )sql");
@@ -249,8 +318,10 @@ void StoreProductRepository::saveNormalizedProducts(
                 bindText(statement.get(), 2, product.productId);
                 bindText(statement.get(), 3, product.gameId);
                 bindInt64(statement.get(), 4, product.currentPrice.minorAmount);
-                bindText(statement.get(), 5, currency);
-                bindInt64(statement.get(), 6, product.purchasable ? 1 : 0);
+                bindOptionalInt64(statement.get(), 5, regularPrice);
+                bindInt64(statement.get(), 6, product.discountPercent);
+                bindText(statement.get(), 7, currency);
+                bindInt64(statement.get(), 8, product.purchasable ? 1 : 0);
                 statement.execute();
             }
 
@@ -264,22 +335,27 @@ void StoreProductRepository::saveNormalizedProducts(
                     ? R"sql(
                         INSERT INTO price_history(
                             store, external_product_id, price_minor,
+                            regular_price_minor, discount_percent,
                             currency, purchasable, observed_at)
-                        VALUES(?, ?, ?, ?, ?, ?);
+                        VALUES(?, ?, ?, ?, ?, ?, ?, ?);
                     )sql"
                     : R"sql(
                         INSERT INTO price_history(
                             store, external_product_id, price_minor,
+                            regular_price_minor, discount_percent,
                             currency, purchasable, observed_at)
-                        VALUES(?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+                        VALUES(?, ?, ?, ?, ?, ?, ?,
+                            strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
                     )sql";
                 Statement statement(database_.handle(), insertSql);
                 bindText(statement.get(), 1, store);
                 bindText(statement.get(), 2, product.productId);
                 bindInt64(statement.get(), 3, product.currentPrice.minorAmount);
-                bindText(statement.get(), 4, currency);
-                bindInt64(statement.get(), 5, product.purchasable ? 1 : 0);
-                if (product.observedAt) bindText(statement.get(), 6, *product.observedAt);
+                bindOptionalInt64(statement.get(), 4, regularPrice);
+                bindInt64(statement.get(), 5, product.discountPercent);
+                bindText(statement.get(), 6, currency);
+                bindInt64(statement.get(), 7, product.purchasable ? 1 : 0);
+                if (product.observedAt) bindText(statement.get(), 8, *product.observedAt);
                 statement.execute();
             }
 
@@ -319,7 +395,8 @@ std::vector<StoreProduct> StoreProductRepository::findProductsByGameId(
     const std::string& gameId) const {
     Statement productsStatement(database_.handle(), R"sql(
         SELECT store, external_product_id, game_id,
-               price_minor, currency, purchasable
+               price_minor, regular_price_minor, discount_percent,
+               currency, purchasable
         FROM store_products
         WHERE game_id = ?
         ORDER BY store, external_product_id;
@@ -352,9 +429,15 @@ std::vector<StoreProduct> StoreProductRepository::findProductsByGameId(
             std::move(platforms),
             Money{
                 sqlite3_column_int64(productsStatement.get(), 3),
-                parseCurrency(columnText(productsStatement.get(), 4))},
-            sqlite3_column_int(productsStatement.get(), 5) != 0,
-            std::nullopt});
+                parseCurrency(columnText(productsStatement.get(), 6))},
+            sqlite3_column_int(productsStatement.get(), 7) != 0,
+            std::nullopt,
+            sqlite3_column_type(productsStatement.get(), 4) == SQLITE_NULL
+                ? std::nullopt
+                : std::optional<Money>{Money{
+                    sqlite3_column_int64(productsStatement.get(), 4),
+                    parseCurrency(columnText(productsStatement.get(), 6))}},
+            sqlite3_column_int(productsStatement.get(), 5)});
     }
     return products;
 }
@@ -363,7 +446,8 @@ std::vector<PriceObservation> StoreProductRepository::findPriceHistory(
     Store store,
     const std::string& productId) const {
     Statement statement(database_.handle(), R"sql(
-        SELECT price_minor, currency, purchasable, observed_at
+        SELECT price_minor, regular_price_minor, discount_percent,
+               currency, purchasable, observed_at
         FROM price_history
         WHERE store = ? AND external_product_id = ?
         ORDER BY observed_at, id;
@@ -376,9 +460,15 @@ std::vector<PriceObservation> StoreProductRepository::findPriceHistory(
         observations.push_back(PriceObservation{
             Money{
                 sqlite3_column_int64(statement.get(), 0),
-                parseCurrency(columnText(statement.get(), 1))},
-            sqlite3_column_int(statement.get(), 2) != 0,
-            columnText(statement.get(), 3)});
+                parseCurrency(columnText(statement.get(), 3))},
+            sqlite3_column_int(statement.get(), 4) != 0,
+            columnText(statement.get(), 5),
+            sqlite3_column_type(statement.get(), 1) == SQLITE_NULL
+                ? std::nullopt
+                : std::optional<Money>{Money{
+                    sqlite3_column_int64(statement.get(), 1),
+                    parseCurrency(columnText(statement.get(), 3))}},
+            sqlite3_column_int(statement.get(), 2)});
     }
     return observations;
 }
@@ -388,7 +478,8 @@ std::vector<PriceObservation> StoreProductRepository::findPriceHistorySince(
     const std::string& productId,
     const std::string& observedSince) const {
     Statement statement(database_.handle(), R"sql(
-        SELECT price_minor, currency, purchasable, observed_at
+        SELECT price_minor, regular_price_minor, discount_percent,
+               currency, purchasable, observed_at
         FROM price_history
         WHERE store = ? AND external_product_id = ? AND observed_at >= ?
         ORDER BY observed_at, id;
@@ -402,9 +493,15 @@ std::vector<PriceObservation> StoreProductRepository::findPriceHistorySince(
         observations.push_back(PriceObservation{
             Money{
                 sqlite3_column_int64(statement.get(), 0),
-                parseCurrency(columnText(statement.get(), 1))},
-            sqlite3_column_int(statement.get(), 2) != 0,
-            columnText(statement.get(), 3)});
+                parseCurrency(columnText(statement.get(), 3))},
+            sqlite3_column_int(statement.get(), 4) != 0,
+            columnText(statement.get(), 5),
+            sqlite3_column_type(statement.get(), 1) == SQLITE_NULL
+                ? std::nullopt
+                : std::optional<Money>{Money{
+                    sqlite3_column_int64(statement.get(), 1),
+                    parseCurrency(columnText(statement.get(), 3))}},
+            sqlite3_column_int(statement.get(), 2)});
     }
     return observations;
 }
@@ -429,21 +526,30 @@ void StoreProductRepository::replacePriceHistory(
             const bool unchanged = previous &&
                 previous->price.minorAmount == observation.price.minorAmount &&
                 previous->price.currency == observation.price.currency &&
-                previous->purchasable == observation.purchasable;
+                previous->purchasable == observation.purchasable &&
+                previous->regularPrice == observation.regularPrice &&
+                previous->discountPercent == observation.discountPercent;
             if (unchanged) continue;
 
             Statement statement(database_.handle(), R"sql(
                 INSERT INTO price_history(
                     store, external_product_id, price_minor,
+                    regular_price_minor, discount_percent,
                     currency, purchasable, observed_at)
-                VALUES(?, ?, ?, ?, ?, ?);
+                VALUES(?, ?, ?, ?, ?, ?, ?, ?);
             )sql");
             bindText(statement.get(), 1, toString(store));
             bindText(statement.get(), 2, productId);
             bindInt64(statement.get(), 3, observation.price.minorAmount);
-            bindText(statement.get(), 4, toString(observation.price.currency));
-            bindInt64(statement.get(), 5, observation.purchasable ? 1 : 0);
-            bindText(statement.get(), 6, observation.observedAt);
+            bindOptionalInt64(
+                statement.get(), 4,
+                observation.regularPrice
+                    ? std::optional<std::int64_t>{observation.regularPrice->minorAmount}
+                    : std::nullopt);
+            bindInt64(statement.get(), 5, observation.discountPercent);
+            bindText(statement.get(), 6, toString(observation.price.currency));
+            bindInt64(statement.get(), 7, observation.purchasable ? 1 : 0);
+            bindText(statement.get(), 8, observation.observedAt);
             statement.execute();
             previous = &observation;
         }
