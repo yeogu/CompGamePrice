@@ -78,6 +78,10 @@ CommandLineOptions parseCommandLine(const std::vector<std::string>& arguments) {
         return CommandLineOptions{
             AppCommand::Search, gameName, std::nullopt, std::nullopt};
     }
+    if (command == "seed-demo") {
+        return CommandLineOptions{
+            AppCommand::SeedDemo, gameName, std::nullopt, std::nullopt};
+    }
     throw std::invalid_argument("Unknown command: " + command);
 }
 
@@ -94,6 +98,7 @@ std::string commandLineHelp() {
         "            Optional: history --since YYYY-MM-DD [game name]\n"
         "  runs      Show Store collection run history\n"
         "  search    Search the local game catalog by partial name\n"
+        "  seed-demo Replace price history with deterministic Demo data\n"
         "  help      Show this help\n"
         "\n"
         "Default game name: Stardew Valley\n";

@@ -131,6 +131,17 @@ void testHistoryDeduplicationAndAnalysis() {
 
     expect(!historyService.analyze(product, "9999-01-01").has_value(),
            "A future history boundary should return no summary");
+
+    const std::vector<PriceObservation> replacement{
+        {Money{15000, Currency::KRW}, true, "2026-01-01T00:00:00.000Z"},
+        {Money{11200, Currency::KRW}, true, "2026-02-01T00:00:00.000Z"}};
+    repository.replacePriceHistory(Store::Steam, "413150", replacement);
+    repository.replacePriceHistory(Store::Steam, "413150", replacement);
+    const auto replacedHistory = repository.findPriceHistory(Store::Steam, "413150");
+    expect(replacedHistory.size() == 2,
+           "Replacing Demo history twice must not duplicate observations");
+    expect(replacedHistory.front().observedAt == "2026-01-01T00:00:00.000Z",
+           "Replacement history should preserve explicit observation dates");
 }
 
 void testDatabaseSchemaVersion() {
@@ -385,6 +396,11 @@ void testCommandLineModes() {
     const auto search = parseCommandLine({"search", "star", "dew"});
     expect(search.command == AppCommand::Search, "search should select catalog search mode");
     expect(search.gameName == "star dew", "search query words should be joined");
+    const auto seedDemo = parseCommandLine({"seed-demo"});
+    expect(seedDemo.command == AppCommand::SeedDemo,
+           "seed-demo should select deterministic Demo seeding mode");
+    expect(seedDemo.gameName == "Stardew Valley",
+           "seed-demo should use the default game name");
     expect(parseCommandLine({"--help"}).command == AppCommand::Help,
            "--help should select help mode");
 

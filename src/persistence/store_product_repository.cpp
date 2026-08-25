@@ -393,6 +393,46 @@ std::vector<PriceObservation> StoreProductRepository::findPriceHistorySince(
     return observations;
 }
 
+void StoreProductRepository::replacePriceHistory(
+    Store store,
+    const std::string& productId,
+    const std::vector<PriceObservation>& observations) const {
+    database_.execute("BEGIN IMMEDIATE TRANSACTION;");
+    try {
+        {
+            Statement statement(database_.handle(), R"sql(
+                DELETE FROM price_history
+                WHERE store = ? AND external_product_id = ?;
+            )sql");
+            bindText(statement.get(), 1, toString(store));
+            bindText(statement.get(), 2, productId);
+            statement.execute();
+        }
+        for (const auto& observation : observations) {
+            Statement statement(database_.handle(), R"sql(
+                INSERT INTO price_history(
+                    store, external_product_id, price_minor,
+                    currency, purchasable, observed_at)
+                VALUES(?, ?, ?, ?, ?, ?);
+            )sql");
+            bindText(statement.get(), 1, toString(store));
+            bindText(statement.get(), 2, productId);
+            bindInt64(statement.get(), 3, observation.price.minorAmount);
+            bindText(statement.get(), 4, toString(observation.price.currency));
+            bindInt64(statement.get(), 5, observation.purchasable ? 1 : 0);
+            bindText(statement.get(), 6, observation.observedAt);
+            statement.execute();
+        }
+        database_.execute("COMMIT;");
+    } catch (...) {
+        try {
+            database_.execute("ROLLBACK;");
+        } catch (...) {
+        }
+        throw;
+    }
+}
+
 std::int64_t StoreProductRepository::startCrawlRun(Store store) const {
     Statement statement(database_.handle(), R"sql(
         INSERT INTO crawl_runs(store, started_at, status)

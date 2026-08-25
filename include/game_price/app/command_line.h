@@ -13,6 +13,7 @@ enum class AppCommand {
     History,
     CollectionRuns,
     Search,
+    SeedDemo,
     Help
 };
 

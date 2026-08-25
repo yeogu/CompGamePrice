@@ -12,6 +12,7 @@
 #include "game_price/recommendation/purchase_recommendation_service.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <functional>
 #include <iostream>
 #include <optional>
@@ -148,6 +149,60 @@ bool printPriceHistory(
     return foundHistory;
 }
 
+std::string databasePath() {
+    const char* value = std::getenv("GAME_PRICE_DATABASE_PATH");
+    return value ? value : GAME_PRICE_DATABASE_PATH;
+}
+
+void seedDemoHistory(
+    const Game& game,
+    StoreProductRepository& repository,
+    const std::string& dataDirectory) {
+    SteamProvider steam(dataDirectory + "/steam_products.txt");
+    GooglePlayProvider googlePlay(dataDirectory + "/google_play_products.txt");
+    AppleAppStoreProvider apple(dataDirectory + "/apple_app_store_products.csv");
+
+    std::vector<StoreProduct> products;
+    for (const auto* provider : std::vector<const StoreProductProvider*>{
+             &steam, &googlePlay, &apple}) {
+        const auto storeProducts = provider->findProducts(game.id);
+        products.insert(products.end(), storeProducts.begin(), storeProducts.end());
+    }
+
+    const std::vector<std::string> dates{
+        "2026-01-01T12:00:00.000Z", "2026-02-01T12:00:00.000Z",
+        "2026-03-01T12:00:00.000Z", "2026-04-01T12:00:00.000Z",
+        "2026-05-01T12:00:00.000Z", "2026-06-01T12:00:00.000Z"};
+    const std::vector<std::pair<Store, std::vector<std::int64_t>>> prices{
+        {Store::Steam, {17500, 17500, 14000, 11200, 17500, 11200}},
+        {Store::GooglePlay, {6500, 6500, 6500, 5900, 6500, 5500}},
+        {Store::AppleAppStore, {6600, 6600, 5900, 6600, 6600, 5900}}};
+
+    for (auto& product : products) {
+        const auto series = std::find_if(prices.begin(), prices.end(),
+            [&product](const auto& item) { return item.first == product.store; });
+        if (series == prices.end()) continue;
+        product.currentPrice.minorAmount = series->second.back();
+    }
+    repository.saveNormalizedProducts(game, products);
+
+    for (const auto& product : products) {
+        const auto series = std::find_if(prices.begin(), prices.end(),
+            [&product](const auto& item) { return item.first == product.store; });
+        if (series == prices.end()) continue;
+        std::vector<PriceObservation> observations;
+        for (std::size_t index = 0; index < dates.size(); ++index) {
+            observations.push_back(PriceObservation{
+                Money{series->second[index], Currency::KRW}, true, dates[index]});
+        }
+        repository.replacePriceHistory(
+            product.store, product.productId, observations);
+    }
+    std::cout << "Seeded " << products.size()
+              << " Stores with " << dates.size()
+              << " deterministic monthly observations each.\n";
+}
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -162,7 +217,7 @@ int main(int argc, char* argv[]) {
             return static_cast<int>(AppExitCode::Success);
         }
 
-        Database database(GAME_PRICE_DATABASE_PATH);
+        Database database(databasePath());
         StoreProductRepository repository(database);
         repository.initializeSchema();
 
@@ -193,6 +248,11 @@ int main(int argc, char* argv[]) {
         if (!game) {
             std::cout << "Game not found: " << options.gameName << '\n';
             return static_cast<int>(AppExitCode::GameNotFound);
+        }
+
+        if (options.command == AppCommand::SeedDemo) {
+            seedDemoHistory(*game, repository, defaultDataDirectory);
+            return static_cast<int>(AppExitCode::Success);
         }
 
         bool collectionSucceeded = true;

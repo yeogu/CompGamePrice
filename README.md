@@ -46,6 +46,7 @@ cmake --build build
 ./build/game_price_tracker history --since 2026-01-01 "Stardew Valley"
 ./build/game_price_tracker runs
 ./build/game_price_tracker search "Valley"
+./build/game_price_tracker seed-demo
 ./build/game_price_tracker --help
 ```
 
@@ -54,6 +55,9 @@ cmake --build build
 `collect --data-dir`는 외부 수집기가 저장한 snapshot 디렉터리를 입력으로 받습니다.
 디렉터리에는 Provider가 담당하는 `steam_products.txt`,
 `google_play_products.txt`, `apple_app_store_products.csv`가 있어야 합니다.
+`seed-demo`는 Stardew Valley의 세 Store에 2026년 1월부터 6월까지 고정된
+월별 가격 6개씩을 저장합니다. 같은 명령을 다시 실행하면 기존 Demo 이력을
+교체하므로 중복되지 않으며 Web 가격 추이와 추천 규칙 확인에 사용할 수 있습니다.
 
 프로세스 종료 코드는 자동 실행 환경에서 결과를 구분할 수 있도록 정의되어 있다.
 

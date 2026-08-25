@@ -7,15 +7,17 @@ curl_binary="$3"
 api_port=19081
 api_base="http://127.0.0.1:${api_port}"
 response_body="/tmp/game_price_api_response_$$.json"
+test_database="/tmp/game_price_api_test_$$.db"
 
 cleanup() {
     if [[ -n "${api_pid:-}" ]]; then kill "${api_pid}" 2>/dev/null || true; fi
-    rm -f "${response_body}"
+    rm -f "${response_body}" "${test_database}" "${test_database}-shm" "${test_database}-wal"
 }
 trap cleanup EXIT
 
-"${tracker_binary}" collect "Stardew Valley" >/dev/null
-GAME_PRICE_API_PORT="${api_port}" "${api_binary}" >/dev/null 2>&1 &
+GAME_PRICE_DATABASE_PATH="${test_database}" "${tracker_binary}" seed-demo >/dev/null
+GAME_PRICE_DATABASE_PATH="${test_database}" GAME_PRICE_API_PORT="${api_port}" \
+    "${api_binary}" >/dev/null 2>&1 &
 api_pid=$!
 
 for _ in {1..30}; do
@@ -29,6 +31,7 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
 grep -q '"minorAmount"' "${response_body}"
 grep -q '"observedAt"' "${response_body}"
 grep -q '"store":"Steam"' "${response_body}"
+[[ $(grep -o '"observedAt"' "${response_body}" | wc -l | tr -d ' ') == "18" ]]
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/games/stardew-valley/price-history?since=invalid")

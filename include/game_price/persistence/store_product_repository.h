@@ -29,6 +29,10 @@ public:
         Store store,
         const std::string& productId,
         const std::string& observedSince) const;
+    void replacePriceHistory(
+        Store store,
+        const std::string& productId,
+        const std::vector<PriceObservation>& observations) const;
     std::int64_t startCrawlRun(Store store) const;
     void finishCrawlRun(
         std::int64_t runId,
