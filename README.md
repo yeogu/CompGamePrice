@@ -88,6 +88,28 @@ python3 tools/run_steam_pipeline.py \
 실행 결과는 `steam_pipeline_run.json`에 수집 대상 수, 성공 수, 실패 내용,
 C++ 적재 종료 코드와 함께 저장됩니다.
 
+### macOS daily schedule
+
+매일 오전 9시에 파이프라인을 실행하는 macOS `launchd` 설정은 다음 명령으로
+프로젝트 내부에 생성할 수 있습니다. 생성만 하며 시스템에 자동 등록하지 않습니다.
+
+```sh
+python3 tools/generate_macos_schedule.py
+plutil -lint snapshots/com.compgameprice.steam-collection.plist
+```
+
+시간을 바꾸려면 24시간 형식의 시·분을 전달합니다.
+
+```sh
+python3 tools/generate_macos_schedule.py --hour 21 --minute 30
+```
+
+설정을 검토한 후 실제로 등록하려면 plist를 사용자 LaunchAgents 디렉터리로
+복사하고 `launchctl bootstrap`을 실행해야 합니다. 이 단계는 macOS 사용자 환경을
+변경하므로 자동으로 수행하지 않습니다. 표준 출력과 오류는
+`snapshots/logs/steam_pipeline.*.log`에 저장되도록 생성됩니다. 프로젝트 위치나
+Python 경로가 바뀌면 plist도 다시 생성해야 합니다.
+
 ```sh
 python3 tools/collect_steam_snapshot.py
 ./build/game_price_tracker collect-steam --data-dir snapshots/latest "Stardew Valley"

@@ -89,6 +89,10 @@ if(BUILD_TESTING)
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_steam_pipeline.py
         )
         add_test(
+            NAME macos_schedule_tests
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_macos_schedule.py
+        )
+        add_test(
             NAME steam_collection_integration
             COMMAND ${Python3_EXECUTABLE}
                 ${CMAKE_CURRENT_SOURCE_DIR}/tests/steam_collection_integration.py
