@@ -78,7 +78,7 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .trend-line { fill: none; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
 .trend-point { fill: #07110d; stroke-width: 4; cursor: crosshair; }
 .chart-tooltip { position: absolute; z-index: 5; display: grid; gap: 3px; min-width: 150px; padding: 10px 12px; color: #e9f4ed; background: rgba(5, 13, 9, 0.96); border: 1px solid #365244; border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.32); pointer-events: none; transform: translateY(-50%); }
-.chart-tooltip span { color: #9db3a7; font-size: 0.78rem; font-weight: 700; }
+.chart-tooltip span { font-size: 0.78rem; font-weight: 800; }
 .chart-tooltip strong { color: #fff; font-size: 1.05rem; }
 .chart-tooltip time { color: #7f9689; font-size: 0.72rem; }
 .date-axis { display: flex; justify-content: space-between; color: #71877a; font-size: 0.78rem; }

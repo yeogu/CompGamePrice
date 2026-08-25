@@ -186,7 +186,9 @@ function PriceHistoryChart({ histories }: Props) {
             </svg>
             {tooltip && (
               <div className="chart-tooltip" role="status" style={{ left: tooltip.left, top: tooltip.top }}>
-                <span>{tooltip.store}</span>
+                <span style={{ color: (storeStyles[tooltip.store] ?? fallbackStyle).color }}>
+                  {tooltip.store}
+                </span>
                 <strong>{formatMoney(tooltip.observation.price)}</strong>
                 <time>{formatDate(tooltip.observation.observedAt)}</time>
               </div>
