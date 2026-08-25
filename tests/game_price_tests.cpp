@@ -36,7 +36,8 @@ StoreProduct makeSteamProduct(std::int64_t price) {
         Store::Steam,
         {Platform::Windows, Platform::MacOS, Platform::Linux},
         Money{price, Currency::KRW},
-        true};
+        true,
+        std::nullopt};
 }
 
 class StaticTestProvider final : public StoreProductProvider {
@@ -68,7 +69,7 @@ public:
         }
         return {StoreProduct{
             "retry-product", gameId, Store::AppleAppStore, {Platform::IOS},
-            Money{6600, Currency::KRW}, true}};
+            Money{6600, Currency::KRW}, true, std::nullopt}};
     }
 
 private:
@@ -87,6 +88,8 @@ void testProviderNormalization() {
            "Steam price should normalize to 11200 KRW");
     expect(steamProducts.front().supportedPlatforms.size() == 3,
            "Steam should normalize three platforms");
+    expect(!steamProducts.front().observedAt.has_value(),
+           "Legacy Steam sample rows should use repository import time");
 
     const auto googleProducts = googlePlay.findProducts("stardew-valley");
     expect(googleProducts.size() == 1, "Google Play should return one product");
@@ -183,7 +186,7 @@ void testPriceComparisonReadsRepository() {
     repository.saveNormalizedProducts(*game, {
         makeSteamProduct(11200),
         StoreProduct{"mobile", game->id, Store::GooglePlay, {Platform::Android},
-                     Money{6500, Currency::KRW}, true}});
+                     Money{6500, Currency::KRW}, true, std::nullopt}});
 
     PriceComparisonService service(catalog, repository);
     const auto result = service.compareByGameName("Stardew Valley");
@@ -251,6 +254,39 @@ void testIsoDateValidation() {
     expect(!isIsoDate("2023-02-29"), "Leap day should be invalid in a common year");
     expect(!isIsoDate("2026-04-31"), "A day outside the month should be invalid");
     expect(!isIsoDate("not-a-date"), "Non-date text should be invalid");
+    expect(isUtcTimestamp("2026-08-26T09:30:45.123Z"),
+           "UTC timestamp with milliseconds should be valid");
+    expect(!isUtcTimestamp("2026-08-26T24:00:00.000Z"),
+           "UTC timestamp should reject hour 24");
+    expect(!isUtcTimestamp("2026-08-26 09:30:45Z"),
+           "UTC timestamp should require the snapshot format");
+}
+
+void testExplicitCollectionTimestamp() {
+    Database database(":memory:");
+    StoreProductRepository repository(database);
+    repository.initializeSchema();
+    const Game game{"stardew-valley", "Stardew Valley", "stardew valley"};
+
+    auto product = makeSteamProduct(16000);
+    product.observedAt = "2026-08-26T09:30:45.123Z";
+    repository.saveNormalizedProducts(game, {product});
+    const auto history = repository.findPriceHistory(Store::Steam, "413150");
+    expect(history.size() == 1, "Explicit timestamp import should save one observation");
+    expect(history.front().observedAt == *product.observedAt,
+           "Price history should preserve the Store collection timestamp");
+
+    product.currentPrice.minorAmount = 15000;
+    product.observedAt = "invalid";
+    bool rejected = false;
+    try {
+        repository.saveNormalizedProducts(game, {product});
+    } catch (const std::runtime_error&) {
+        rejected = true;
+    }
+    expect(rejected, "Repository should reject an invalid collection timestamp");
+    expect(repository.findPriceHistory(Store::Steam, "413150").size() == 1,
+           "Invalid timestamp import should roll back the transaction");
 }
 
 void testRecommendationRules() {
@@ -465,6 +501,7 @@ int main() {
         {"Game catalog search", testGameCatalogSearch},
         {"Game query service report", testGameQueryServiceReport},
         {"ISO date validation", testIsoDateValidation},
+        {"Explicit collection timestamp", testExplicitCollectionTimestamp},
         {"Recommendation rules", testRecommendationRules},
         {"Collection run tracking and failure isolation",
          testCollectionRunTrackingAndFailureIsolation},

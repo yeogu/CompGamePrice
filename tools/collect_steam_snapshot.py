@@ -109,12 +109,14 @@ def write_raw_snapshot(
     source_url: str,
     http_status: int | None,
 ) -> str:
-    row = normalized_row(raw, app_id, game_id)
+    observation_time = collected_at()
+    row = normalized_row(raw, app_id, game_id).rstrip("\n")
+    row = f"{row}|{observation_time}\n"
     metadata = {
         "store": "Steam",
         "appId": app_id,
         "gameId": game_id,
-        "collectedAt": collected_at(),
+        "collectedAt": observation_time,
         "sourceUrl": source_url,
         "httpStatus": http_status,
         "sha256": hashlib.sha256(raw).hexdigest(),
@@ -132,7 +134,7 @@ def write_products_snapshot(output_directory: Path, rows: list[str]) -> None:
     atomic_write(
         output_directory / "steam_products.txt",
         (
-            "# app_id|canonical_game_id|final_price_krw|platform_flags|available\n"
+            "# app_id|canonical_game_id|final_price_krw|platform_flags|available|observed_at\n"
             + "".join(rows)
         ).encode("utf-8"),
     )

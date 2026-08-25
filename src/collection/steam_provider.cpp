@@ -19,11 +19,14 @@ SteamProvider::SteamProvider(const std::string& dataPath) {
             continue;
         }
         const auto fields = split(line, '|');
-        if (fields.size() != 5) {
+        if (fields.size() != 5 && fields.size() != 6) {
             throw std::runtime_error("Invalid Steam row: " + line);
         }
         products_.push_back(RawProduct{
-            fields[0], fields[1], std::stoll(fields[2]), fields[3], parseBool(fields[4])});
+            fields[0], fields[1], std::stoll(fields[2]), fields[3], parseBool(fields[4]),
+            fields.size() == 6
+                ? std::optional<std::string>{fields[5]}
+                : std::nullopt});
     }
 }
 
@@ -47,7 +50,7 @@ std::vector<StoreProduct> SteamProvider::findProducts(const std::string& gameId)
 
         result.push_back(StoreProduct{
             raw.appId, raw.gameId, Store::Steam, std::move(platforms),
-            Money{raw.finalPriceWon, Currency::KRW}, raw.available});
+            Money{raw.finalPriceWon, Currency::KRW}, raw.available, raw.observedAt});
     }
     return result;
 }

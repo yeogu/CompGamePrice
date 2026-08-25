@@ -46,7 +46,7 @@ std::vector<StoreProduct> AppleAppStoreProvider::findProducts(const std::string&
 
         result.push_back(StoreProduct{
             raw.trackId, raw.gameId, Store::AppleAppStore, std::move(platforms),
-            Money{raw.amountWon, Currency::KRW}, raw.availableForSale});
+            Money{raw.amountWon, Currency::KRW}, raw.availableForSale, std::nullopt});
     }
     return result;
 }

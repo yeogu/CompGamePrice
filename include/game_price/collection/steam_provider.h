@@ -3,6 +3,7 @@
 #include "game_price/collection/store_product_provider.h"
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -21,6 +22,7 @@ private:
         std::int64_t finalPriceWon{};
         std::string platformFlags;
         bool available{false};
+        std::optional<std::string> observedAt;
     };
 
     std::vector<RawProduct> products_;

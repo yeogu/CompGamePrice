@@ -55,7 +55,8 @@ std::vector<StoreProduct> GooglePlayProvider::findProducts(const std::string& ga
             constexpr std::int64_t microsPerWon = 1'000'000;
             result.push_back(StoreProduct{
                 raw.packageName, raw.gameId, Store::GooglePlay, {Platform::Android},
-                Money{raw.priceMicros / microsPerWon, Currency::KRW}, raw.published});
+                Money{raw.priceMicros / microsPerWon, Currency::KRW}, raw.published,
+                std::nullopt});
         }
     }
     return result;

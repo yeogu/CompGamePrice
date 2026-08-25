@@ -197,6 +197,12 @@ C++17과 SQLite3 개발 라이브러리가 필요합니다. 실행하면 Provide
 신규 상품이거나 가격, 통화, 구매 가능 상태가 변경되면 `price_history`에
 관측 시각과 함께 이력을 추가합니다. 동일한 데이터를 다시 적재하면 이력은
 중복으로 추가되지 않습니다.
+Steam live snapshot은 Provider 입력 행에 실제 수집 시각을 함께 기록하고,
+Repository가 이 값을 `price_history.observed_at`으로 보존합니다. 네트워크 수집과
+DB 적재 사이에 지연이 생겨도 그래프에는 응답을 관측한 시각이 사용됩니다. 기존
+5개 필드 로컬 sample은 호환성을 위해 DB 적재 시각을 사용합니다. 관측 시각은
+`YYYY-MM-DDTHH:MM:SS.sssZ` UTC 형식만 허용하며 잘못된 값은 트랜잭션 전체를
+롤백합니다.
 DB schema는 SQLite `user_version`으로 관리하며 현재 버전은 1입니다. 기존
 버전 0 DB는 시작 시 version 1로 초기화되고, 프로그램보다 새로운 DB version은
 데이터 손상을 피하기 위해 실행을 중단합니다.

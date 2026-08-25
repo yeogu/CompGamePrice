@@ -2,6 +2,7 @@
 """End-to-end test for Steam fixture collection and SQLite import."""
 
 from pathlib import Path
+import json
 import os
 import sqlite3
 import subprocess
@@ -62,6 +63,9 @@ def main() -> int:
             "0",
         ]
         run(pipeline_command, environment)
+        first_metadata = json.loads(
+            (snapshot / "steam_413150.metadata.json").read_text()
+        )
         run(pipeline_command, environment)
 
         with sqlite3.connect(database) as connection:
@@ -71,6 +75,11 @@ def main() -> int:
                 raise RuntimeError("Expected normalized Steam price of 16000 KRW")
             if scalar(connection, "SELECT COUNT(*) FROM price_history") != 1:
                 raise RuntimeError("Unchanged collection must not duplicate price history")
+            observed_at = connection.execute(
+                "SELECT observed_at FROM price_history"
+            ).fetchone()[0]
+            if observed_at != first_metadata["collectedAt"]:
+                raise RuntimeError("DB history must preserve the first collection timestamp")
             if scalar(connection, "SELECT COUNT(*) FROM crawl_runs") != 4:
                 raise RuntimeError(
                     "Each import should record one crawl run per catalog game"

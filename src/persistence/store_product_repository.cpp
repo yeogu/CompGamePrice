@@ -1,6 +1,7 @@
 #include "game_price/persistence/store_product_repository.h"
 
 #include "game_price/domain/domain_types.h"
+#include "game_price/support/date_utils.h"
 
 #include <sqlite3.h>
 
@@ -254,17 +255,31 @@ void StoreProductRepository::saveNormalizedProducts(
             }
 
             if (shouldRecordHistory) {
-                Statement statement(database_.handle(), R"sql(
-                    INSERT INTO price_history(
-                        store, external_product_id, price_minor,
-                        currency, purchasable, observed_at)
-                    VALUES(?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
-                )sql");
+                if (product.observedAt && !isUtcTimestamp(*product.observedAt)) {
+                    throw std::runtime_error(
+                        "Invalid StoreProduct observedAt timestamp: " +
+                        *product.observedAt);
+                }
+                const char* insertSql = product.observedAt
+                    ? R"sql(
+                        INSERT INTO price_history(
+                            store, external_product_id, price_minor,
+                            currency, purchasable, observed_at)
+                        VALUES(?, ?, ?, ?, ?, ?);
+                    )sql"
+                    : R"sql(
+                        INSERT INTO price_history(
+                            store, external_product_id, price_minor,
+                            currency, purchasable, observed_at)
+                        VALUES(?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+                    )sql";
+                Statement statement(database_.handle(), insertSql);
                 bindText(statement.get(), 1, store);
                 bindText(statement.get(), 2, product.productId);
                 bindInt64(statement.get(), 3, product.currentPrice.minorAmount);
                 bindText(statement.get(), 4, currency);
                 bindInt64(statement.get(), 5, product.purchasable ? 1 : 0);
+                if (product.observedAt) bindText(statement.get(), 6, *product.observedAt);
                 statement.execute();
             }
 
@@ -338,7 +353,8 @@ std::vector<StoreProduct> StoreProductRepository::findProductsByGameId(
             Money{
                 sqlite3_column_int64(productsStatement.get(), 3),
                 parseCurrency(columnText(productsStatement.get(), 4))},
-            sqlite3_column_int(productsStatement.get(), 5) != 0});
+            sqlite3_column_int(productsStatement.get(), 5) != 0,
+            std::nullopt});
     }
     return products;
 }
@@ -350,7 +366,7 @@ std::vector<PriceObservation> StoreProductRepository::findPriceHistory(
         SELECT price_minor, currency, purchasable, observed_at
         FROM price_history
         WHERE store = ? AND external_product_id = ?
-        ORDER BY id;
+        ORDER BY observed_at, id;
     )sql");
     bindText(statement.get(), 1, toString(store));
     bindText(statement.get(), 2, productId);
@@ -375,7 +391,7 @@ std::vector<PriceObservation> StoreProductRepository::findPriceHistorySince(
         SELECT price_minor, currency, purchasable, observed_at
         FROM price_history
         WHERE store = ? AND external_product_id = ? AND observed_at >= ?
-        ORDER BY id;
+        ORDER BY observed_at, id;
     )sql");
     bindText(statement.get(), 1, toString(store));
     bindText(statement.get(), 2, productId);

@@ -29,9 +29,10 @@ class SteamCollectorTest(unittest.TestCase):
             )
 
             product_lines = (output / "steam_products.txt").read_text().splitlines()
+            product_fields = product_lines[-1].split("|")
             self.assertEqual(
-                product_lines[-1],
-                "413150|stardew-valley|16000|windows,mac,linux|true",
+                product_fields[:5],
+                ["413150", "stardew-valley", "16000", "windows,mac,linux", "true"],
             )
             self.assertEqual((output / "steam_413150.json").read_bytes(), raw)
             metadata = json.loads(
@@ -40,6 +41,7 @@ class SteamCollectorTest(unittest.TestCase):
             self.assertEqual(metadata["store"], "Steam")
             self.assertEqual(metadata["httpStatus"], 200)
             self.assertEqual(len(metadata["sha256"]), 64)
+            self.assertEqual(product_fields[5], metadata["collectedAt"])
 
     def test_rejects_a_response_without_krw_price(self):
         raw = b'{"413150":{"success":true,"data":{"steam_appid":413150,"platforms":{"windows":true}}}}'

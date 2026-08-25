@@ -3,6 +3,7 @@
 #include "game_price/domain/domain_types.h"
 #include "game_price/domain/money.h"
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -15,6 +16,7 @@ struct StoreProduct {
     std::vector<Platform> supportedPlatforms;
     Money currentPrice;
     bool purchasable{false};
+    std::optional<std::string> observedAt;
 };
 
 }  // namespace game_price
