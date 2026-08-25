@@ -2,13 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { PointerEvent } from 'react'
 import type { Money, PriceObservation, ProductPriceHistory } from './types'
 
-const storeStyles: Record<string, { color: string; dash?: string; shape: 'circle' | 'square' | 'triangle' }> = {
-  Steam: { color: '#66c0f4', shape: 'circle' },
-  'Google Play': { color: '#73e2a7', dash: '10 7', shape: 'square' },
-  'Apple App Store': { color: '#f4a261', dash: '3 7', shape: 'triangle' },
+const storeStyles: Record<string, { color: string }> = {
+  Steam: { color: '#66c0f4' },
+  'Google Play': { color: '#73e2a7' },
+  'Apple App Store': { color: '#f4a261' },
 }
 
-const fallbackStyle = { color: '#c7a6ff', dash: '14 5', shape: 'circle' as const }
+const fallbackStyle = { color: '#c7a6ff' }
 
 const formatMoney = (money: Money) =>
   new Intl.NumberFormat('ko-KR', {
@@ -28,9 +28,16 @@ const dailyObservations = (history: ProductPriceHistory) => {
   for (const observation of history.observations) {
     byDate.set(observation.observedAt.slice(0, 10), observation)
   }
-  return [...byDate.entries()]
+  const daily = [...byDate.entries()]
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([date, observation]) => ({ date, observation }))
+  return daily.filter((item, index) => {
+    if (index === 0) return true
+    const previous = daily[index - 1].observation
+    return previous.price.minorAmount !== item.observation.price.minorAmount ||
+      previous.price.currency !== item.observation.price.currency ||
+      previous.purchasable !== item.observation.purchasable
+  })
 }
 
 function PointShape({ point, store, onPointer, onLeave }: {
@@ -45,12 +52,6 @@ function PointShape({ point, store, onPointer, onLeave }: {
     onPointerMove: (event: PointerEvent<SVGElement>) => onPointer(event, store, point.observation),
     onPointerDown: (event: PointerEvent<SVGElement>) => onPointer(event, store, point.observation),
     onPointerLeave: onLeave,
-  }
-  if (style.shape === 'square') {
-    return <rect {...events} className="trend-point" height="14" width="14" x={point.x - 7} y={point.y - 7} stroke={style.color} />
-  }
-  if (style.shape === 'triangle') {
-    return <polygon {...events} className="trend-point" points={`${point.x},${point.y - 9} ${point.x - 9},${point.y + 8} ${point.x + 9},${point.y + 8}`} stroke={style.color} />
   }
   return <circle {...events} className="trend-point" cx={point.x} cy={point.y} r="7" stroke={style.color} />
 }
@@ -145,7 +146,7 @@ function PriceHistoryChart({ histories }: Props) {
             const active = !hiddenStores.has(history.store)
             return (
               <button aria-pressed={active} className={active ? 'active' : ''} key={history.store} onClick={() => toggleStore(history.store)}>
-                <span className={`legend-shape ${style.shape}`} style={{ borderColor: style.color, backgroundColor: active ? style.color : 'transparent' }} />
+                <span className="legend-shape" style={{ borderColor: style.color, backgroundColor: active ? style.color : 'transparent' }} />
                 {history.store}
               </button>
             )
@@ -169,7 +170,7 @@ function PriceHistoryChart({ histories }: Props) {
                 const style = storeStyles[series.store] ?? fallbackStyle
                 return (
                   <g aria-label={series.store} key={series.store}>
-                    {series.points.length > 1 && <polyline className="trend-line" points={series.points.map((point) => `${point.x},${point.y}`).join(' ')} stroke={style.color} strokeDasharray={style.dash} />}
+                    {series.points.length > 1 && <polyline className="trend-line" points={series.points.map((point) => `${point.x},${point.y}`).join(' ')} stroke={style.color} />}
                     {series.points.map((point, index) => (
                       <PointShape
                         key={`${series.store}-${index}`}

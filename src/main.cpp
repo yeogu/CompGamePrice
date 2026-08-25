@@ -186,6 +186,7 @@ void seedDemoHistory(
     }
     repository.saveNormalizedProducts(game, products);
 
+    std::size_t storedObservations = 0;
     for (const auto& product : products) {
         const auto series = std::find_if(prices.begin(), prices.end(),
             [&product](const auto& item) { return item.first == product.store; });
@@ -197,10 +198,12 @@ void seedDemoHistory(
         }
         repository.replacePriceHistory(
             product.store, product.productId, observations);
+        storedObservations += repository.findPriceHistory(
+            product.store, product.productId).size();
     }
-    std::cout << "Seeded " << products.size()
-              << " Stores with " << dates.size()
-              << " deterministic monthly observations each.\n";
+    std::cout << "Processed " << dates.size() << " monthly samples for "
+              << products.size() << " Stores and stored " << storedObservations
+              << " changed observations.\n";
 }
 
 }  // namespace

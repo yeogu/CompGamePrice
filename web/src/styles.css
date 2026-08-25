@@ -70,10 +70,7 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .store-legend { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .store-legend button { display: inline-flex; align-items: center; gap: 8px; padding: 9px 13px; color: #73877c; background: #101d16; border: 1px solid #2b4035; border-radius: 999px; }
 .store-legend button.active { color: #e7f2eb; background: #17271f; font-weight: 700; }
-.legend-shape { width: 10px; height: 10px; border: 2px solid; }
-.legend-shape.circle { border-radius: 50%; }
-.legend-shape.square { border-radius: 1px; }
-.legend-shape.triangle { width: 0; height: 0; background: transparent !important; border-width: 0 6px 11px; border-style: solid; border-left-color: transparent !important; border-right-color: transparent !important; }
+.legend-shape { width: 10px; height: 10px; border: 2px solid; border-radius: 50%; }
 .chart-wrap { position: relative; margin-top: 32px; padding: 18px 0 0; }
 .chart-wrap svg { display: block; width: 100%; min-height: 240px; overflow: visible; }
 .chart-labels { display: flex; justify-content: space-between; color: #82968b; font-size: 0.8rem; }

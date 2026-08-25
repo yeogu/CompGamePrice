@@ -408,7 +408,14 @@ void StoreProductRepository::replacePriceHistory(
             bindText(statement.get(), 2, productId);
             statement.execute();
         }
+        const PriceObservation* previous = nullptr;
         for (const auto& observation : observations) {
+            const bool unchanged = previous &&
+                previous->price.minorAmount == observation.price.minorAmount &&
+                previous->price.currency == observation.price.currency &&
+                previous->purchasable == observation.purchasable;
+            if (unchanged) continue;
+
             Statement statement(database_.handle(), R"sql(
                 INSERT INTO price_history(
                     store, external_product_id, price_minor,
@@ -422,6 +429,7 @@ void StoreProductRepository::replacePriceHistory(
             bindInt64(statement.get(), 5, observation.purchasable ? 1 : 0);
             bindText(statement.get(), 6, observation.observedAt);
             statement.execute();
+            previous = &observation;
         }
         database_.execute("COMMIT;");
     } catch (...) {

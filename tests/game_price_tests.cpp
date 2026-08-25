@@ -134,14 +134,17 @@ void testHistoryDeduplicationAndAnalysis() {
 
     const std::vector<PriceObservation> replacement{
         {Money{15000, Currency::KRW}, true, "2026-01-01T00:00:00.000Z"},
-        {Money{11200, Currency::KRW}, true, "2026-02-01T00:00:00.000Z"}};
+        {Money{15000, Currency::KRW}, true, "2026-02-01T00:00:00.000Z"},
+        {Money{11200, Currency::KRW}, true, "2026-03-01T00:00:00.000Z"}};
     repository.replacePriceHistory(Store::Steam, "413150", replacement);
     repository.replacePriceHistory(Store::Steam, "413150", replacement);
     const auto replacedHistory = repository.findPriceHistory(Store::Steam, "413150");
     expect(replacedHistory.size() == 2,
-           "Replacing Demo history twice must not duplicate observations");
+           "Replacement should skip unchanged prices and remain idempotent");
     expect(replacedHistory.front().observedAt == "2026-01-01T00:00:00.000Z",
            "Replacement history should preserve explicit observation dates");
+    expect(replacedHistory.back().observedAt == "2026-03-01T00:00:00.000Z",
+           "The next changed price should preserve its observation date");
 }
 
 void testDatabaseSchemaVersion() {
