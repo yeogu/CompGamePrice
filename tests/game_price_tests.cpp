@@ -8,6 +8,7 @@
 #include "game_price/pricing/price_comparison_service.h"
 #include "game_price/pricing/price_history_service.h"
 #include "game_price/recommendation/purchase_recommendation_service.h"
+#include "game_price/support/date_utils.h"
 #include "game_price/collection/steam_provider.h"
 #include "game_price/persistence/store_product_repository.h"
 
@@ -217,6 +218,19 @@ void testGameQueryServiceReport() {
            "Query service should expose catalog search");
     expect(service.getGamePriceReportById("stardew-valley").has_value(),
            "Query service should return a report by stable game id");
+    const auto history = service.getGamePriceHistoryById("stardew-valley");
+    expect(history.has_value(), "Query service should return raw history by game id");
+    expect(history->productHistories.size() == 1,
+           "Raw history should contain one product");
+    expect(history->productHistories.front().observations.size() == 1,
+           "Raw history should contain one observation");
+}
+
+void testIsoDateValidation() {
+    expect(isIsoDate("2024-02-29"), "Leap day should be valid in a leap year");
+    expect(!isIsoDate("2023-02-29"), "Leap day should be invalid in a common year");
+    expect(!isIsoDate("2026-04-31"), "A day outside the month should be invalid");
+    expect(!isIsoDate("not-a-date"), "Non-date text should be invalid");
 }
 
 void testRecommendationRules() {
@@ -393,6 +407,7 @@ int main() {
         {"Repository-backed comparison", testPriceComparisonReadsRepository},
         {"Game catalog search", testGameCatalogSearch},
         {"Game query service report", testGameQueryServiceReport},
+        {"ISO date validation", testIsoDateValidation},
         {"Recommendation rules", testRecommendationRules},
         {"Collection run tracking and failure isolation",
          testCollectionRunTrackingAndFailureIsolation},

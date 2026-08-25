@@ -24,6 +24,16 @@ struct GamePriceReport {
     std::vector<ProductPriceReport> productReports;
 };
 
+struct ProductPriceHistoryReport {
+    StoreProduct product;
+    std::vector<PriceObservation> observations;
+};
+
+struct GamePriceHistoryReport {
+    Game game;
+    std::vector<ProductPriceHistoryReport> productHistories;
+};
+
 class GameQueryService {
 public:
     GameQueryService(
@@ -35,6 +45,9 @@ public:
         const std::string& gameName,
         const std::optional<std::string>& observedSince = std::nullopt) const;
     std::optional<GamePriceReport> getGamePriceReportById(
+        const std::string& gameId,
+        const std::optional<std::string>& observedSince = std::nullopt) const;
+    std::optional<GamePriceHistoryReport> getGamePriceHistoryById(
         const std::string& gameId,
         const std::optional<std::string>& observedSince = std::nullopt) const;
     std::vector<CrawlRunRecord> getCollectionRuns() const;

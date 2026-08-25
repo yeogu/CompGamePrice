@@ -1,22 +1,11 @@
 #include "game_price/app/command_line.h"
+#include "game_price/support/date_utils.h"
 
-#include <cctype>
 #include <sstream>
 #include <stdexcept>
 
 namespace game_price {
 namespace {
-
-bool isIsoDate(const std::string& value) {
-    if (value.size() != 10 || value[4] != '-' || value[7] != '-') return false;
-    for (std::size_t index = 0; index < value.size(); ++index) {
-        if (index == 4 || index == 7) continue;
-        if (!std::isdigit(static_cast<unsigned char>(value[index]))) return false;
-    }
-    const int month = std::stoi(value.substr(5, 2));
-    const int day = std::stoi(value.substr(8, 2));
-    return month >= 1 && month <= 12 && day >= 1 && day <= 31;
-}
 
 std::string joinArguments(
     const std::vector<std::string>& arguments,

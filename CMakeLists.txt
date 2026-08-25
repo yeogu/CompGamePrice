@@ -23,6 +23,7 @@ add_library(game_price_core
     src/pricing/price_comparison_service.cpp
     src/pricing/price_history_service.cpp
     src/recommendation/purchase_recommendation_service.cpp
+    src/support/date_utils.cpp
 )
 
 target_include_directories(game_price_core PUBLIC include)
@@ -77,4 +78,18 @@ if(BUILD_TESTING)
     )
     enable_project_warnings(game_price_tests)
     add_test(NAME game_price_tests COMMAND game_price_tests)
+    if(TARGET game_price_api AND UNIX)
+        find_program(CURL_EXECUTABLE curl)
+        if(CURL_EXECUTABLE)
+            add_test(
+                NAME game_price_api_integration
+                COMMAND bash
+                    ${CMAKE_CURRENT_SOURCE_DIR}/tests/game_price_api_integration.sh
+                    $<TARGET_FILE:game_price_api>
+                    $<TARGET_FILE:game_price_tracker>
+                    ${CURL_EXECUTABLE}
+            )
+            set_tests_properties(game_price_api_integration PROPERTIES TIMEOUT 15)
+        endif()
+    endif()
 endif()

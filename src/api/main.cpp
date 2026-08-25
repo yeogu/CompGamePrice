@@ -2,6 +2,7 @@
 #include "game_price/domain/domain_types.h"
 #include "game_price/persistence/database.h"
 #include "game_price/persistence/store_product_repository.h"
+#include "game_price/support/date_utils.h"
 
 #include <drogon/drogon.h>
 
@@ -82,13 +83,18 @@ int serverPort() {
     return value ? std::stoi(value) : 8080;
 }
 
+std::string databasePath() {
+    const char* value = std::getenv("GAME_PRICE_DATABASE_PATH");
+    return value ? value : GAME_PRICE_DATABASE_PATH;
+}
+
 }  // namespace
 
 int main() {
     using namespace game_price;
 
     try {
-        Database database(GAME_PRICE_DATABASE_PATH);
+        Database database(databasePath());
         StoreProductRepository repository(database);
         repository.initializeSchema();
         GameCatalog catalog(std::string(SAMPLE_DATA_DIR) + "/games.txt");
@@ -150,6 +156,48 @@ int main() {
                         toString(report->comparison.cheapestProduct->store);
                     response["cheapest"]["price"] =
                         moneyJson(report->comparison.cheapestProduct->currentPrice);
+                }
+                callback(jsonResponse(response));
+            },
+            {drogon::Get});
+
+        drogon::app().registerHandler(
+            "/api/games/{1}/price-history",
+            [&queryService](const drogon::HttpRequestPtr& request,
+                            std::function<void(const HttpResponsePtr&)>&& callback,
+                            const std::string& gameId) {
+                const auto since = request->getParameter("since");
+                if (!since.empty() && !isIsoDate(since)) {
+                    callback(jsonError(
+                        drogon::k400BadRequest, "since must use YYYY-MM-DD"));
+                    return;
+                }
+                const auto report = queryService.getGamePriceHistoryById(
+                    gameId,
+                    since.empty() ? std::nullopt
+                                  : std::optional<std::string>{since});
+                if (!report) {
+                    callback(jsonError(drogon::k404NotFound, "game not found"));
+                    return;
+                }
+
+                Json::Value response;
+                response["game"]["id"] = report->game.id;
+                response["game"]["title"] = report->game.title;
+                response["histories"] = Json::arrayValue;
+                for (const auto& productHistory : report->productHistories) {
+                    Json::Value history;
+                    history["productId"] = productHistory.product.productId;
+                    history["store"] = toString(productHistory.product.store);
+                    history["observations"] = Json::arrayValue;
+                    for (const auto& observation : productHistory.observations) {
+                        Json::Value item;
+                        item["price"] = moneyJson(observation.price);
+                        item["purchasable"] = observation.purchasable;
+                        item["observedAt"] = observation.observedAt;
+                        history["observations"].append(std::move(item));
+                    }
+                    response["histories"].append(std::move(history));
                 }
                 callback(jsonResponse(response));
             },
