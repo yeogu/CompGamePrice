@@ -21,6 +21,16 @@ const formatDate = (value: string) =>
 interface Props { histories: ProductPriceHistory[] }
 interface ChartPoint { x: number; y: number }
 
+const dailyObservations = (history: ProductPriceHistory) => {
+  const byDate = new Map<string, ProductPriceHistory['observations'][number]>()
+  for (const observation of history.observations) {
+    byDate.set(observation.observedAt.slice(0, 10), observation)
+  }
+  return [...byDate.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([date, observation]) => ({ date, observation }))
+}
+
 function PointShape({ point, store }: { point: ChartPoint; store: string }) {
   const style = storeStyles[store] ?? fallbackStyle
   if (style.shape === 'square') {
@@ -54,10 +64,14 @@ function PriceHistoryChart({ histories }: Props) {
 
   const visible = comparable.filter((history) => !hiddenStores.has(history.store))
   const chart = useMemo(() => {
-    const observations = visible.flatMap((history) => history.observations)
+    const dailySeries = visible.map((history) => ({
+      ...history,
+      daily: dailyObservations(history),
+    }))
+    const observations = dailySeries.flatMap((history) => history.daily)
     if (observations.length === 0) return null
-    const amounts = observations.map((item) => item.price.minorAmount)
-    const times = observations.map((item) => new Date(item.observedAt).getTime())
+    const amounts = observations.map((item) => item.observation.price.minorAmount)
+    const times = observations.map((item) => new Date(`${item.date}T00:00:00Z`).getTime())
     const low = Math.min(...amounts)
     const high = Math.max(...amounts)
     const firstTime = Math.min(...times)
@@ -67,11 +81,11 @@ function PriceHistoryChart({ histories }: Props) {
     const padding = 30
     const priceRange = Math.max(high - low, 1)
     const timeRange = Math.max(lastTime - firstTime, 1)
-    const series = visible.map((history) => ({
+    const series = dailySeries.map((history) => ({
       ...history,
-      points: history.observations.map((item) => ({
-        x: firstTime === lastTime ? width / 2 : padding + ((new Date(item.observedAt).getTime() - firstTime) * (width - padding * 2)) / timeRange,
-        y: high === low ? height / 2 : height - padding - ((item.price.minorAmount - low) * (height - padding * 2)) / priceRange,
+      points: history.daily.map((item) => ({
+        x: firstTime === lastTime ? width / 2 : padding + ((new Date(`${item.date}T00:00:00Z`).getTime() - firstTime) * (width - padding * 2)) / timeRange,
+        y: high === low ? height / 2 : height - padding - ((item.observation.price.minorAmount - low) * (height - padding * 2)) / priceRange,
       })),
     }))
     return { low, high, firstTime, lastTime, width, height, series }
@@ -139,7 +153,7 @@ function PriceHistoryChart({ histories }: Props) {
             </div>
           </div>
 
-          {chart.series.every((series) => series.observations.length < 2) && <p className="data-note">각 Store가 한 번씩 관측되었습니다. 다음 가격 변화부터 선으로 연결됩니다.</p>}
+          {chart.series.every((series) => series.points.length < 2) && <p className="data-note">각 Store가 하루치 관측값을 가지고 있습니다. 다음 날짜의 가격부터 선으로 연결됩니다.</p>}
           <div className="latest-price-list">
             {chart.series.map((series) => {
               const latest = series.observations[series.observations.length - 1]
