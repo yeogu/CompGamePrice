@@ -32,11 +32,11 @@ def scalar(connection: sqlite3.Connection, query: str) -> int:
 
 
 def main() -> int:
-    if len(sys.argv) != 5:
+    if len(sys.argv) != 6:
         raise RuntimeError(
-            "Expected: tracker python collector fixture"
+            "Expected: tracker python pipeline fixture targets"
         )
-    tracker, python, collector, fixture = sys.argv[1:]
+    tracker, python, pipeline, fixture, targets = sys.argv[1:]
 
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
@@ -45,22 +45,24 @@ def main() -> int:
         environment = os.environ.copy()
         environment["GAME_PRICE_DATABASE_PATH"] = str(database)
 
-        run([
+        pipeline_command = [
             python,
-            collector,
+            pipeline,
+            "--tracker",
+            tracker,
+            "--targets",
+            targets,
             "--input",
             fixture,
             "--output-dir",
             str(snapshot),
-        ])
-        import_command = [
-            tracker,
-            "collect-steam-all",
-            "--data-dir",
-            str(snapshot),
+            "--request-delay",
+            "0",
+            "--retry-delay",
+            "0",
         ]
-        run(import_command, environment)
-        run(import_command, environment)
+        run(pipeline_command, environment)
+        run(pipeline_command, environment)
 
         with sqlite3.connect(database) as connection:
             if scalar(connection, "SELECT COUNT(*) FROM store_products") != 1:

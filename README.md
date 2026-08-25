@@ -66,6 +66,28 @@ Steam 한 Store만 실제 응답으로 수집하는 첫 Prototype을 제공합�
 네트워크와 원본 보존만 담당하고, C++ `SteamProvider`가 생성된 Store 형식의
 snapshot을 공통 `StoreProduct`로 변환합니다.
 
+일반적인 실행은 수집과 SQLite 적재를 묶은 다음 한 줄 명령을 사용합니다.
+
+```sh
+python3 tools/run_steam_pipeline.py
+```
+
+이 명령은 기본적으로 `data/steam_collection_targets.json`을 수집하고,
+`snapshots/latest`에 저장한 뒤 `build/game_price_tracker collect-steam-all`을
+실행합니다. 다른 실행 파일이나 경로를 사용할 수도 있습니다.
+
+```sh
+python3 tools/run_steam_pipeline.py \
+  --tracker build/game_price_tracker \
+  --targets data/steam_collection_targets.json \
+  --output-dir snapshots/latest
+```
+
+파이프라인은 같은 Snapshot 디렉터리에서 수집이 중복 실행되지 않도록 OS 파일
+잠금을 사용합니다. 프로세스가 비정상 종료되어도 OS가 잠금을 해제합니다. 최근
+실행 결과는 `steam_pipeline_run.json`에 수집 대상 수, 성공 수, 실패 내용,
+C++ 적재 종료 코드와 함께 저장됩니다.
+
 ```sh
 python3 tools/collect_steam_snapshot.py
 ./build/game_price_tracker collect-steam --data-dir snapshots/latest "Stardew Valley"

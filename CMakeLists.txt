@@ -85,13 +85,18 @@ if(BUILD_TESTING)
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_steam_collector.py
         )
         add_test(
+            NAME steam_pipeline_tests
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_steam_pipeline.py
+        )
+        add_test(
             NAME steam_collection_integration
             COMMAND ${Python3_EXECUTABLE}
                 ${CMAKE_CURRENT_SOURCE_DIR}/tests/steam_collection_integration.py
                 $<TARGET_FILE:game_price_tracker>
                 ${Python3_EXECUTABLE}
-                ${CMAKE_CURRENT_SOURCE_DIR}/tools/collect_steam_snapshot.py
+                ${CMAKE_CURRENT_SOURCE_DIR}/tools/run_steam_pipeline.py
                 ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/steam_appdetails_413150.json
+                ${CMAKE_CURRENT_SOURCE_DIR}/data/steam_collection_targets.json
         )
     endif()
     if(TARGET game_price_api AND UNIX)
