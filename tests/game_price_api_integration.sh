@@ -31,6 +31,7 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
 grep -q '"minorAmount"' "${response_body}"
 grep -q '"observedAt"' "${response_body}"
 grep -q '"store":"Steam"' "${response_body}"
+grep -q '"discountPercent":0' "${response_body}"
 [[ $(grep -o '"observedAt"' "${response_body}" | wc -l | tr -d ' ') == "13" ]]
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \

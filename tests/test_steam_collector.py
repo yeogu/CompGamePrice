@@ -51,6 +51,18 @@ class SteamCollectorTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "no KRW price"):
             steam_collector.normalized_row(raw, "413150", "stardew-valley")
 
+    def test_normalizes_regular_sale_price_and_discount(self):
+        raw = (
+            ROOT / "tests" / "fixtures" / "steam_appdetails_discounted.json"
+        ).read_bytes()
+        row = steam_collector.normalized_row(
+            raw, "413150", "stardew-valley"
+        ).strip()
+        self.assertEqual(
+            row,
+            "413150|stardew-valley|16000|12000|25|windows,mac,linux|true",
+        )
+
     def test_loads_and_validates_collection_targets(self):
         targets = steam_collector.load_targets(
             ROOT / "data" / "steam_collection_targets.json"

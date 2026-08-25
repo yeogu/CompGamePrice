@@ -28,6 +28,10 @@ Json::Value productJson(const ProductPriceReport& report) {
     json["productId"] = report.product.productId;
     json["store"] = toString(report.product.store);
     json["price"] = moneyJson(report.product.currentPrice);
+    if (report.product.regularPrice) {
+        json["regularPrice"] = moneyJson(*report.product.regularPrice);
+    }
+    json["discountPercent"] = report.product.discountPercent;
     json["purchasable"] = report.product.purchasable;
     for (const auto platform : report.product.supportedPlatforms) {
         json["platforms"].append(toString(platform));
@@ -193,6 +197,10 @@ int main() {
                     for (const auto& observation : productHistory.observations) {
                         Json::Value item;
                         item["price"] = moneyJson(observation.price);
+                        if (observation.regularPrice) {
+                            item["regularPrice"] = moneyJson(*observation.regularPrice);
+                        }
+                        item["discountPercent"] = observation.discountPercent;
                         item["purchasable"] = observation.purchasable;
                         item["observedAt"] = observation.observedAt;
                         history["observations"].append(std::move(item));

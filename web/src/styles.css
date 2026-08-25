@@ -62,6 +62,9 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .store { color: #a9bcb1; font-weight: 700; }
 .badge { padding: 5px 8px; color: #07110d; background: #73e2a7; border-radius: 999px; font-size: 0.7rem; font-weight: 900; }
 .price { display: block; margin: 24px 0 6px; font-size: 2.15rem; letter-spacing: -0.04em; }
+.discount-summary { display: flex; align-items: center; gap: 9px; min-height: 24px; }
+.discount-rate { padding: 4px 7px; color: #07110d; background: #f6c85f; border-radius: 6px; font-size: 0.76rem; font-weight: 900; }
+.discount-summary del { color: #82968b; font-size: 0.9rem; }
 .platforms { min-height: 24px; color: #82968b; }
 .history { display: flex; justify-content: space-between; margin-top: 30px; padding-top: 18px; border-top: 1px solid #263c31; color: #91a79b; }
 .history strong { color: #dfece4; }
@@ -83,6 +86,7 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .chart-tooltip { position: absolute; z-index: 5; display: grid; gap: 3px; min-width: 150px; padding: 10px 12px; color: #e9f4ed; background: rgba(5, 13, 9, 0.96); border: 1px solid #365244; border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.32); pointer-events: none; transform: translateY(-50%); }
 .chart-tooltip span { font-size: 0.78rem; font-weight: 800; }
 .chart-tooltip strong { color: #fff; font-size: 1.05rem; }
+.chart-tooltip small { color: #f6c85f; font-size: 0.75rem; }
 .chart-tooltip time { color: #7f9689; font-size: 0.72rem; }
 .date-axis { display: flex; justify-content: space-between; color: #71877a; font-size: 0.78rem; }
 .data-note { color: #91a79b; text-align: center; }
@@ -91,6 +95,8 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .latest-price-list span { display: flex; align-items: center; gap: 9px; }
 .latest-price-list i { width: 9px; height: 9px; border-radius: 50%; }
 .latest-price-list time { color: #91a79b; }
+.latest-price-list strong { display: inline-flex; align-items: center; gap: 7px; }
+.latest-discount { padding: 3px 5px; color: #07110d; background: #f6c85f; border-radius: 5px; font-size: 0.68rem; }
 
 @media (max-width: 760px) {
   main { width: min(100% - 28px, 620px); padding-top: 30px; }

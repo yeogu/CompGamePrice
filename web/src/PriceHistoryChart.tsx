@@ -190,6 +190,12 @@ function PriceHistoryChart({ histories }: Props) {
                   {tooltip.store}
                 </span>
                 <strong>{formatMoney(tooltip.observation.price)}</strong>
+                {tooltip.observation.regularPrice && tooltip.observation.discountPercent > 0 && (
+                  <small>
+                    {tooltip.observation.discountPercent}% 할인 · 정상가{' '}
+                    {formatMoney(tooltip.observation.regularPrice)}
+                  </small>
+                )}
                 <time>{formatDate(tooltip.observation.observedAt)}</time>
               </div>
             )}
@@ -208,7 +214,12 @@ function PriceHistoryChart({ histories }: Props) {
                 <div key={series.store}>
                   <span><i style={{ backgroundColor: style.color }} />{series.store}</span>
                   <time dateTime={latest.observedAt}>{formatDate(latest.observedAt)}</time>
-                  <strong>{formatMoney(latest.price)}</strong>
+                  <strong>
+                    {formatMoney(latest.price)}
+                    {latest.discountPercent > 0 && (
+                      <small className="latest-discount">-{latest.discountPercent}%</small>
+                    )}
+                  </strong>
                 </div>
               )
             })}

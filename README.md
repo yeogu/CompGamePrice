@@ -248,6 +248,10 @@ GET /api/games/{gameId}/price-history?since=2026-01-01
 API 응답은 가격을 `{ "minorAmount": 6500, "currency": "KRW" }`처럼 정수로
 전달합니다. Drogon이 설치되지 않은 환경에서는 CLI와 테스트만 빌드되고 API
 target은 생략됩니다.
+현재 가격 응답과 가격 이력 관측값에는 `discountPercent`가 항상 포함되며,
+Store가 정상가를 제공하면 `regularPrice`도 포함됩니다. Web 가격 카드는 할인 중인
+상품의 정상가와 할인율을 표시하고 가격 그래프 Tooltip에서도 당시 할인 정보를
+확인할 수 있습니다.
 가격 이력 API는 Store별 전체 관측 시각과 정수 가격을 반환하며, `since`는
 선택적인 `YYYY-MM-DD` 시작일입니다. API 통합 테스트는 실제 서버를 임시
 포트에서 실행해 정상 응답과 잘못된 날짜, 없는 게임 응답을 확인합니다.

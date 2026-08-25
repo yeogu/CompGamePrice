@@ -29,6 +29,8 @@ export interface StoreProduct {
   productId: string
   store: string
   price: Money
+  regularPrice?: Money
+  discountPercent: number
   purchasable: boolean
   platforms: string[]
   history?: PriceHistory
@@ -47,6 +49,8 @@ export interface GamePriceResponse {
 
 export interface PriceObservation {
   price: Money
+  regularPrice?: Money
+  discountPercent: number
   purchasable: boolean
   observedAt: string
 }

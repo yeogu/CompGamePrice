@@ -143,6 +143,12 @@ function App() {
                     {cheapest && <span className="badge">BEST</span>}
                   </div>
                   <strong className="price">{formatMoney(product.price)}</strong>
+                  {product.regularPrice && product.discountPercent > 0 && (
+                    <div className="discount-summary">
+                      <span className="discount-rate">{product.discountPercent}% 할인</span>
+                      <del>{formatMoney(product.regularPrice)}</del>
+                    </div>
+                  )}
                   <p className="platforms">{product.platforms.join(' · ')}</p>
                   <div className="history">
                     <span>역대 최저</span>
