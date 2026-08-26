@@ -128,6 +128,34 @@ class SteamPipelineTest(unittest.TestCase):
                     ),
                 )
 
+    def test_reports_database_backup_failure_as_pipeline_failure(self):
+        fixture = (
+            ROOT / "tests" / "fixtures" / "steam_appdetails_413150.json"
+        ).read_bytes()
+
+        def fixture_fetch(app_id, _country, _language, _timeout):
+            return fixture, 200, f"fixture://steam/{app_id}"
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "snapshot"
+            exit_code = steam_pipeline.run_pipeline(
+                Path("unused"),
+                TEST_TARGETS,
+                output,
+                catalog_path=ROOT / "data" / "games.txt",
+                request_delay=0,
+                retry_delay=0,
+                database_path=root / "missing.db",
+                database_backup_directory=root / "backups",
+                fetcher=fixture_fetch,
+                command_runner=lambda _command, check: Completed(0),
+            )
+            self.assertEqual(exit_code, 1)
+            report = json.loads((output / "steam_pipeline_run.json").read_text())
+            self.assertIsNone(report["databaseBackup"])
+            self.assertIn("does not exist", report["databaseBackupError"])
+
 
 if __name__ == "__main__":
     unittest.main()

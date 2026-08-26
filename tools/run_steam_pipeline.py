@@ -10,10 +10,12 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+import os
 from datetime import datetime, timezone
 
 import collect_steam_snapshot as collector
 import storage_retention
+import database_backup
 
 
 class PipelineAlreadyRunning(RuntimeError):
@@ -69,6 +71,9 @@ def run_pipeline(
     log_paths: list[Path] | None = None,
     log_max_bytes: int = 1_048_576,
     log_keep_bytes: int = 524_288,
+    database_path: Path | None = None,
+    database_backup_directory: Path | None = None,
+    database_backup_retention_days: int = 30,
     fetcher=None,
     command_runner=subprocess.run,
 ) -> int:
@@ -107,6 +112,23 @@ def run_pipeline(
             )
             import_exit_code = completed.returncode
 
+        backup_path = None
+        backup_files_removed = 0
+        backup_error = ""
+        if (
+            import_exit_code == 0
+            and database_path is not None
+            and database_backup_directory is not None
+        ):
+            try:
+                backup_path, backup_files_removed = database_backup.create_backup(
+                    database_path,
+                    database_backup_directory,
+                    database_backup_retention_days,
+                )
+            except Exception as error:
+                backup_error = str(error)
+
         archive_files_removed = 0
         if archive_directory is not None:
             archive_files_removed = storage_retention.prune_archive(
@@ -127,13 +149,16 @@ def run_pipeline(
             "importExitCode": import_exit_code,
             "archiveFilesRemoved": archive_files_removed,
             "logsTrimmed": logs_trimmed,
+            "databaseBackup": str(backup_path) if backup_path else None,
+            "databaseBackupFilesRemoved": backup_files_removed,
+            "databaseBackupError": backup_error or None,
         }
         collector.atomic_write(
             output_directory / "steam_pipeline_run.json",
             (json.dumps(report, ensure_ascii=False, indent=2) + "\n").encode("utf-8"),
         )
 
-        if failures or import_exit_code not in (None, 0):
+        if failures or import_exit_code not in (None, 0) or backup_error:
             return 1
         return 0
 
@@ -156,6 +181,9 @@ def main() -> int:
     parser.add_argument("--archive-retention-days", default=90, type=int)
     parser.add_argument("--log-max-bytes", default=1_048_576, type=int)
     parser.add_argument("--log-keep-bytes", default=524_288, type=int)
+    parser.add_argument("--database", type=Path)
+    parser.add_argument("--database-backup-dir", type=Path)
+    parser.add_argument("--database-backup-retention-days", default=30, type=int)
     parser.add_argument(
         "--input",
         type=Path,
@@ -174,6 +202,12 @@ def main() -> int:
 
     try:
         log_directory = arguments.output_dir.parent / "logs"
+        database_path = arguments.database or Path(
+            os.environ.get(
+                "GAME_PRICE_DATABASE_PATH",
+                str(arguments.tracker.parent / "game_prices.db"),
+            )
+        )
         return run_pipeline(
             arguments.tracker,
             arguments.targets,
@@ -193,6 +227,9 @@ def main() -> int:
             ],
             arguments.log_max_bytes,
             arguments.log_keep_bytes,
+            database_path,
+            arguments.database_backup_dir or arguments.output_dir.parent / "db-backups",
+            arguments.database_backup_retention_days,
             fetcher,
         )
     except PipelineAlreadyRunning as error:

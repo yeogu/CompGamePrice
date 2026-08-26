@@ -70,6 +70,18 @@ def main() -> int:
         )
         run(pipeline_command, environment)
 
+        report = json.loads((snapshot / "steam_pipeline_run.json").read_text())
+        backup_path = Path(report["databaseBackup"])
+        if report["databaseBackupError"] is not None or not backup_path.is_file():
+            raise RuntimeError("Successful collection should create a verified DB backup")
+        with sqlite3.connect(backup_path) as backup_connection:
+            integrity = backup_connection.execute("PRAGMA integrity_check").fetchone()[0]
+            backed_up_products = scalar(
+                backup_connection, "SELECT COUNT(*) FROM store_products"
+            )
+        if integrity != "ok" or backed_up_products != 1:
+            raise RuntimeError("DB backup should be restorable with collected products")
+
         with sqlite3.connect(database) as connection:
             if scalar(connection, "SELECT COUNT(*) FROM store_products") != 1:
                 raise RuntimeError("Expected one normalized Steam product")

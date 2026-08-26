@@ -202,6 +202,39 @@ Archive는 가격이나 파서 결과를 사후 검증하고 Steam 응답 Schema
 `--log-keep-bytes`로 조정합니다. 최근 실행 보고서의 `archiveFilesRemoved`와
 `logsTrimmed`에서 해당 실행의 정리 결과를 확인할 수 있습니다.
 
+### SQLite backup and restore verification
+
+수집과 SQLite 적재가 성공하면 파이프라인은 SQLite online backup API로 일관된
+백업을 `snapshots/db-backups`에 생성합니다. 각 백업은 생성 직후
+`PRAGMA integrity_check`를 통과해야 하며 SHA-256, 크기, 원본 경로를 대응하는
+metadata JSON에 기록합니다. 기본 보관 기간은 30일입니다.
+
+```text
+snapshots/db-backups/
+├── game_prices_20260826T140446890Z.db
+└── game_prices_20260826T140446890Z.metadata.json
+```
+
+백업을 수동 생성하거나 검증할 수도 있습니다.
+
+```sh
+python3 tools/database_backup.py backup
+python3 tools/database_backup.py verify \
+  --backup snapshots/db-backups/game_prices_YYYYMMDDTHHMMSSsssZ.db
+```
+
+복구 검증은 운영 DB를 덮어쓰지 않고 반드시 존재하지 않는 새 경로로 수행합니다.
+
+```sh
+python3 tools/database_backup.py restore \
+  --backup snapshots/db-backups/game_prices_YYYYMMDDTHHMMSSsssZ.db \
+  --output snapshots/restore-check.db
+```
+
+출력 경로가 이미 존재하면 복구 명령은 실패합니다. 파이프라인 보고서의
+`databaseBackup`, `databaseBackupFilesRemoved`, `databaseBackupError`에서 최근
+백업 결과를 확인할 수 있으며 백업 실패는 전체 파이프라인 실패로 처리됩니다.
+
 `snapshots/`는 실행 중 생성되는 데이터이므로 Git에서 제외됩니다. Steam Storefront
 `appdetails` 응답은 Steamworks 공식 가격 API로 문서화된 계약이 아니므로, 응답
 형식이 바뀌면 수집기가 명확히 실패하고 마지막 정상 DB 데이터는 유지하도록
