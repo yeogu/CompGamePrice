@@ -1,4 +1,5 @@
 import importlib.util
+import gzip
 import json
 from pathlib import Path
 import tempfile
@@ -50,6 +51,27 @@ class SteamCollectorTest(unittest.TestCase):
         raw = b'{"413150":{"success":true,"data":{"steam_appid":413150,"platforms":{"windows":true}}}}'
         with self.assertRaisesRegex(ValueError, "no KRW price"):
             steam_collector.normalized_row(raw, "413150", "stardew-valley")
+
+    def test_archives_compressed_raw_response(self):
+        raw = (ROOT / "tests" / "fixtures" / "steam_appdetails_413150.json").read_bytes()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            steam_collector.write_snapshot(
+                raw,
+                root / "latest",
+                "413150",
+                "stardew-valley",
+                "fixture://steam",
+                200,
+                root / "archive",
+            )
+            raw_archives = list((root / "archive" / "413150").glob("*.json.gz"))
+            metadata_archives = list(
+                (root / "archive" / "413150").glob("*.metadata.json")
+            )
+            self.assertEqual(len(raw_archives), 1)
+            self.assertEqual(len(metadata_archives), 1)
+            self.assertEqual(gzip.decompress(raw_archives[0].read_bytes()), raw)
 
     def test_normalizes_regular_sale_price_and_discount(self):
         raw = (

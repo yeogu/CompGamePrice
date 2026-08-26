@@ -164,6 +164,20 @@ snapshots/latest/
 └── steam_products.txt          # SteamProvider 입력 snapshot
 ```
 
+통합 파이프라인은 `latest`를 갱신하면서 원본 응답과 메타데이터를 수집 시각별로
+보존합니다. 원본 JSON은 gzip으로 압축하며 App ID별 디렉터리로 분리됩니다.
+
+```text
+snapshots/archive/
+└── 413150/
+    ├── 20260826T000646892Z.json.gz
+    └── 20260826T000646892Z.metadata.json
+```
+
+Archive는 가격이나 파서 결과를 사후 검증하고 Steam 응답 Schema 변경을 분석하기
+위한 데이터입니다. `--archive-dir PATH`로 위치를 바꿀 수 있으며 파이프라인에서
+생성된 모든 `snapshots/` 데이터는 Git 추적에서 제외됩니다.
+
 `snapshots/`는 실행 중 생성되는 데이터이므로 Git에서 제외됩니다. Steam Storefront
 `appdetails` 응답은 Steamworks 공식 가격 API로 문서화된 계약이 아니므로, 응답
 형식이 바뀌면 수집기가 명확히 실패하고 마지막 정상 DB 데이터는 유지하도록

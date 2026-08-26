@@ -57,6 +57,7 @@ def run_pipeline(
     targets_path: Path,
     output_directory: Path,
     catalog_path: Path | None = None,
+    archive_directory: Path | None = None,
     country: str = "kr",
     language: str = "korean",
     timeout: float = 15.0,
@@ -82,6 +83,7 @@ def run_pipeline(
             "request_delay": request_delay,
             "max_attempts": max_attempts,
             "retry_delay": retry_delay,
+            "archive_directory": archive_directory,
         }
         if fetcher is not None:
             collection_arguments["fetcher"] = fetcher
@@ -128,6 +130,7 @@ def main() -> int:
     )
     parser.add_argument("--catalog", default="data/games.txt", type=Path)
     parser.add_argument("--output-dir", default="snapshots/latest", type=Path)
+    parser.add_argument("--archive-dir", type=Path)
     parser.add_argument("--country", default="kr")
     parser.add_argument("--language", default="korean")
     parser.add_argument("--timeout", default=15.0, type=float)
@@ -156,6 +159,7 @@ def main() -> int:
             arguments.targets,
             arguments.output_dir,
             arguments.catalog,
+            arguments.archive_dir or arguments.output_dir.parent / "archive",
             arguments.country,
             arguments.language,
             arguments.timeout,

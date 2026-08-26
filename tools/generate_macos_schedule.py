@@ -31,6 +31,8 @@ def schedule_definition(project_directory: Path, hour: int, minute: int) -> dict
             str(project / "data" / "games.txt"),
             "--output-dir",
             str(project / "snapshots" / "latest"),
+            "--archive-dir",
+            str(project / "snapshots" / "archive"),
         ],
         "WorkingDirectory": str(project),
         "StartCalendarInterval": {"Hour": hour, "Minute": minute},

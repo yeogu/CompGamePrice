@@ -31,6 +31,7 @@ class MacOsScheduleTest(unittest.TestCase):
             arguments = schedule["ProgramArguments"]
             self.assertIn(str(project.resolve() / "tools" / "run_steam_pipeline.py"), arguments)
             self.assertIn(str(project.resolve() / "build" / "game_price_tracker"), arguments)
+            self.assertIn(str(project.resolve() / "snapshots" / "archive"), arguments)
             self.assertTrue(Path(schedule["StandardOutPath"]).is_absolute())
             self.assertTrue((project / "snapshots" / "logs").is_dir())
 

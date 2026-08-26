@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import gzip
 import hashlib
 import json
 import os
@@ -126,6 +127,7 @@ def write_raw_snapshot(
     game_id: str,
     source_url: str,
     http_status: int | None,
+    archive_directory: Path | None = None,
 ) -> str:
     observation_time = collected_at()
     row = normalized_row(raw, app_id, game_id).rstrip("\n")
@@ -145,6 +147,17 @@ def write_raw_snapshot(
         output_directory / f"steam_{app_id}.metadata.json",
         (json.dumps(metadata, ensure_ascii=False, indent=2) + "\n").encode("utf-8"),
     )
+    if archive_directory is not None:
+        archive_name = observation_time.replace("-", "").replace(":", "").replace(".", "")
+        app_archive = archive_directory / app_id
+        atomic_write(
+            app_archive / f"{archive_name}.json.gz",
+            gzip.compress(raw, mtime=0),
+        )
+        atomic_write(
+            app_archive / f"{archive_name}.metadata.json",
+            (json.dumps(metadata, ensure_ascii=False, indent=2) + "\n").encode("utf-8"),
+        )
     return row
 
 
@@ -166,9 +179,11 @@ def write_snapshot(
     game_id: str,
     source_url: str,
     http_status: int | None,
+    archive_directory: Path | None = None,
 ) -> None:
     row = write_raw_snapshot(
-        raw, output_directory, app_id, game_id, source_url, http_status
+        raw, output_directory, app_id, game_id, source_url, http_status,
+        archive_directory,
     )
     write_products_snapshot(output_directory, [row])
 
@@ -256,6 +271,7 @@ def collect_targets(
     retry_delay: float,
     fetcher=fetch,
     sleeper=time.sleep,
+    archive_directory: Path | None = None,
 ) -> tuple[int, list[tuple[str, str]]]:
     if request_delay < 0 or retry_delay < 0 or max_attempts < 1:
         raise ValueError("Delays must be non-negative and max attempts must be positive")
@@ -274,7 +290,8 @@ def collect_targets(
                 )
                 rows.append(
                     write_raw_snapshot(
-                        raw, output_directory, app_id, game_id, source_url, status
+                        raw, output_directory, app_id, game_id, source_url, status,
+                        archive_directory,
                     )
                 )
                 last_error = None
@@ -300,6 +317,7 @@ def main() -> int:
     parser.add_argument("--country", default="kr")
     parser.add_argument("--language", default="korean")
     parser.add_argument("--output-dir", default="snapshots/latest", type=Path)
+    parser.add_argument("--archive-dir", type=Path)
     parser.add_argument("--timeout", default=15.0, type=float)
     parser.add_argument("--targets", type=Path, help="JSON file containing Steam targets.")
     parser.add_argument("--request-delay", default=1.0, type=float)
@@ -326,6 +344,7 @@ def main() -> int:
             arguments.request_delay,
             arguments.max_attempts,
             arguments.retry_delay,
+            archive_directory=arguments.archive_dir,
         )
         print(
             f"Steam snapshot saved to {arguments.output_dir}: "
@@ -354,6 +373,7 @@ def main() -> int:
         arguments.game_id,
         source_url,
         status,
+        arguments.archive_dir,
     )
     print(f"Steam snapshot saved to {arguments.output_dir}")
     return 0
