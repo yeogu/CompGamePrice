@@ -234,7 +234,7 @@ def load_steam_targets(path: Path) -> list[tuple[str, str]]:
             if not isinstance(product, dict):
                 raise ValueError(f"Catalog game {game_id} product must be an object")
             store = product.get("store")
-            if store not in {"Steam", "GooglePlay", "AppleAppStore"}:
+            if store not in {"Steam", "EpicGamesStore", "GooglePlay", "AppleAppStore"}:
                 raise ValueError(f"Catalog game {game_id} contains unsupported Store")
             product_id = product.get("productId")
             product_url = product.get("productUrl")

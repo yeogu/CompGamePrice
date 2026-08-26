@@ -2,6 +2,7 @@
 #include "game_price/app/game_query_service.h"
 #include "game_price/collection/apple_app_store_provider.h"
 #include "game_price/collection/collection_service.h"
+#include "game_price/collection/epic_games_provider.h"
 #include "game_price/persistence/database.h"
 #include "game_price/catalog/game_catalog.h"
 #include "game_price/collection/google_play_provider.h"
@@ -81,6 +82,7 @@ void testProviderNormalization() {
     SteamProvider steam(dataDirectory + "/steam_products.txt");
     GooglePlayProvider googlePlay(dataDirectory + "/google_play_products.txt");
     AppleAppStoreProvider apple(dataDirectory + "/apple_app_store_products.csv");
+    EpicGamesProvider epic(dataDirectory + "/epic_games_products.txt");
 
     const auto steamProducts = steam.findProducts("stardew-valley");
     expect(steamProducts.size() == 1, "Steam should return one product");
@@ -121,6 +123,63 @@ void testProviderNormalization() {
            "Apple price should normalize to 6600 KRW");
     expect(appleProducts.front().supportedPlatforms.size() == 2,
            "Apple should normalize iOS and iPadOS");
+
+    const auto epicProducts = epic.findProducts("hades");
+    expect(epicProducts.size() == 1, "Epic should return one Hades product");
+    expect(epicProducts.front().currentPrice.minorAmount == 25000,
+           "Epic current price should normalize to KRW");
+    expect(epicProducts.front().regularPrice->minorAmount == 27000 &&
+               epicProducts.front().discountPercent == 7,
+           "Epic should preserve regular price and discount");
+    expect(epicProducts.front().supportedPlatforms ==
+               std::vector<Platform>{Platform::Windows, Platform::MacOS},
+           "Epic should normalize Windows and macOS");
+
+    bool rejectedInvalidEpicPrice = false;
+    try {
+        EpicGamesProvider invalid(
+            dataDirectory + "/../tests/fixtures/epic_games_products_invalid.txt");
+    } catch (const std::runtime_error&) {
+        rejectedInvalidEpicPrice = true;
+    }
+    expect(rejectedInvalidEpicPrice, "Epic should reject an invalid price block");
+}
+
+void testEpicEndToEndComparison() {
+    const std::string dataDirectory = TEST_SAMPLE_DATA_DIR;
+    GameCatalog catalog(dataDirectory + "/game_catalog.json");
+    const auto game = catalog.findById("hades");
+    expect(game.has_value(), "Catalog should contain Hades");
+
+    SteamProvider steam(dataDirectory + "/steam_products.txt");
+    EpicGamesProvider epic(dataDirectory + "/epic_games_products.txt");
+    Database database(":memory:");
+    StoreProductRepository repository(database);
+    repository.initializeSchema();
+    std::vector<std::reference_wrapper<const StoreProductProvider>> providers{
+        steam, epic};
+    const auto collection = CollectionService(repository, providers, 1).collect(*game);
+    expect(collection.totalProducts == 2,
+           "Hades collection should save Steam and Epic products");
+
+    const auto comparison = PriceComparisonService(catalog, repository)
+                                .compareByGameId("hades");
+    expect(comparison.has_value() && comparison->products.size() == 2,
+           "Hades should compare two Store products");
+    expect(comparison->cheapestProduct->store == Store::EpicGamesStore &&
+               comparison->cheapestProduct->currentPrice.minorAmount == 25000,
+           "Epic should be the cheapest Hades Store");
+
+    const auto report = GameQueryService(catalog, repository)
+                            .getGamePriceReportById("hades");
+    const auto epicReport = std::find_if(
+        report->productReports.begin(), report->productReports.end(),
+        [](const ProductPriceReport& product) {
+            return product.product.store == Store::EpicGamesStore;
+        });
+    expect(epicReport != report->productReports.end() &&
+               epicReport->purchaseUrl == "https://store.epicgames.com/p/hades",
+           "API report should use the Epic catalog purchase URL");
 }
 
 void testHistoryDeduplicationAndAnalysis() {
@@ -331,7 +390,7 @@ void testGameCatalogSearch() {
            "Catalog should find a game by stable id");
     expect(!catalog.findById("missing").has_value(),
            "Catalog should reject an unknown game id");
-    expect(catalog.allGames().size() == 3,
+    expect(catalog.allGames().size() == 4,
            "Catalog should expose all games for batch collection");
     expect(catalog.allGames().front().id == "stardew-valley",
            "Batch catalog should preserve canonical game ids");
@@ -342,7 +401,7 @@ void testGameCatalogSearch() {
     expect(catalog.findByName("Hollow Knight")->supportedPlatforms ==
                std::vector<Platform>{Platform::Windows, Platform::MacOS, Platform::Linux},
            "Game should expose catalog-level platform availability");
-    expect(catalog.storeProducts(Store::Steam).size() == 3,
+    expect(catalog.storeProducts(Store::Steam).size() == 4,
            "Catalog should expose every Steam product mapping");
     expect(catalog.storeProducts(Store::Steam).front().productUrl ==
                "https://store.steampowered.com/app/413150",
@@ -351,6 +410,8 @@ void testGameCatalogSearch() {
            "Catalog product should expose Store-specific platforms");
     expect(catalog.storeProducts(Store::GooglePlay).size() == 1,
            "Catalog should expose Store-specific product mappings");
+    expect(catalog.storeProducts(Store::EpicGamesStore).size() == 1,
+           "Catalog should expose the Epic product mapping");
 }
 
 void testGameCatalogValidation() {
@@ -380,7 +441,7 @@ void testGameQueryServiceReport() {
     repository.saveNormalizedProducts(*game, {makeSteamProduct(11200)});
 
     GameQueryService service(catalog, repository);
-    expect(service.listGames().size() == 3,
+    expect(service.listGames().size() == 4,
            "Query service should expose the full catalog");
     const auto report = service.getGamePriceReport("Stardew Valley");
     expect(report.has_value(), "Query service should return a game report");
@@ -650,6 +711,7 @@ void testCommandLineModes() {
 int main() {
     const std::vector<std::pair<std::string, std::function<void()>>> tests{
         {"Provider normalization", testProviderNormalization},
+        {"Epic end-to-end comparison", testEpicEndToEndComparison},
         {"History deduplication and analysis", testHistoryDeduplicationAndAnalysis},
         {"Database schema version", testDatabaseSchemaVersion},
         {"Discount change history", testDiscountChangeHistory},

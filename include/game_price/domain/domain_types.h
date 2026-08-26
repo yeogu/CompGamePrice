@@ -6,6 +6,7 @@ namespace game_price {
 
 enum class Store {
     Steam,
+    EpicGamesStore,
     GooglePlay,
     AppleAppStore
 };

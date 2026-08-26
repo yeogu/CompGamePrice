@@ -4,6 +4,7 @@ import type { Money, PriceObservation, ProductPriceHistory } from './types'
 
 const storeStyles: Record<string, { color: string }> = {
   Steam: { color: '#66c0f4' },
+  'Epic Games Store': { color: '#c7a6ff' },
   'Google Play': { color: '#73e2a7' },
   'Apple App Store': { color: '#f4a261' },
 }

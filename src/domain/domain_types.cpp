@@ -5,6 +5,7 @@ namespace game_price {
 std::string toString(Store store) {
     switch (store) {
         case Store::Steam: return "Steam";
+        case Store::EpicGamesStore: return "Epic Games Store";
         case Store::GooglePlay: return "Google Play";
         case Store::AppleAppStore: return "Apple App Store";
     }

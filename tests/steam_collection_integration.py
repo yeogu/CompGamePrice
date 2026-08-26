@@ -92,7 +92,7 @@ def main() -> int:
             ).fetchone()[0]
             if observed_at != first_metadata["collectedAt"]:
                 raise RuntimeError("DB history must preserve the first collection timestamp")
-            if scalar(connection, "SELECT COUNT(*) FROM crawl_runs") != 6:
+            if scalar(connection, "SELECT COUNT(*) FROM crawl_runs") != 8:
                 raise RuntimeError(
                     "Each import should record one crawl run per catalog game"
                 )

@@ -26,6 +26,15 @@
       "products": [
         { "store": "Steam", "productId": "367520", "productUrl": "https://store.steampowered.com/app/367520", "platforms": ["Windows", "macOS", "Linux"] }
       ]
+    },
+    {
+      "id": "hades",
+      "title": "Hades",
+      "platforms": ["Windows", "macOS"],
+      "products": [
+        { "store": "Steam", "productId": "1145360", "productUrl": "https://store.steampowered.com/app/1145360", "platforms": ["Windows", "macOS"] },
+        { "store": "EpicGamesStore", "productId": "hades", "productUrl": "https://store.epicgames.com/p/hades", "platforms": ["Windows", "macOS"] }
+      ]
     }
   ]
 }

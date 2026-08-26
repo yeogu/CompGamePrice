@@ -16,6 +16,7 @@ add_library(game_price_core
     src/collection/apple_app_store_provider.cpp
     src/collection/collection_service.cpp
     src/collection/crawl_run.cpp
+    src/collection/epic_games_provider.cpp
     src/collection/google_play_provider.cpp
     src/collection/steam_provider.cpp
     src/persistence/database.cpp

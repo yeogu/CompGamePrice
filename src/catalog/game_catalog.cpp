@@ -86,6 +86,7 @@ Platform platformFromString(const std::string& value) {
 
 Store storeFromString(const std::string& value) {
     if (value == "Steam") return Store::Steam;
+    if (value == "EpicGamesStore") return Store::EpicGamesStore;
     if (value == "GooglePlay") return Store::GooglePlay;
     if (value == "AppleAppStore") return Store::AppleAppStore;
     throw std::runtime_error("Unsupported Game Catalog Store: " + value);

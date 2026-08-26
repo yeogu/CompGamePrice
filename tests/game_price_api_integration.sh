@@ -8,6 +8,7 @@ api_port=19081
 api_base="http://127.0.0.1:${api_port}"
 response_body="/tmp/game_price_api_response_$$.json"
 test_database="/tmp/game_price_api_test_$$.db"
+project_directory=$(cd "$(dirname "${tracker_binary}")/.." && pwd)
 
 cleanup() {
     if [[ -n "${api_pid:-}" ]]; then kill "${api_pid}" 2>/dev/null || true; fi
@@ -16,6 +17,8 @@ cleanup() {
 trap cleanup EXIT
 
 GAME_PRICE_DATABASE_PATH="${test_database}" "${tracker_binary}" seed-demo >/dev/null
+GAME_PRICE_DATABASE_PATH="${test_database}" "${tracker_binary}" collect \
+    --data-dir "${project_directory}/data" Hades >/dev/null
 GAME_PRICE_DATABASE_PATH="${test_database}" GAME_PRICE_API_PORT="${api_port}" \
     "${api_binary}" >/dev/null 2>&1 &
 api_pid=$!
@@ -55,6 +58,7 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
 grep -q '"id":"stardew-valley"' "${response_body}"
 grep -q '"id":"terraria"' "${response_body}"
 grep -q '"id":"hollow-knight"' "${response_body}"
+grep -q '"id":"hades"' "${response_body}"
 grep -q '"platforms":\["Windows","macOS","Linux"\]' "${response_body}"
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
@@ -69,9 +73,17 @@ grep -q '"title":"Terraria"' "${response_body}"
 grep -q '"products":\[\]' "${response_body}"
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/games/hades/prices")
+[[ "${status}" == "200" ]]
+grep -q '"store":"Steam"' "${response_body}"
+grep -q '"store":"Epic Games Store"' "${response_body}"
+grep -q '"purchaseUrl":"https://store.epicgames.com/p/hades"' "${response_body}"
+grep -q '"minorAmount":25000' "${response_body}"
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/collection-runs?limit=5")
 [[ "${status}" == "200" ]]
-grep -q '"runs":\[\]' "${response_body}"
+grep -q '"store":"Epic Games Store"' "${response_body}"
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/collection-runs?limit=invalid")

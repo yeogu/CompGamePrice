@@ -2,9 +2,9 @@
 
 AI를 활용하여 개발하는 크로스 플랫폼 게임 가격 비교 Prototype입니다.
 
-서로 다른 Steam, Google Play, Apple App Store 로컬 데이터 형식을 공통
+서로 다른 Steam, Epic Games Store, Google Play, Apple App Store 로컬 데이터 형식을 공통
 `StoreProduct` 모델로 정규화하고, 공통 Provider 인터페이스를 통해
-Stardew Valley의 최저가를 비교합니다.
+게임별 Store 최저가를 비교합니다.
 
 ## Project structure
 
@@ -172,6 +172,16 @@ python3 tools/collect_steam_snapshot.py \
 `products` 배열은 Store 종류와 무관하게 같은 구조로 파싱됩니다. 새로운 Store는
 `Store` enum과 Provider를 추가하고 이 배열에 상품을 등록하며, 기존 카탈로그 파싱
 알고리즘과 가격 비교·이력·추천 서비스는 수정하지 않습니다.
+
+Epic Games Store는 첫 Store 확장 사례입니다. `epic_games_products.txt`의
+colon 구분 offer block을 `EpicGamesProvider`가 정규화합니다. Hades에는 Steam과
+Epic 상품이 함께 등록되어 두 PC Store의 가격 비교, 이력, 추천과 구매 링크를
+동일한 Core 흐름으로 검증할 수 있습니다.
+
+```sh
+./build/game_price_tracker collect --data-dir data Hades
+./build/game_price_tracker compare Hades
+```
 
 다중 수집은 Store에 부담을 주지 않도록 요청 사이에 기본 1초를 기다립니다. 각 게임은
 일시적 실패 시 최대 3번까지 1초, 2초 간격으로 재시도하며, 한 게임의 최종 실패가

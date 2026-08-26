@@ -80,6 +80,7 @@ std::string columnText(sqlite3_stmt* statement, int index) {
 
 Store parseStore(const std::string& value) {
     if (value == "Steam") return Store::Steam;
+    if (value == "Epic Games Store") return Store::EpicGamesStore;
     if (value == "Google Play") return Store::GooglePlay;
     if (value == "Apple App Store") return Store::AppleAppStore;
     throw std::runtime_error("Unknown Store value in database: " + value);

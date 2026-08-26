@@ -93,6 +93,7 @@ class SteamCollectorTest(unittest.TestCase):
                 ("413150", "stardew-valley"),
                 ("105600", "terraria"),
                 ("367520", "hollow-knight"),
+                ("1145360", "hades"),
             ],
         )
 
