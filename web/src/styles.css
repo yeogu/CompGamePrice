@@ -56,13 +56,15 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .collection-run.failed .status-dot { background: #ff7b6b; }
 .error-text { color: #ffb4a8; }
 .game-list { display: flex; flex-wrap: wrap; gap: 10px; }
-.game-list button { padding: 10px 16px; }
+.game-list button { display: grid; gap: 3px; justify-items: start; padding: 10px 16px; }
+.game-list button small { font-size: 0.68rem; font-weight: 600; opacity: 0.7; }
 .game-list button.selected { box-shadow: 0 0 0 3px rgba(115, 226, 167, 0.25); }
 .game-list button:disabled { cursor: wait; opacity: 0.72; }
 
 .results { padding-top: 12px; }
 .result-heading { display: flex; align-items: end; justify-content: space-between; gap: 30px; margin-bottom: 28px; }
 h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04em; }
+.game-platforms { margin: 8px 0 0; color: #91a79b; }
 .best-summary { display: grid; justify-items: end; }
 .best-summary span, .best-summary small { color: #91a79b; }
 .best-summary strong { color: #73e2a7; font-size: 2rem; }

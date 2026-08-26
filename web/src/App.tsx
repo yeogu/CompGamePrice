@@ -181,7 +181,8 @@ function App() {
                 key={game.id}
                 onClick={() => void selectGame(game)}
               >
-                {game.title}
+                <strong>{game.title}</strong>
+                <small>{game.platforms.join(' · ')}</small>
               </button>
             ))}
           </div>
@@ -195,6 +196,9 @@ function App() {
             <div>
               <p className="eyebrow">CURRENT PRICES</p>
               <h2>{report.game.title}</h2>
+              <p className="game-platforms">
+                플레이 가능: {report.game.platforms.join(' · ')}
+              </p>
             </div>
             {report.cheapest && (
               <div className="best-summary">

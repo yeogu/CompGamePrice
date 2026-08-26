@@ -146,7 +146,7 @@ python3 tools/collect_steam_snapshot.py \
   --data-dir snapshots/latest
 ```
 
-게임과 Store 상품 매핑은 하나의 통합 카탈로그로 관리합니다.
+게임, 지원 플랫폼과 Store 상품 매핑은 하나의 통합 카탈로그로 관리합니다.
 
 ```json
 {
@@ -155,6 +155,7 @@ python3 tools/collect_steam_snapshot.py \
     {
       "id": "stardew-valley",
       "title": "Stardew Valley",
+      "platforms": ["Windows", "macOS", "Linux", "Android", "iOS", "iPadOS"],
       "stores": {
         "steam": { "productId": "413150" },
         "googlePlay": { "productId": "com.chucklefish.stardewvalley" },

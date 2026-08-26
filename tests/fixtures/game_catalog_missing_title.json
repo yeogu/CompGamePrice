@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
   "games": [
-    { "id": "missing-title", "stores": { "steam": { "productId": "1" } } }
+    { "id": "missing-title", "platforms": ["Windows"], "stores": { "steam": { "productId": "1" } } }
   ]
 }

@@ -1,6 +1,7 @@
 export interface GameSummary {
   id: string
   title: string
+  platforms: string[]
 }
 
 export interface Money {

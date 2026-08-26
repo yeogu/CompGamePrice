@@ -55,6 +55,7 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
 grep -q '"id":"stardew-valley"' "${response_body}"
 grep -q '"id":"terraria"' "${response_body}"
 grep -q '"id":"hollow-knight"' "${response_body}"
+grep -q '"platforms":\["Windows","macOS","Linux"\]' "${response_body}"
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/games?query=terraria")

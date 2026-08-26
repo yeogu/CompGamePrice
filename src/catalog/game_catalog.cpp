@@ -74,6 +74,41 @@ void requireJsonString(
     }
 }
 
+Platform platformFromString(const std::string& value) {
+    if (value == "Windows") return Platform::Windows;
+    if (value == "macOS") return Platform::MacOS;
+    if (value == "Linux") return Platform::Linux;
+    if (value == "Android") return Platform::Android;
+    if (value == "iOS") return Platform::IOS;
+    if (value == "iPadOS") return Platform::IPadOS;
+    throw std::runtime_error("Unsupported Game Catalog platform: " + value);
+}
+
+std::vector<Platform> parsePlatforms(
+    sqlite3* database,
+    const std::optional<std::string>& platformsJson,
+    const std::optional<std::string>& platformsType) {
+    if (!platformsJson || platformsType != std::optional<std::string>{"array"}) {
+        throw std::runtime_error("Game Catalog requires games[].platforms array");
+    }
+    Statement platforms(database, "SELECT value, type FROM json_each(?1);");
+    platforms.bindJson(*platformsJson);
+    std::vector<Platform> result;
+    while (platforms.next()) {
+        const auto value = platforms.optionalText(0);
+        requireJsonString(value, platforms.optionalText(1), "games[].platforms[]");
+        const auto platform = platformFromString(*value);
+        if (std::find(result.begin(), result.end(), platform) != result.end()) {
+            throw std::runtime_error("Duplicate Game Catalog platform: " + *value);
+        }
+        result.push_back(platform);
+    }
+    if (result.empty()) {
+        throw std::runtime_error("Game Catalog platforms array cannot be empty");
+    }
+    return result;
+}
+
 }  // namespace
 
 GameCatalog::GameCatalog(const std::string& dataPath) {
@@ -97,6 +132,7 @@ GameCatalog::GameCatalog(const std::string& dataPath) {
     Statement rows(parser.handle(), R"sql(
         SELECT json_extract(value, '$.id'), json_type(value, '$.id'),
                json_extract(value, '$.title'), json_type(value, '$.title'),
+               json_extract(value, '$.platforms'), json_type(value, '$.platforms'),
                json_extract(value, '$.stores.steam.productId'),
                json_type(value, '$.stores.steam.productId'),
                json_extract(value, '$.stores.googlePlay.productId'),
@@ -120,7 +156,9 @@ GameCatalog::GameCatalog(const std::string& dataPath) {
             })) {
             throw std::runtime_error("Duplicate Game Catalog id or title: " + *id);
         }
-        games_.push_back(Game{*id, *title, normalizedTitle});
+        auto platforms = parsePlatforms(
+            parser.handle(), rows.optionalText(4), rows.optionalText(5));
+        games_.push_back(Game{*id, *title, normalizedTitle, std::move(platforms)});
 
         bool foundStore = false;
         const auto addStore = [&](Store store, int valueColumn, int typeColumn) {
@@ -139,9 +177,9 @@ GameCatalog::GameCatalog(const std::string& dataPath) {
             storeProducts_.push_back(CatalogStoreProduct{*id, store, *productId});
             foundStore = true;
         };
-        addStore(Store::Steam, 4, 5);
-        addStore(Store::GooglePlay, 6, 7);
-        addStore(Store::AppleAppStore, 8, 9);
+        addStore(Store::Steam, 6, 7);
+        addStore(Store::GooglePlay, 8, 9);
+        addStore(Store::AppleAppStore, 10, 11);
         if (!foundStore) {
             throw std::runtime_error("Game Catalog game has no supported Store: " + *id);
         }

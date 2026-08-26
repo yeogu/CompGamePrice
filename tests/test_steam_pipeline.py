@@ -115,6 +115,7 @@ class SteamPipelineTest(unittest.TestCase):
             catalog.write_text(
                 '{"schemaVersion":1,"games":['
                 '{"id":"unknown-game","title":"Unknown",'
+                '"platforms":["Windows"],'
                 '"stores":{"steam":{"productId":"invalid"}}}]}'
             )
             with self.assertRaisesRegex(ValueError, "numeric productId"):

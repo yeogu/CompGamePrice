@@ -25,6 +25,17 @@ Json::Value moneyJson(const Money& money) {
     return json;
 }
 
+Json::Value gameJson(const Game& game) {
+    Json::Value json;
+    json["id"] = game.id;
+    json["title"] = game.title;
+    json["platforms"] = Json::arrayValue;
+    for (const auto platform : game.supportedPlatforms) {
+        json["platforms"].append(toString(platform));
+    }
+    return json;
+}
+
 std::string purchaseUrl(Store store, const std::string& productId) {
     switch (store) {
         case Store::Steam:
@@ -141,10 +152,7 @@ int main() {
                     ? queryService.listGames()
                     : queryService.searchGames(query);
                 for (const auto& game : games) {
-                    Json::Value item;
-                    item["id"] = game.id;
-                    item["title"] = game.title;
-                    response["games"].append(std::move(item));
+                    response["games"].append(gameJson(game));
                 }
                 callback(jsonResponse(response));
             },
@@ -161,8 +169,7 @@ int main() {
                     return;
                 }
                 Json::Value response;
-                response["game"]["id"] = report->comparison.game.id;
-                response["game"]["title"] = report->comparison.game.title;
+                response["game"] = gameJson(report->comparison.game);
                 response["products"] = Json::arrayValue;
                 for (const auto& productReport : report->productReports) {
                     response["products"].append(productJson(productReport));
@@ -200,8 +207,7 @@ int main() {
                 }
 
                 Json::Value response;
-                response["game"]["id"] = report->game.id;
-                response["game"]["title"] = report->game.title;
+                response["game"] = gameJson(report->game);
                 response["histories"] = Json::arrayValue;
                 for (const auto& productHistory : report->productHistories) {
                     Json::Value history;

@@ -4,6 +4,7 @@
     {
       "id": "stardew-valley",
       "title": "Stardew Valley",
+      "platforms": ["Windows", "macOS", "Linux"],
       "stores": {
         "steam": { "productId": "413150" }
       }

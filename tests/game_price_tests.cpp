@@ -128,7 +128,7 @@ void testHistoryDeduplicationAndAnalysis() {
     StoreProductRepository repository(database);
     repository.initializeSchema();
 
-    const Game game{"stardew-valley", "Stardew Valley", "stardew valley"};
+    const Game game{"stardew-valley", "Stardew Valley", "stardew valley", {}};
     auto product = makeSteamProduct(17500);
     repository.saveNormalizedProducts(game, {product});
     repository.saveNormalizedProducts(game, {product});
@@ -243,7 +243,7 @@ void testDiscountChangeHistory() {
     Database database(":memory:");
     StoreProductRepository repository(database);
     repository.initializeSchema();
-    const Game game{"stardew-valley", "Stardew Valley", "stardew valley"};
+    const Game game{"stardew-valley", "Stardew Valley", "stardew valley", {}};
 
     auto product = makeSteamProduct(16000);
     product.regularPrice = Money{16000, Currency::KRW};
@@ -339,6 +339,9 @@ void testGameCatalogSearch() {
            "Catalog should contain the second Steam collection target");
     expect(catalog.findByName("Hollow Knight").has_value(),
            "Catalog should contain the newly added game");
+    expect(catalog.findByName("Hollow Knight")->supportedPlatforms ==
+               std::vector<Platform>{Platform::Windows, Platform::MacOS, Platform::Linux},
+           "Game should expose catalog-level platform availability");
     expect(catalog.storeProducts(Store::Steam).size() == 3,
            "Catalog should expose every Steam product mapping");
     expect(catalog.storeProducts(Store::GooglePlay).size() == 1,
@@ -349,7 +352,8 @@ void testGameCatalogValidation() {
     const std::string fixtures = std::string(TEST_SAMPLE_DATA_DIR) + "/../tests/fixtures/";
     for (const auto& filename : {"game_catalog_duplicate_id.json",
                                  "game_catalog_duplicate_steam_id.json",
-                                 "game_catalog_missing_title.json"}) {
+                                 "game_catalog_missing_title.json",
+                                 "game_catalog_invalid_platform.json"}) {
         bool rejected = false;
         try {
             GameCatalog catalog(fixtures + filename);
@@ -411,7 +415,7 @@ void testExplicitCollectionTimestamp() {
     Database database(":memory:");
     StoreProductRepository repository(database);
     repository.initializeSchema();
-    const Game game{"stardew-valley", "Stardew Valley", "stardew valley"};
+    const Game game{"stardew-valley", "Stardew Valley", "stardew valley", {}};
 
     auto product = makeSteamProduct(16000);
     product.observedAt = "2026-08-26T09:30:45.123Z";
@@ -484,7 +488,7 @@ void testCollectionRunTrackingAndFailureIsolation() {
         successfulProvider, failingProvider};
     CollectionService service(repository, std::move(providers));
 
-    const Game game{"stardew-valley", "Stardew Valley", "stardew valley"};
+    const Game game{"stardew-valley", "Stardew Valley", "stardew valley", {}};
     const auto result = service.collect(game);
     expect(result.runs.size() == 2, "Both Store collection runs should be reported");
     expect(result.totalProducts == 1, "Successful Store product should still be saved");
@@ -512,7 +516,7 @@ void testCollectionRetryAfterTemporaryFailure() {
     std::vector<std::reference_wrapper<const StoreProductProvider>> providers{provider};
     CollectionService service(repository, std::move(providers), 2);
 
-    const Game game{"stardew-valley", "Stardew Valley", "stardew valley"};
+    const Game game{"stardew-valley", "Stardew Valley", "stardew valley", {}};
     const auto result = service.collect(game);
     expect(result.runs.size() == 2, "A temporary failure should produce two attempts");
     expect(result.runs[0].status == CrawlRunStatus::Failed,

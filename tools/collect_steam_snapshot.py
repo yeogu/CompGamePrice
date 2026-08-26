@@ -217,6 +217,16 @@ def load_steam_targets(path: Path) -> list[tuple[str, str]]:
         seen_game_ids.add(game_id)
         seen_titles.add(normalized_title)
 
+        platforms = game.get("platforms")
+        supported_platforms = {"Windows", "macOS", "Linux", "Android", "iOS", "iPadOS"}
+        if not isinstance(platforms, list) or not platforms:
+            raise ValueError(f"Catalog game {game_id} requires platforms")
+        if any(not isinstance(platform, str) or platform not in supported_platforms
+               for platform in platforms):
+            raise ValueError(f"Catalog game {game_id} contains an unsupported platform")
+        if len(platforms) != len(set(platforms)):
+            raise ValueError(f"Catalog game {game_id} contains duplicate platforms")
+
         stores = game.get("stores")
         if not isinstance(stores, dict):
             raise ValueError(f"Catalog game {game_id} requires stores")

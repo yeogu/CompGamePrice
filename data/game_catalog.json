@@ -4,6 +4,7 @@
     {
       "id": "stardew-valley",
       "title": "Stardew Valley",
+      "platforms": ["Windows", "macOS", "Linux", "Android", "iOS", "iPadOS"],
       "stores": {
         "steam": { "productId": "413150" },
         "googlePlay": { "productId": "com.chucklefish.stardewvalley" },
@@ -13,6 +14,7 @@
     {
       "id": "terraria",
       "title": "Terraria",
+      "platforms": ["Windows", "macOS", "Linux", "Android", "iOS", "iPadOS"],
       "stores": {
         "steam": { "productId": "105600" }
       }
@@ -20,6 +22,7 @@
     {
       "id": "hollow-knight",
       "title": "Hollow Knight",
+      "platforms": ["Windows", "macOS", "Linux"],
       "stores": {
         "steam": { "productId": "367520" }
       }
