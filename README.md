@@ -110,6 +110,22 @@ python3 tools/generate_macos_schedule.py --hour 21 --minute 30
 `snapshots/logs/steam_pipeline.*.log`에 저장되도록 생성됩니다. 프로젝트 위치나
 Python 경로가 바뀌면 plist도 다시 생성해야 합니다.
 
+VS Code Terminal 또는 macOS Terminal에서는 관리 스크립트로 등록과 확인을 할 수
+있습니다. Codex 데스크톱 앱 내부에서는 macOS sandbox가 `launchctl bootstrap`을
+거부할 수 있으므로 이 명령만 일반 Terminal에서 실행합니다.
+
+```sh
+./tools/manage_macos_schedule.sh install
+./tools/manage_macos_schedule.sh run
+./tools/manage_macos_schedule.sh status
+```
+
+등록 해제 시 plist를 삭제하지 않고 프로젝트의 `snapshots` 아래로 이동합니다.
+
+```sh
+./tools/manage_macos_schedule.sh uninstall
+```
+
 ```sh
 python3 tools/collect_steam_snapshot.py
 ./build/game_price_tracker collect-steam --data-dir snapshots/latest "Stardew Valley"

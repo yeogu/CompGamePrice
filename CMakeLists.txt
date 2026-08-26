@@ -92,6 +92,12 @@ if(BUILD_TESTING)
             NAME macos_schedule_tests
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_macos_schedule.py
         )
+        if(APPLE)
+            add_test(
+                NAME macos_schedule_script_syntax
+                COMMAND bash -n ${CMAKE_CURRENT_SOURCE_DIR}/tools/manage_macos_schedule.sh
+            )
+        endif()
         add_test(
             NAME steam_collection_integration
             COMMAND ${Python3_EXECUTABLE}
