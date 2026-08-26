@@ -31,6 +31,11 @@ PriceComparisonResult PriceComparisonService::compare(const Game& game) const {
 
     for (const auto& product : result.products) {
         if (!product.purchasable) continue;
+        if (product.region != Region::KR ||
+            product.edition != GameEdition::Standard ||
+            product.offerType != OfferType::BaseGame) {
+            continue;
+        }
         if (product.currentPrice.currency != Currency::KRW) {
             throw std::runtime_error("Cannot compare products with different currencies");
         }

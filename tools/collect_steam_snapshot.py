@@ -190,8 +190,8 @@ def write_snapshot(
 
 def load_steam_targets(path: Path) -> list[tuple[str, str]]:
     payload = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict) or payload.get("schemaVersion") != 2:
-        raise ValueError("Game catalog requires schemaVersion 2")
+    if not isinstance(payload, dict) or payload.get("schemaVersion") != 3:
+        raise ValueError("Game catalog requires schemaVersion 3")
     games = payload.get("games")
     if not isinstance(games, list) or not games:
         raise ValueError("Game catalog must contain a non-empty games list")
@@ -239,6 +239,9 @@ def load_steam_targets(path: Path) -> list[tuple[str, str]]:
             product_id = product.get("productId")
             product_url = product.get("productUrl")
             product_platforms = product.get("platforms")
+            region = product.get("region")
+            edition = product.get("edition")
+            offer_type = product.get("offerType")
             if not isinstance(product_id, str) or not product_id:
                 raise ValueError(f"Catalog product for {game_id} requires productId")
             if not isinstance(product_url, str) or not product_url.startswith("https://"):
@@ -252,6 +255,12 @@ def load_steam_targets(path: Path) -> list[tuple[str, str]]:
                 raise ValueError(
                     f"Catalog product platform is not supported by game {game_id}"
                 )
+            if region != "KR":
+                raise ValueError(f"Catalog product for {game_id} has unsupported region")
+            if edition not in {"Standard", "Deluxe"}:
+                raise ValueError(f"Catalog product for {game_id} has unsupported edition")
+            if offer_type not in {"BaseGame", "DLC", "Bundle", "Subscription"}:
+                raise ValueError(f"Catalog product for {game_id} has unsupported offerType")
             if store != "Steam":
                 continue
             if not product_id.isdigit():

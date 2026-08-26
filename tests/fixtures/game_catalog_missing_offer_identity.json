@@ -2,16 +2,15 @@
   "schemaVersion": 3,
   "games": [
     {
-      "id": "invalid-store",
-      "title": "Invalid Store",
+      "id": "missing-offer-identity",
+      "title": "Missing Offer Identity",
       "platforms": ["Windows"],
       "products": [
         {
-          "store": "UnknownStore",
+          "store": "Steam",
           "productId": "1",
           "productUrl": "https://example.com/1",
           "platforms": ["Windows"],
-          "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
         }

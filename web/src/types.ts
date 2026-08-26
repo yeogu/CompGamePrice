@@ -30,6 +30,9 @@ export interface StoreProduct {
   productId: string
   store: string
   purchaseUrl: string
+  region: string
+  edition: string
+  offerType: string
   price: Money
   regularPrice?: Money
   discountPercent: number

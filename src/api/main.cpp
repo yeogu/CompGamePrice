@@ -41,6 +41,9 @@ Json::Value productJson(const ProductPriceReport& report) {
     json["productId"] = report.product.productId;
     json["store"] = toString(report.product.store);
     json["purchaseUrl"] = report.purchaseUrl;
+    json["region"] = toString(report.product.region);
+    json["edition"] = toString(report.product.edition);
+    json["offerType"] = toString(report.product.offerType);
     json["price"] = moneyJson(report.product.currentPrice);
     if (report.product.regularPrice) {
         json["regularPrice"] = moneyJson(*report.product.regularPrice);

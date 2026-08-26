@@ -61,7 +61,8 @@ std::vector<StoreProduct> SteamProvider::findProducts(const std::string& gameId)
             raw.regularPriceWon
                 ? std::optional<Money>{Money{*raw.regularPriceWon, Currency::KRW}}
                 : std::nullopt,
-            raw.discountPercent});
+            raw.discountPercent, Region::KR, GameEdition::Standard,
+            OfferType::BaseGame});
     }
     return result;
 }

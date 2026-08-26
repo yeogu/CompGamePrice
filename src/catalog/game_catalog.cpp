@@ -92,6 +92,25 @@ Store storeFromString(const std::string& value) {
     throw std::runtime_error("Unsupported Game Catalog Store: " + value);
 }
 
+Region regionFromString(const std::string& value) {
+    if (value == "KR") return Region::KR;
+    throw std::runtime_error("Unsupported Game Catalog region: " + value);
+}
+
+GameEdition editionFromString(const std::string& value) {
+    if (value == "Standard") return GameEdition::Standard;
+    if (value == "Deluxe") return GameEdition::Deluxe;
+    throw std::runtime_error("Unsupported Game Catalog edition: " + value);
+}
+
+OfferType offerTypeFromString(const std::string& value) {
+    if (value == "BaseGame") return OfferType::BaseGame;
+    if (value == "DLC") return OfferType::DLC;
+    if (value == "Bundle") return OfferType::Bundle;
+    if (value == "Subscription") return OfferType::Subscription;
+    throw std::runtime_error("Unsupported Game Catalog offer type: " + value);
+}
+
 std::vector<Platform> parsePlatforms(
     sqlite3* database,
     const std::optional<std::string>& platformsJson,
@@ -130,11 +149,11 @@ GameCatalog::GameCatalog(const std::string& dataPath) {
                json_type(?1, '$.games');
     )sql");
     header.bindJson(json);
-    if (!header.next() || header.integer(0) != 1 || header.integer(1) != 2 ||
+    if (!header.next() || header.integer(0) != 1 || header.integer(1) != 3 ||
         header.optionalText(2) != std::optional<std::string>{"integer"} ||
         header.optionalText(3) != std::optional<std::string>{"array"}) {
         throw std::runtime_error(
-            "Game Catalog must be valid JSON with schemaVersion 2 and games array");
+            "Game Catalog must be valid JSON with schemaVersion 3 and games array");
     }
 
     Statement rows(parser.handle(), R"sql(
@@ -171,7 +190,10 @@ GameCatalog::GameCatalog(const std::string& dataPath) {
             SELECT json_extract(value, '$.store'), json_type(value, '$.store'),
                    json_extract(value, '$.productId'), json_type(value, '$.productId'),
                    json_extract(value, '$.productUrl'), json_type(value, '$.productUrl'),
-                   json_extract(value, '$.platforms'), json_type(value, '$.platforms')
+                   json_extract(value, '$.platforms'), json_type(value, '$.platforms'),
+                   json_extract(value, '$.region'), json_type(value, '$.region'),
+                   json_extract(value, '$.edition'), json_type(value, '$.edition'),
+                   json_extract(value, '$.offerType'), json_type(value, '$.offerType')
             FROM json_each(?1);
         )sql");
         products.bindJson(*productsJson);
@@ -180,13 +202,22 @@ GameCatalog::GameCatalog(const std::string& dataPath) {
             const auto storeName = products.optionalText(0);
             const auto productId = products.optionalText(2);
             const auto productUrl = products.optionalText(4);
+            const auto regionName = products.optionalText(8);
+            const auto editionName = products.optionalText(10);
+            const auto offerTypeName = products.optionalText(12);
             requireJsonString(storeName, products.optionalText(1), "products[].store");
             requireJsonString(productId, products.optionalText(3), "products[].productId");
             requireJsonString(productUrl, products.optionalText(5), "products[].productUrl");
+            requireJsonString(regionName, products.optionalText(9), "products[].region");
+            requireJsonString(editionName, products.optionalText(11), "products[].edition");
+            requireJsonString(offerTypeName, products.optionalText(13), "products[].offerType");
             if (productUrl->rfind("https://", 0) != 0) {
                 throw std::runtime_error("Game Catalog productUrl must use HTTPS");
             }
             const auto store = storeFromString(*storeName);
+            const auto region = regionFromString(*regionName);
+            const auto edition = editionFromString(*editionName);
+            const auto offerType = offerTypeFromString(*offerTypeName);
             auto productPlatforms = parsePlatforms(
                 parser.handle(), products.optionalText(6), products.optionalText(7));
             for (const auto platform : productPlatforms) {
@@ -206,7 +237,8 @@ GameCatalog::GameCatalog(const std::string& dataPath) {
                     "Duplicate Store product id in Game Catalog: " + *productId);
             }
             storeProducts_.push_back(CatalogStoreProduct{
-                *id, store, *productId, *productUrl, std::move(productPlatforms)});
+                *id, store, *productId, *productUrl, std::move(productPlatforms),
+                region, edition, offerType});
             foundProduct = true;
         }
         if (!foundProduct) {

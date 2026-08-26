@@ -113,12 +113,13 @@ class SteamPipelineTest(unittest.TestCase):
             root = Path(directory)
             catalog = root / "catalog.json"
             catalog.write_text(
-                '{"schemaVersion":2,"games":['
+                '{"schemaVersion":3,"games":['
                 '{"id":"unknown-game","title":"Unknown",'
                 '"platforms":["Windows"],'
                 '"products":[{"store":"Steam","productId":"invalid",'
                 '"productUrl":"https://example.com/invalid",'
-                '"platforms":["Windows"]}]}]}'
+                '"platforms":["Windows"],"region":"KR",'
+                '"edition":"Standard","offerType":"BaseGame"}]}]}'
             )
             with self.assertRaisesRegex(ValueError, "numeric productId"):
                 steam_pipeline.run_pipeline(

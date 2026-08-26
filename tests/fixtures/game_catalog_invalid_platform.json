@@ -1,11 +1,11 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "games": [
     {
       "id": "invalid-platform",
       "title": "Invalid Platform",
       "platforms": ["Windows", "Dreamcast"],
-      "products": [{ "store": "Steam", "productId": "1", "productUrl": "https://example.com/1", "platforms": ["Windows"] }]
+      "products": [{ "store": "Steam", "productId": "1", "productUrl": "https://example.com/1", "platforms": ["Windows"], "region": "KR", "edition": "Standard", "offerType": "BaseGame" }]
     }
   ]
 }

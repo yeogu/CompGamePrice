@@ -20,7 +20,10 @@ struct StoreProduct {
         bool purchasable = false,
         std::optional<std::string> observedAt = std::nullopt,
         std::optional<Money> regularPrice = std::nullopt,
-        int discountPercent = 0)
+        int discountPercent = 0,
+        Region region = Region::KR,
+        GameEdition edition = GameEdition::Standard,
+        OfferType offerType = OfferType::BaseGame)
         : productId(std::move(productId)),
           gameId(std::move(gameId)),
           store(store),
@@ -29,7 +32,10 @@ struct StoreProduct {
           purchasable(purchasable),
           observedAt(std::move(observedAt)),
           regularPrice(regularPrice),
-          discountPercent(discountPercent) {}
+          discountPercent(discountPercent),
+          region(region),
+          edition(edition),
+          offerType(offerType) {}
 
     std::string productId;
     std::string gameId;
@@ -40,6 +46,9 @@ struct StoreProduct {
     std::optional<std::string> observedAt;
     std::optional<Money> regularPrice;
     int discountPercent{};
+    Region region{Region::KR};
+    GameEdition edition{GameEdition::Standard};
+    OfferType offerType{OfferType::BaseGame};
 };
 
 }  // namespace game_price

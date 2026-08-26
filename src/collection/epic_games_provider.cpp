@@ -67,7 +67,8 @@ std::vector<StoreProduct> EpicGamesProvider::findProducts(
         result.push_back(StoreProduct{
             raw.offerId, raw.gameId, Store::EpicGamesStore, std::move(platforms),
             Money{raw.currentPriceWon, Currency::KRW}, raw.active, std::nullopt,
-            Money{raw.regularPriceWon, Currency::KRW}, raw.discountPercent});
+            Money{raw.regularPriceWon, Currency::KRW}, raw.discountPercent,
+            Region::KR, GameEdition::Standard, OfferType::BaseGame});
     }
     return result;
 }

@@ -31,4 +31,29 @@ std::string toString(Currency currency) {
     return "Unknown Currency";
 }
 
+std::string toString(Region region) {
+    switch (region) {
+        case Region::KR: return "KR";
+    }
+    return "Unknown Region";
+}
+
+std::string toString(GameEdition edition) {
+    switch (edition) {
+        case GameEdition::Standard: return "Standard";
+        case GameEdition::Deluxe: return "Deluxe";
+    }
+    return "Unknown Edition";
+}
+
+std::string toString(OfferType offerType) {
+    switch (offerType) {
+        case OfferType::BaseGame: return "BaseGame";
+        case OfferType::DLC: return "DLC";
+        case OfferType::Bundle: return "Bundle";
+        case OfferType::Subscription: return "Subscription";
+    }
+    return "Unknown Offer Type";
+}
+
 }  // namespace game_price

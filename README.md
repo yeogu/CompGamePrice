@@ -150,7 +150,7 @@ python3 tools/collect_steam_snapshot.py \
 
 ```json
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "games": [
     {
       "id": "stardew-valley",
@@ -161,7 +161,10 @@ python3 tools/collect_steam_snapshot.py \
           "store": "Steam",
           "productId": "413150",
           "productUrl": "https://store.steampowered.com/app/413150",
-          "platforms": ["Windows", "macOS", "Linux"]
+          "platforms": ["Windows", "macOS", "Linux"],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
       ]
     }
@@ -172,6 +175,9 @@ python3 tools/collect_steam_snapshot.py \
 `products` 배열은 Store 종류와 무관하게 같은 구조로 파싱됩니다. 새로운 Store는
 `Store` enum과 Provider를 추가하고 이 배열에 상품을 등록하며, 기존 카탈로그 파싱
 알고리즘과 가격 비교·이력·추천 서비스는 수정하지 않습니다.
+현재 비교 기준은 같은 Game의 `KR + Standard + BaseGame + KRW` 상품입니다.
+더 저렴하더라도 DLC, Bundle, Deluxe Edition 또는 Subscription 상품은 기본판
+최저가로 선택하지 않습니다.
 
 Epic Games Store는 첫 Store 확장 사례입니다. `epic_games_products.txt`의
 colon 구분 offer block을 `EpicGamesProvider`가 정규화합니다. Hades에는 Steam과
@@ -300,10 +306,12 @@ DB 적재 사이에 지연이 생겨도 그래프에는 응답을 관측한 시�
 5개 필드 로컬 sample은 호환성을 위해 DB 적재 시각을 사용합니다. 관측 시각은
 `YYYY-MM-DDTHH:MM:SS.sssZ` UTC 형식만 허용하며 잘못된 값은 트랜잭션 전체를
 롤백합니다.
-DB schema는 SQLite `user_version`으로 관리하며 현재 버전은 2입니다. version 2는
+DB schema는 SQLite `user_version`으로 관리하며 현재 버전은 3입니다. version 2는
 `store_products`와 `price_history`에 선택적인 정상가와 0–100 정수 할인율을
 추가합니다. 기존 version 1 DB는 상품과 이력을 보존하면서 정상가 미상(NULL),
-할인율 0으로 자동 이전됩니다. 새 DB는 바로 version 2로 초기화되며 프로그램보다 새로운 DB version은
+할인율 0으로 자동 이전됩니다. version 3는 Store 상품에 Region, Edition,
+Offer Type을 추가하며 기존 상품은 `KR`, `Standard`, `BaseGame`으로 이전합니다.
+새 DB는 바로 version 3으로 초기화되며 프로그램보다 새로운 DB version은
 데이터 손상을 피하기 위해 실행을 중단합니다.
 `PriceHistoryService`는 저장된 이력으로 현재가, 최저가, 최고가, 정수 기반
 평균가와 직전 관측 대비 가격 추이를 계산합니다.
@@ -370,6 +378,7 @@ React와 TypeScript로 만든 첫 Web 화면은 통합 카탈로그의 전체 �
 정렬합니다. 한 Store가 같은 날 여러 번 수집되면 마지막 관측값을 표시합니다.
 관측점에 마우스를 올리거나 터치하면 포인터 옆에 Store, 날짜, 가격을 표시하며
 Store 이름은 해당 그래프 선과 동일한 색상을 사용합니다.
+각 가격 카드에는 상품의 Region, Edition과 Offer Type도 함께 표시합니다.
 가격 카드의 추천 영역은 추천 등급뿐 아니라 역대 최저가와의 금액·비율 차이와
 판단 근거를 함께 표시합니다. 현재 규칙 기반 추천은 설명 가능하고 테스트 가능한
 기준선이며, 향후 AI 추천은 이 결과를 근거 데이터로 사용할 수 있습니다.

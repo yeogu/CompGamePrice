@@ -218,6 +218,9 @@ function App() {
                     <span className="store">{product.store}</span>
                     {cheapest && <span className="badge">BEST</span>}
                   </div>
+                  <p className="offer-meta">
+                    {product.region} · {product.edition} · {product.offerType}
+                  </p>
                   <strong className="price">{formatMoney(product.price)}</strong>
                   {product.regularPrice && product.discountPercent > 0 && (
                     <div className="discount-summary">

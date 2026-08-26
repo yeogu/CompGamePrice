@@ -96,6 +96,25 @@ Platform parsePlatform(const std::string& value) {
     throw std::runtime_error("Unknown Platform value in database: " + value);
 }
 
+Region parseRegion(const std::string& value) {
+    if (value == "KR") return Region::KR;
+    throw std::runtime_error("Unknown Region value in database: " + value);
+}
+
+GameEdition parseEdition(const std::string& value) {
+    if (value == "Standard") return GameEdition::Standard;
+    if (value == "Deluxe") return GameEdition::Deluxe;
+    throw std::runtime_error("Unknown Edition value in database: " + value);
+}
+
+OfferType parseOfferType(const std::string& value) {
+    if (value == "BaseGame") return OfferType::BaseGame;
+    if (value == "DLC") return OfferType::DLC;
+    if (value == "Bundle") return OfferType::Bundle;
+    if (value == "Subscription") return OfferType::Subscription;
+    throw std::runtime_error("Unknown Offer Type value in database: " + value);
+}
+
 Currency parseCurrency(const std::string& value) {
     if (value == "KRW") return Currency::KRW;
     throw std::runtime_error("Unknown Currency value in database: " + value);
@@ -162,6 +181,11 @@ void StoreProductRepository::initializeSchema() const {
                 CHECK (discount_percent BETWEEN 0 AND 100),
             currency TEXT NOT NULL,
             purchasable INTEGER NOT NULL CHECK (purchasable IN (0, 1)),
+            region TEXT NOT NULL DEFAULT 'KR' CHECK (region IN ('KR')),
+            edition TEXT NOT NULL DEFAULT 'Standard'
+                CHECK (edition IN ('Standard', 'Deluxe')),
+            offer_type TEXT NOT NULL DEFAULT 'BaseGame'
+                CHECK (offer_type IN ('BaseGame', 'DLC', 'Bundle', 'Subscription')),
             PRIMARY KEY (store, external_product_id),
             FOREIGN KEY (game_id) REFERENCES games(id)
         );
@@ -222,7 +246,20 @@ void StoreProductRepository::initializeSchema() const {
                     CHECK (discount_percent BETWEEN 0 AND 100);
             )sql");
         }
-        database_.execute("PRAGMA user_version = 2;");
+        if (existingVersion == 1 || existingVersion == 2) {
+            database_.execute(R"sql(
+                ALTER TABLE store_products
+                    ADD COLUMN region TEXT NOT NULL DEFAULT 'KR'
+                    CHECK (region IN ('KR'));
+                ALTER TABLE store_products
+                    ADD COLUMN edition TEXT NOT NULL DEFAULT 'Standard'
+                    CHECK (edition IN ('Standard', 'Deluxe'));
+                ALTER TABLE store_products
+                    ADD COLUMN offer_type TEXT NOT NULL DEFAULT 'BaseGame'
+                    CHECK (offer_type IN ('BaseGame', 'DLC', 'Bundle', 'Subscription'));
+            )sql");
+        }
+        database_.execute("PRAGMA user_version = 3;");
         database_.execute("COMMIT;");
     } catch (...) {
         try {
@@ -305,15 +342,18 @@ void StoreProductRepository::saveNormalizedProducts(
                     INSERT INTO store_products(
                         store, external_product_id, game_id,
                         price_minor, regular_price_minor, discount_percent,
-                        currency, purchasable)
-                    VALUES(?, ?, ?, ?, ?, ?, ?, ?)
+                        currency, purchasable, region, edition, offer_type)
+                    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(store, external_product_id) DO UPDATE SET
                         game_id = excluded.game_id,
                         price_minor = excluded.price_minor,
                         regular_price_minor = excluded.regular_price_minor,
                         discount_percent = excluded.discount_percent,
                         currency = excluded.currency,
-                        purchasable = excluded.purchasable;
+                        purchasable = excluded.purchasable,
+                        region = excluded.region,
+                        edition = excluded.edition,
+                        offer_type = excluded.offer_type;
                 )sql");
                 bindText(statement.get(), 1, store);
                 bindText(statement.get(), 2, product.productId);
@@ -323,6 +363,9 @@ void StoreProductRepository::saveNormalizedProducts(
                 bindInt64(statement.get(), 6, product.discountPercent);
                 bindText(statement.get(), 7, currency);
                 bindInt64(statement.get(), 8, product.purchasable ? 1 : 0);
+                bindText(statement.get(), 9, toString(product.region));
+                bindText(statement.get(), 10, toString(product.edition));
+                bindText(statement.get(), 11, toString(product.offerType));
                 statement.execute();
             }
 
@@ -397,7 +440,7 @@ std::vector<StoreProduct> StoreProductRepository::findProductsByGameId(
     Statement productsStatement(database_.handle(), R"sql(
         SELECT store, external_product_id, game_id,
                price_minor, regular_price_minor, discount_percent,
-               currency, purchasable
+               currency, purchasable, region, edition, offer_type
         FROM store_products
         WHERE game_id = ?
         ORDER BY store, external_product_id;
@@ -438,7 +481,10 @@ std::vector<StoreProduct> StoreProductRepository::findProductsByGameId(
                 : std::optional<Money>{Money{
                     sqlite3_column_int64(productsStatement.get(), 4),
                     parseCurrency(columnText(productsStatement.get(), 6))}},
-            sqlite3_column_int(productsStatement.get(), 5)});
+            sqlite3_column_int(productsStatement.get(), 5),
+            parseRegion(columnText(productsStatement.get(), 8)),
+            parseEdition(columnText(productsStatement.get(), 9)),
+            parseOfferType(columnText(productsStatement.get(), 10))});
     }
     return products;
 }

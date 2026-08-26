@@ -56,7 +56,8 @@ std::vector<StoreProduct> GooglePlayProvider::findProducts(const std::string& ga
             result.push_back(StoreProduct{
                 raw.packageName, raw.gameId, Store::GooglePlay, {Platform::Android},
                 Money{raw.priceMicros / microsPerWon, Currency::KRW}, raw.published,
-                std::nullopt});
+                std::nullopt, std::nullopt, 0, Region::KR,
+                GameEdition::Standard, OfferType::BaseGame});
         }
     }
     return result;

@@ -1,12 +1,12 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "games": [
     {
       "id": "stardew-valley",
       "title": "Stardew Valley",
       "platforms": ["Windows", "macOS", "Linux"],
       "products": [
-        { "store": "Steam", "productId": "413150", "productUrl": "https://store.steampowered.com/app/413150", "platforms": ["Windows", "macOS", "Linux"] }
+        { "store": "Steam", "productId": "413150", "productUrl": "https://store.steampowered.com/app/413150", "platforms": ["Windows", "macOS", "Linux"], "region": "KR", "edition": "Standard", "offerType": "BaseGame" }
       ]
     }
   ]

@@ -92,6 +92,10 @@ void testProviderNormalization() {
            "Steam should normalize three platforms");
     expect(!steamProducts.front().observedAt.has_value(),
            "Legacy Steam sample rows should use repository import time");
+    expect(steamProducts.front().region == Region::KR &&
+               steamProducts.front().edition == GameEdition::Standard &&
+               steamProducts.front().offerType == OfferType::BaseGame,
+           "Providers should normalize the default comparison identity");
 
     SteamProvider discounted(
         std::string(TEST_SAMPLE_DATA_DIR) +
@@ -280,8 +284,8 @@ void testDatabaseSchemaVersion() {
     )sql");
     StoreProductRepository versionOneRepository(versionOneDatabase);
     versionOneRepository.initializeSchema();
-    expect(versionOneDatabase.userVersion() == 2,
-           "Schema version 1 should migrate to version 2");
+    expect(versionOneDatabase.userVersion() == 3,
+           "Schema version 1 should migrate to version 3");
     const auto migratedProducts =
         versionOneRepository.findProductsByGameId("stardew-valley");
     expect(migratedProducts.size() == 1,
@@ -289,6 +293,10 @@ void testDatabaseSchemaVersion() {
     expect(!migratedProducts.front().regularPrice.has_value() &&
                migratedProducts.front().discountPercent == 0,
            "Legacy products should migrate with unknown regular price and no discount");
+    expect(migratedProducts.front().region == Region::KR &&
+               migratedProducts.front().edition == GameEdition::Standard &&
+               migratedProducts.front().offerType == OfferType::BaseGame,
+           "Legacy products should migrate to the default comparison identity");
     const auto migratedHistory =
         versionOneRepository.findPriceHistory(Store::Steam, "413150");
     expect(migratedHistory.size() == 1,
@@ -296,6 +304,45 @@ void testDatabaseSchemaVersion() {
     expect(!migratedHistory.front().regularPrice.has_value() &&
                migratedHistory.front().discountPercent == 0,
            "Legacy history should migrate without inventing a regular price");
+
+    Database versionTwoDatabase(":memory:");
+    versionTwoDatabase.execute(R"sql(
+        CREATE TABLE store_products (
+            store TEXT NOT NULL,
+            external_product_id TEXT NOT NULL,
+            game_id TEXT NOT NULL,
+            price_minor INTEGER NOT NULL,
+            regular_price_minor INTEGER,
+            discount_percent INTEGER NOT NULL DEFAULT 0,
+            currency TEXT NOT NULL,
+            purchasable INTEGER NOT NULL,
+            PRIMARY KEY (store, external_product_id)
+        );
+        CREATE TABLE price_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            store TEXT NOT NULL,
+            external_product_id TEXT NOT NULL,
+            price_minor INTEGER NOT NULL,
+            regular_price_minor INTEGER,
+            discount_percent INTEGER NOT NULL DEFAULT 0,
+            currency TEXT NOT NULL,
+            purchasable INTEGER NOT NULL,
+            observed_at TEXT NOT NULL
+        );
+        INSERT INTO store_products VALUES(
+            'Epic Games Store', 'hades', 'hades', 25000, 27000, 7, 'KRW', 1);
+        PRAGMA user_version = 2;
+    )sql");
+    StoreProductRepository versionTwoRepository(versionTwoDatabase);
+    versionTwoRepository.initializeSchema();
+    expect(versionTwoDatabase.userVersion() == 3,
+           "Schema version 2 should migrate to version 3");
+    const auto versionTwoProducts = versionTwoRepository.findProductsByGameId("hades");
+    expect(versionTwoProducts.size() == 1 &&
+               versionTwoProducts.front().region == Region::KR &&
+               versionTwoProducts.front().edition == GameEdition::Standard &&
+               versionTwoProducts.front().offerType == OfferType::BaseGame,
+           "Version 2 products should preserve data with default comparison identity");
 }
 
 void testDiscountChangeHistory() {
@@ -367,15 +414,19 @@ void testPriceComparisonReadsRepository() {
     repository.saveNormalizedProducts(*game, {
         makeSteamProduct(11200),
         StoreProduct{"mobile", game->id, Store::GooglePlay, {Platform::Android},
-                     Money{6500, Currency::KRW}, true, std::nullopt}});
+                     Money{6500, Currency::KRW}, true, std::nullopt},
+        StoreProduct{"cheap-dlc", game->id, Store::EpicGamesStore,
+                     {Platform::Windows}, Money{1000, Currency::KRW}, true,
+                     std::nullopt, std::nullopt, 0, Region::KR,
+                     GameEdition::Standard, OfferType::DLC}});
 
     PriceComparisonService service(catalog, repository);
     const auto result = service.compareByGameName("Stardew Valley");
     expect(result.has_value(), "Comparison result should exist");
-    expect(result->products.size() == 2, "Comparison should read two DB products");
+    expect(result->products.size() == 3, "Comparison should expose all DB products");
     expect(result->cheapestProduct.has_value(), "Cheapest product should exist");
     expect(result->cheapestProduct->store == Store::GooglePlay,
-           "Google Play should be the cheapest DB product");
+           "A cheaper DLC must not replace the cheapest Standard BaseGame");
 }
 
 void testGameCatalogSearch() {
@@ -412,6 +463,12 @@ void testGameCatalogSearch() {
            "Catalog should expose Store-specific product mappings");
     expect(catalog.storeProducts(Store::EpicGamesStore).size() == 1,
            "Catalog should expose the Epic product mapping");
+    expect(catalog.storeProducts(Store::EpicGamesStore).front().region == Region::KR &&
+               catalog.storeProducts(Store::EpicGamesStore).front().edition ==
+                   GameEdition::Standard &&
+               catalog.storeProducts(Store::EpicGamesStore).front().offerType ==
+                   OfferType::BaseGame,
+           "Catalog should preserve the product comparison identity");
 }
 
 void testGameCatalogValidation() {
@@ -420,7 +477,8 @@ void testGameCatalogValidation() {
                                  "game_catalog_duplicate_steam_id.json",
                                  "game_catalog_missing_title.json",
                                  "game_catalog_invalid_platform.json",
-                                 "game_catalog_invalid_store.json"}) {
+                                 "game_catalog_invalid_store.json",
+                                 "game_catalog_missing_offer_identity.json"}) {
         bool rejected = false;
         try {
             GameCatalog catalog(fixtures + filename);

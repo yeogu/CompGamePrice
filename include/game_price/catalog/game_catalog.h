@@ -15,6 +15,9 @@ struct CatalogStoreProduct {
     std::string productId;
     std::string productUrl;
     std::vector<Platform> supportedPlatforms;
+    Region region{Region::KR};
+    GameEdition edition{GameEdition::Standard};
+    OfferType offerType{OfferType::BaseGame};
 };
 
 class GameCatalog {
