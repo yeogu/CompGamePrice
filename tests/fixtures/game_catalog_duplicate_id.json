@@ -1,7 +1,7 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "games": [
-    { "id": "duplicate", "title": "First", "platforms": ["Windows"], "stores": { "steam": { "productId": "1" } } },
-    { "id": "duplicate", "title": "Second", "platforms": ["Windows"], "stores": { "steam": { "productId": "2" } } }
+    { "id": "duplicate", "title": "First", "platforms": ["Windows"], "products": [{ "store": "Steam", "productId": "1", "productUrl": "https://example.com/1", "platforms": ["Windows"] }] },
+    { "id": "duplicate", "title": "Second", "platforms": ["Windows"], "products": [{ "store": "Steam", "productId": "2", "productUrl": "https://example.com/2", "platforms": ["Windows"] }] }
   ]
 }

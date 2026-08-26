@@ -13,6 +13,8 @@ struct CatalogStoreProduct {
     std::string gameId;
     Store store;
     std::string productId;
+    std::string productUrl;
+    std::vector<Platform> supportedPlatforms;
 };
 
 class GameCatalog {

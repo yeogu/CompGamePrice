@@ -1,11 +1,11 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "games": [
     {
       "id": "invalid-platform",
       "title": "Invalid Platform",
       "platforms": ["Windows", "Dreamcast"],
-      "stores": { "steam": { "productId": "1" } }
+      "products": [{ "store": "Steam", "productId": "1", "productUrl": "https://example.com/1", "platforms": ["Windows"] }]
     }
   ]
 }

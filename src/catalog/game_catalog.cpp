@@ -84,6 +84,13 @@ Platform platformFromString(const std::string& value) {
     throw std::runtime_error("Unsupported Game Catalog platform: " + value);
 }
 
+Store storeFromString(const std::string& value) {
+    if (value == "Steam") return Store::Steam;
+    if (value == "GooglePlay") return Store::GooglePlay;
+    if (value == "AppleAppStore") return Store::AppleAppStore;
+    throw std::runtime_error("Unsupported Game Catalog Store: " + value);
+}
+
 std::vector<Platform> parsePlatforms(
     sqlite3* database,
     const std::optional<std::string>& platformsJson,
@@ -122,23 +129,18 @@ GameCatalog::GameCatalog(const std::string& dataPath) {
                json_type(?1, '$.games');
     )sql");
     header.bindJson(json);
-    if (!header.next() || header.integer(0) != 1 || header.integer(1) != 1 ||
+    if (!header.next() || header.integer(0) != 1 || header.integer(1) != 2 ||
         header.optionalText(2) != std::optional<std::string>{"integer"} ||
         header.optionalText(3) != std::optional<std::string>{"array"}) {
         throw std::runtime_error(
-            "Game Catalog must be valid JSON with schemaVersion 1 and games array");
+            "Game Catalog must be valid JSON with schemaVersion 2 and games array");
     }
 
     Statement rows(parser.handle(), R"sql(
         SELECT json_extract(value, '$.id'), json_type(value, '$.id'),
                json_extract(value, '$.title'), json_type(value, '$.title'),
                json_extract(value, '$.platforms'), json_type(value, '$.platforms'),
-               json_extract(value, '$.stores.steam.productId'),
-               json_type(value, '$.stores.steam.productId'),
-               json_extract(value, '$.stores.googlePlay.productId'),
-               json_type(value, '$.stores.googlePlay.productId'),
-               json_extract(value, '$.stores.appleAppStore.productId'),
-               json_type(value, '$.stores.appleAppStore.productId')
+               json_extract(value, '$.products'), json_type(value, '$.products')
         FROM json_each(?1, '$.games');
     )sql");
     rows.bindJson(json);
@@ -160,12 +162,40 @@ GameCatalog::GameCatalog(const std::string& dataPath) {
             parser.handle(), rows.optionalText(4), rows.optionalText(5));
         games_.push_back(Game{*id, *title, normalizedTitle, std::move(platforms)});
 
-        bool foundStore = false;
-        const auto addStore = [&](Store store, int valueColumn, int typeColumn) {
-            const auto productId = rows.optionalText(valueColumn);
-            const auto type = rows.optionalText(typeColumn);
-            if (!productId && !type) return;
-            requireJsonString(productId, type, "stores.*.productId");
+        const auto productsJson = rows.optionalText(6);
+        if (!productsJson || rows.optionalText(7) != std::optional<std::string>{"array"}) {
+            throw std::runtime_error("Game Catalog requires games[].products array");
+        }
+        Statement products(parser.handle(), R"sql(
+            SELECT json_extract(value, '$.store'), json_type(value, '$.store'),
+                   json_extract(value, '$.productId'), json_type(value, '$.productId'),
+                   json_extract(value, '$.productUrl'), json_type(value, '$.productUrl'),
+                   json_extract(value, '$.platforms'), json_type(value, '$.platforms')
+            FROM json_each(?1);
+        )sql");
+        products.bindJson(*productsJson);
+        bool foundProduct = false;
+        while (products.next()) {
+            const auto storeName = products.optionalText(0);
+            const auto productId = products.optionalText(2);
+            const auto productUrl = products.optionalText(4);
+            requireJsonString(storeName, products.optionalText(1), "products[].store");
+            requireJsonString(productId, products.optionalText(3), "products[].productId");
+            requireJsonString(productUrl, products.optionalText(5), "products[].productUrl");
+            if (productUrl->rfind("https://", 0) != 0) {
+                throw std::runtime_error("Game Catalog productUrl must use HTTPS");
+            }
+            const auto store = storeFromString(*storeName);
+            auto productPlatforms = parsePlatforms(
+                parser.handle(), products.optionalText(6), products.optionalText(7));
+            for (const auto platform : productPlatforms) {
+                if (std::find(games_.back().supportedPlatforms.begin(),
+                              games_.back().supportedPlatforms.end(), platform) ==
+                    games_.back().supportedPlatforms.end()) {
+                    throw std::runtime_error(
+                        "Store product platform is not supported by its Game");
+                }
+            }
             if (std::any_of(
                     storeProducts_.begin(), storeProducts_.end(),
                     [&](const CatalogStoreProduct& product) {
@@ -174,14 +204,12 @@ GameCatalog::GameCatalog(const std::string& dataPath) {
                 throw std::runtime_error(
                     "Duplicate Store product id in Game Catalog: " + *productId);
             }
-            storeProducts_.push_back(CatalogStoreProduct{*id, store, *productId});
-            foundStore = true;
-        };
-        addStore(Store::Steam, 6, 7);
-        addStore(Store::GooglePlay, 8, 9);
-        addStore(Store::AppleAppStore, 10, 11);
-        if (!foundStore) {
-            throw std::runtime_error("Game Catalog game has no supported Store: " + *id);
+            storeProducts_.push_back(CatalogStoreProduct{
+                *id, store, *productId, *productUrl, std::move(productPlatforms)});
+            foundProduct = true;
+        }
+        if (!foundProduct) {
+            throw std::runtime_error("Game Catalog game has no Store products: " + *id);
         }
     }
     if (games_.empty()) throw std::runtime_error("Game Catalog games array cannot be empty");

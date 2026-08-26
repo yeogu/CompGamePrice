@@ -36,24 +36,11 @@ Json::Value gameJson(const Game& game) {
     return json;
 }
 
-std::string purchaseUrl(Store store, const std::string& productId) {
-    switch (store) {
-        case Store::Steam:
-            return "https://store.steampowered.com/app/" + productId;
-        case Store::GooglePlay:
-            return "https://play.google.com/store/apps/details?id=" + productId;
-        case Store::AppleAppStore:
-            return "https://apps.apple.com/app/id" + productId;
-    }
-    return {};
-}
-
 Json::Value productJson(const ProductPriceReport& report) {
     Json::Value json;
     json["productId"] = report.product.productId;
     json["store"] = toString(report.product.store);
-    json["purchaseUrl"] = purchaseUrl(
-        report.product.store, report.product.productId);
+    json["purchaseUrl"] = report.purchaseUrl;
     json["price"] = moneyJson(report.product.currentPrice);
     if (report.product.regularPrice) {
         json["regularPrice"] = moneyJson(*report.product.regularPrice);

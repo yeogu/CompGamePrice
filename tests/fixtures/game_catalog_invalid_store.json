@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 2,
+  "games": [
+    {
+      "id": "invalid-store",
+      "title": "Invalid Store",
+      "platforms": ["Windows"],
+      "products": [
+        {
+          "store": "UnknownStore",
+          "productId": "1",
+          "productUrl": "https://example.com/1",
+          "platforms": ["Windows"]
+        }
+      ]
+    }
+  ]
+}

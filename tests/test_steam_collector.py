@@ -102,6 +102,7 @@ class SteamCollectorTest(unittest.TestCase):
             "game_catalog_duplicate_steam_id.json",
             "game_catalog_missing_title.json",
             "game_catalog_invalid_platform.json",
+            "game_catalog_invalid_store.json",
         ):
             with self.subTest(fixture=fixture):
                 with self.assertRaises(ValueError):

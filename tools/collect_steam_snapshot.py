@@ -190,8 +190,8 @@ def write_snapshot(
 
 def load_steam_targets(path: Path) -> list[tuple[str, str]]:
     payload = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict) or payload.get("schemaVersion") != 1:
-        raise ValueError("Game catalog requires schemaVersion 1")
+    if not isinstance(payload, dict) or payload.get("schemaVersion") != 2:
+        raise ValueError("Game catalog requires schemaVersion 2")
     games = payload.get("games")
     if not isinstance(games, list) or not games:
         raise ValueError("Game catalog must contain a non-empty games list")
@@ -227,21 +227,39 @@ def load_steam_targets(path: Path) -> list[tuple[str, str]]:
         if len(platforms) != len(set(platforms)):
             raise ValueError(f"Catalog game {game_id} contains duplicate platforms")
 
-        stores = game.get("stores")
-        if not isinstance(stores, dict):
-            raise ValueError(f"Catalog game {game_id} requires stores")
-        steam = stores.get("steam")
-        if steam is None:
-            continue
-        if not isinstance(steam, dict):
-            raise ValueError(f"Steam mapping for {game_id} must be an object")
-        app_id = steam.get("productId")
-        if not isinstance(app_id, str) or not app_id.isdigit():
-            raise ValueError(f"Steam mapping for {game_id} requires numeric productId")
-        if app_id in seen_app_ids:
-            raise ValueError(f"Duplicate Steam productId: {app_id}")
-        seen_app_ids.add(app_id)
-        targets.append((app_id, game_id))
+        products = game.get("products")
+        if not isinstance(products, list) or not products:
+            raise ValueError(f"Catalog game {game_id} requires products")
+        for product in products:
+            if not isinstance(product, dict):
+                raise ValueError(f"Catalog game {game_id} product must be an object")
+            store = product.get("store")
+            if store not in {"Steam", "GooglePlay", "AppleAppStore"}:
+                raise ValueError(f"Catalog game {game_id} contains unsupported Store")
+            product_id = product.get("productId")
+            product_url = product.get("productUrl")
+            product_platforms = product.get("platforms")
+            if not isinstance(product_id, str) or not product_id:
+                raise ValueError(f"Catalog product for {game_id} requires productId")
+            if not isinstance(product_url, str) or not product_url.startswith("https://"):
+                raise ValueError(f"Catalog product for {game_id} requires HTTPS productUrl")
+            if not isinstance(product_platforms, list) or not product_platforms:
+                raise ValueError(f"Catalog product for {game_id} requires platforms")
+            if (any(platform not in supported_platforms for platform in product_platforms)
+                    or len(product_platforms) != len(set(product_platforms))):
+                raise ValueError(f"Catalog product for {game_id} has invalid platforms")
+            if any(platform not in platforms for platform in product_platforms):
+                raise ValueError(
+                    f"Catalog product platform is not supported by game {game_id}"
+                )
+            if store != "Steam":
+                continue
+            if not product_id.isdigit():
+                raise ValueError(f"Steam mapping for {game_id} requires numeric productId")
+            if product_id in seen_app_ids:
+                raise ValueError(f"Duplicate Steam productId: {product_id}")
+            seen_app_ids.add(product_id)
+            targets.append((product_id, game_id))
     if not targets:
         raise ValueError("Game catalog contains no Steam products")
     return targets

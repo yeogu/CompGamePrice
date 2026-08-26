@@ -65,8 +65,17 @@ std::optional<GamePriceReport> GameQueryService::buildReport(
     productReports.reserve(comparison->products.size());
     for (const auto& product : comparison->products) {
         const auto history = historyService.analyze(product, observedSince);
+        std::string purchaseUrl;
+        for (const auto& catalogProduct : catalog_.storeProducts(product.store)) {
+            if (catalogProduct.gameId == comparison->game.id &&
+                catalogProduct.productId == product.productId) {
+                purchaseUrl = catalogProduct.productUrl;
+                break;
+            }
+        }
         productReports.push_back(ProductPriceReport{
             product,
+            std::move(purchaseUrl),
             history,
             history ? std::optional<PurchaseRecommendationResult>{
                           recommendationService.recommend(*history)}

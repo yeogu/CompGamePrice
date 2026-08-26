@@ -150,21 +150,28 @@ python3 tools/collect_steam_snapshot.py \
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "games": [
     {
       "id": "stardew-valley",
       "title": "Stardew Valley",
       "platforms": ["Windows", "macOS", "Linux", "Android", "iOS", "iPadOS"],
-      "stores": {
-        "steam": { "productId": "413150" },
-        "googlePlay": { "productId": "com.chucklefish.stardewvalley" },
-        "appleAppStore": { "productId": "1406710800" }
-      }
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "413150",
+          "productUrl": "https://store.steampowered.com/app/413150",
+          "platforms": ["Windows", "macOS", "Linux"]
+        }
+      ]
     }
   ]
 }
 ```
+
+`products` 배열은 Store 종류와 무관하게 같은 구조로 파싱됩니다. 새로운 Store는
+`Store` enum과 Provider를 추가하고 이 배열에 상품을 등록하며, 기존 카탈로그 파싱
+알고리즘과 가격 비교·이력·추천 서비스는 수정하지 않습니다.
 
 다중 수집은 Store에 부담을 주지 않도록 요청 사이에 기본 1초를 기다립니다. 각 게임은
 일시적 실패 시 최대 3번까지 1초, 2초 간격으로 재시도하며, 한 게임의 최종 실패가

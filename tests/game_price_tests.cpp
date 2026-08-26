@@ -344,6 +344,11 @@ void testGameCatalogSearch() {
            "Game should expose catalog-level platform availability");
     expect(catalog.storeProducts(Store::Steam).size() == 3,
            "Catalog should expose every Steam product mapping");
+    expect(catalog.storeProducts(Store::Steam).front().productUrl ==
+               "https://store.steampowered.com/app/413150",
+           "Catalog product should own its purchase URL");
+    expect(catalog.storeProducts(Store::Steam).front().supportedPlatforms.size() == 3,
+           "Catalog product should expose Store-specific platforms");
     expect(catalog.storeProducts(Store::GooglePlay).size() == 1,
            "Catalog should expose Store-specific product mappings");
 }
@@ -353,7 +358,8 @@ void testGameCatalogValidation() {
     for (const auto& filename : {"game_catalog_duplicate_id.json",
                                  "game_catalog_duplicate_steam_id.json",
                                  "game_catalog_missing_title.json",
-                                 "game_catalog_invalid_platform.json"}) {
+                                 "game_catalog_invalid_platform.json",
+                                 "game_catalog_invalid_store.json"}) {
         bool rejected = false;
         try {
             GameCatalog catalog(fixtures + filename);
