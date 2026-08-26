@@ -7,6 +7,8 @@
 #include <drogon/drogon.h>
 
 #include <cstdlib>
+#include <algorithm>
+#include <cctype>
 #include <iostream>
 #include <string>
 
@@ -206,6 +208,56 @@ int main() {
                         history["observations"].append(std::move(item));
                     }
                     response["histories"].append(std::move(history));
+                }
+                callback(jsonResponse(response));
+            },
+            {drogon::Get});
+
+        drogon::app().registerHandler(
+            "/api/collection-runs",
+            [&queryService](const drogon::HttpRequestPtr& request,
+                            std::function<void(const HttpResponsePtr&)>&& callback) {
+                std::size_t limit = 20;
+                const auto requestedLimit = request->getParameter("limit");
+                if (!requestedLimit.empty()) {
+                    if (!std::all_of(
+                            requestedLimit.begin(), requestedLimit.end(),
+                            [](unsigned char character) { return std::isdigit(character); })) {
+                        callback(jsonError(
+                            drogon::k400BadRequest,
+                            "limit must be an integer between 1 and 100"));
+                        return;
+                    }
+                    try {
+                        limit = static_cast<std::size_t>(std::stoul(requestedLimit));
+                    } catch (const std::exception&) {
+                        limit = 0;
+                    }
+                    if (limit < 1 || limit > 100) {
+                        callback(jsonError(
+                            drogon::k400BadRequest,
+                            "limit must be an integer between 1 and 100"));
+                        return;
+                    }
+                }
+
+                const auto runs = queryService.getCollectionRuns();
+                Json::Value response;
+                response["runs"] = Json::arrayValue;
+                std::size_t added = 0;
+                for (auto run = runs.rbegin(); run != runs.rend() && added < limit;
+                     ++run, ++added) {
+                    Json::Value item;
+                    item["id"] = Json::Int64(run->id);
+                    item["store"] = toString(run->store);
+                    item["status"] = toString(run->status);
+                    item["productsFound"] = Json::UInt64(run->productsFound);
+                    item["startedAt"] = run->startedAt;
+                    if (!run->finishedAt.empty()) item["finishedAt"] = run->finishedAt;
+                    if (!run->errorMessage.empty()) {
+                        item["errorMessage"] = run->errorMessage;
+                    }
+                    response["runs"].append(std::move(item));
                 }
                 callback(jsonResponse(response));
             },

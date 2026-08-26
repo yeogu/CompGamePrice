@@ -65,3 +65,13 @@ export interface GamePriceHistoryResponse {
   game: GameSummary
   histories: ProductPriceHistory[]
 }
+
+export interface CollectionRun {
+  id: number
+  store: string
+  status: 'RUNNING' | 'SUCCEEDED' | 'FAILED'
+  productsFound: number
+  startedAt: string
+  finishedAt?: string
+  errorMessage?: string
+}

@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from 'react'
-import { getGamePriceHistory, getGamePrices, searchGames } from './api'
+import { getCollectionRuns, getGamePriceHistory, getGamePrices, searchGames } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
-import type { GamePriceHistoryResponse, GamePriceResponse, GameSummary, Money } from './types'
+import type { CollectionRun, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Money } from './types'
 
 const formatMoney = (money: Money) =>
   new Intl.NumberFormat('ko-KR', {
@@ -16,6 +16,8 @@ function App() {
   const [report, setReport] = useState<GamePriceResponse | null>(null)
   const [history, setHistory] = useState<GamePriceHistoryResponse | null>(null)
   const [selectedGameId, setSelectedGameId] = useState('')
+  const [collectionRuns, setCollectionRuns] = useState<CollectionRun[]>([])
+  const [collectionStatusError, setCollectionStatusError] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const requestSequence = useRef(0)
@@ -72,6 +74,9 @@ function App() {
 
   useEffect(() => {
     void submitSearch()
+    void getCollectionRuns()
+      .then(setCollectionRuns)
+      .catch(() => setCollectionStatusError('수집 상태를 불러오지 못했습니다.'))
     // Initial example search only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -96,6 +101,37 @@ function App() {
       </header>
 
       {error && <p className="notice error">{error}</p>}
+
+      <section className="collection-panel" aria-label="최근 가격 수집 상태">
+        <div className="collection-heading">
+          <div>
+            <p className="eyebrow">COLLECTION STATUS</p>
+            <h2>최근 수집 실행</h2>
+          </div>
+          {collectionRuns[0] && (
+            <time dateTime={collectionRuns[0].startedAt}>
+              {new Intl.DateTimeFormat('ko-KR', {
+                dateStyle: 'medium', timeStyle: 'short',
+              }).format(new Date(collectionRuns[0].startedAt))}
+            </time>
+          )}
+        </div>
+        {collectionStatusError && <p className="status-message error-text">{collectionStatusError}</p>}
+        {!collectionStatusError && collectionRuns.length === 0 && (
+          <p className="status-message">아직 저장된 수집 실행이 없습니다.</p>
+        )}
+        <div className="collection-run-list">
+          {collectionRuns.map((run) => (
+            <article key={run.id} className={`collection-run ${run.status.toLowerCase()}`}>
+              <span className="status-dot" />
+              <strong>{run.store}</strong>
+              <span>{run.status === 'SUCCEEDED' ? '성공' : run.status === 'FAILED' ? '실패' : '실행 중'}</span>
+              <small>{run.productsFound}개 상품</small>
+              {run.errorMessage && <p>{run.errorMessage}</p>}
+            </article>
+          ))}
+        </div>
+      </section>
 
       {games.length > 1 && (
         <section className="panel">

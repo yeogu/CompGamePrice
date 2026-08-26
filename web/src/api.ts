@@ -1,4 +1,4 @@
-import type { GamePriceHistoryResponse, GamePriceResponse, GameSummary } from './types'
+import type { CollectionRun, GamePriceHistoryResponse, GamePriceResponse, GameSummary } from './types'
 
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8080'
 
@@ -30,4 +30,11 @@ export function getGamePriceHistory(
   return getJson<GamePriceHistoryResponse>(
     `/api/games/${encodeURIComponent(gameId)}/price-history${query}`,
   )
+}
+
+export async function getCollectionRuns(limit = 6): Promise<CollectionRun[]> {
+  const result = await getJson<{ runs: CollectionRun[] }>(
+    `/api/collection-runs?limit=${limit}`,
+  )
+  return result.runs
 }

@@ -54,3 +54,12 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
 [[ "${status}" == "200" ]]
 grep -q '"title":"Terraria"' "${response_body}"
 grep -q '"products":\[\]' "${response_body}"
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/collection-runs?limit=5")
+[[ "${status}" == "200" ]]
+grep -q '"runs":\[\]' "${response_body}"
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/collection-runs?limit=invalid")
+[[ "${status}" == "400" ]]

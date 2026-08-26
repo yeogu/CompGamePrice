@@ -40,6 +40,18 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 
 .notice, .panel { padding: 18px 20px; background: #111f19; border: 1px solid #263c31; border-radius: 14px; }
 .error { color: #ffb4a8; border-color: #633a34; }
+.collection-panel { margin-bottom: 42px; padding: 22px; background: rgba(16, 31, 24, 0.72); border: 1px solid #263c31; border-radius: 16px; }
+.collection-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; }
+.collection-heading h2 { font-size: 1.55rem; }
+.collection-heading time, .status-message { color: #82968b; }
+.collection-run-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 9px; margin-top: 18px; }
+.collection-run { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px 9px; padding: 12px; background: #0c1912; border-radius: 10px; }
+.collection-run small { grid-column: 2 / -1; color: #82968b; }
+.collection-run p { grid-column: 1 / -1; margin: 5px 0 0; color: #ffb4a8; font-size: 0.8rem; }
+.status-dot { width: 9px; height: 9px; background: #f6c85f; border-radius: 50%; }
+.collection-run.succeeded .status-dot { background: #73e2a7; }
+.collection-run.failed .status-dot { background: #ff7b6b; }
+.error-text { color: #ffb4a8; }
 .game-list { display: flex; flex-wrap: wrap; gap: 10px; }
 .game-list button { padding: 10px 16px; }
 .game-list button.selected { box-shadow: 0 0 0 3px rgba(115, 226, 167, 0.25); }
@@ -102,6 +114,7 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
   main { width: min(100% - 28px, 620px); padding-top: 30px; }
   .hero { padding-bottom: 46px; }
   .search-form, .result-heading { align-items: stretch; flex-direction: column; }
+  .collection-heading { align-items: flex-start; flex-direction: column; }
   .search-form button { padding: 16px; }
   .best-summary { justify-items: start; }
   .price-grid { grid-template-columns: 1fr; }
