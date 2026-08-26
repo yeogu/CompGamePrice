@@ -10,6 +10,21 @@ const formatMoney = (money: Money) =>
     maximumFractionDigits: 0,
   }).format(money.minorAmount)
 
+const recommendationLabel: Record<string, string> = {
+  StrongBuy: '구매 추천',
+  Buy: '구매 고려',
+  Wait: '조금 더 기다리기',
+  InsufficientData: '데이터 수집 중',
+}
+
+const recommendationReason: Record<string, string> = {
+  'Current price is the historical low.': '현재 가격이 수집된 기간의 최저가입니다.',
+  'Price fell since the previous observation.': '직전 관측보다 가격이 내려갔습니다.',
+  'Price rose since the previous observation.': '직전 관측보다 가격이 올랐습니다.',
+  'Current price is at or above the observed average.': '현재 가격이 관측 평균 이상입니다.',
+  'Current price is not close enough to the historical low.': '현재 가격이 역대 최저가와 충분히 가깝지 않습니다.',
+}
+
 function App() {
   const [query, setQuery] = useState('')
   const [games, setGames] = useState<GameSummary[]>([])
@@ -192,9 +207,26 @@ function App() {
                     <span>역대 최저</span>
                     <strong>{product.history ? formatMoney(product.history.lowestPrice) : '데이터 없음'}</strong>
                   </div>
-                  <p className="recommendation">
-                    {product.recommendation?.rating ?? '분석 대기'}
-                  </p>
+                  {product.recommendation ? (
+                    <div className={`recommendation ${product.recommendation.rating.toLowerCase()}`}>
+                      <strong>
+                        {recommendationLabel[product.recommendation.rating] ?? product.recommendation.rating}
+                      </strong>
+                      <span>
+                        역대 최저보다 {formatMoney({
+                          minorAmount: product.recommendation.amountAboveHistoricalLow,
+                          currency: product.price.currency,
+                        })} 높음 ({product.recommendation.percentAboveHistoricalLow}%)
+                      </span>
+                      <ul>
+                        {product.recommendation.reasons.map((reason) => (
+                          <li key={reason}>{recommendationReason[reason] ?? reason}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <p className="recommendation pending">추천 분석을 위한 가격 이력이 없습니다.</p>
+                  )}
                 </article>
               )
             })}
