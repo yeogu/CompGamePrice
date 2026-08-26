@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -46,14 +47,27 @@ class SteamPipelineTest(unittest.TestCase):
             return Completed(0)
 
         with tempfile.TemporaryDirectory() as directory:
-            output = Path(directory) / "snapshot"
+            root = Path(directory)
+            output = root / "snapshot"
+            archive = root / "archive"
+            old_archive = archive / "413150" / "old.json.gz"
+            old_archive.parent.mkdir(parents=True)
+            old_archive.write_bytes(b"old")
+            os.utime(old_archive, (1, 1))
+            log = root / "collector.log"
+            log.write_bytes(b"old-line\n" * 30 + b"recent\n")
             exit_code = steam_pipeline.run_pipeline(
                 Path("build/game_price_tracker"),
                 TEST_TARGETS,
                 output,
                 catalog_path=ROOT / "data" / "games.txt",
+                archive_directory=archive,
                 request_delay=0,
                 retry_delay=0,
+                archive_retention_days=1,
+                log_paths=[log],
+                log_max_bytes=100,
+                log_keep_bytes=40,
                 fetcher=fixture_fetch,
                 command_runner=fake_runner,
             )
@@ -66,6 +80,10 @@ class SteamPipelineTest(unittest.TestCase):
             self.assertEqual(report["collected"], 1)
             self.assertEqual(report["failures"], [])
             self.assertEqual(report["importExitCode"], 0)
+            self.assertEqual(report["archiveFilesRemoved"], 1)
+            self.assertEqual(report["logsTrimmed"], 1)
+            self.assertFalse(old_archive.exists())
+            self.assertLessEqual(log.stat().st_size, 40)
 
     def test_does_not_import_when_every_collection_fails(self):
         def failed_fetch(_app_id, _country, _language, _timeout):

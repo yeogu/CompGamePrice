@@ -193,6 +193,14 @@ snapshots/archive/
 Archive는 가격이나 파서 결과를 사후 검증하고 Steam 응답 Schema 변경을 분석하기
 위한 데이터입니다. `--archive-dir PATH`로 위치를 바꿀 수 있으며 파이프라인에서
 생성된 모든 `snapshots/` 데이터는 Git 추적에서 제외됩니다.
+기본 보관 기간은 90일이며 기간이 지난 `.json.gz`와 대응 메타데이터는 파이프라인
+종료 시 삭제됩니다. `latest` Snapshot과 SQLite 가격 이력은 이 정책의 영향을 받지
+않습니다. 기간은 `--archive-retention-days`로 변경할 수 있습니다.
+
+`snapshots/logs`의 stdout과 stderr는 각각 1MB를 넘으면 최근의 완전한 로그 줄을
+기준으로 약 512KB만 유지합니다. 한도는 `--log-max-bytes`, 유지 크기는
+`--log-keep-bytes`로 조정합니다. 최근 실행 보고서의 `archiveFilesRemoved`와
+`logsTrimmed`에서 해당 실행의 정리 결과를 확인할 수 있습니다.
 
 `snapshots/`는 실행 중 생성되는 데이터이므로 Git에서 제외됩니다. Steam Storefront
 `appdetails` 응답은 Steamworks 공식 가격 API로 문서화된 계약이 아니므로, 응답

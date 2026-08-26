@@ -13,6 +13,7 @@ import sys
 from datetime import datetime, timezone
 
 import collect_steam_snapshot as collector
+import storage_retention
 
 
 class PipelineAlreadyRunning(RuntimeError):
@@ -64,6 +65,10 @@ def run_pipeline(
     request_delay: float = 1.0,
     max_attempts: int = 3,
     retry_delay: float = 1.0,
+    archive_retention_days: int = 90,
+    log_paths: list[Path] | None = None,
+    log_max_bytes: int = 1_048_576,
+    log_keep_bytes: int = 524_288,
     fetcher=None,
     command_runner=subprocess.run,
 ) -> int:
@@ -102,6 +107,15 @@ def run_pipeline(
             )
             import_exit_code = completed.returncode
 
+        archive_files_removed = 0
+        if archive_directory is not None:
+            archive_files_removed = storage_retention.prune_archive(
+                archive_directory, archive_retention_days
+            )
+        logs_trimmed = storage_retention.trim_logs(
+            log_paths or [], log_max_bytes, log_keep_bytes
+        )
+
         report = {
             "startedAt": started_at,
             "finishedAt": timestamp(),
@@ -111,6 +125,8 @@ def run_pipeline(
                 {"appId": app_id, "error": error} for app_id, error in failures
             ],
             "importExitCode": import_exit_code,
+            "archiveFilesRemoved": archive_files_removed,
+            "logsTrimmed": logs_trimmed,
         }
         collector.atomic_write(
             output_directory / "steam_pipeline_run.json",
@@ -137,6 +153,9 @@ def main() -> int:
     parser.add_argument("--request-delay", default=1.0, type=float)
     parser.add_argument("--max-attempts", default=3, type=int)
     parser.add_argument("--retry-delay", default=1.0, type=float)
+    parser.add_argument("--archive-retention-days", default=90, type=int)
+    parser.add_argument("--log-max-bytes", default=1_048_576, type=int)
+    parser.add_argument("--log-keep-bytes", default=524_288, type=int)
     parser.add_argument(
         "--input",
         type=Path,
@@ -154,6 +173,7 @@ def main() -> int:
         fetcher = fixture_fetch
 
     try:
+        log_directory = arguments.output_dir.parent / "logs"
         return run_pipeline(
             arguments.tracker,
             arguments.targets,
@@ -166,6 +186,13 @@ def main() -> int:
             arguments.request_delay,
             arguments.max_attempts,
             arguments.retry_delay,
+            arguments.archive_retention_days,
+            [
+                log_directory / "steam_pipeline.stdout.log",
+                log_directory / "steam_pipeline.stderr.log",
+            ],
+            arguments.log_max_bytes,
+            arguments.log_keep_bytes,
             fetcher,
         )
     except PipelineAlreadyRunning as error:
