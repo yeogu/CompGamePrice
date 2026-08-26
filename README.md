@@ -72,14 +72,14 @@ snapshot을 공통 `StoreProduct`로 변환합니다.
 python3 tools/run_steam_pipeline.py
 ```
 
-이 명령은 기본적으로 `data/steam_collection_targets.json`을 수집하고,
+이 명령은 기본적으로 `data/game_catalog.json`의 Steam 상품을 수집하고,
 `snapshots/latest`에 저장한 뒤 `build/game_price_tracker collect-steam-all`을
 실행합니다. 다른 실행 파일이나 경로를 사용할 수도 있습니다.
 
 ```sh
 python3 tools/run_steam_pipeline.py \
   --tracker build/game_price_tracker \
-  --targets data/steam_collection_targets.json \
+  --catalog data/game_catalog.json \
   --output-dir snapshots/latest
 ```
 
@@ -141,18 +141,26 @@ python3 tools/collect_steam_snapshot.py && ./build/game_price_tracker collect-st
 
 ```sh
 python3 tools/collect_steam_snapshot.py \
-  --targets data/steam_collection_targets.json && \
+  --catalog data/game_catalog.json && \
 ./build/game_price_tracker collect-steam-all \
   --data-dir snapshots/latest
 ```
 
-대상은 canonical Game ID와 Steam App ID의 명시적인 매핑으로 관리합니다.
+게임과 Store 상품 매핑은 하나의 통합 카탈로그로 관리합니다.
 
 ```json
 {
-  "targets": [
-    { "appId": "413150", "gameId": "stardew-valley" },
-    { "appId": "105600", "gameId": "terraria" }
+  "schemaVersion": 1,
+  "games": [
+    {
+      "id": "stardew-valley",
+      "title": "Stardew Valley",
+      "stores": {
+        "steam": { "productId": "413150" },
+        "googlePlay": { "productId": "com.chucklefish.stardewvalley" },
+        "appleAppStore": { "productId": "1406710800" }
+      }
+    }
   ]
 }
 ```
@@ -164,11 +172,10 @@ python3 tools/collect_steam_snapshot.py \
 반환합니다. 호출 간격과 재시도는 `--request-delay`, `--max-attempts`,
 `--retry-delay`로 조정할 수 있습니다.
 
-`collect-steam-all`은 `data/games.txt`에 등록된 모든 canonical Game을 순회하고,
+`collect-steam-all`은 `data/game_catalog.json`에 등록된 모든 canonical Game을 순회하고,
 하나의 `steam_products.txt`에서 각 Game에 해당하는 상품을 찾아 정규화합니다.
-따라서 새 게임을 수집하려면 `games.txt`와 `steam_collection_targets.json` 양쪽에
-동일한 canonical Game ID를 등록해야 합니다. 파이프라인은 네트워크 요청 전에 두
-파일의 매핑을 검증하며, target에 Catalog에 없는 Game ID가 있으면 즉시 실패합니다.
+새 게임은 이 JSON에 Game과 Store별 `productId`를 한 번만 등록하면 됩니다.
+파이프라인은 네트워크 요청 전에 필수 필드와 중복 Game/상품 ID를 검증합니다.
 
 기본 대상은 Stardew Valley Steam app `413150`, 국가 코드는 `kr`입니다. 수집기는
 Python 표준 라이브러리만 사용하며 다음 파일을 원자적으로 교체합니다.

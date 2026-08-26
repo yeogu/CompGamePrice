@@ -35,9 +35,9 @@ def scalar(connection: sqlite3.Connection, query: str) -> int:
 def main() -> int:
     if len(sys.argv) != 6:
         raise RuntimeError(
-            "Expected: tracker python pipeline fixture targets"
+            "Expected: tracker python pipeline fixture catalog"
         )
-    tracker, python, pipeline, fixture, targets = sys.argv[1:]
+    tracker, python, pipeline, fixture, catalog = sys.argv[1:]
 
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
@@ -51,10 +51,8 @@ def main() -> int:
             pipeline,
             "--tracker",
             tracker,
-            "--targets",
-            targets,
             "--catalog",
-            str(Path(targets).resolve().parents[2] / "data" / "games.txt"),
+            catalog,
             "--input",
             fixture,
             "--output-dir",
@@ -94,7 +92,7 @@ def main() -> int:
             ).fetchone()[0]
             if observed_at != first_metadata["collectedAt"]:
                 raise RuntimeError("DB history must preserve the first collection timestamp")
-            if scalar(connection, "SELECT COUNT(*) FROM crawl_runs") != 4:
+            if scalar(connection, "SELECT COUNT(*) FROM crawl_runs") != 6:
                 raise RuntimeError(
                     "Each import should record one crawl run per catalog game"
                 )

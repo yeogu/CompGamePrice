@@ -188,55 +188,53 @@ def write_snapshot(
     write_products_snapshot(output_directory, [row])
 
 
-def load_targets(path: Path) -> list[tuple[str, str]]:
+def load_steam_targets(path: Path) -> list[tuple[str, str]]:
     payload = json.loads(path.read_text(encoding="utf-8"))
-    raw_targets = payload.get("targets") if isinstance(payload, dict) else None
-    if not isinstance(raw_targets, list) or not raw_targets:
-        raise ValueError("Steam targets must contain a non-empty targets list")
+    if not isinstance(payload, dict) or payload.get("schemaVersion") != 1:
+        raise ValueError("Game catalog requires schemaVersion 1")
+    games = payload.get("games")
+    if not isinstance(games, list) or not games:
+        raise ValueError("Game catalog must contain a non-empty games list")
 
     targets: list[tuple[str, str]] = []
+    seen_game_ids: set[str] = set()
+    seen_titles: set[str] = set()
     seen_app_ids: set[str] = set()
-    for target in raw_targets:
-        if not isinstance(target, dict):
-            raise ValueError("Each Steam target must be an object")
-        app_id = str(target.get("appId", ""))
-        game_id = target.get("gameId")
-        if not app_id.isdigit() or not isinstance(game_id, str) or not game_id:
-            raise ValueError("Each Steam target requires numeric appId and gameId")
+    for game in games:
+        if not isinstance(game, dict):
+            raise ValueError("Each catalog game must be an object")
+        game_id = game.get("id")
+        title = game.get("title")
+        if not isinstance(game_id, str) or not game_id.strip():
+            raise ValueError("Each catalog game requires a non-empty id")
+        if not isinstance(title, str) or not title.strip():
+            raise ValueError(f"Catalog game {game_id} requires a non-empty title")
+        normalized_title = " ".join(title.lower().split())
+        if game_id in seen_game_ids:
+            raise ValueError(f"Duplicate canonical game id: {game_id}")
+        if normalized_title in seen_titles:
+            raise ValueError(f"Duplicate canonical game title: {title}")
+        seen_game_ids.add(game_id)
+        seen_titles.add(normalized_title)
+
+        stores = game.get("stores")
+        if not isinstance(stores, dict):
+            raise ValueError(f"Catalog game {game_id} requires stores")
+        steam = stores.get("steam")
+        if steam is None:
+            continue
+        if not isinstance(steam, dict):
+            raise ValueError(f"Steam mapping for {game_id} must be an object")
+        app_id = steam.get("productId")
+        if not isinstance(app_id, str) or not app_id.isdigit():
+            raise ValueError(f"Steam mapping for {game_id} requires numeric productId")
         if app_id in seen_app_ids:
-            raise ValueError(f"Duplicate Steam appId: {app_id}")
+            raise ValueError(f"Duplicate Steam productId: {app_id}")
         seen_app_ids.add(app_id)
         targets.append((app_id, game_id))
+    if not targets:
+        raise ValueError("Game catalog contains no Steam products")
     return targets
-
-
-def load_catalog_game_ids(path: Path) -> set[str]:
-    game_ids: set[str] = set()
-    for line_number, raw_line in enumerate(
-        path.read_text(encoding="utf-8").splitlines(), start=1
-    ):
-        line = raw_line.strip()
-        if not line or line.startswith("#"):
-            continue
-        fields = line.split("|")
-        if len(fields) != 2 or not fields[0] or not fields[1]:
-            raise ValueError(f"Invalid game catalog row at line {line_number}")
-        if fields[0] in game_ids:
-            raise ValueError(f"Duplicate canonical game id: {fields[0]}")
-        game_ids.add(fields[0])
-    if not game_ids:
-        raise ValueError("Game catalog must contain at least one game")
-    return game_ids
-
-
-def validate_targets_in_catalog(
-    targets: list[tuple[str, str]], catalog_game_ids: set[str]
-) -> None:
-    unknown = sorted({game_id for _app_id, game_id in targets} - catalog_game_ids)
-    if unknown:
-        raise ValueError(
-            "Steam targets reference unknown canonical game ids: " + ", ".join(unknown)
-        )
 
 
 def write_failure(
@@ -319,7 +317,7 @@ def main() -> int:
     parser.add_argument("--output-dir", default="snapshots/latest", type=Path)
     parser.add_argument("--archive-dir", type=Path)
     parser.add_argument("--timeout", default=15.0, type=float)
-    parser.add_argument("--targets", type=Path, help="JSON file containing Steam targets.")
+    parser.add_argument("--catalog", type=Path, help="Unified JSON game catalog.")
     parser.add_argument("--request-delay", default=1.0, type=float)
     parser.add_argument("--max-attempts", default=3, type=int)
     parser.add_argument("--retry-delay", default=1.0, type=float)
@@ -330,11 +328,11 @@ def main() -> int:
     )
     arguments = parser.parse_args()
 
-    if arguments.targets and arguments.input:
-        parser.error("--targets and --input cannot be used together")
+    if arguments.catalog and arguments.input:
+        parser.error("--catalog and --input cannot be used together")
 
-    if arguments.targets:
-        targets = load_targets(arguments.targets)
+    if arguments.catalog:
+        targets = load_steam_targets(arguments.catalog)
         success_count, failures = collect_targets(
             targets,
             arguments.output_dir,

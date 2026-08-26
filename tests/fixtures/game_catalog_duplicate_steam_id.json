@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "games": [
+    { "id": "first", "title": "First", "stores": { "steam": { "productId": "1" } } },
+    { "id": "second", "title": "Second", "stores": { "steam": { "productId": "1" } } }
+  ]
+}

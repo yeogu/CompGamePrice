@@ -283,7 +283,7 @@ int main(int argc, char* argv[]) {
         repository.initializeSchema();
 
         const std::string defaultDataDirectory = SAMPLE_DATA_DIR;
-        GameCatalog catalog(defaultDataDirectory + "/games.txt");
+        GameCatalog catalog(defaultDataDirectory + "/game_catalog.json");
         GameQueryService queryService(catalog, repository);
 
         if (options.command == AppCommand::CollectionRuns) {

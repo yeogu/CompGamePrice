@@ -85,23 +85,28 @@ class SteamCollectorTest(unittest.TestCase):
             "413150|stardew-valley|16000|12000|25|windows,mac,linux|true",
         )
 
-    def test_loads_and_validates_collection_targets(self):
-        targets = steam_collector.load_targets(
-            ROOT / "data" / "steam_collection_targets.json"
-        )
+    def test_loads_steam_targets_from_unified_catalog(self):
+        targets = steam_collector.load_steam_targets(ROOT / "data" / "game_catalog.json")
         self.assertEqual(
             targets,
-            [("413150", "stardew-valley"), ("105600", "terraria")],
+            [
+                ("413150", "stardew-valley"),
+                ("105600", "terraria"),
+                ("367520", "hollow-knight"),
+            ],
         )
 
-        with tempfile.TemporaryDirectory() as directory:
-            invalid = Path(directory) / "invalid.json"
-            invalid.write_text(
-                '{"targets":[{"appId":"413150","gameId":"one"},'
-                '{"appId":"413150","gameId":"two"}]}'
-            )
-            with self.assertRaisesRegex(ValueError, "Duplicate"):
-                steam_collector.load_targets(invalid)
+    def test_rejects_invalid_unified_catalogs(self):
+        for fixture in (
+            "game_catalog_duplicate_id.json",
+            "game_catalog_duplicate_steam_id.json",
+            "game_catalog_missing_title.json",
+        ):
+            with self.subTest(fixture=fixture):
+                with self.assertRaises(ValueError):
+                    steam_collector.load_steam_targets(
+                        ROOT / "tests" / "fixtures" / fixture
+                    )
 
     def test_batch_retries_and_isolates_failed_games(self):
         fixture = (
@@ -141,18 +146,6 @@ class SteamCollectorTest(unittest.TestCase):
             error = json.loads((output / "steam_999.error.json").read_text())
             self.assertEqual(error["attempts"], 3)
             self.assertEqual(error["error"], "temporary Steam failure")
-
-    def test_validates_target_game_ids_against_catalog(self):
-        game_ids = steam_collector.load_catalog_game_ids(ROOT / "data" / "games.txt")
-        self.assertEqual(game_ids, {"stardew-valley", "terraria"})
-        steam_collector.validate_targets_in_catalog(
-            [("413150", "stardew-valley")], game_ids
-        )
-        with self.assertRaisesRegex(ValueError, "unknown-game"):
-            steam_collector.validate_targets_in_catalog(
-                [("999", "unknown-game")], game_ids
-            )
-
 
 if __name__ == "__main__":
     unittest.main()

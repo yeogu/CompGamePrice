@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "games": [
+    {
+      "id": "stardew-valley",
+      "title": "Stardew Valley",
+      "stores": {
+        "steam": { "productId": "413150" }
+      }
+    }
+  ]
+}

@@ -8,7 +8,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-TEST_TARGETS = ROOT / "tests" / "fixtures" / "steam_collection_targets.json"
+TEST_CATALOG = ROOT / "tests" / "fixtures" / "game_catalog.json"
 sys.path.insert(0, str(ROOT / "tools"))
 SPEC = importlib.util.spec_from_file_location(
     "steam_pipeline", ROOT / "tools" / "run_steam_pipeline.py"
@@ -58,9 +58,8 @@ class SteamPipelineTest(unittest.TestCase):
             log.write_bytes(b"old-line\n" * 30 + b"recent\n")
             exit_code = steam_pipeline.run_pipeline(
                 Path("build/game_price_tracker"),
-                TEST_TARGETS,
+                TEST_CATALOG,
                 output,
-                catalog_path=ROOT / "data" / "games.txt",
                 archive_directory=archive,
                 request_delay=0,
                 retry_delay=0,
@@ -93,9 +92,8 @@ class SteamPipelineTest(unittest.TestCase):
             output = Path(directory) / "snapshot"
             exit_code = steam_pipeline.run_pipeline(
                 Path("unused"),
-                TEST_TARGETS,
+                TEST_CATALOG,
                 output,
-                catalog_path=ROOT / "data" / "games.txt",
                 request_delay=0,
                 retry_delay=0,
                 max_attempts=1,
@@ -113,16 +111,17 @@ class SteamPipelineTest(unittest.TestCase):
     def test_rejects_unknown_game_before_fetching(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            targets = root / "targets.json"
-            targets.write_text(
-                '{"targets":[{"appId":"999","gameId":"unknown-game"}]}'
+            catalog = root / "catalog.json"
+            catalog.write_text(
+                '{"schemaVersion":1,"games":['
+                '{"id":"unknown-game","title":"Unknown",'
+                '"stores":{"steam":{"productId":"invalid"}}}]}'
             )
-            with self.assertRaisesRegex(ValueError, "unknown-game"):
+            with self.assertRaisesRegex(ValueError, "numeric productId"):
                 steam_pipeline.run_pipeline(
                     Path("unused"),
-                    targets,
+                    catalog,
                     root / "snapshot",
-                    catalog_path=ROOT / "data" / "games.txt",
                     fetcher=lambda *_args: self.fail(
                         "Configuration must fail before a network request"
                     ),
@@ -141,9 +140,8 @@ class SteamPipelineTest(unittest.TestCase):
             output = root / "snapshot"
             exit_code = steam_pipeline.run_pipeline(
                 Path("unused"),
-                TEST_TARGETS,
+                TEST_CATALOG,
                 output,
-                catalog_path=ROOT / "data" / "games.txt",
                 request_delay=0,
                 retry_delay=0,
                 database_path=root / "missing.db",

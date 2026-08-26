@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "games": [
+    {
+      "id": "stardew-valley",
+      "title": "Stardew Valley",
+      "stores": {
+        "steam": { "productId": "413150" },
+        "googlePlay": { "productId": "com.chucklefish.stardewvalley" },
+        "appleAppStore": { "productId": "1406710800" }
+      }
+    },
+    {
+      "id": "terraria",
+      "title": "Terraria",
+      "stores": {
+        "steam": { "productId": "105600" }
+      }
+    },
+    {
+      "id": "hollow-knight",
+      "title": "Hollow Knight",
+      "stores": {
+        "steam": { "productId": "367520" }
+      }
+    }
+  ]
+}

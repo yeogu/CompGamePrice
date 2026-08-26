@@ -103,7 +103,7 @@ int main() {
         Database database(databasePath());
         StoreProductRepository repository(database);
         repository.initializeSchema();
-        GameCatalog catalog(std::string(SAMPLE_DATA_DIR) + "/games.txt");
+        GameCatalog catalog(std::string(SAMPLE_DATA_DIR) + "/game_catalog.json");
         GameQueryService queryService(catalog, repository);
 
         drogon::app().registerHandler(

@@ -57,9 +57,8 @@ def os_getpid() -> int:
 
 def run_pipeline(
     tracker: Path,
-    targets_path: Path,
+    catalog_path: Path,
     output_directory: Path,
-    catalog_path: Path | None = None,
     archive_directory: Path | None = None,
     country: str = "kr",
     language: str = "korean",
@@ -79,11 +78,7 @@ def run_pipeline(
 ) -> int:
     started_at = timestamp()
     with exclusive_lock(output_directory / ".steam_pipeline.lock"):
-        targets = collector.load_targets(targets_path)
-        if catalog_path is not None:
-            collector.validate_targets_in_catalog(
-                targets, collector.load_catalog_game_ids(catalog_path)
-            )
+        targets = collector.load_steam_targets(catalog_path)
         collection_arguments = {
             "targets": targets,
             "output_directory": output_directory,
@@ -166,10 +161,8 @@ def run_pipeline(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--tracker", default="build/game_price_tracker", type=Path)
-    parser.add_argument(
-        "--targets", default="data/steam_collection_targets.json", type=Path
-    )
-    parser.add_argument("--catalog", default="data/games.txt", type=Path)
+    parser.add_argument("--catalog", default="data/game_catalog.json", type=Path)
+    parser.add_argument("--targets", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--output-dir", default="snapshots/latest", type=Path)
     parser.add_argument("--archive-dir", type=Path)
     parser.add_argument("--country", default="kr")
@@ -208,11 +201,14 @@ def main() -> int:
                 str(arguments.tracker.parent / "game_prices.db"),
             )
         )
+        catalog_path = arguments.catalog
+        # Compatibility for an already-loaded legacy launchd definition.
+        if arguments.targets is not None and catalog_path.name == "games.txt":
+            catalog_path = catalog_path.with_name("game_catalog.json")
         return run_pipeline(
             arguments.tracker,
-            arguments.targets,
+            catalog_path,
             arguments.output_dir,
-            arguments.catalog,
             arguments.archive_dir or arguments.output_dir.parent / "archive",
             arguments.country,
             arguments.language,

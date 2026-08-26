@@ -298,7 +298,7 @@ void testDiscountChangeHistory() {
 
 void testPriceComparisonReadsRepository() {
     const std::string dataDirectory = TEST_SAMPLE_DATA_DIR;
-    GameCatalog catalog(dataDirectory + "/games.txt");
+    GameCatalog catalog(dataDirectory + "/game_catalog.json");
     const auto game = catalog.findByName("  STARDEW   VALLEY  ");
     expect(game.has_value(), "GameCatalog should normalize lookup names");
 
@@ -320,7 +320,7 @@ void testPriceComparisonReadsRepository() {
 }
 
 void testGameCatalogSearch() {
-    GameCatalog catalog(std::string(TEST_SAMPLE_DATA_DIR) + "/games.txt");
+    GameCatalog catalog(std::string(TEST_SAMPLE_DATA_DIR) + "/game_catalog.json");
     const auto matches = catalog.searchByName("  VALLEY ");
     expect(matches.size() == 1, "Partial normalized title should find one game");
     expect(matches.front().id == "stardew-valley", "Search should return Stardew Valley");
@@ -331,16 +331,37 @@ void testGameCatalogSearch() {
            "Catalog should find a game by stable id");
     expect(!catalog.findById("missing").has_value(),
            "Catalog should reject an unknown game id");
-    expect(catalog.allGames().size() == 2,
+    expect(catalog.allGames().size() == 3,
            "Catalog should expose all games for batch collection");
     expect(catalog.allGames().front().id == "stardew-valley",
            "Batch catalog should preserve canonical game ids");
     expect(catalog.findByName("Terraria").has_value(),
            "Catalog should contain the second Steam collection target");
+    expect(catalog.findByName("Hollow Knight").has_value(),
+           "Catalog should contain the newly added game");
+    expect(catalog.storeProducts(Store::Steam).size() == 3,
+           "Catalog should expose every Steam product mapping");
+    expect(catalog.storeProducts(Store::GooglePlay).size() == 1,
+           "Catalog should expose Store-specific product mappings");
+}
+
+void testGameCatalogValidation() {
+    const std::string fixtures = std::string(TEST_SAMPLE_DATA_DIR) + "/../tests/fixtures/";
+    for (const auto& filename : {"game_catalog_duplicate_id.json",
+                                 "game_catalog_duplicate_steam_id.json",
+                                 "game_catalog_missing_title.json"}) {
+        bool rejected = false;
+        try {
+            GameCatalog catalog(fixtures + filename);
+        } catch (const std::runtime_error&) {
+            rejected = true;
+        }
+        expect(rejected, std::string("Catalog should reject invalid fixture: ") + filename);
+    }
 }
 
 void testGameQueryServiceReport() {
-    GameCatalog catalog(std::string(TEST_SAMPLE_DATA_DIR) + "/games.txt");
+    GameCatalog catalog(std::string(TEST_SAMPLE_DATA_DIR) + "/game_catalog.json");
     const auto game = catalog.findByName("Stardew Valley");
     expect(game.has_value(), "Test game should exist");
     Database database(":memory:");
@@ -622,6 +643,7 @@ int main() {
         {"Discount change history", testDiscountChangeHistory},
         {"Repository-backed comparison", testPriceComparisonReadsRepository},
         {"Game catalog search", testGameCatalogSearch},
+        {"Game catalog validation", testGameCatalogValidation},
         {"Game query service report", testGameQueryServiceReport},
         {"ISO date validation", testIsoDateValidation},
         {"Explicit collection timestamp", testExplicitCollectionTimestamp},
