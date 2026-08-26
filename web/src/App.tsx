@@ -31,32 +31,47 @@ function App() {
   const [report, setReport] = useState<GamePriceResponse | null>(null)
   const [history, setHistory] = useState<GamePriceHistoryResponse | null>(null)
   const [selectedGameId, setSelectedGameId] = useState('')
+  const [selectedPlatform, setSelectedPlatform] = useState('')
   const [collectionRuns, setCollectionRuns] = useState<CollectionRun[]>([])
   const [collectionStatusError, setCollectionStatusError] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const requestSequence = useRef(0)
 
-  const selectGame = async (game: GameSummary, updateAddress = true) => {
+  const selectGame = async (
+    game: GameSummary,
+    updateAddress = true,
+    platform = '',
+  ) => {
     const requestId = ++requestSequence.current
     setLoading(true)
     setError('')
     setSelectedGameId(game.id)
+    setSelectedPlatform(platform)
     setReport(null)
     setHistory(null)
     if (updateAddress) {
       const address = new URL(window.location.href)
       address.searchParams.set('game', game.id)
+      if (platform) address.searchParams.set('platform', platform)
+      else address.searchParams.delete('platform')
       window.history.replaceState(null, '', address)
     }
     try {
       const [priceReport, priceHistory] = await Promise.all([
-        getGamePrices(game.id),
+        getGamePrices(game.id, platform),
         getGamePriceHistory(game.id),
       ])
       if (requestId === requestSequence.current) {
         setReport(priceReport)
-        setHistory(priceHistory)
+        const visibleProducts = new Set(
+          priceReport.products.map((product) => `${product.store}:${product.productId}`),
+        )
+        setHistory({
+          ...priceHistory,
+          histories: priceHistory.histories.filter((item) =>
+            visibleProducts.has(`${item.store}:${item.productId}`)),
+        })
       }
     } catch (reason) {
       if (requestId === requestSequence.current) {
@@ -74,6 +89,7 @@ function App() {
     setError('')
     setGames([])
     setSelectedGameId('')
+    setSelectedPlatform('')
     setReport(null)
     setHistory(null)
     try {
@@ -100,9 +116,17 @@ function App() {
           return
         }
         const requestedGameId = new URLSearchParams(window.location.search).get('game')
+        const requestedPlatform = new URLSearchParams(window.location.search).get('platform') ?? ''
         const initialGame = catalogGames.find((game) => game.id === requestedGameId)
           ?? catalogGames[0]
-        void selectGame(initialGame, requestedGameId !== initialGame.id)
+        const initialPlatform = initialGame.platforms.includes(requestedPlatform)
+          ? requestedPlatform
+          : ''
+        void selectGame(
+          initialGame,
+          requestedGameId !== initialGame.id || requestedPlatform !== initialPlatform,
+          initialPlatform,
+        )
       })
       .catch((reason) => {
         setError(reason instanceof Error ? reason.message : '게임 목록을 불러오지 못했습니다.')
@@ -207,6 +231,26 @@ function App() {
                 <small>{report.cheapest.store}</small>
               </div>
             )}
+          </div>
+
+          <div className="platform-filter" aria-label="플랫폼 필터">
+            <button
+              className={selectedPlatform === '' ? 'active' : ''}
+              aria-pressed={selectedPlatform === ''}
+              onClick={() => void selectGame(report.game, true, '')}
+            >
+              전체
+            </button>
+            {report.game.platforms.map((platform) => (
+              <button
+                className={selectedPlatform === platform ? 'active' : ''}
+                aria-pressed={selectedPlatform === platform}
+                key={platform}
+                onClick={() => void selectGame(report.game, true, platform)}
+              >
+                {platform}
+              </button>
+            ))}
           </div>
 
           <div className="price-grid">

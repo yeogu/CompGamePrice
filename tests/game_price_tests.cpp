@@ -423,10 +423,31 @@ void testPriceComparisonReadsRepository() {
     PriceComparisonService service(catalog, repository);
     const auto result = service.compareByGameName("Stardew Valley");
     expect(result.has_value(), "Comparison result should exist");
-    expect(result->products.size() == 3, "Comparison should expose all DB products");
+    expect(result->products.size() == 2,
+           "Default comparison should expose only comparable BaseGame products");
     expect(result->cheapestProduct.has_value(), "Cheapest product should exist");
     expect(result->cheapestProduct->store == Store::GooglePlay,
            "A cheaper DLC must not replace the cheapest Standard BaseGame");
+
+    PriceComparisonCriteria windowsCriteria;
+    windowsCriteria.platform = Platform::Windows;
+    const auto windows = service.compareByGameName("Stardew Valley", windowsCriteria);
+    expect(windows->products.size() == 1 &&
+               windows->cheapestProduct->store == Store::Steam,
+           "Windows criteria should only compare Windows Store products");
+
+    PriceComparisonCriteria androidCriteria;
+    androidCriteria.platform = Platform::Android;
+    const auto android = service.compareByGameName("Stardew Valley", androidCriteria);
+    expect(android->products.size() == 1 &&
+               android->cheapestProduct->store == Store::GooglePlay,
+           "Android criteria should only compare Android Store products");
+
+    PriceComparisonCriteria deluxeCriteria;
+    deluxeCriteria.edition = GameEdition::Deluxe;
+    const auto deluxe = service.compareByGameName("Stardew Valley", deluxeCriteria);
+    expect(deluxe->products.empty() && !deluxe->cheapestProduct,
+           "A criteria group without products should return no cheapest offer");
 }
 
 void testGameCatalogSearch() {

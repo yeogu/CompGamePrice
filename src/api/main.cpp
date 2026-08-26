@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cctype>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 
 namespace {
@@ -109,6 +110,49 @@ std::string databasePath() {
     return value ? value : GAME_PRICE_DATABASE_PATH;
 }
 
+PriceComparisonCriteria comparisonCriteria(
+    const drogon::HttpRequestPtr& request) {
+    PriceComparisonCriteria criteria;
+    const auto region = request->getParameter("region");
+    const auto edition = request->getParameter("edition");
+    const auto offerType = request->getParameter("offerType");
+    const auto currency = request->getParameter("currency");
+    const auto platform = request->getParameter("platform");
+
+    if (!region.empty() && region != "KR") {
+        throw std::invalid_argument("region must be KR");
+    }
+    if (!edition.empty()) {
+        if (edition == "Standard") criteria.edition = GameEdition::Standard;
+        else if (edition == "Deluxe") criteria.edition = GameEdition::Deluxe;
+        else throw std::invalid_argument("edition must be Standard or Deluxe");
+    }
+    if (!offerType.empty()) {
+        if (offerType == "BaseGame") criteria.offerType = OfferType::BaseGame;
+        else if (offerType == "DLC") criteria.offerType = OfferType::DLC;
+        else if (offerType == "Bundle") criteria.offerType = OfferType::Bundle;
+        else if (offerType == "Subscription") {
+            criteria.offerType = OfferType::Subscription;
+        } else {
+            throw std::invalid_argument(
+                "offerType must be BaseGame, DLC, Bundle, or Subscription");
+        }
+    }
+    if (!currency.empty() && currency != "KRW") {
+        throw std::invalid_argument("currency must be KRW");
+    }
+    if (!platform.empty()) {
+        if (platform == "Windows") criteria.platform = Platform::Windows;
+        else if (platform == "macOS") criteria.platform = Platform::MacOS;
+        else if (platform == "Linux") criteria.platform = Platform::Linux;
+        else if (platform == "Android") criteria.platform = Platform::Android;
+        else if (platform == "iOS") criteria.platform = Platform::IOS;
+        else if (platform == "iPadOS") criteria.platform = Platform::IPadOS;
+        else throw std::invalid_argument("unsupported platform");
+    }
+    return criteria;
+}
+
 }  // namespace
 
 int main() {
@@ -150,10 +194,18 @@ int main() {
 
         drogon::app().registerHandler(
             "/api/games/{1}/prices",
-            [&queryService](const drogon::HttpRequestPtr&,
+            [&queryService](const drogon::HttpRequestPtr& request,
                             std::function<void(const HttpResponsePtr&)>&& callback,
                             const std::string& gameId) {
-                const auto report = queryService.getGamePriceReportById(gameId);
+                PriceComparisonCriteria criteria;
+                try {
+                    criteria = comparisonCriteria(request);
+                } catch (const std::invalid_argument& error) {
+                    callback(jsonError(drogon::k400BadRequest, error.what()));
+                    return;
+                }
+                const auto report = queryService.getGamePriceReportById(
+                    gameId, std::nullopt, criteria);
                 if (!report) {
                     callback(jsonError(drogon::k404NotFound, "game not found"));
                     return;

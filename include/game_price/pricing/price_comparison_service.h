@@ -11,6 +11,14 @@
 
 namespace game_price {
 
+struct PriceComparisonCriteria {
+    Region region{Region::KR};
+    GameEdition edition{GameEdition::Standard};
+    OfferType offerType{OfferType::BaseGame};
+    Currency currency{Currency::KRW};
+    std::optional<Platform> platform;
+};
+
 struct PriceComparisonResult {
     Game game;
     std::vector<StoreProduct> products;
@@ -21,11 +29,17 @@ class PriceComparisonService {
 public:
     PriceComparisonService(const GameCatalog& catalog, const StoreProductRepository& repository);
 
-    std::optional<PriceComparisonResult> compareByGameName(const std::string& gameName) const;
-    std::optional<PriceComparisonResult> compareByGameId(const std::string& gameId) const;
+    std::optional<PriceComparisonResult> compareByGameName(
+        const std::string& gameName,
+        const PriceComparisonCriteria& criteria = {}) const;
+    std::optional<PriceComparisonResult> compareByGameId(
+        const std::string& gameId,
+        const PriceComparisonCriteria& criteria = {}) const;
 
 private:
-    PriceComparisonResult compare(const Game& game) const;
+    PriceComparisonResult compare(
+        const Game& game,
+        const PriceComparisonCriteria& criteria) const;
     const GameCatalog& catalog_;
     const StoreProductRepository& repository_;
 };

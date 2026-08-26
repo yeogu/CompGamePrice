@@ -45,10 +45,12 @@ public:
     std::vector<Game> searchGames(const std::string& query) const;
     std::optional<GamePriceReport> getGamePriceReport(
         const std::string& gameName,
-        const std::optional<std::string>& observedSince = std::nullopt) const;
+        const std::optional<std::string>& observedSince = std::nullopt,
+        const PriceComparisonCriteria& criteria = {}) const;
     std::optional<GamePriceReport> getGamePriceReportById(
         const std::string& gameId,
-        const std::optional<std::string>& observedSince = std::nullopt) const;
+        const std::optional<std::string>& observedSince = std::nullopt,
+        const PriceComparisonCriteria& criteria = {}) const;
     std::optional<GamePriceHistoryReport> getGamePriceHistoryById(
         const std::string& gameId,
         const std::optional<std::string>& observedSince = std::nullopt) const;

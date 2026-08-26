@@ -347,6 +347,7 @@ GET /health
 GET /api/games
 GET /api/games?query=valley
 GET /api/games/{gameId}/prices
+GET /api/games/{gameId}/prices?platform=Windows
 GET /api/games/{gameId}/price-history?since=2026-01-01
 GET /api/collection-runs?limit=20
 ```
@@ -354,8 +355,10 @@ GET /api/collection-runs?limit=20
 API 응답은 가격을 `{ "minorAmount": 6500, "currency": "KRW" }`처럼 정수로
 전달합니다. Drogon이 설치되지 않은 환경에서는 CLI와 테스트만 빌드되고 API
 target은 생략됩니다.
-가격 상품에는 Steam, Google Play, Apple App Store의 실제 상품 페이지를 가리키는
-`purchaseUrl`이 포함됩니다.
+가격 상품에는 각 Store의 실제 상품 페이지를 가리키는 `purchaseUrl`이 포함됩니다.
+가격 API는 `platform`, `region`, `edition`, `offerType`, `currency` 비교 조건을
+query parameter로 받습니다. 생략하면 `KR + Standard + BaseGame + KRW`가 기본이며
+현재 지원하지 않는 값은 `400 Bad Request`를 반환합니다.
 현재 가격 응답과 가격 이력 관측값에는 `discountPercent`가 항상 포함되며,
 Store가 정상가를 제공하면 `regularPrice`도 포함됩니다. Web 가격 카드는 할인 중인
 상품의 정상가와 할인율을 표시하고 가격 그래프 Tooltip에서도 당시 할인 정보를
@@ -385,6 +388,8 @@ Store 이름은 해당 그래프 선과 동일한 색상을 사용합니다.
 게임을 선택하면 `?game=hollow-knight` 형태로 현재 주소가 갱신되므로 특정 게임
 화면을 북마크하거나 공유할 수 있습니다. 가격 카드의 Store 링크는 API가 제공한
 공식 상품 페이지를 새 탭으로 엽니다.
+플랫폼 버튼을 선택하면 해당 플랫폼을 지원하는 가격 카드와 그래프만 남고,
+`?game=hades&platform=Windows`처럼 선택 상태가 공유 주소에도 포함됩니다.
 현재가·정상가·할인율·통화·구매 가능 상태가 이전 관측과 모두 같으면 새 이력을 저장하지 않고
 그래프에서도 제외하여 실제 상태 변화만 표시합니다.
 

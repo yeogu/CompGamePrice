@@ -84,6 +84,23 @@ grep -q '"edition":"Standard"' "${response_body}"
 grep -q '"offerType":"BaseGame"' "${response_body}"
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/games/stardew-valley/prices?platform=Android")
+[[ "${status}" == "200" ]]
+grep -q '"store":"Google Play"' "${response_body}"
+! grep -q '"store":"Steam"' "${response_body}"
+
+for invalid_query in \
+    "platform=invalid" \
+    "region=US" \
+    "edition=Collector" \
+    "offerType=Rental" \
+    "currency=USD"; do
+    status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+        "${api_base}/api/games/hades/prices?${invalid_query}")
+    [[ "${status}" == "400" ]]
+done
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/collection-runs?limit=5")
 [[ "${status}" == "200" ]]
 grep -q '"store":"Epic Games Store"' "${response_body}"

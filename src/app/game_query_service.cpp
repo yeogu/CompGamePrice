@@ -20,17 +20,19 @@ std::vector<Game> GameQueryService::searchGames(const std::string& query) const 
 
 std::optional<GamePriceReport> GameQueryService::getGamePriceReport(
     const std::string& gameName,
-    const std::optional<std::string>& observedSince) const {
+    const std::optional<std::string>& observedSince,
+    const PriceComparisonCriteria& criteria) const {
     const auto comparison = PriceComparisonService(catalog_, repository_)
-                                .compareByGameName(gameName);
+                                .compareByGameName(gameName, criteria);
     return buildReport(comparison, observedSince);
 }
 
 std::optional<GamePriceReport> GameQueryService::getGamePriceReportById(
     const std::string& gameId,
-    const std::optional<std::string>& observedSince) const {
+    const std::optional<std::string>& observedSince,
+    const PriceComparisonCriteria& criteria) const {
     const auto comparison = PriceComparisonService(catalog_, repository_)
-                                .compareByGameId(gameId);
+                                .compareByGameId(gameId, criteria);
     return buildReport(comparison, observedSince);
 }
 

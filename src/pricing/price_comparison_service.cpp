@@ -1,6 +1,6 @@
 #include "game_price/pricing/price_comparison_service.h"
 
-#include <stdexcept>
+#include <algorithm>
 
 namespace game_price {
 
@@ -10,35 +10,43 @@ PriceComparisonService::PriceComparisonService(
     : catalog_(catalog), repository_(repository) {}
 
 std::optional<PriceComparisonResult> PriceComparisonService::compareByGameName(
-    const std::string& gameName) const {
+    const std::string& gameName,
+    const PriceComparisonCriteria& criteria) const {
     const auto game = catalog_.findByName(gameName);
     if (!game) {
         return std::nullopt;
     }
-    return compare(*game);
+    return compare(*game, criteria);
 }
 
 std::optional<PriceComparisonResult> PriceComparisonService::compareByGameId(
-    const std::string& gameId) const {
+    const std::string& gameId,
+    const PriceComparisonCriteria& criteria) const {
     const auto game = catalog_.findById(gameId);
     if (!game) return std::nullopt;
-    return compare(*game);
+    return compare(*game, criteria);
 }
 
-PriceComparisonResult PriceComparisonService::compare(const Game& game) const {
-    PriceComparisonResult result{
-        game, repository_.findProductsByGameId(game.id), std::nullopt};
+PriceComparisonResult PriceComparisonService::compare(
+    const Game& game,
+    const PriceComparisonCriteria& criteria) const {
+    PriceComparisonResult result{game, {}, std::nullopt};
 
-    for (const auto& product : result.products) {
+    for (const auto& product : repository_.findProductsByGameId(game.id)) {
         if (!product.purchasable) continue;
-        if (product.region != Region::KR ||
-            product.edition != GameEdition::Standard ||
-            product.offerType != OfferType::BaseGame) {
+        if (product.region != criteria.region ||
+            product.edition != criteria.edition ||
+            product.offerType != criteria.offerType ||
+            product.currentPrice.currency != criteria.currency) {
             continue;
         }
-        if (product.currentPrice.currency != Currency::KRW) {
-            throw std::runtime_error("Cannot compare products with different currencies");
+        if (criteria.platform &&
+            std::find(product.supportedPlatforms.begin(),
+                      product.supportedPlatforms.end(), *criteria.platform) ==
+                product.supportedPlatforms.end()) {
+            continue;
         }
+        result.products.push_back(product);
         if (!result.cheapestProduct ||
             product.currentPrice.minorAmount < result.cheapestProduct->currentPrice.minorAmount) {
             result.cheapestProduct = product;

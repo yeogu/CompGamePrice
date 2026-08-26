@@ -19,8 +19,14 @@ export async function getGames(query = ''): Promise<GameSummary[]> {
   return result.games
 }
 
-export function getGamePrices(gameId: string): Promise<GamePriceResponse> {
-  return getJson<GamePriceResponse>(`/api/games/${encodeURIComponent(gameId)}/prices`)
+export function getGamePrices(
+  gameId: string,
+  platform = '',
+): Promise<GamePriceResponse> {
+  const query = platform ? `?platform=${encodeURIComponent(platform)}` : ''
+  return getJson<GamePriceResponse>(
+    `/api/games/${encodeURIComponent(gameId)}/prices${query}`,
+  )
 }
 
 export function getGamePriceHistory(

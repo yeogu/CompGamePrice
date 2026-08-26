@@ -68,6 +68,9 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .best-summary { display: grid; justify-items: end; }
 .best-summary span, .best-summary small { color: #91a79b; }
 .best-summary strong { color: #73e2a7; font-size: 2rem; }
+.platform-filter { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 20px; }
+.platform-filter button { padding: 8px 13px; color: #91a79b; background: #101f18; border: 1px solid #2b4035; border-radius: 9px; }
+.platform-filter button.active { color: #07110d; background: #73e2a7; border-color: #73e2a7; font-weight: 800; }
 
 .price-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .price-card {
