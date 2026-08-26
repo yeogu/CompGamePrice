@@ -81,6 +81,8 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .discount-rate { padding: 4px 7px; color: #07110d; background: #f6c85f; border-radius: 6px; font-size: 0.76rem; font-weight: 900; }
 .discount-summary del { color: #82968b; font-size: 0.9rem; }
 .platforms { min-height: 24px; color: #82968b; }
+.purchase-link { display: inline-flex; padding: 8px 11px; color: #b9f2d2; background: #17271f; border: 1px solid #315141; border-radius: 8px; font-size: 0.82rem; font-weight: 800; text-decoration: none; }
+.purchase-link:hover { color: #07110d; background: #73e2a7; }
 .history { display: flex; justify-content: space-between; margin-top: 30px; padding-top: 18px; border-top: 1px solid #263c31; color: #91a79b; }
 .history strong { color: #dfece4; }
 .recommendation { display: grid; gap: 6px; margin-top: 16px; padding-top: 14px; border-top: 1px solid #263c31; }

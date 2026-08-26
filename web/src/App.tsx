@@ -37,13 +37,18 @@ function App() {
   const [error, setError] = useState('')
   const requestSequence = useRef(0)
 
-  const selectGame = async (game: GameSummary) => {
+  const selectGame = async (game: GameSummary, updateAddress = true) => {
     const requestId = ++requestSequence.current
     setLoading(true)
     setError('')
     setSelectedGameId(game.id)
     setReport(null)
     setHistory(null)
+    if (updateAddress) {
+      const address = new URL(window.location.href)
+      address.searchParams.set('game', game.id)
+      window.history.replaceState(null, '', address)
+    }
     try {
       const [priceReport, priceHistory] = await Promise.all([
         getGamePrices(game.id),
@@ -87,7 +92,21 @@ function App() {
   }
 
   useEffect(() => {
-    void submitSearch()
+    void getGames()
+      .then((catalogGames) => {
+        setGames(catalogGames)
+        if (catalogGames.length === 0) {
+          setError('등록된 게임이 없습니다.')
+          return
+        }
+        const requestedGameId = new URLSearchParams(window.location.search).get('game')
+        const initialGame = catalogGames.find((game) => game.id === requestedGameId)
+          ?? catalogGames[0]
+        void selectGame(initialGame, requestedGameId !== initialGame.id)
+      })
+      .catch((reason) => {
+        setError(reason instanceof Error ? reason.message : '게임 목록을 불러오지 못했습니다.')
+      })
     void getCollectionRuns()
       .then(setCollectionRuns)
       .catch(() => setCollectionStatusError('수집 상태를 불러오지 못했습니다.'))
@@ -203,6 +222,14 @@ function App() {
                     </div>
                   )}
                   <p className="platforms">{product.platforms.join(' · ')}</p>
+                  <a
+                    className="purchase-link"
+                    href={product.purchaseUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {product.store}에서 보기
+                  </a>
                   <div className="history">
                     <span>역대 최저</span>
                     <strong>{product.history ? formatMoney(product.history.lowestPrice) : '데이터 없음'}</strong>

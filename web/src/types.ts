@@ -28,6 +28,7 @@ export interface Recommendation {
 export interface StoreProduct {
   productId: string
   store: string
+  purchaseUrl: string
   price: Money
   regularPrice?: Money
   discountPercent: number

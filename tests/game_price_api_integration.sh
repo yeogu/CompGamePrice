@@ -26,6 +26,11 @@ for _ in {1..30}; do
 done
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/games/stardew-valley/prices")
+[[ "${status}" == "200" ]]
+grep -q '"purchaseUrl":"https://store.steampowered.com/app/413150"' "${response_body}"
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/games/stardew-valley/price-history")
 [[ "${status}" == "200" ]]
 grep -q '"minorAmount"' "${response_body}"
