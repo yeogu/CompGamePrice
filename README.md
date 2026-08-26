@@ -318,6 +318,7 @@ cmake --build build
 
 ```text
 GET /health
+GET /api/games
 GET /api/games?query=valley
 GET /api/games/{gameId}/prices
 GET /api/games/{gameId}/price-history?since=2026-01-01
@@ -341,7 +342,7 @@ Store가 정상가를 제공하면 `regularPrice`도 포함됩니다. Web 가격
 
 ## Web client
 
-React와 TypeScript로 만든 첫 Web 화면은 게임 검색, Store별 현재가, 최저가,
+React와 TypeScript로 만든 첫 Web 화면은 통합 카탈로그의 전체 게임 목록, 게임 검색, Store별 현재가, 최저가,
 지원 Platform과 추천 상태를 API에서 조회합니다. 가격 추이는 모든 Store를
 하나의 공통 축에 표시하며 Store별 색상과 클릭 가능한 범례로 구분합니다.
 모든 Store는 동일한 원형 관측점과 실선을 사용합니다. 통화가 다른 Store는 가격 비교 왜곡을 막기 위해 같은 축에서

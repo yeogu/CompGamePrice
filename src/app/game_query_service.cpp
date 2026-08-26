@@ -10,6 +10,10 @@ GameQueryService::GameQueryService(
     const StoreProductRepository& repository)
     : catalog_(catalog), repository_(repository) {}
 
+const std::vector<Game>& GameQueryService::listGames() const noexcept {
+    return catalog_.allGames();
+}
+
 std::vector<Game> GameQueryService::searchGames(const std::string& query) const {
     return catalog_.searchByName(query);
 }

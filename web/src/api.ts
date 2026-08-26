@@ -11,9 +11,10 @@ async function getJson<T>(path: string): Promise<T> {
   return response.json() as Promise<T>
 }
 
-export async function searchGames(query: string): Promise<GameSummary[]> {
+export async function getGames(query = ''): Promise<GameSummary[]> {
+  const search = query ? `?query=${encodeURIComponent(query)}` : ''
   const result = await getJson<{ games: GameSummary[] }>(
-    `/api/games?query=${encodeURIComponent(query)}`,
+    `/api/games${search}`,
   )
   return result.games
 }

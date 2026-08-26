@@ -40,6 +40,7 @@ public:
         const GameCatalog& catalog,
         const StoreProductRepository& repository);
 
+    const std::vector<Game>& listGames() const noexcept;
     std::vector<Game> searchGames(const std::string& query) const;
     std::optional<GamePriceReport> getGamePriceReport(
         const std::string& gameName,

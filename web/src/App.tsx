@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from 'react'
-import { getCollectionRuns, getGamePriceHistory, getGamePrices, searchGames } from './api'
+import { getCollectionRuns, getGamePriceHistory, getGamePrices, getGames } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
 import type { CollectionRun, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Money } from './types'
 
@@ -11,7 +11,7 @@ const formatMoney = (money: Money) =>
   }).format(money.minorAmount)
 
 function App() {
-  const [query, setQuery] = useState('Stardew Valley')
+  const [query, setQuery] = useState('')
   const [games, setGames] = useState<GameSummary[]>([])
   const [report, setReport] = useState<GamePriceResponse | null>(null)
   const [history, setHistory] = useState<GamePriceHistoryResponse | null>(null)
@@ -49,7 +49,6 @@ function App() {
 
   const submitSearch = async (event?: FormEvent) => {
     event?.preventDefault()
-    if (!query.trim()) return
     const requestId = ++requestSequence.current
     setLoading(true)
     setError('')
@@ -58,10 +57,10 @@ function App() {
     setReport(null)
     setHistory(null)
     try {
-      const matches = await searchGames(query.trim())
+      const matches = await getGames(query.trim())
       if (requestId !== requestSequence.current) return
       setGames(matches)
-      if (matches.length === 1) await selectGame(matches[0])
+      if (matches.length > 0) await selectGame(matches[0])
       if (matches.length === 0) setError('일치하는 게임이 없습니다.')
     } catch (reason) {
       if (requestId === requestSequence.current) {
@@ -77,7 +76,7 @@ function App() {
     void getCollectionRuns()
       .then(setCollectionRuns)
       .catch(() => setCollectionStatusError('수집 상태를 불러오지 못했습니다.'))
-    // Initial example search only.
+    // Load the catalog and initial game once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -133,9 +132,12 @@ function App() {
         </div>
       </section>
 
-      {games.length > 1 && (
+      {games.length > 0 && (
         <section className="panel">
-          <h2>검색 결과</h2>
+          <div className="catalog-heading">
+            <h2>{query.trim() ? '검색 결과' : '게임 카탈로그'}</h2>
+            <span>{games.length}개 게임</span>
+          </div>
           <div className="game-list">
             {games.map((game) => (
               <button

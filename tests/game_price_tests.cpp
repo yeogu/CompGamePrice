@@ -370,6 +370,8 @@ void testGameQueryServiceReport() {
     repository.saveNormalizedProducts(*game, {makeSteamProduct(11200)});
 
     GameQueryService service(catalog, repository);
+    expect(service.listGames().size() == 3,
+           "Query service should expose the full catalog");
     const auto report = service.getGamePriceReport("Stardew Valley");
     expect(report.has_value(), "Query service should return a game report");
     expect(report->comparison.cheapestProduct.has_value(),

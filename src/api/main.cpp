@@ -121,14 +121,12 @@ int main() {
             [&queryService](const drogon::HttpRequestPtr& request,
                             std::function<void(const HttpResponsePtr&)>&& callback) {
                 const auto query = request->getParameter("query");
-                if (query.empty()) {
-                    callback(jsonError(
-                        drogon::k400BadRequest, "query parameter is required"));
-                    return;
-                }
                 Json::Value response;
                 response["games"] = Json::arrayValue;
-                for (const auto& game : queryService.searchGames(query)) {
+                const auto games = query.empty()
+                    ? queryService.listGames()
+                    : queryService.searchGames(query);
+                for (const auto& game : games) {
                     Json::Value item;
                     item["id"] = game.id;
                     item["title"] = game.title;
