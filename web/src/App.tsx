@@ -273,6 +273,11 @@ function App() {
                     </div>
                   )}
                   <p className="platforms">{product.platforms.join(' · ')}</p>
+                  {product.compatibility.map((entry) => (
+                    <p className="platforms" key={entry.platform}>
+                      {entry.platform}: {entry.status}
+                    </p>
+                  ))}
                   <a
                     className="purchase-link"
                     href={product.purchaseUrl}

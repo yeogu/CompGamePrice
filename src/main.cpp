@@ -5,6 +5,7 @@
 #include "game_price/collection/collection_service.h"
 #include "game_price/collection/epic_games_provider.h"
 #include "game_price/collection/google_play_provider.h"
+#include "game_price/collection/nintendo_eshop_provider.h"
 #include "game_price/collection/steam_provider.h"
 #include "game_price/persistence/database.h"
 #include "game_price/persistence/store_product_repository.h"
@@ -34,8 +35,9 @@ CollectionResult collectStoreProducts(
     EpicGamesProvider epicGames(dataDirectory + "/epic_games_products.txt");
     GooglePlayProvider googlePlay(dataDirectory + "/google_play_products.txt");
     AppleAppStoreProvider appleAppStore(dataDirectory + "/apple_app_store_products.csv");
+    NintendoEShopProvider nintendo(dataDirectory + "/nintendo_eshop_products.csv");
     std::vector<std::reference_wrapper<const StoreProductProvider>> providers{
-        steam, epicGames, googlePlay, appleAppStore};
+        steam, epicGames, googlePlay, appleAppStore, nintendo};
 
     CollectionService service(repository, std::move(providers), 2);
     const auto result = service.collect(game);
@@ -205,10 +207,11 @@ void seedDemoHistory(
     EpicGamesProvider epic(dataDirectory + "/epic_games_products.txt");
     GooglePlayProvider googlePlay(dataDirectory + "/google_play_products.txt");
     AppleAppStoreProvider apple(dataDirectory + "/apple_app_store_products.csv");
+    NintendoEShopProvider nintendo(dataDirectory + "/nintendo_eshop_products.csv");
 
     std::vector<StoreProduct> products;
     for (const auto* provider : std::vector<const StoreProductProvider*>{
-             &steam, &epic, &googlePlay, &apple}) {
+             &steam, &epic, &googlePlay, &apple, &nintendo}) {
         const auto storeProducts = provider->findProducts(game.id);
         products.insert(products.end(), storeProducts.begin(), storeProducts.end());
     }

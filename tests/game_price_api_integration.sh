@@ -77,11 +77,20 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
 [[ "${status}" == "200" ]]
 grep -q '"store":"Steam"' "${response_body}"
 grep -q '"store":"Epic Games Store"' "${response_body}"
+grep -q '"store":"Nintendo eShop"' "${response_body}"
+grep -q '"platform":"Nintendo Switch 2","status":"Compatible"' "${response_body}"
 grep -q '"purchaseUrl":"https://store.epicgames.com/p/hades"' "${response_body}"
 grep -q '"minorAmount":25000' "${response_body}"
 grep -q '"region":"KR"' "${response_body}"
 grep -q '"edition":"Standard"' "${response_body}"
 grep -q '"offerType":"BaseGame"' "${response_body}"
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/games/hades/prices?platform=Nintendo%20Switch%202")
+[[ "${status}" == "200" ]]
+grep -q '"store":"Nintendo eShop"' "${response_body}"
+! grep -q '"store":"Steam"' "${response_body}"
+! grep -q '"store":"Epic Games Store"' "${response_body}"
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/games/stardew-valley/prices?platform=Android")

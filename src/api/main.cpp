@@ -54,6 +54,13 @@ Json::Value productJson(const ProductPriceReport& report) {
     for (const auto platform : report.product.supportedPlatforms) {
         json["platforms"].append(toString(platform));
     }
+    json["compatibility"] = Json::arrayValue;
+    for (const auto& entry : report.product.compatibility) {
+        Json::Value compatibility;
+        compatibility["platform"] = toString(entry.platform);
+        compatibility["status"] = toString(entry.status);
+        json["compatibility"].append(std::move(compatibility));
+    }
     if (report.history) {
         Json::Value history;
         history["lowestPrice"] = moneyJson(report.history->lowestPrice);
@@ -125,7 +132,10 @@ PriceComparisonCriteria comparisonCriteria(
     if (!edition.empty()) {
         if (edition == "Standard") criteria.edition = GameEdition::Standard;
         else if (edition == "Deluxe") criteria.edition = GameEdition::Deluxe;
-        else throw std::invalid_argument("edition must be Standard or Deluxe");
+        else if (edition == "Switch2Edition") {
+            criteria.edition = GameEdition::Switch2Edition;
+        } else throw std::invalid_argument(
+            "edition must be Standard, Deluxe, or Switch2Edition");
     }
     if (!offerType.empty()) {
         if (offerType == "BaseGame") criteria.offerType = OfferType::BaseGame;
@@ -133,9 +143,11 @@ PriceComparisonCriteria comparisonCriteria(
         else if (offerType == "Bundle") criteria.offerType = OfferType::Bundle;
         else if (offerType == "Subscription") {
             criteria.offerType = OfferType::Subscription;
+        } else if (offerType == "UpgradePack") {
+            criteria.offerType = OfferType::UpgradePack;
         } else {
             throw std::invalid_argument(
-                "offerType must be BaseGame, DLC, Bundle, or Subscription");
+                "offerType must be BaseGame, DLC, Bundle, Subscription, or UpgradePack");
         }
     }
     if (!currency.empty() && currency != "KRW") {
@@ -148,6 +160,11 @@ PriceComparisonCriteria comparisonCriteria(
         else if (platform == "Android") criteria.platform = Platform::Android;
         else if (platform == "iOS") criteria.platform = Platform::IOS;
         else if (platform == "iPadOS") criteria.platform = Platform::IPadOS;
+        else if (platform == "Nintendo Switch") {
+            criteria.platform = Platform::NintendoSwitch;
+        } else if (platform == "Nintendo Switch 2") {
+            criteria.platform = Platform::NintendoSwitch2;
+        }
         else throw std::invalid_argument("unsupported platform");
     }
     return criteria;

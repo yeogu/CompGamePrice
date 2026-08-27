@@ -190,8 +190,8 @@ def write_snapshot(
 
 def load_steam_targets(path: Path) -> list[tuple[str, str]]:
     payload = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict) or payload.get("schemaVersion") != 3:
-        raise ValueError("Game catalog requires schemaVersion 3")
+    if not isinstance(payload, dict) or payload.get("schemaVersion") != 4:
+        raise ValueError("Game catalog requires schemaVersion 4")
     games = payload.get("games")
     if not isinstance(games, list) or not games:
         raise ValueError("Game catalog must contain a non-empty games list")
@@ -218,7 +218,10 @@ def load_steam_targets(path: Path) -> list[tuple[str, str]]:
         seen_titles.add(normalized_title)
 
         platforms = game.get("platforms")
-        supported_platforms = {"Windows", "macOS", "Linux", "Android", "iOS", "iPadOS"}
+        supported_platforms = {
+            "Windows", "macOS", "Linux", "Android", "iOS", "iPadOS",
+            "NintendoSwitch", "NintendoSwitch2",
+        }
         if not isinstance(platforms, list) or not platforms:
             raise ValueError(f"Catalog game {game_id} requires platforms")
         if any(not isinstance(platform, str) or platform not in supported_platforms
@@ -234,7 +237,10 @@ def load_steam_targets(path: Path) -> list[tuple[str, str]]:
             if not isinstance(product, dict):
                 raise ValueError(f"Catalog game {game_id} product must be an object")
             store = product.get("store")
-            if store not in {"Steam", "EpicGamesStore", "GooglePlay", "AppleAppStore"}:
+            if store not in {
+                "Steam", "EpicGamesStore", "GooglePlay", "AppleAppStore",
+                "NintendoEShop",
+            }:
                 raise ValueError(f"Catalog game {game_id} contains unsupported Store")
             product_id = product.get("productId")
             product_url = product.get("productUrl")
@@ -257,10 +263,28 @@ def load_steam_targets(path: Path) -> list[tuple[str, str]]:
                 )
             if region != "KR":
                 raise ValueError(f"Catalog product for {game_id} has unsupported region")
-            if edition not in {"Standard", "Deluxe"}:
+            if edition not in {"Standard", "Deluxe", "Switch2Edition"}:
                 raise ValueError(f"Catalog product for {game_id} has unsupported edition")
-            if offer_type not in {"BaseGame", "DLC", "Bundle", "Subscription"}:
+            if offer_type not in {
+                "BaseGame", "DLC", "Bundle", "Subscription", "UpgradePack",
+            }:
                 raise ValueError(f"Catalog product for {game_id} has unsupported offerType")
+            compatibility = product.get("compatibility", [])
+            if not isinstance(compatibility, list):
+                raise ValueError(f"Catalog product for {game_id} has invalid compatibility")
+            compatibility_platforms: set[str] = set()
+            for entry in compatibility:
+                if (not isinstance(entry, dict)
+                        or entry.get("platform") not in supported_platforms
+                        or entry.get("platform") not in platforms
+                        or entry.get("status") not in {
+                            "Native", "Compatible", "Limited", "Unsupported", "Unknown",
+                        }
+                        or entry.get("platform") in compatibility_platforms):
+                    raise ValueError(
+                        f"Catalog product for {game_id} has invalid compatibility"
+                    )
+                compatibility_platforms.add(entry["platform"])
             if store != "Steam":
                 continue
             if not product_id.isdigit():

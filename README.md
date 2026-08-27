@@ -2,7 +2,8 @@
 
 AI를 활용하여 개발하는 크로스 플랫폼 게임 가격 비교 Prototype입니다.
 
-서로 다른 Steam, Epic Games Store, Google Play, Apple App Store 로컬 데이터 형식을 공통
+서로 다른 Steam, Epic Games Store, Google Play, Apple App Store, Nintendo eShop
+로컬 데이터 형식을 공통
 `StoreProduct` 모델로 정규화하고, 공통 Provider 인터페이스를 통해
 게임별 Store 최저가를 비교합니다.
 
@@ -150,7 +151,7 @@ python3 tools/collect_steam_snapshot.py \
 
 ```json
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "games": [
     {
       "id": "stardew-valley",
@@ -183,6 +184,11 @@ Epic Games Store는 첫 Store 확장 사례입니다. `epic_games_products.txt`�
 colon 구분 offer block을 `EpicGamesProvider`가 정규화합니다. Hades에는 Steam과
 Epic 상품이 함께 등록되어 두 PC Store의 가격 비교, 이력, 추천과 구매 링크를
 동일한 Core 흐름으로 검증할 수 있습니다.
+
+Nintendo eShop 샘플도 Hades에 연결됩니다. Nintendo Switch와 Nintendo Switch 2는
+서로 다른 `Platform`이며, Switch 상품의 Switch 2 실행 가능 여부는 네이티브 플랫폼
+목록에 섞지 않고 `PlatformCompatibility`로 저장합니다. 따라서 Switch 2 호환 게임,
+Switch 2 전용 Edition, Upgrade Pack을 구분하면서 동일한 가격 비교 흐름을 사용합니다.
 
 ```sh
 ./build/game_price_tracker collect --data-dir data Hades
@@ -306,12 +312,13 @@ DB 적재 사이에 지연이 생겨도 그래프에는 응답을 관측한 시�
 5개 필드 로컬 sample은 호환성을 위해 DB 적재 시각을 사용합니다. 관측 시각은
 `YYYY-MM-DDTHH:MM:SS.sssZ` UTC 형식만 허용하며 잘못된 값은 트랜잭션 전체를
 롤백합니다.
-DB schema는 SQLite `user_version`으로 관리하며 현재 버전은 3입니다. version 2는
+DB schema는 SQLite `user_version`으로 관리하며 현재 버전은 4입니다. version 2는
 `store_products`와 `price_history`에 선택적인 정상가와 0–100 정수 할인율을
 추가합니다. 기존 version 1 DB는 상품과 이력을 보존하면서 정상가 미상(NULL),
 할인율 0으로 자동 이전됩니다. version 3는 Store 상품에 Region, Edition,
 Offer Type을 추가하며 기존 상품은 `KR`, `Standard`, `BaseGame`으로 이전합니다.
-새 DB는 바로 version 3으로 초기화되며 프로그램보다 새로운 DB version은
+version 4는 상품별 플랫폼 호환성(예: Nintendo Switch 게임의 Switch 2 호환)을
+별도 관계로 저장합니다. 새 DB는 바로 version 4로 초기화되며 프로그램보다 새로운 DB version은
 데이터 손상을 피하기 위해 실행을 중단합니다.
 `PriceHistoryService`는 저장된 이력으로 현재가, 최저가, 최고가, 정수 기반
 평균가와 직전 관측 대비 가격 추이를 계산합니다.

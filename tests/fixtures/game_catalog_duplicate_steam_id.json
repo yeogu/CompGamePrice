@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "games": [
     { "id": "first", "title": "First", "platforms": ["Windows"], "products": [{ "store": "Steam", "productId": "1", "productUrl": "https://example.com/1", "platforms": ["Windows"], "region": "KR", "edition": "Standard", "offerType": "BaseGame" }] },
     { "id": "second", "title": "Second", "platforms": ["Windows"], "products": [{ "store": "Steam", "productId": "1", "productUrl": "https://example.com/1", "platforms": ["Windows"], "region": "KR", "edition": "Standard", "offerType": "BaseGame" }] }

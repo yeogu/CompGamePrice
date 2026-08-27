@@ -81,12 +81,15 @@ Platform platformFromString(const std::string& value) {
     if (value == "Android") return Platform::Android;
     if (value == "iOS") return Platform::IOS;
     if (value == "iPadOS") return Platform::IPadOS;
+    if (value == "NintendoSwitch") return Platform::NintendoSwitch;
+    if (value == "NintendoSwitch2") return Platform::NintendoSwitch2;
     throw std::runtime_error("Unsupported Game Catalog platform: " + value);
 }
 
 Store storeFromString(const std::string& value) {
     if (value == "Steam") return Store::Steam;
     if (value == "EpicGamesStore") return Store::EpicGamesStore;
+    if (value == "NintendoEShop") return Store::NintendoEShop;
     if (value == "GooglePlay") return Store::GooglePlay;
     if (value == "AppleAppStore") return Store::AppleAppStore;
     throw std::runtime_error("Unsupported Game Catalog Store: " + value);
@@ -100,6 +103,7 @@ Region regionFromString(const std::string& value) {
 GameEdition editionFromString(const std::string& value) {
     if (value == "Standard") return GameEdition::Standard;
     if (value == "Deluxe") return GameEdition::Deluxe;
+    if (value == "Switch2Edition") return GameEdition::Switch2Edition;
     throw std::runtime_error("Unsupported Game Catalog edition: " + value);
 }
 
@@ -108,6 +112,7 @@ OfferType offerTypeFromString(const std::string& value) {
     if (value == "DLC") return OfferType::DLC;
     if (value == "Bundle") return OfferType::Bundle;
     if (value == "Subscription") return OfferType::Subscription;
+    if (value == "UpgradePack") return OfferType::UpgradePack;
     throw std::runtime_error("Unsupported Game Catalog offer type: " + value);
 }
 
@@ -136,6 +141,48 @@ std::vector<Platform> parsePlatforms(
     return result;
 }
 
+CompatibilityStatus compatibilityStatusFromString(const std::string& value) {
+    if (value == "Native") return CompatibilityStatus::Native;
+    if (value == "Compatible") return CompatibilityStatus::Compatible;
+    if (value == "Limited") return CompatibilityStatus::Limited;
+    if (value == "Unsupported") return CompatibilityStatus::Unsupported;
+    if (value == "Unknown") return CompatibilityStatus::Unknown;
+    throw std::runtime_error("Unsupported compatibility status: " + value);
+}
+
+std::vector<PlatformCompatibility> parseCompatibility(
+    sqlite3* database,
+    const std::optional<std::string>& compatibilityJson,
+    const std::optional<std::string>& compatibilityType) {
+    if (!compatibilityJson && !compatibilityType) return {};
+    if (!compatibilityJson ||
+        compatibilityType != std::optional<std::string>{"array"}) {
+        throw std::runtime_error("Game Catalog compatibility must be an array");
+    }
+    Statement entries(database, R"sql(
+        SELECT json_extract(value, '$.platform'), json_type(value, '$.platform'),
+               json_extract(value, '$.status'), json_type(value, '$.status')
+        FROM json_each(?1);
+    )sql");
+    entries.bindJson(*compatibilityJson);
+    std::vector<PlatformCompatibility> result;
+    while (entries.next()) {
+        const auto platformName = entries.optionalText(0);
+        const auto statusName = entries.optionalText(2);
+        requireJsonString(platformName, entries.optionalText(1), "compatibility[].platform");
+        requireJsonString(statusName, entries.optionalText(3), "compatibility[].status");
+        const auto platform = platformFromString(*platformName);
+        if (std::any_of(result.begin(), result.end(), [platform](const auto& item) {
+                return item.platform == platform;
+            })) {
+            throw std::runtime_error("Duplicate compatibility platform: " + *platformName);
+        }
+        result.push_back(PlatformCompatibility{
+            platform, compatibilityStatusFromString(*statusName)});
+    }
+    return result;
+}
+
 }  // namespace
 
 GameCatalog::GameCatalog(const std::string& dataPath) {
@@ -149,11 +196,11 @@ GameCatalog::GameCatalog(const std::string& dataPath) {
                json_type(?1, '$.games');
     )sql");
     header.bindJson(json);
-    if (!header.next() || header.integer(0) != 1 || header.integer(1) != 3 ||
+    if (!header.next() || header.integer(0) != 1 || header.integer(1) != 4 ||
         header.optionalText(2) != std::optional<std::string>{"integer"} ||
         header.optionalText(3) != std::optional<std::string>{"array"}) {
         throw std::runtime_error(
-            "Game Catalog must be valid JSON with schemaVersion 3 and games array");
+            "Game Catalog must be valid JSON with schemaVersion 4 and games array");
     }
 
     Statement rows(parser.handle(), R"sql(
@@ -193,7 +240,9 @@ GameCatalog::GameCatalog(const std::string& dataPath) {
                    json_extract(value, '$.platforms'), json_type(value, '$.platforms'),
                    json_extract(value, '$.region'), json_type(value, '$.region'),
                    json_extract(value, '$.edition'), json_type(value, '$.edition'),
-                   json_extract(value, '$.offerType'), json_type(value, '$.offerType')
+                   json_extract(value, '$.offerType'), json_type(value, '$.offerType'),
+                   json_extract(value, '$.compatibility'),
+                   json_type(value, '$.compatibility')
             FROM json_each(?1);
         )sql");
         products.bindJson(*productsJson);
@@ -220,12 +269,22 @@ GameCatalog::GameCatalog(const std::string& dataPath) {
             const auto offerType = offerTypeFromString(*offerTypeName);
             auto productPlatforms = parsePlatforms(
                 parser.handle(), products.optionalText(6), products.optionalText(7));
+            auto compatibility = parseCompatibility(
+                parser.handle(), products.optionalText(14), products.optionalText(15));
             for (const auto platform : productPlatforms) {
                 if (std::find(games_.back().supportedPlatforms.begin(),
                               games_.back().supportedPlatforms.end(), platform) ==
                     games_.back().supportedPlatforms.end()) {
                     throw std::runtime_error(
                         "Store product platform is not supported by its Game");
+                }
+            }
+            for (const auto& entry : compatibility) {
+                if (std::find(games_.back().supportedPlatforms.begin(),
+                              games_.back().supportedPlatforms.end(), entry.platform) ==
+                    games_.back().supportedPlatforms.end()) {
+                    throw std::runtime_error(
+                        "Compatibility platform is not supported by its Game");
                 }
             }
             if (std::any_of(
@@ -238,7 +297,7 @@ GameCatalog::GameCatalog(const std::string& dataPath) {
             }
             storeProducts_.push_back(CatalogStoreProduct{
                 *id, store, *productId, *productUrl, std::move(productPlatforms),
-                region, edition, offerType});
+                region, edition, offerType, std::move(compatibility)});
             foundProduct = true;
         }
         if (!foundProduct) {

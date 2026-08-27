@@ -7,6 +7,7 @@ namespace game_price {
 enum class Store {
     Steam,
     EpicGamesStore,
+    NintendoEShop,
     GooglePlay,
     AppleAppStore
 };
@@ -17,7 +18,9 @@ enum class Platform {
     Linux,
     Android,
     IOS,
-    IPadOS
+    IPadOS,
+    NintendoSwitch,
+    NintendoSwitch2
 };
 
 enum class Currency {
@@ -30,14 +33,29 @@ enum class Region {
 
 enum class GameEdition {
     Standard,
-    Deluxe
+    Deluxe,
+    Switch2Edition
 };
 
 enum class OfferType {
     BaseGame,
     DLC,
     Bundle,
-    Subscription
+    Subscription,
+    UpgradePack
+};
+
+enum class CompatibilityStatus {
+    Native,
+    Compatible,
+    Limited,
+    Unsupported,
+    Unknown
+};
+
+struct PlatformCompatibility {
+    Platform platform;
+    CompatibilityStatus status{CompatibilityStatus::Unknown};
 };
 
 std::string toString(Store store);
@@ -46,5 +64,6 @@ std::string toString(Currency currency);
 std::string toString(Region region);
 std::string toString(GameEdition edition);
 std::string toString(OfferType offerType);
+std::string toString(CompatibilityStatus status);
 
 }  // namespace game_price

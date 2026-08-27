@@ -18,6 +18,7 @@ struct CatalogStoreProduct {
     Region region{Region::KR};
     GameEdition edition{GameEdition::Standard};
     OfferType offerType{OfferType::BaseGame};
+    std::vector<PlatformCompatibility> compatibility;
 };
 
 class GameCatalog {

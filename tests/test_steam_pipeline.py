@@ -113,7 +113,7 @@ class SteamPipelineTest(unittest.TestCase):
             root = Path(directory)
             catalog = root / "catalog.json"
             catalog.write_text(
-                '{"schemaVersion":3,"games":['
+                '{"schemaVersion":4,"games":['
                 '{"id":"unknown-game","title":"Unknown",'
                 '"platforms":["Windows"],'
                 '"products":[{"store":"Steam","productId":"invalid",'

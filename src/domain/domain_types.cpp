@@ -6,6 +6,7 @@ std::string toString(Store store) {
     switch (store) {
         case Store::Steam: return "Steam";
         case Store::EpicGamesStore: return "Epic Games Store";
+        case Store::NintendoEShop: return "Nintendo eShop";
         case Store::GooglePlay: return "Google Play";
         case Store::AppleAppStore: return "Apple App Store";
     }
@@ -20,6 +21,8 @@ std::string toString(Platform platform) {
         case Platform::Android: return "Android";
         case Platform::IOS: return "iOS";
         case Platform::IPadOS: return "iPadOS";
+        case Platform::NintendoSwitch: return "Nintendo Switch";
+        case Platform::NintendoSwitch2: return "Nintendo Switch 2";
     }
     return "Unknown Platform";
 }
@@ -42,6 +45,7 @@ std::string toString(GameEdition edition) {
     switch (edition) {
         case GameEdition::Standard: return "Standard";
         case GameEdition::Deluxe: return "Deluxe";
+        case GameEdition::Switch2Edition: return "Switch2Edition";
     }
     return "Unknown Edition";
 }
@@ -52,8 +56,20 @@ std::string toString(OfferType offerType) {
         case OfferType::DLC: return "DLC";
         case OfferType::Bundle: return "Bundle";
         case OfferType::Subscription: return "Subscription";
+        case OfferType::UpgradePack: return "UpgradePack";
     }
     return "Unknown Offer Type";
+}
+
+std::string toString(CompatibilityStatus status) {
+    switch (status) {
+        case CompatibilityStatus::Native: return "Native";
+        case CompatibilityStatus::Compatible: return "Compatible";
+        case CompatibilityStatus::Limited: return "Limited";
+        case CompatibilityStatus::Unsupported: return "Unsupported";
+        case CompatibilityStatus::Unknown: return "Unknown";
+    }
+    return "Unknown";
 }
 
 }  // namespace game_price

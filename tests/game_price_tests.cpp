@@ -6,6 +6,7 @@
 #include "game_price/persistence/database.h"
 #include "game_price/catalog/game_catalog.h"
 #include "game_price/collection/google_play_provider.h"
+#include "game_price/collection/nintendo_eshop_provider.h"
 #include "game_price/pricing/price_comparison_service.h"
 #include "game_price/pricing/price_history_service.h"
 #include "game_price/recommendation/purchase_recommendation_service.h"
@@ -83,6 +84,7 @@ void testProviderNormalization() {
     GooglePlayProvider googlePlay(dataDirectory + "/google_play_products.txt");
     AppleAppStoreProvider apple(dataDirectory + "/apple_app_store_products.csv");
     EpicGamesProvider epic(dataDirectory + "/epic_games_products.txt");
+    NintendoEShopProvider nintendo(dataDirectory + "/nintendo_eshop_products.csv");
 
     const auto steamProducts = steam.findProducts("stardew-valley");
     expect(steamProducts.size() == 1, "Steam should return one product");
@@ -147,6 +149,29 @@ void testProviderNormalization() {
         rejectedInvalidEpicPrice = true;
     }
     expect(rejectedInvalidEpicPrice, "Epic should reject an invalid price block");
+
+    const auto nintendoProducts = nintendo.findProducts("hades");
+    expect(nintendoProducts.size() == 1,
+           "Nintendo eShop should return one Hades product");
+    expect(nintendoProducts.front().store == Store::NintendoEShop &&
+               nintendoProducts.front().supportedPlatforms ==
+                   std::vector<Platform>{Platform::NintendoSwitch},
+           "Nintendo product should remain native to Nintendo Switch");
+    expect(nintendoProducts.front().compatibility.size() == 1 &&
+               nintendoProducts.front().compatibility.front().platform ==
+                   Platform::NintendoSwitch2 &&
+               nintendoProducts.front().compatibility.front().status ==
+                   CompatibilityStatus::Compatible,
+           "Nintendo Provider should normalize Switch 2 compatibility separately");
+    bool rejectedInvalidNintendoProduct = false;
+    try {
+        NintendoEShopProvider invalid(
+            dataDirectory + "/../tests/fixtures/nintendo_eshop_products_invalid.csv");
+    } catch (const std::runtime_error&) {
+        rejectedInvalidNintendoProduct = true;
+    }
+    expect(rejectedInvalidNintendoProduct,
+           "Nintendo Provider should reject malformed identifiers and prices");
 }
 
 void testEpicEndToEndComparison() {
@@ -157,19 +182,20 @@ void testEpicEndToEndComparison() {
 
     SteamProvider steam(dataDirectory + "/steam_products.txt");
     EpicGamesProvider epic(dataDirectory + "/epic_games_products.txt");
+    NintendoEShopProvider nintendo(dataDirectory + "/nintendo_eshop_products.csv");
     Database database(":memory:");
     StoreProductRepository repository(database);
     repository.initializeSchema();
     std::vector<std::reference_wrapper<const StoreProductProvider>> providers{
-        steam, epic};
+        steam, epic, nintendo};
     const auto collection = CollectionService(repository, providers, 1).collect(*game);
-    expect(collection.totalProducts == 2,
-           "Hades collection should save Steam and Epic products");
+    expect(collection.totalProducts == 3,
+           "Hades collection should save Steam, Epic, and Nintendo products");
 
     const auto comparison = PriceComparisonService(catalog, repository)
                                 .compareByGameId("hades");
-    expect(comparison.has_value() && comparison->products.size() == 2,
-           "Hades should compare two Store products");
+    expect(comparison.has_value() && comparison->products.size() == 3,
+           "Hades should compare three Store products");
     expect(comparison->cheapestProduct->store == Store::EpicGamesStore &&
                comparison->cheapestProduct->currentPrice.minorAmount == 25000,
            "Epic should be the cheapest Hades Store");
@@ -184,6 +210,23 @@ void testEpicEndToEndComparison() {
     expect(epicReport != report->productReports.end() &&
                epicReport->purchaseUrl == "https://store.epicgames.com/p/hades",
            "API report should use the Epic catalog purchase URL");
+
+    PriceComparisonCriteria switchCriteria;
+    switchCriteria.platform = Platform::NintendoSwitch;
+    const auto switchComparison = PriceComparisonService(catalog, repository)
+                                      .compareByGameId("hades", switchCriteria);
+    expect(switchComparison->products.size() == 1 &&
+               switchComparison->cheapestProduct->store == Store::NintendoEShop,
+           "Nintendo Switch criteria should find the native eShop product");
+
+    PriceComparisonCriteria switch2Criteria;
+    switch2Criteria.platform = Platform::NintendoSwitch2;
+    const auto switch2Comparison = PriceComparisonService(catalog, repository)
+                                       .compareByGameId("hades", switch2Criteria);
+    expect(switch2Comparison->products.size() == 1 &&
+               switch2Comparison->products.front().compatibility.front().status ==
+                   CompatibilityStatus::Compatible,
+           "Nintendo Switch 2 criteria should include a compatible Switch product");
 }
 
 void testHistoryDeduplicationAndAnalysis() {
@@ -284,8 +327,8 @@ void testDatabaseSchemaVersion() {
     )sql");
     StoreProductRepository versionOneRepository(versionOneDatabase);
     versionOneRepository.initializeSchema();
-    expect(versionOneDatabase.userVersion() == 3,
-           "Schema version 1 should migrate to version 3");
+    expect(versionOneDatabase.userVersion() == 4,
+           "Schema version 1 should migrate to version 4");
     const auto migratedProducts =
         versionOneRepository.findProductsByGameId("stardew-valley");
     expect(migratedProducts.size() == 1,
@@ -335,8 +378,8 @@ void testDatabaseSchemaVersion() {
     )sql");
     StoreProductRepository versionTwoRepository(versionTwoDatabase);
     versionTwoRepository.initializeSchema();
-    expect(versionTwoDatabase.userVersion() == 3,
-           "Schema version 2 should migrate to version 3");
+    expect(versionTwoDatabase.userVersion() == 4,
+           "Schema version 2 should migrate to version 4");
     const auto versionTwoProducts = versionTwoRepository.findProductsByGameId("hades");
     expect(versionTwoProducts.size() == 1 &&
                versionTwoProducts.front().region == Region::KR &&
@@ -484,6 +527,9 @@ void testGameCatalogSearch() {
            "Catalog should expose Store-specific product mappings");
     expect(catalog.storeProducts(Store::EpicGamesStore).size() == 1,
            "Catalog should expose the Epic product mapping");
+    expect(catalog.storeProducts(Store::NintendoEShop).size() == 1 &&
+               catalog.storeProducts(Store::NintendoEShop).front().compatibility.size() == 1,
+           "Catalog should expose Nintendo eShop and Switch 2 compatibility");
     expect(catalog.storeProducts(Store::EpicGamesStore).front().region == Region::KR &&
                catalog.storeProducts(Store::EpicGamesStore).front().edition ==
                    GameEdition::Standard &&

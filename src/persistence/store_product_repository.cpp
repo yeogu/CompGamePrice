@@ -81,6 +81,7 @@ std::string columnText(sqlite3_stmt* statement, int index) {
 Store parseStore(const std::string& value) {
     if (value == "Steam") return Store::Steam;
     if (value == "Epic Games Store") return Store::EpicGamesStore;
+    if (value == "Nintendo eShop") return Store::NintendoEShop;
     if (value == "Google Play") return Store::GooglePlay;
     if (value == "Apple App Store") return Store::AppleAppStore;
     throw std::runtime_error("Unknown Store value in database: " + value);
@@ -93,6 +94,8 @@ Platform parsePlatform(const std::string& value) {
     if (value == "Android") return Platform::Android;
     if (value == "iOS") return Platform::IOS;
     if (value == "iPadOS") return Platform::IPadOS;
+    if (value == "Nintendo Switch") return Platform::NintendoSwitch;
+    if (value == "Nintendo Switch 2") return Platform::NintendoSwitch2;
     throw std::runtime_error("Unknown Platform value in database: " + value);
 }
 
@@ -104,6 +107,7 @@ Region parseRegion(const std::string& value) {
 GameEdition parseEdition(const std::string& value) {
     if (value == "Standard") return GameEdition::Standard;
     if (value == "Deluxe") return GameEdition::Deluxe;
+    if (value == "Switch2Edition") return GameEdition::Switch2Edition;
     throw std::runtime_error("Unknown Edition value in database: " + value);
 }
 
@@ -112,7 +116,17 @@ OfferType parseOfferType(const std::string& value) {
     if (value == "DLC") return OfferType::DLC;
     if (value == "Bundle") return OfferType::Bundle;
     if (value == "Subscription") return OfferType::Subscription;
+    if (value == "UpgradePack") return OfferType::UpgradePack;
     throw std::runtime_error("Unknown Offer Type value in database: " + value);
+}
+
+CompatibilityStatus parseCompatibilityStatus(const std::string& value) {
+    if (value == "Native") return CompatibilityStatus::Native;
+    if (value == "Compatible") return CompatibilityStatus::Compatible;
+    if (value == "Limited") return CompatibilityStatus::Limited;
+    if (value == "Unsupported") return CompatibilityStatus::Unsupported;
+    if (value == "Unknown") return CompatibilityStatus::Unknown;
+    throw std::runtime_error("Unknown compatibility status in database: " + value);
 }
 
 Currency parseCurrency(const std::string& value) {
@@ -183,9 +197,10 @@ void StoreProductRepository::initializeSchema() const {
             purchasable INTEGER NOT NULL CHECK (purchasable IN (0, 1)),
             region TEXT NOT NULL DEFAULT 'KR' CHECK (region IN ('KR')),
             edition TEXT NOT NULL DEFAULT 'Standard'
-                CHECK (edition IN ('Standard', 'Deluxe')),
+                CHECK (edition IN ('Standard', 'Deluxe', 'Switch2Edition')),
             offer_type TEXT NOT NULL DEFAULT 'BaseGame'
-                CHECK (offer_type IN ('BaseGame', 'DLC', 'Bundle', 'Subscription')),
+                CHECK (offer_type IN (
+                    'BaseGame', 'DLC', 'Bundle', 'Subscription', 'UpgradePack')),
             PRIMARY KEY (store, external_product_id),
             FOREIGN KEY (game_id) REFERENCES games(id)
         );
@@ -194,6 +209,18 @@ void StoreProductRepository::initializeSchema() const {
             store TEXT NOT NULL,
             external_product_id TEXT NOT NULL,
             platform TEXT NOT NULL,
+            PRIMARY KEY (store, external_product_id, platform),
+            FOREIGN KEY (store, external_product_id)
+                REFERENCES store_products(store, external_product_id)
+                ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS product_compatibility (
+            store TEXT NOT NULL,
+            external_product_id TEXT NOT NULL,
+            platform TEXT NOT NULL,
+            status TEXT NOT NULL
+                CHECK (status IN ('Native', 'Compatible', 'Limited', 'Unsupported', 'Unknown')),
             PRIMARY KEY (store, external_product_id, platform),
             FOREIGN KEY (store, external_product_id)
                 REFERENCES store_products(store, external_product_id)
@@ -259,7 +286,7 @@ void StoreProductRepository::initializeSchema() const {
                     CHECK (offer_type IN ('BaseGame', 'DLC', 'Bundle', 'Subscription'));
             )sql");
         }
-        database_.execute("PRAGMA user_version = 3;");
+        database_.execute("PRAGMA user_version = 4;");
         database_.execute("COMMIT;");
     } catch (...) {
         try {
@@ -423,6 +450,28 @@ void StoreProductRepository::saveNormalizedProducts(
                 bindText(statement.get(), 3, toString(platform));
                 statement.execute();
             }
+
+            {
+                Statement statement(database_.handle(), R"sql(
+                    DELETE FROM product_compatibility
+                    WHERE store = ? AND external_product_id = ?;
+                )sql");
+                bindText(statement.get(), 1, store);
+                bindText(statement.get(), 2, product.productId);
+                statement.execute();
+            }
+            for (const auto& compatibility : product.compatibility) {
+                Statement statement(database_.handle(), R"sql(
+                    INSERT INTO product_compatibility(
+                        store, external_product_id, platform, status)
+                    VALUES(?, ?, ?, ?);
+                )sql");
+                bindText(statement.get(), 1, store);
+                bindText(statement.get(), 2, product.productId);
+                bindText(statement.get(), 3, toString(compatibility.platform));
+                bindText(statement.get(), 4, toString(compatibility.status));
+                statement.execute();
+            }
         }
 
         database_.execute("COMMIT;");
@@ -466,6 +515,21 @@ std::vector<StoreProduct> StoreProductRepository::findProductsByGameId(
             platforms.push_back(parsePlatform(columnText(platformsStatement.get(), 0)));
         }
 
+        Statement compatibilityStatement(database_.handle(), R"sql(
+            SELECT platform, status
+            FROM product_compatibility
+            WHERE store = ? AND external_product_id = ?
+            ORDER BY platform;
+        )sql");
+        bindText(compatibilityStatement.get(), 1, storeName);
+        bindText(compatibilityStatement.get(), 2, productId);
+        std::vector<PlatformCompatibility> compatibility;
+        while (compatibilityStatement.next()) {
+            compatibility.push_back(PlatformCompatibility{
+                parsePlatform(columnText(compatibilityStatement.get(), 0)),
+                parseCompatibilityStatus(columnText(compatibilityStatement.get(), 1))});
+        }
+
         products.push_back(StoreProduct{
             productId,
             columnText(productsStatement.get(), 2),
@@ -484,7 +548,8 @@ std::vector<StoreProduct> StoreProductRepository::findProductsByGameId(
             sqlite3_column_int(productsStatement.get(), 5),
             parseRegion(columnText(productsStatement.get(), 8)),
             parseEdition(columnText(productsStatement.get(), 9)),
-            parseOfferType(columnText(productsStatement.get(), 10))});
+            parseOfferType(columnText(productsStatement.get(), 10)),
+            std::move(compatibility)});
     }
     return products;
 }

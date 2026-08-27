@@ -7,6 +7,7 @@ const storeStyles: Record<string, { color: string }> = {
   'Epic Games Store': { color: '#c7a6ff' },
   'Google Play': { color: '#73e2a7' },
   'Apple App Store': { color: '#f4a261' },
+  'Nintendo eShop': { color: '#e60012' },
 }
 
 const fallbackStyle = { color: '#c7a6ff' }

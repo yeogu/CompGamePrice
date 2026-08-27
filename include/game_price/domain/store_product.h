@@ -23,7 +23,8 @@ struct StoreProduct {
         int discountPercent = 0,
         Region region = Region::KR,
         GameEdition edition = GameEdition::Standard,
-        OfferType offerType = OfferType::BaseGame)
+        OfferType offerType = OfferType::BaseGame,
+        std::vector<PlatformCompatibility> compatibility = {})
         : productId(std::move(productId)),
           gameId(std::move(gameId)),
           store(store),
@@ -35,7 +36,8 @@ struct StoreProduct {
           discountPercent(discountPercent),
           region(region),
           edition(edition),
-          offerType(offerType) {}
+          offerType(offerType),
+          compatibility(std::move(compatibility)) {}
 
     std::string productId;
     std::string gameId;
@@ -49,6 +51,7 @@ struct StoreProduct {
     Region region{Region::KR};
     GameEdition edition{GameEdition::Standard};
     OfferType offerType{OfferType::BaseGame};
+    std::vector<PlatformCompatibility> compatibility;
 };
 
 }  // namespace game_price

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "games": [
     {
       "id": "stardew-valley",
@@ -30,10 +30,11 @@
     {
       "id": "hades",
       "title": "Hades",
-      "platforms": ["Windows", "macOS"],
+      "platforms": ["Windows", "macOS", "NintendoSwitch", "NintendoSwitch2"],
       "products": [
         { "store": "Steam", "productId": "1145360", "productUrl": "https://store.steampowered.com/app/1145360", "platforms": ["Windows", "macOS"], "region": "KR", "edition": "Standard", "offerType": "BaseGame" },
-        { "store": "EpicGamesStore", "productId": "hades", "productUrl": "https://store.epicgames.com/p/hades", "platforms": ["Windows", "macOS"], "region": "KR", "edition": "Standard", "offerType": "BaseGame" }
+        { "store": "EpicGamesStore", "productId": "hades", "productUrl": "https://store.epicgames.com/p/hades", "platforms": ["Windows", "macOS"], "region": "KR", "edition": "Standard", "offerType": "BaseGame" },
+        { "store": "NintendoEShop", "productId": "70010000033131", "productUrl": "https://www.nintendo.com/us/store/products/hades-switch/", "platforms": ["NintendoSwitch"], "region": "KR", "edition": "Standard", "offerType": "BaseGame", "compatibility": [{ "platform": "NintendoSwitch2", "status": "Compatible" }] }
       ]
     }
   ]

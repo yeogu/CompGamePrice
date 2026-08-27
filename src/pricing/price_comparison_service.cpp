@@ -40,11 +40,18 @@ PriceComparisonResult PriceComparisonService::compare(
             product.currentPrice.currency != criteria.currency) {
             continue;
         }
-        if (criteria.platform &&
-            std::find(product.supportedPlatforms.begin(),
-                      product.supportedPlatforms.end(), *criteria.platform) ==
-                product.supportedPlatforms.end()) {
-            continue;
+        if (criteria.platform) {
+            const bool native = std::find(
+                product.supportedPlatforms.begin(), product.supportedPlatforms.end(),
+                *criteria.platform) != product.supportedPlatforms.end();
+            const bool compatible = std::any_of(
+                product.compatibility.begin(), product.compatibility.end(),
+                [&criteria](const PlatformCompatibility& entry) {
+                    return entry.platform == *criteria.platform &&
+                        (entry.status == CompatibilityStatus::Native ||
+                         entry.status == CompatibilityStatus::Compatible);
+                });
+            if (!native && !compatible) continue;
         }
         result.products.push_back(product);
         if (!result.cheapestProduct ||

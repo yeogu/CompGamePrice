@@ -38,6 +38,7 @@ export interface StoreProduct {
   discountPercent: number
   purchasable: boolean
   platforms: string[]
+  compatibility: { platform: string; status: string }[]
   history?: PriceHistory
   recommendation?: Recommendation
 }
