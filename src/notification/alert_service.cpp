@@ -1,5 +1,6 @@
 #include "game_price/notification/alert_service.h"
 #include "game_price/domain/store_product.h"
+#include "game_price/pricing/price_comparison_service.h"
 
 #include <sqlite3.h>
 #include <stdexcept>
@@ -14,13 +15,14 @@ std::size_t AlertService::evaluateGame(const std::string& gameId) const {
     const char* sql=R"sql(
       SELECT r.id,r.user_id,r.rule_type,r.target_price_minor,p.store,p.external_product_id,
              p.price_minor,p.currency,
-             (SELECT COUNT(*) FROM price_history h WHERE h.store=p.store AND h.external_product_id=p.external_product_id),
-             (SELECT MIN(h.price_minor) FROM price_history h WHERE h.store=p.store AND h.external_product_id=p.external_product_id),
-             (SELECT CAST(AVG(h.price_minor) AS INTEGER) FROM price_history h WHERE h.store=p.store AND h.external_product_id=p.external_product_id),
-             (SELECT h.price_minor FROM price_history h WHERE h.store=p.store AND h.external_product_id=p.external_product_id ORDER BY h.observed_at DESC,h.id DESC LIMIT 1 OFFSET 1),
-             (SELECT h.observed_at FROM price_history h WHERE h.store=p.store AND h.external_product_id=p.external_product_id ORDER BY h.observed_at DESC,h.id DESC LIMIT 1)
+             (SELECT COUNT(*) FROM price_history h WHERE h.store=p.store AND h.external_product_id=p.external_product_id AND h.purchasable=1),
+             (SELECT MIN(h.price_minor) FROM price_history h WHERE h.store=p.store AND h.external_product_id=p.external_product_id AND h.purchasable=1),
+             (SELECT CAST(AVG(h.price_minor) AS INTEGER) FROM price_history h WHERE h.store=p.store AND h.external_product_id=p.external_product_id AND h.purchasable=1),
+             (SELECT h.price_minor FROM price_history h WHERE h.store=p.store AND h.external_product_id=p.external_product_id AND h.purchasable=1 ORDER BY h.observed_at DESC,h.id DESC LIMIT 1 OFFSET 1),
+             (SELECT h.observed_at FROM price_history h WHERE h.store=p.store AND h.external_product_id=p.external_product_id AND h.purchasable=1 ORDER BY h.observed_at DESC,h.id DESC LIMIT 1)
       FROM alert_rules r JOIN store_products p ON p.game_id=r.game_id
       WHERE r.game_id=? AND r.active=1 AND p.purchasable=1
+      AND p.region=? AND p.edition=? AND p.offer_type=? AND p.currency=?
       AND p.last_successful_check_at IS NOT NULL
       AND p.last_successful_check_at >=
           strftime('%Y-%m-%dT%H:%M:%fZ','now',?)
@@ -34,8 +36,13 @@ std::size_t AlertService::evaluateGame(const std::string& gameId) const {
               AND pc.platform=r.platform AND pc.status IN ('Native','Compatible')));
     )sql";
     sqlite3_stmt* row=nullptr; if(sqlite3_prepare_v2(db,sql,-1,&row,nullptr)!=SQLITE_OK) throw std::runtime_error(sqlite3_errmsg(db));
+    const PriceComparisonCriteria defaultCriteria;
     bindText(row,1,gameId);
-    bindText(row,2,"-"+std::to_string(PriceStaleAfterHours)+" hours");
+    bindText(row,2,toString(defaultCriteria.region));
+    bindText(row,3,toString(defaultCriteria.edition));
+    bindText(row,4,toString(defaultCriteria.offerType));
+    bindText(row,5,toString(defaultCriteria.currency));
+    bindText(row,6,"-"+std::to_string(PriceStaleAfterHours)+" hours");
     std::size_t created=0;
     while(sqlite3_step(row)==SQLITE_ROW){
         const auto type=alertRuleTypeFromString(reinterpret_cast<const char*>(sqlite3_column_text(row,2)));

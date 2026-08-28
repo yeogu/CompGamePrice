@@ -400,7 +400,12 @@ version 5–6에서 만든 기존 원문 세션은 version 7 이전 시 폐기�
 
 알림 규칙은 가격 하락, 사용자 목표가 이하, 새로운 역대 최저가, 관측 평균가 이하를
 지원합니다. 가격 수집 후 규칙을 평가하며 동일 관측에 대한 중복 알림은 만들지
-않습니다. 알림은 웹 알림함에 즉시 저장되고 `notification_outbox`에도 `PENDING`
+않습니다. 기본 알림은 기본 가격 비교와 같은 `KR + Standard + BaseGame + KRW`
+상품만 평가하므로 더 저렴한 DLC, Bundle, Subscription, Deluxe Edition이 본편
+알림을 발생시키지 않습니다. 플랫폼과 freshness 필터도 동일하게 적용됩니다.
+향후 Edition이나 Offer Type별 알림이 필요하면 이 비교 identity를 알림 규칙에
+명시적으로 추가할 수 있지만 현재 MVP는 기본 본편 알림만 제공합니다.
+알림은 웹 알림함에 즉시 저장되고 `notification_outbox`에도 `PENDING`
 상태로 쌓입니다. 실제 이메일 발송은 이후 SMTP 또는 메일 API worker가 Outbox를
 처리하도록 분리되어 있습니다.
 
