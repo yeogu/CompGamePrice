@@ -8,11 +8,12 @@ api_port=19081
 api_base="http://127.0.0.1:${api_port}"
 response_body="/tmp/game_price_api_response_$$.json"
 test_database="/tmp/game_price_api_test_$$.db"
+cookie_jar="/tmp/game_price_api_cookie_$$.txt"
 project_directory=$(cd "$(dirname "${tracker_binary}")/.." && pwd)
 
 cleanup() {
     if [[ -n "${api_pid:-}" ]]; then kill "${api_pid}" 2>/dev/null || true; fi
-    rm -f "${response_body}" "${test_database}" "${test_database}-shm" "${test_database}-wal"
+    rm -f "${response_body}" "${cookie_jar}" "${test_database}" "${test_database}-shm" "${test_database}-wal"
 }
 trap cleanup EXIT
 
@@ -32,11 +33,29 @@ for _ in {1..30}; do
 done
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -c "${cookie_jar}" \
     -H 'Content-Type: application/json' -d '{"email":"test@example.com","password":"test-password-123"}' \
     "${api_base}/api/auth/register")
 [[ "${status}" == "201" ]]
 auth_token=$(grep -o '"token":"[^"]*"' "${response_body}" | cut -d '"' -f 4)
 [[ -n "${auth_token}" ]]
+grep -q 'game_price_session' "${cookie_jar}"
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -b "${cookie_jar}" "${api_base}/api/auth/me")
+[[ "${status}" == "200" ]]
+
+for _ in {1..5}; do
+    status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+        -H 'Content-Type: application/json' \
+        -d '{"email":"limited@example.com","password":"wrong-password"}' \
+        "${api_base}/api/auth/login")
+    [[ "${status}" == "401" ]]
+done
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -H 'Content-Type: application/json' \
+    -d '{"email":"limited@example.com","password":"wrong-password"}' \
+    "${api_base}/api/auth/login")
+[[ "${status}" == "429" ]]
 
 for provider in google kakao naver; do
     status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \

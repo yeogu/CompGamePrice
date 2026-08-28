@@ -18,6 +18,9 @@ public:
     std::string createSession(std::int64_t userId);
     std::optional<UserAccount> findUserBySession(const std::string& token) const;
     void deleteSession(const std::string& token);
+    bool isLoginRateLimited(const std::string& email, const std::string& clientKey) const;
+    void recordLoginFailure(const std::string& email, const std::string& clientKey);
+    void clearLoginFailures(const std::string& email, const std::string& clientKey);
     std::string createOAuthState(OAuthProvider provider, std::optional<std::int64_t> linkUserId);
     std::optional<std::int64_t> consumeOAuthState(
         OAuthProvider provider, const std::string& state);

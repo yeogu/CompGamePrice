@@ -37,7 +37,7 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const requestSequence = useRef(0)
-  const [token, setToken] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('oauth_token') ?? localStorage.getItem('game-price-token') ?? '')
+  const [token, setToken] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('oauth') === 'success' || localStorage.getItem('game-price-session') === '1' ? 'cookie' : '')
   const [user, setUser] = useState<User | null>(null)
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState('')
@@ -58,8 +58,8 @@ function App() {
     event.preventDefault(); setError('')
     try {
       const result = authMode === 'register' ? await register(email, password) : await login(email, password)
-      localStorage.setItem('game-price-token', result.token); setToken(result.token); setUser(result.user)
-      setPassword(''); await refreshAccount(result.token)
+      localStorage.setItem('game-price-session', '1'); setToken('cookie'); setUser(result.user)
+      setPassword(''); await refreshAccount('cookie')
     } catch (reason) { setError(reason instanceof Error ? reason.message : '인증에 실패했습니다.') }
   }
 
@@ -180,12 +180,12 @@ function App() {
 
   useEffect(() => {
     const hash = new URLSearchParams(window.location.hash.slice(1))
-    const callbackToken = hash.get('oauth_token')
-    if (callbackToken) localStorage.setItem('game-price-token', callbackToken)
-    if (callbackToken || hash.has('oauth_linked')) window.history.replaceState(null, '', window.location.pathname + window.location.search)
+    const oauthSuccess = hash.get('oauth') === 'success'
+    if (oauthSuccess) localStorage.setItem('game-price-session', '1')
+    if (oauthSuccess || hash.has('oauth_linked')) window.history.replaceState(null, '', window.location.pathname + window.location.search)
     if (!token) return
     void refreshAccount(token).catch(() => {
-      localStorage.removeItem('game-price-token'); setToken(''); setUser(null)
+      localStorage.removeItem('game-price-session'); setToken(''); setUser(null)
     })
   }, [token])
 
@@ -212,7 +212,7 @@ function App() {
         {user ? (
           <>
             <div className="account-heading"><div><p className="eyebrow">MY ALERTS</p><h2>{user.email}</h2></div>
-              <button onClick={() => void logout(token).finally(() => { localStorage.removeItem('game-price-token'); setToken(''); setUser(null); setRules([]); setNotifications([]); setIdentities([]) })}>로그아웃</button>
+              <button onClick={() => void logout(token).finally(() => { localStorage.removeItem('game-price-session'); setToken(''); setUser(null); setRules([]); setNotifications([]); setIdentities([]) })}>로그아웃</button>
             </div>
             {selectedGameId && <div className="alert-controls">
               <button onClick={() => void createRule('PriceDrop')}>가격 하락 알림</button>

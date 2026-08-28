@@ -102,7 +102,9 @@ HttpResponsePtr jsonResponse(
     drogon::HttpStatusCode status = drogon::k200OK) {
     auto response = HttpResponse::newHttpJsonResponse(json);
     response->setStatusCode(status);
-    response->addHeader("Access-Control-Allow-Origin", "*");
+    const char* webOrigin=std::getenv("WEB_APP_URL");
+    response->addHeader("Access-Control-Allow-Origin", webOrigin?webOrigin:"http://127.0.0.1:5173");
+    response->addHeader("Access-Control-Allow-Credentials", "true");
     response->addHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
     response->addHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, PATCH, OPTIONS");
     return response;
@@ -217,7 +219,20 @@ PriceComparisonCriteria comparisonCriteria(
 
 std::string bearerToken(const drogon::HttpRequestPtr& request) {
     const auto header = request->getHeader("Authorization");
-    return header.rfind("Bearer ", 0) == 0 ? header.substr(7) : "";
+    if(header.rfind("Bearer ",0)==0)return header.substr(7);
+    const auto cookie=request->getHeader("Cookie"); const std::string prefix="game_price_session=";
+    const auto start=cookie.find(prefix); if(start==std::string::npos)return "";
+    const auto valueStart=start+prefix.size(); const auto end=cookie.find(';',valueStart);
+    return cookie.substr(valueStart,end==std::string::npos?std::string::npos:end-valueStart);
+}
+
+void setSessionCookie(const HttpResponsePtr& response,const std::string& token) {
+    std::string cookie="game_price_session="+token+"; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000";
+    const char* secure=std::getenv("COOKIE_SECURE"); if(secure&&std::string(secure)=="true")cookie+="; Secure";
+    response->addHeader("Set-Cookie",cookie);
+}
+void clearSessionCookie(const HttpResponsePtr& response) {
+    response->addHeader("Set-Cookie","game_price_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0");
 }
 
 std::optional<UserAccount> authenticatedUser(
@@ -260,8 +275,8 @@ int main() {
                 next();
             });
 
-        const auto registerAuthHandler = [&authService](bool registration) {
-            return [&authService, registration](
+        const auto registerAuthHandler = [&authService,&accountRepository](bool registration) {
+            return [&authService,&accountRepository,registration](
                 const drogon::HttpRequestPtr& request,
                 std::function<void(const HttpResponsePtr&)>&& callback) {
                 const auto body = request->getJsonObject();
@@ -271,14 +286,15 @@ int main() {
                 }
                 try {
                     if (registration) {
-                        callback(jsonResponse(authJson(authService.registerUser(
-                            (*body)["email"].asString(), (*body)["password"].asString())),
-                            drogon::k201Created));
+                        const auto result=authService.registerUser((*body)["email"].asString(),(*body)["password"].asString());
+                        auto response=jsonResponse(authJson(result),drogon::k201Created);
+                        setSessionCookie(response,result.token);callback(response);
                     } else {
-                        const auto result = authService.login(
-                            (*body)["email"].asString(), (*body)["password"].asString());
-                        callback(result ? jsonResponse(authJson(*result)) :
-                            jsonError(drogon::k401Unauthorized, "invalid credentials"));
+                        auto loginEmail=(*body)["email"].asString();std::transform(loginEmail.begin(),loginEmail.end(),loginEmail.begin(),[](unsigned char value){return static_cast<char>(std::tolower(value));});const auto clientKey=request->peerAddr().toIp();
+                        if(accountRepository.isLoginRateLimited(loginEmail,clientKey)){callback(jsonError(drogon::k429TooManyRequests,"too many login attempts; try again later"));return;}
+                        const auto result=authService.login(loginEmail,(*body)["password"].asString());
+                        if(!result){accountRepository.recordLoginFailure(loginEmail,clientKey);callback(jsonError(drogon::k401Unauthorized,"invalid credentials"));}
+                        else {accountRepository.clearLoginFailures(loginEmail,clientKey);auto response=jsonResponse(authJson(*result));setSessionCookie(response,result->token);callback(response);}
                     }
                 } catch (const std::invalid_argument& error) {
                     callback(jsonError(drogon::k400BadRequest, error.what()));
@@ -342,7 +358,7 @@ int main() {
                             if(!profile){(*finalCallback)(jsonError(drogon::k502BadGateway,"OAuth profile is invalid"));return;}
                             try {
                                 if(*linkUser!=0){oauthService.linkIdentity(*linkUser,*profile);(*finalCallback)(HttpResponse::newRedirectionResponse(webAppUrl()+"/#oauth_linked="+providerPath(provider)));}
-                                else {const auto auth=oauthService.completeLogin(*profile);(*finalCallback)(HttpResponse::newRedirectionResponse(webAppUrl()+"/#oauth_token="+auth.token));}
+                                else {const auto auth=oauthService.completeLogin(*profile);auto redirect=HttpResponse::newRedirectionResponse(webAppUrl()+"/#oauth=success");setSessionCookie(redirect,auth.token);(*finalCallback)(redirect);}
                             } catch(const std::exception& error){(*finalCallback)(jsonError(drogon::k409Conflict,error.what()));}
                         },10);
                     },10);
@@ -380,7 +396,7 @@ int main() {
                 std::function<void(const HttpResponsePtr&)>&& callback) {
                 const auto token = bearerToken(request);
                 if (!token.empty()) authService.logout(token);
-                callback(jsonResponse(Json::Value{}));
+                auto response=jsonResponse(Json::Value{});clearSessionCookie(response);callback(response);
             }, {drogon::Post});
 
         drogon::app().registerHandler(

@@ -285,6 +285,14 @@ void StoreProductRepository::initializeSchema() const {
             link_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
             expires_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS login_attempts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL,
+            client_key TEXT NOT NULL,
+            failed_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_login_attempts_lookup
+            ON login_attempts(email,client_key,failed_at);
         CREATE TABLE IF NOT EXISTS alert_rules (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -353,7 +361,12 @@ void StoreProductRepository::initializeSchema() const {
                     CHECK (offer_type IN ('BaseGame', 'DLC', 'Bundle', 'Subscription'));
             )sql");
         }
-        database_.execute("PRAGMA user_version = 6;");
+        if (existingVersion >= 5 && existingVersion < 7) {
+            // Earlier versions stored bearer tokens directly. Invalidate them
+            // rather than leaving recoverable credentials in the database.
+            database_.execute("DELETE FROM user_sessions;");
+        }
+        database_.execute("PRAGMA user_version = 7;");
         database_.execute("COMMIT;");
     } catch (...) {
         try {

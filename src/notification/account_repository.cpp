@@ -1,6 +1,7 @@
 #include "game_price/notification/account_repository.h"
 
 #include <openssl/rand.h>
+#include <openssl/sha.h>
 #include <sqlite3.h>
 
 #include <array>
@@ -39,6 +40,13 @@ std::string randomToken() {
     for (const auto byte : bytes) output << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(byte);
     return output.str();
 }
+std::string sessionTokenHash(const std::string& token) {
+    std::array<unsigned char,SHA256_DIGEST_LENGTH> digest{};
+    SHA256(reinterpret_cast<const unsigned char*>(token.data()),token.size(),digest.data());
+    std::ostringstream output;
+    for(const auto byte:digest)output<<std::hex<<std::setw(2)<<std::setfill('0')<<static_cast<int>(byte);
+    return output.str();
+}
 AlertRule readRule(sqlite3_stmt* row) {
     return AlertRule{sqlite3_column_int64(row, 0), sqlite3_column_int64(row, 1),
         text(row, 2), alertRuleTypeFromString(text(row, 3)),
@@ -74,7 +82,7 @@ std::string AccountRepository::createSession(std::int64_t userId) {
         VALUES(?,?,strftime('%Y-%m-%dT%H:%M:%fZ','now'),
                   strftime('%Y-%m-%dT%H:%M:%fZ','now','+30 days'));
     )sql");
-    bindText(statement.get(), 1, token); sqlite3_bind_int64(statement.get(), 2, userId);
+    bindText(statement.get(), 1, sessionTokenHash(token)); sqlite3_bind_int64(statement.get(), 2, userId);
     statement.execute(); return token;
 }
 std::optional<UserAccount> AccountRepository::findUserBySession(const std::string& token) const {
@@ -82,13 +90,29 @@ std::optional<UserAccount> AccountRepository::findUserBySession(const std::strin
         SELECT u.id,u.email FROM user_sessions s JOIN users u ON u.id=s.user_id
         WHERE s.token=? AND s.expires_at > strftime('%Y-%m-%dT%H:%M:%fZ','now');
     )sql");
-    bindText(statement.get(), 1, token);
+    bindText(statement.get(), 1, sessionTokenHash(token));
     if (!statement.next()) return std::nullopt;
     return UserAccount{sqlite3_column_int64(statement.get(), 0), text(statement.get(), 1)};
 }
 void AccountRepository::deleteSession(const std::string& token) {
     Statement statement(database_.handle(), "DELETE FROM user_sessions WHERE token=?;");
-    bindText(statement.get(), 1, token); statement.execute();
+    bindText(statement.get(), 1, sessionTokenHash(token)); statement.execute();
+}
+bool AccountRepository::isLoginRateLimited(const std::string& email,const std::string& clientKey) const {
+    Statement statement(database_.handle(),R"sql(
+        SELECT COUNT(*) FROM login_attempts WHERE email=? AND client_key=?
+        AND failed_at>=strftime('%Y-%m-%dT%H:%M:%fZ','now','-15 minutes');
+    )sql"); bindText(statement.get(),1,email);bindText(statement.get(),2,clientKey);
+    return statement.next()&&sqlite3_column_int(statement.get(),0)>=5;
+}
+void AccountRepository::recordLoginFailure(const std::string& email,const std::string& clientKey) {
+    Statement cleanup(database_.handle(),"DELETE FROM login_attempts WHERE failed_at<strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 day');");cleanup.execute();
+    Statement statement(database_.handle(),"INSERT INTO login_attempts(email,client_key) VALUES(?,?);");
+    bindText(statement.get(),1,email);bindText(statement.get(),2,clientKey);statement.execute();
+}
+void AccountRepository::clearLoginFailures(const std::string& email,const std::string& clientKey) {
+    Statement statement(database_.handle(),"DELETE FROM login_attempts WHERE email=? AND client_key=?;");
+    bindText(statement.get(),1,email);bindText(statement.get(),2,clientKey);statement.execute();
 }
 std::string AccountRepository::createOAuthState(
     OAuthProvider provider, std::optional<std::int64_t> linkUserId) {

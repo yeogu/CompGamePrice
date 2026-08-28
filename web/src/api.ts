@@ -5,7 +5,8 @@ const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8080'
 async function requestJson<T>(path: string, init: RequestInit = {}, token = ''): Promise<T> {
   const response = await fetch(`${apiBaseUrl}${path}`, {
     ...init,
-    headers: { ...(init.body ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}), ...init.headers },
+    credentials: 'include',
+    headers: { ...(init.body ? { 'Content-Type': 'application/json' } : {}), ...(token && token !== 'cookie' ? { Authorization: `Bearer ${token}` } : {}), ...init.headers },
   })
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as { error?: string } | null

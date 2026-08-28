@@ -312,7 +312,7 @@ DB 적재 사이에 지연이 생겨도 그래프에는 응답을 관측한 시�
 5개 필드 로컬 sample은 호환성을 위해 DB 적재 시각을 사용합니다. 관측 시각은
 `YYYY-MM-DDTHH:MM:SS.sssZ` UTC 형식만 허용하며 잘못된 값은 트랜잭션 전체를
 롤백합니다.
-DB schema는 SQLite `user_version`으로 관리하며 현재 버전은 6입니다. version 2는
+DB schema는 SQLite `user_version`으로 관리하며 현재 버전은 7입니다. version 2는
 `store_products`와 `price_history`에 선택적인 정상가와 0–100 정수 할인율을
 추가합니다. 기존 version 1 DB는 상품과 이력을 보존하면서 정상가 미상(NULL),
 할인율 0으로 자동 이전됩니다. version 3는 Store 상품에 Region, Edition,
@@ -320,7 +320,8 @@ Offer Type을 추가하며 기존 상품은 `KR`, `Standard`, `BaseGame`으로 �
 version 4는 상품별 플랫폼 호환성(예: Nintendo Switch 게임의 Switch 2 호환)을
 별도 관계로 저장합니다. version 5는 사용자, 세션, 알림 규칙, 알림과 이메일
 Outbox를 추가합니다. version 6는 Google, Kakao, Naver 외부 계정과 10분 만료
-OAuth state를 저장합니다. 새 DB는 바로 version 6으로 초기화되며 프로그램보다 새로운 DB version은
+OAuth state를 저장합니다. version 7은 로그인 실패 횟수 제한 정보를 추가합니다.
+새 DB는 바로 version 7로 초기화되며 프로그램보다 새로운 DB version은
 데이터 손상을 피하기 위해 실행을 중단합니다.
 `PriceHistoryService`는 저장된 이력으로 현재가, 최저가, 최고가, 정수 기반
 평균가와 직전 관측 대비 가격 추이를 계산합니다.
@@ -374,8 +375,14 @@ DELETE /api/external-identities/{identityId}
 ```
 
 비밀번호는 PBKDF2-HMAC-SHA256(무작위 salt, 210,000회 반복)으로 저장하며 원문을
-보관하지 않습니다. 로그인 시 발급되는 256-bit 세션 token은 30일 후 만료됩니다.
-사용자별 자원 API는 `Authorization: Bearer {token}`을 요구합니다.
+보관하지 않습니다. 로그인 시 발급되는 256-bit 세션 token은 30일 후 만료되며
+DB에는 SHA-256 hash만 저장합니다. 웹은 JavaScript에서 읽을 수 없는
+`HttpOnly; SameSite=Lax` cookie를 사용하고, Mobile client는
+`Authorization: Bearer {token}`을 사용할 수 있습니다. 운영 HTTPS 환경에서는
+`COOKIE_SECURE=true`로 `Secure` 속성을 활성화해야 합니다. 같은 이메일과 client에서
+15분 이내 로그인에 5번 실패하면 추가 요청은 `429 Too Many Requests`로 제한됩니다.
+version 5–6에서 만든 기존 원문 세션은 version 7 이전 시 폐기되므로 한 번 다시
+로그인해야 합니다.
 
 알림 규칙은 가격 하락, 사용자 목표가 이하, 새로운 역대 최저가, 관측 평균가 이하를
 지원합니다. 가격 수집 후 규칙을 평가하며 동일 관측에 대한 중복 알림은 만들지
@@ -397,6 +404,7 @@ export NAVER_OAUTH_CLIENT_ID="..."
 export NAVER_OAUTH_CLIENT_SECRET="..."
 export OAUTH_CALLBACK_BASE="http://127.0.0.1:8080"
 export WEB_APP_URL="http://127.0.0.1:5173"
+export COOKIE_SECURE="false" # 운영 HTTPS에서는 true
 ./build/game_price_api
 ```
 

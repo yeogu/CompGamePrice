@@ -19,6 +19,7 @@
 #include "game_price/notification/oauth_service.h"
 
 #include <cstdint>
+#include <sqlite3.h>
 #include <functional>
 #include <iostream>
 #include <stdexcept>
@@ -331,8 +332,8 @@ void testDatabaseSchemaVersion() {
     )sql");
     StoreProductRepository versionOneRepository(versionOneDatabase);
     versionOneRepository.initializeSchema();
-    expect(versionOneDatabase.userVersion() == 6,
-           "Schema version 1 should migrate to version 6");
+    expect(versionOneDatabase.userVersion() == 7,
+           "Schema version 1 should migrate to version 7");
     const auto migratedProducts =
         versionOneRepository.findProductsByGameId("stardew-valley");
     expect(migratedProducts.size() == 1,
@@ -382,8 +383,8 @@ void testDatabaseSchemaVersion() {
     )sql");
     StoreProductRepository versionTwoRepository(versionTwoDatabase);
     versionTwoRepository.initializeSchema();
-    expect(versionTwoDatabase.userVersion() == 6,
-           "Schema version 2 should migrate to version 6");
+    expect(versionTwoDatabase.userVersion() == 7,
+           "Schema version 2 should migrate to version 7");
     const auto versionTwoProducts = versionTwoRepository.findProductsByGameId("hades");
     expect(versionTwoProducts.size() == 1 &&
                versionTwoProducts.front().region == Region::KR &&
@@ -614,11 +615,23 @@ void testAuthenticationAndPriceAlerts() {
     const auto registration = auth.registerUser("Buyer@Example.com", "safe-password-123");
     expect(registration.user.email == "buyer@example.com" && !registration.token.empty(),
            "Registration should normalize email and issue a session");
+    sqlite3_stmt* storedSession=nullptr;
+    expect(sqlite3_prepare_v2(database.handle(),"SELECT token FROM user_sessions LIMIT 1;",-1,&storedSession,nullptr)==SQLITE_OK &&
+               sqlite3_step(storedSession)==SQLITE_ROW &&
+               reinterpret_cast<const char*>(sqlite3_column_text(storedSession,0))!=registration.token,
+           "Database must store only a hash of the bearer token");
+    sqlite3_finalize(storedSession);
     expect(auth.authenticate(registration.token).has_value(), "Session should authenticate");
     expect(!auth.login("buyer@example.com", "wrong-password").has_value(),
            "Wrong password should be rejected");
     expect(auth.login("buyer@example.com", "safe-password-123").has_value(),
            "Correct password should create a session");
+    for(int attempt=0;attempt<5;++attempt)accounts.recordLoginFailure("buyer@example.com","client-a");
+    expect(accounts.isLoginRateLimited("buyer@example.com","client-a"),
+           "Five recent failures should rate-limit the same account and client");
+    accounts.clearLoginFailures("buyer@example.com","client-a");
+    expect(!accounts.isLoginRateLimited("buyer@example.com","client-a"),
+           "A successful login should clear its failure window");
 
     const Game game{"alert-game", "Alert Game", "alert game", {Platform::Windows}};
     auto product = StoreProduct{"alert-product", game.id, Store::Steam,
