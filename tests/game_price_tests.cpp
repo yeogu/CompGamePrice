@@ -75,12 +75,26 @@ public:
             throw std::runtime_error("temporary failure");
         }
         return {StoreProduct{
-            "retry-product", gameId, Store::AppleAppStore, {Platform::IOS},
+            "1406710800", gameId, Store::AppleAppStore, {Platform::IOS},
             Money{6600, Currency::KRW}, true, std::nullopt}};
     }
 
 private:
     mutable std::size_t attempts_{};
+};
+
+class ProductListTestProvider final : public StoreProductProvider {
+public:
+    explicit ProductListTestProvider(std::vector<StoreProduct> products)
+        : products_(std::move(products)) {}
+
+    Store store() const noexcept override { return Store::Steam; }
+    std::vector<StoreProduct> findProducts(const std::string&) const override {
+        return products_;
+    }
+
+private:
+    std::vector<StoreProduct> products_;
 };
 
 void testProviderNormalization() {
@@ -193,7 +207,7 @@ void testEpicEndToEndComparison() {
     repository.initializeSchema();
     std::vector<std::reference_wrapper<const StoreProductProvider>> providers{
         steam, epic, nintendo};
-    const auto collection = CollectionService(repository, providers, 1).collect(*game);
+    const auto collection = CollectionService(catalog, repository, providers, 1).collect(*game);
     expect(collection.totalProducts == 3,
            "Hades collection should save Steam, Epic, and Nintendo products");
 
@@ -792,7 +806,8 @@ void testCollectionRunTrackingAndFailureIsolation() {
     FailingTestProvider failingProvider;
     std::vector<std::reference_wrapper<const StoreProductProvider>> providers{
         successfulProvider, failingProvider};
-    CollectionService service(repository, std::move(providers));
+    GameCatalog catalog(std::string(TEST_SAMPLE_DATA_DIR) + "/game_catalog.json");
+    CollectionService service(catalog, repository, std::move(providers));
 
     const Game game{"stardew-valley", "Stardew Valley", "stardew valley", {}};
     const auto result = service.collect(game);
@@ -820,7 +835,8 @@ void testCollectionRetryAfterTemporaryFailure() {
 
     FlakyTestProvider provider;
     std::vector<std::reference_wrapper<const StoreProductProvider>> providers{provider};
-    CollectionService service(repository, std::move(providers), 2);
+    GameCatalog catalog(std::string(TEST_SAMPLE_DATA_DIR) + "/game_catalog.json");
+    CollectionService service(catalog, repository, std::move(providers), 2);
 
     const Game game{"stardew-valley", "Stardew Valley", "stardew valley", {}};
     const auto result = service.collect(game);
@@ -839,6 +855,60 @@ void testCollectionRetryAfterTemporaryFailure() {
            "Failed retry attempt should remain in crawl history");
     expect(persistedRuns[1].status == CrawlRunStatus::Succeeded,
            "Successful retry attempt should be persisted");
+}
+
+void testCatalogProductIdentityProtection() {
+    GameCatalog catalog(std::string(TEST_SAMPLE_DATA_DIR) + "/game_catalog.json");
+    const auto game = catalog.findById("stardew-valley");
+    expect(game.has_value(), "Catalog should contain Stardew Valley");
+
+    const auto collectWith = [&](std::vector<StoreProduct> products) {
+        Database database(":memory:");
+        StoreProductRepository repository(database);
+        repository.initializeSchema();
+        ProductListTestProvider provider(std::move(products));
+        std::vector<std::reference_wrapper<const StoreProductProvider>> providers{provider};
+        return CollectionService(catalog, repository, providers).collect(*game);
+    };
+
+    auto unknown = makeSteamProduct(11200);
+    unknown.productId = "999999999";
+    const auto unknownResult = collectWith({unknown});
+    expect(unknownResult.totalProducts == 0 &&
+               unknownResult.runs.back().status == CrawlRunStatus::Failed,
+           "A product without a Catalog mapping must not be saved");
+
+    auto wrongIdentity = makeSteamProduct(11200);
+    wrongIdentity.offerType = OfferType::DLC;
+    const auto wrongIdentityResult = collectWith({wrongIdentity});
+    expect(wrongIdentityResult.totalProducts == 0 &&
+               wrongIdentityResult.runs.back().status == CrawlRunStatus::Failed,
+           "Provider comparison identity must match the Catalog mapping");
+
+    const auto duplicateResult = collectWith(
+        {makeSteamProduct(11200), makeSteamProduct(11200)});
+    expect(duplicateResult.totalProducts == 0 &&
+               duplicateResult.runs.back().status == CrawlRunStatus::Failed,
+           "Duplicate product IDs in one Provider result must be rejected");
+
+    Database database(":memory:");
+    StoreProductRepository repository(database);
+    repository.initializeSchema();
+    repository.saveNormalizedProducts(*game, {makeSteamProduct(11200)});
+    const Game otherGame{"other-game", "Other Game", "other game", {}};
+    auto reassigned = makeSteamProduct(12000);
+    reassigned.gameId = otherGame.id;
+    bool rejectedReassignment = false;
+    try {
+        repository.saveNormalizedProducts(otherGame, {reassigned});
+    } catch (const std::runtime_error&) {
+        rejectedReassignment = true;
+    }
+    expect(rejectedReassignment,
+           "An existing Store product must not be reassigned to another Game");
+    expect(repository.findProductsByGameId(game->id).size() == 1 &&
+               repository.findProductsByGameId(otherGame.id).empty(),
+           "Rejected reassignment must preserve the original product identity");
 }
 
 void testCommandLineModes() {
@@ -968,6 +1038,8 @@ int main() {
          testCollectionRunTrackingAndFailureIsolation},
         {"Collection retry after temporary failure",
          testCollectionRetryAfterTemporaryFailure},
+        {"Catalog product identity protection",
+         testCatalogProductIdentityProtection},
         {"Command line modes", testCommandLineModes}};
 
     std::size_t passed = 0;

@@ -410,6 +410,20 @@ void StoreProductRepository::saveNormalizedProducts(
                 throw std::runtime_error("StoreProduct gameId does not match Game id");
             }
 
+            {
+                Statement statement(database_.handle(), R"sql(
+                    SELECT game_id
+                    FROM store_products
+                    WHERE store = ? AND external_product_id = ?;
+                )sql");
+                bindText(statement.get(), 1, toString(product.store));
+                bindText(statement.get(), 2, product.productId);
+                if (statement.next() && columnText(statement.get(), 0) != game.id) {
+                    throw std::runtime_error(
+                        "A Store product cannot be reassigned to a different Game");
+                }
+            }
+
             validateDiscount(product);
             const auto regularPrice = regularPriceMinor(product);
 

@@ -2,17 +2,19 @@
 #include "game_price/notification/alert_service.h"
 
 #include <exception>
+#include <set>
 #include <stdexcept>
 #include <utility>
 
 namespace game_price {
 
 CollectionService::CollectionService(
+    const GameCatalog& catalog,
     StoreProductRepository& repository,
     std::vector<std::reference_wrapper<const StoreProductProvider>> providers,
     std::size_t maxAttemptsPerStore,
     const AlertService* alertService)
-    : repository_(repository),
+    : catalog_(catalog), repository_(repository),
       providers_(std::move(providers)),
       maxAttemptsPerStore_(maxAttemptsPerStore), alertService_(alertService) {
     if (maxAttemptsPerStore_ == 0) {
@@ -28,10 +30,31 @@ CollectionResult CollectionService::collect(const Game& game) const {
             const auto runId = repository_.startCrawlRun(provider.store());
             try {
                 const auto products = provider.findProducts(game.id);
+                std::set<std::string> productIds;
                 for (const auto& product : products) {
                     if (product.store != provider.store()) {
                         throw std::runtime_error(
                             "Provider returned a product for a different Store");
+                    }
+                    if (!productIds.insert(product.productId).second) {
+                        throw std::runtime_error(
+                            "Provider returned a duplicate Store product: " +
+                            product.productId);
+                    }
+                    const auto catalogProduct = catalog_.findStoreProduct(
+                        product.store, product.productId);
+                    if (!catalogProduct || catalogProduct->gameId != game.id) {
+                        throw std::runtime_error(
+                            "Provider returned a Store product without an exact Catalog mapping: " +
+                            product.productId);
+                    }
+                    if (product.gameId != catalogProduct->gameId ||
+                        product.region != catalogProduct->region ||
+                        product.edition != catalogProduct->edition ||
+                        product.offerType != catalogProduct->offerType) {
+                        throw std::runtime_error(
+                            "Provider product identity does not match the Catalog: " +
+                            product.productId);
                     }
                 }
                 repository_.saveNormalizedProducts(game, products);

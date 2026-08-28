@@ -30,6 +30,7 @@ namespace {
 using namespace game_price;
 
 CollectionResult collectStoreProducts(
+    const GameCatalog& catalog,
     const Game& game,
     StoreProductRepository& repository,
     const std::string& dataDirectory) {
@@ -43,7 +44,7 @@ CollectionResult collectStoreProducts(
 
     AccountRepository accounts(repository.database());
     AlertService alerts(accounts);
-    CollectionService service(repository, std::move(providers), 2, &alerts);
+    CollectionService service(catalog, repository, std::move(providers), 2, &alerts);
     const auto result = service.collect(game);
     std::cout << "Collection runs:\n";
     for (const auto& run : result.runs) {
@@ -59,6 +60,7 @@ CollectionResult collectStoreProducts(
 }
 
 CollectionResult collectSteamProduct(
+    const GameCatalog& catalog,
     const Game& game,
     StoreProductRepository& repository,
     const std::string& dataDirectory) {
@@ -66,7 +68,7 @@ CollectionResult collectSteamProduct(
     std::vector<std::reference_wrapper<const StoreProductProvider>> providers{steam};
     AccountRepository accounts(repository.database());
     AlertService alerts(accounts);
-    CollectionService service(repository, std::move(providers), 2, &alerts);
+    CollectionService service(catalog, repository, std::move(providers), 2, &alerts);
     const auto result = service.collect(game);
     std::cout << "Steam collection runs:\n";
     for (const auto& run : result.runs) {
@@ -89,7 +91,7 @@ CollectionResult collectAllSteamProducts(
     std::vector<std::reference_wrapper<const StoreProductProvider>> providers{steam};
     AccountRepository accounts(repository.database());
     AlertService alerts(accounts);
-    CollectionService service(repository, std::move(providers), 2, &alerts);
+    CollectionService service(catalog, repository, std::move(providers), 2, &alerts);
 
     CollectionResult combined;
     for (const auto& game : catalog.allGames()) {
@@ -346,7 +348,7 @@ int main(int argc, char* argv[]) {
         if (options.command == AppCommand::CollectSteam) {
             collectionSucceeded = collectionCompletedSuccessfully(
                 collectSteamProduct(
-                    *game, repository, options.dataDirectory.value()));
+                    catalog, *game, repository, options.dataDirectory.value()));
             if (!collectionSucceeded) {
                 return static_cast<int>(AppExitCode::CollectionFailed);
             }
@@ -356,6 +358,7 @@ int main(int argc, char* argv[]) {
         if (options.command == AppCommand::Collect || options.command == AppCommand::Demo) {
             collectionSucceeded = collectionCompletedSuccessfully(
                 collectStoreProducts(
+                    catalog,
                     *game,
                     repository,
                     options.dataDirectory.value_or(defaultDataDirectory)));

@@ -347,4 +347,17 @@ std::vector<CatalogStoreProduct> GameCatalog::storeProducts(Store store) const {
     return result;
 }
 
+std::optional<CatalogStoreProduct> GameCatalog::findStoreProduct(
+    Store store,
+    const std::string& productId) const {
+    const auto found = std::find_if(
+        storeProducts_.begin(), storeProducts_.end(),
+        [store, &productId](const CatalogStoreProduct& product) {
+            return product.store == store && product.productId == productId;
+        });
+    return found == storeProducts_.end()
+        ? std::nullopt
+        : std::optional<CatalogStoreProduct>{*found};
+}
+
 }  // namespace game_price

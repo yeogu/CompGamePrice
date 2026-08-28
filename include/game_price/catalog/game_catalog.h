@@ -30,6 +30,9 @@ public:
     std::vector<Game> searchByName(const std::string& query) const;
     const std::vector<Game>& allGames() const noexcept;
     std::vector<CatalogStoreProduct> storeProducts(Store store) const;
+    std::optional<CatalogStoreProduct> findStoreProduct(
+        Store store,
+        const std::string& productId) const;
 
 private:
     std::vector<Game> games_;
