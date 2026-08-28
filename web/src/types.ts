@@ -37,6 +37,10 @@ export interface StoreProduct {
   regularPrice?: Money
   discountPercent: number
   purchasable: boolean
+  lastCheckedAt?: string
+  lastSuccessfulCheckAt?: string
+  freshness: 'Fresh' | 'Stale' | 'Unknown'
+  stale: boolean
   platforms: string[]
   compatibility: { platform: string; status: string }[]
   history?: PriceHistory

@@ -72,4 +72,13 @@ std::string toString(CompatibilityStatus status) {
     return "Unknown";
 }
 
+std::string toString(PriceFreshness freshness) {
+    switch (freshness) {
+        case PriceFreshness::Fresh: return "Fresh";
+        case PriceFreshness::Stale: return "Stale";
+        case PriceFreshness::Unknown: return "Unknown";
+    }
+    return "Unknown";
+}
+
 }  // namespace game_price

@@ -312,7 +312,7 @@ DB 적재 사이에 지연이 생겨도 그래프에는 응답을 관측한 시�
 5개 필드 로컬 sample은 호환성을 위해 DB 적재 시각을 사용합니다. 관측 시각은
 `YYYY-MM-DDTHH:MM:SS.sssZ` UTC 형식만 허용하며 잘못된 값은 트랜잭션 전체를
 롤백합니다.
-DB schema는 SQLite `user_version`으로 관리하며 현재 버전은 10입니다. version 2는
+DB schema는 SQLite `user_version`으로 관리하며 현재 버전은 11입니다. version 2는
 `store_products`와 `price_history`에 선택적인 정상가와 0–100 정수 할인율을
 추가합니다. 기존 version 1 DB는 상품과 이력을 보존하면서 정상가 미상(NULL),
 할인율 0으로 자동 이전됩니다. version 3는 Store 상품에 Region, Edition,
@@ -325,7 +325,10 @@ version 8은 플랫폼별 알림 규칙과 중복 규칙 방지를 추가하고,
 성공·거부·실패·재시도 지표와 validation quarantine을 추가합니다. version 10은
 Store product와 관측 시각 조합을 유일하게 만들며, 이전 DB에 같은 시각의 이력이
 여러 개 있으면 가장 최근 row를 유지하고 나머지는 `price_history_conflicts`에
-보존합니다. 새 DB는 바로 version 10으로 초기화되며 프로그램보다 새로운 DB version은
+보존합니다. version 11은 상품별 마지막 확인 시각과 마지막 정상 확인 시각을
+추가합니다. 마지막 정상 확인 후 48시간이 지난 가격은 stale로 표시하며 현재
+최저가, 구매 추천 및 가격 알림 계산에서 제외합니다. 새 DB는 바로 version 11로
+초기화되며 프로그램보다 새로운 DB version은
 데이터 손상을 피하기 위해 실행을 중단합니다.
 `PriceHistoryService`는 저장된 이력으로 현재가, 최저가, 최고가, 정수 기반
 평균가와 직전 관측 대비 가격 추이를 계산합니다. 동일 시각의 동일 관측은

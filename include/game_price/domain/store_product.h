@@ -10,6 +10,8 @@
 
 namespace game_price {
 
+inline constexpr int PriceStaleAfterHours = 48;
+
 struct StoreProduct {
     StoreProduct(
         std::string productId,
@@ -24,7 +26,10 @@ struct StoreProduct {
         Region region = Region::KR,
         GameEdition edition = GameEdition::Standard,
         OfferType offerType = OfferType::BaseGame,
-        std::vector<PlatformCompatibility> compatibility = {})
+        std::vector<PlatformCompatibility> compatibility = {},
+        std::optional<std::string> lastCheckedAt = std::nullopt,
+        std::optional<std::string> lastSuccessfulCheckAt = std::nullopt,
+        PriceFreshness freshness = PriceFreshness::Unknown)
         : productId(std::move(productId)),
           gameId(std::move(gameId)),
           store(store),
@@ -37,7 +42,10 @@ struct StoreProduct {
           region(region),
           edition(edition),
           offerType(offerType),
-          compatibility(std::move(compatibility)) {}
+          compatibility(std::move(compatibility)),
+          lastCheckedAt(std::move(lastCheckedAt)),
+          lastSuccessfulCheckAt(std::move(lastSuccessfulCheckAt)),
+          freshness(freshness) {}
 
     std::string productId;
     std::string gameId;
@@ -52,6 +60,9 @@ struct StoreProduct {
     GameEdition edition{GameEdition::Standard};
     OfferType offerType{OfferType::BaseGame};
     std::vector<PlatformCompatibility> compatibility;
+    std::optional<std::string> lastCheckedAt;
+    std::optional<std::string> lastSuccessfulCheckAt;
+    PriceFreshness freshness{PriceFreshness::Unknown};
 };
 
 }  // namespace game_price

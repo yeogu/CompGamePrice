@@ -54,8 +54,10 @@ PriceComparisonResult PriceComparisonService::compare(
             if (!native && !compatible) continue;
         }
         result.products.push_back(product);
-        if (!result.cheapestProduct ||
-            product.currentPrice.minorAmount < result.cheapestProduct->currentPrice.minorAmount) {
+        if (product.freshness == PriceFreshness::Fresh &&
+            (!result.cheapestProduct ||
+             product.currentPrice.minorAmount <
+                 result.cheapestProduct->currentPrice.minorAmount)) {
             result.cheapestProduct = product;
         }
     }

@@ -417,8 +417,8 @@ void testDatabaseSchemaVersion() {
     )sql");
     StoreProductRepository versionOneRepository(versionOneDatabase);
     versionOneRepository.initializeSchema();
-    expect(versionOneDatabase.userVersion() == 10,
-           "Schema version 1 should migrate to version 10");
+    expect(versionOneDatabase.userVersion() == 11,
+           "Schema version 1 should migrate to version 11");
     const auto migratedProducts =
         versionOneRepository.findProductsByGameId("stardew-valley");
     expect(migratedProducts.size() == 1,
@@ -430,6 +430,11 @@ void testDatabaseSchemaVersion() {
                migratedProducts.front().edition == GameEdition::Standard &&
                migratedProducts.front().offerType == OfferType::BaseGame,
            "Legacy products should migrate to the default comparison identity");
+    expect(migratedProducts.front().lastCheckedAt ==
+               std::optional<std::string>{"2026-08-01T00:00:00.000Z"} &&
+               migratedProducts.front().lastSuccessfulCheckAt ==
+                   std::optional<std::string>{"2026-08-01T00:00:00.000Z"},
+           "Legacy products should derive check timestamps from their latest history");
     const auto migratedHistory =
         versionOneRepository.findPriceHistory(Store::Steam, "413150");
     expect(migratedHistory.size() == 1,
@@ -468,8 +473,8 @@ void testDatabaseSchemaVersion() {
     )sql");
     StoreProductRepository versionTwoRepository(versionTwoDatabase);
     versionTwoRepository.initializeSchema();
-    expect(versionTwoDatabase.userVersion() == 10,
-           "Schema version 2 should migrate to version 10");
+    expect(versionTwoDatabase.userVersion() == 11,
+           "Schema version 2 should migrate to version 11");
     const auto versionTwoProducts = versionTwoRepository.findProductsByGameId("hades");
     expect(versionTwoProducts.size() == 1 &&
                versionTwoProducts.front().region == Region::KR &&
@@ -497,7 +502,7 @@ void testDatabaseSchemaVersion() {
     StoreProductRepository versionEightRepository(versionEightDatabase);
     versionEightRepository.initializeSchema();
     const auto migratedRuns = versionEightRepository.findCrawlRuns();
-    expect(versionEightDatabase.userVersion() == 10 && migratedRuns.size() == 1 &&
+    expect(versionEightDatabase.userVersion() == 11 && migratedRuns.size() == 1 &&
                migratedRuns.front().productsFound == 3 &&
                migratedRuns.front().productsRejected == 0 &&
                migratedRuns.front().productsFailed == 0 &&
@@ -549,7 +554,7 @@ void testDatabaseSchemaVersion() {
     sqlite3_step(conflictCountStatement);
     const int conflictCount = sqlite3_column_int(conflictCountStatement, 0);
     sqlite3_finalize(conflictCountStatement);
-    expect(versionNineDatabase.userVersion() == 10 &&
+    expect(versionNineDatabase.userVersion() == 11 &&
                deduplicated.size() == 1 &&
                deduplicated.front().price.minorAmount == 12000 &&
                conflictCount == 1,
@@ -711,6 +716,67 @@ void testPriceComparisonReadsRepository() {
     const auto deluxe = service.compareByGameName("Stardew Valley", deluxeCriteria);
     expect(deluxe->products.empty() && !deluxe->cheapestProduct,
            "A criteria group without products should return no cheapest offer");
+}
+
+void testStalePriceSafety() {
+    GameCatalog catalog(std::string(TEST_SAMPLE_DATA_DIR) + "/game_catalog.json");
+    const auto game = catalog.findById("stardew-valley");
+    expect(game.has_value(), "Catalog should contain Stardew Valley");
+    Database database(":memory:");
+    StoreProductRepository repository(database);
+    repository.initializeSchema();
+
+    auto staleSteam = makeSteamProduct(1000);
+    StoreProduct freshGoogle{
+        "com.chucklefish.stardewvalley", game->id, Store::GooglePlay,
+        {Platform::Android}, Money{6500, Currency::KRW}, true};
+    repository.saveNormalizedProducts(*game, {staleSteam, freshGoogle});
+    database.execute(R"sql(
+        UPDATE store_products
+        SET last_checked_at = '2000-01-01T00:00:00.000Z',
+            last_successful_check_at = '2000-01-01T00:00:00.000Z'
+        WHERE store = 'Steam' AND external_product_id = '413150';
+    )sql");
+    repository.recordProductCheckFailure(Store::Steam, "413150");
+
+    const auto comparison = PriceComparisonService(catalog, repository)
+                                .compareByGameId(game->id);
+    expect(comparison && comparison->products.size() == 2 &&
+               comparison->cheapestProduct &&
+               comparison->cheapestProduct->store == Store::GooglePlay,
+           "A stale cheaper product must not become the current cheapest offer");
+    const auto staleProduct = std::find_if(
+        comparison->products.begin(), comparison->products.end(),
+        [](const StoreProduct& product) { return product.store == Store::Steam; });
+    expect(staleProduct != comparison->products.end() &&
+               staleProduct->freshness == PriceFreshness::Stale &&
+               staleProduct->lastCheckedAt &&
+               *staleProduct->lastCheckedAt != "2000-01-01T00:00:00.000Z" &&
+               staleProduct->lastSuccessfulCheckAt ==
+                   std::optional<std::string>{"2000-01-01T00:00:00.000Z"},
+           "A failed check should update only lastCheckedAt and leave stale success time");
+
+    const auto report = GameQueryService(catalog, repository)
+                            .getGamePriceReportById(game->id);
+    const auto staleReport = std::find_if(
+        report->productReports.begin(), report->productReports.end(),
+        [](const ProductPriceReport& product) {
+            return product.product.store == Store::Steam;
+        });
+    expect(staleReport != report->productReports.end() &&
+               staleReport->history.has_value() &&
+               !staleReport->recommendation.has_value(),
+           "Stale history may remain visible but must not produce a purchase recommendation");
+
+    AccountRepository accounts(database);
+    AuthService auth(accounts);
+    AlertService alerts(accounts);
+    const auto user = auth.registerUser(
+        "stale-alert@example.com", "safe-password-123").user;
+    accounts.addRule(
+        user.id, game->id, AlertRuleType::BelowTargetPrice, 2000);
+    expect(alerts.evaluateGame(game->id) == 0,
+           "A stale price must not trigger a target price notification");
 }
 
 void testGameCatalogSearch() {
@@ -1250,6 +1316,7 @@ int main() {
         {"Discount change history", testDiscountChangeHistory},
         {"Store product price validation", testStoreProductPriceValidation},
         {"Repository-backed comparison", testPriceComparisonReadsRepository},
+        {"Stale price safety", testStalePriceSafety},
         {"Game catalog search", testGameCatalogSearch},
         {"Game catalog validation", testGameCatalogValidation},
         {"Game query service report", testGameQueryServiceReport},

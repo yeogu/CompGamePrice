@@ -73,6 +73,8 @@ CollectionResult CollectionService::collect(const Game& game) const {
                         repository_.saveNormalizedProducts(game, {product});
                         ++accepted;
                     } catch (const std::invalid_argument& error) {
+                        repository_.recordProductCheckFailure(
+                            provider.store(), product.productId);
                         repository_.recordCollectionRejection(
                             runId, provider.store(), game.id,
                             product.productId, error.what());
@@ -97,6 +99,13 @@ CollectionResult CollectionService::collect(const Game& game) const {
                 result.totalProducts += accepted;
                 break;
             } catch (const std::exception& error) {
+                for (const auto& catalogProduct :
+                     catalog_.storeProducts(provider.store())) {
+                    if (catalogProduct.gameId == game.id) {
+                        repository_.recordProductCheckFailure(
+                            provider.store(), catalogProduct.productId);
+                    }
+                }
                 repository_.finishCrawlRun(
                     runId, CrawlRunStatus::Failed, 0, 0, 1,
                     attempt - 1, error.what());
@@ -105,6 +114,13 @@ CollectionResult CollectionService::collect(const Game& game) const {
                     attempt - 1, error.what()});
             } catch (...) {
                 const std::string message = "Unknown collection error";
+                for (const auto& catalogProduct :
+                     catalog_.storeProducts(provider.store())) {
+                    if (catalogProduct.gameId == game.id) {
+                        repository_.recordProductCheckFailure(
+                            provider.store(), catalogProduct.productId);
+                    }
+                }
                 repository_.finishCrawlRun(
                     runId, CrawlRunStatus::Failed, 0, 0, 1,
                     attempt - 1, message);

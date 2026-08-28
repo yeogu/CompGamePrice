@@ -56,6 +56,15 @@ Json::Value productJson(const ProductPriceReport& report) {
     }
     json["discountPercent"] = report.product.discountPercent;
     json["purchasable"] = report.product.purchasable;
+    if (report.product.lastCheckedAt) {
+        json["lastCheckedAt"] = *report.product.lastCheckedAt;
+    }
+    if (report.product.lastSuccessfulCheckAt) {
+        json["lastSuccessfulCheckAt"] =
+            *report.product.lastSuccessfulCheckAt;
+    }
+    json["freshness"] = toString(report.product.freshness);
+    json["stale"] = report.product.freshness != PriceFreshness::Fresh;
     for (const auto platform : report.product.supportedPlatforms) {
         json["platforms"].append(toString(platform));
     }

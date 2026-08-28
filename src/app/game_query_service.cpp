@@ -80,9 +80,10 @@ std::optional<GamePriceReport> GameQueryService::buildReport(
             product,
             std::move(purchaseUrl),
             history,
-            history ? std::optional<PurchaseRecommendationResult>{
+            history && product.freshness == PriceFreshness::Fresh
+                ? std::optional<PurchaseRecommendationResult>{
                           recommendationService.recommend(*history)}
-                    : std::nullopt});
+                : std::nullopt});
     }
     return GamePriceReport{*comparison, std::move(productReports)};
 }

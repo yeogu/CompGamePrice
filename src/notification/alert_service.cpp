@@ -1,4 +1,5 @@
 #include "game_price/notification/alert_service.h"
+#include "game_price/domain/store_product.h"
 
 #include <sqlite3.h>
 #include <stdexcept>
@@ -20,6 +21,9 @@ std::size_t AlertService::evaluateGame(const std::string& gameId) const {
              (SELECT h.observed_at FROM price_history h WHERE h.store=p.store AND h.external_product_id=p.external_product_id ORDER BY h.observed_at DESC,h.id DESC LIMIT 1)
       FROM alert_rules r JOIN store_products p ON p.game_id=r.game_id
       WHERE r.game_id=? AND r.active=1 AND p.purchasable=1
+      AND p.last_successful_check_at IS NOT NULL
+      AND p.last_successful_check_at >=
+          strftime('%Y-%m-%dT%H:%M:%fZ','now',?)
       AND (r.platform IS NULL OR EXISTS(
             SELECT 1 FROM product_platforms pp
             WHERE pp.store=p.store AND pp.external_product_id=p.external_product_id
@@ -30,7 +34,9 @@ std::size_t AlertService::evaluateGame(const std::string& gameId) const {
               AND pc.platform=r.platform AND pc.status IN ('Native','Compatible')));
     )sql";
     sqlite3_stmt* row=nullptr; if(sqlite3_prepare_v2(db,sql,-1,&row,nullptr)!=SQLITE_OK) throw std::runtime_error(sqlite3_errmsg(db));
-    bindText(row,1,gameId); std::size_t created=0;
+    bindText(row,1,gameId);
+    bindText(row,2,"-"+std::to_string(PriceStaleAfterHours)+" hours");
+    std::size_t created=0;
     while(sqlite3_step(row)==SQLITE_ROW){
         const auto type=alertRuleTypeFromString(reinterpret_cast<const char*>(sqlite3_column_text(row,2)));
         const auto price=sqlite3_column_int64(row,6); const auto count=sqlite3_column_int64(row,8);

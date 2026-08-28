@@ -358,10 +358,10 @@ function App() {
             {report.products.map((product) => {
               const cheapest = report.cheapest?.productId === product.productId
               return (
-                <article className={cheapest ? 'price-card cheapest' : 'price-card'} key={`${product.store}-${product.productId}`}>
+                <article className={`${cheapest ? 'price-card cheapest' : 'price-card'}${product.stale ? ' stale' : ''}`} key={`${product.store}-${product.productId}`}>
                   <div className="card-topline">
                     <span className="store">{product.store}</span>
-                    {cheapest && <span className="badge">BEST</span>}
+                    {cheapest ? <span className="badge">BEST</span> : product.stale && <span className="badge stale-badge">오래된 가격</span>}
                   </div>
                   <p className="offer-meta">
                     {product.region} · {product.edition} · {product.offerType}
@@ -374,6 +374,11 @@ function App() {
                     </div>
                   )}
                   <p className="platforms">{product.platforms.join(' · ')}</p>
+                  <p className="freshness">
+                    마지막 정상 확인: {product.lastSuccessfulCheckAt
+                      ? new Date(product.lastSuccessfulCheckAt).toLocaleString('ko-KR')
+                      : '확인되지 않음'}
+                  </p>
                   {product.compatibility.map((entry) => (
                     <p className="platforms" key={entry.platform}>
                       {entry.platform}: {entry.status}
@@ -409,7 +414,11 @@ function App() {
                       </ul>
                     </div>
                   ) : (
-                    <p className="recommendation pending">추천 분석을 위한 가격 이력이 없습니다.</p>
+                    <p className="recommendation pending">
+                      {product.stale
+                        ? '오래된 가격은 구매 추천에서 제외됩니다.'
+                        : '추천 분석을 위한 가격 이력이 없습니다.'}
+                    </p>
                   )}
                 </article>
               )

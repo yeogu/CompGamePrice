@@ -53,6 +53,12 @@ enum class CompatibilityStatus {
     Unknown
 };
 
+enum class PriceFreshness {
+    Fresh,
+    Stale,
+    Unknown
+};
+
 struct PlatformCompatibility {
     Platform platform;
     CompatibilityStatus status{CompatibilityStatus::Unknown};
@@ -65,5 +71,6 @@ std::string toString(Region region);
 std::string toString(GameEdition edition);
 std::string toString(OfferType offerType);
 std::string toString(CompatibilityStatus status);
+std::string toString(PriceFreshness freshness);
 
 }  // namespace game_price

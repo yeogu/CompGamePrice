@@ -116,6 +116,10 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/games/stardew-valley/prices")
 [[ "${status}" == "200" ]]
 grep -q '"purchaseUrl":"https://store.steampowered.com/app/413150"' "${response_body}"
+grep -q '"freshness":"Fresh"' "${response_body}"
+grep -q '"stale":false' "${response_body}"
+grep -q '"lastCheckedAt"' "${response_body}"
+grep -q '"lastSuccessfulCheckAt"' "${response_body}"
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/games/stardew-valley/price-history")

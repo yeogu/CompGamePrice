@@ -514,12 +514,29 @@ void StoreProductRepository::initializeSchema() const {
                     ON price_history(store, external_product_id, observed_at);
             )sql");
         }
+        if (existingVersion < 11) {
+            database_.execute(R"sql(
+                ALTER TABLE store_products ADD COLUMN last_checked_at TEXT;
+                ALTER TABLE store_products ADD COLUMN last_successful_check_at TEXT;
+                UPDATE store_products
+                SET last_checked_at = COALESCE(
+                        (SELECT MAX(observed_at) FROM price_history h
+                         WHERE h.store = store_products.store
+                           AND h.external_product_id = store_products.external_product_id),
+                        strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+                    last_successful_check_at = COALESCE(
+                        (SELECT MAX(observed_at) FROM price_history h
+                         WHERE h.store = store_products.store
+                           AND h.external_product_id = store_products.external_product_id),
+                        strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+            )sql");
+        }
         database_.execute(R"sql(
             CREATE UNIQUE INDEX IF NOT EXISTS idx_alert_rules_identity
             ON alert_rules(user_id,game_id,rule_type,
                 COALESCE(platform,''),COALESCE(target_price_minor,-1));
         )sql");
-        database_.execute("PRAGMA user_version = 10;");
+        database_.execute("PRAGMA user_version = 11;");
         database_.execute("COMMIT;");
     } catch (...) {
         try {
@@ -573,9 +590,10 @@ void StoreProductRepository::saveNormalizedProducts(
 
             const std::string store = toString(product.store);
             const std::string currency = toString(product.currentPrice.currency);
+            const std::string checkedAt = databaseUtcNow(database_.handle());
             std::string observedAt = product.observedAt
                 ? *product.observedAt
-                : databaseUtcNow(database_.handle());
+                : checkedAt;
             {
                 Statement statement(database_.handle(), R"sql(
                     SELECT price_minor, regular_price_minor, discount_percent,
@@ -600,6 +618,16 @@ void StoreProductRepository::saveNormalizedProducts(
                     if (observedAt == latestObservedAt) {
                         if (observationStateMatches(
                                 statement.get(), product, regularPrice, currency)) {
+                            Statement checked(database_.handle(), R"sql(
+                                UPDATE store_products
+                                SET last_checked_at = ?, last_successful_check_at = ?
+                                WHERE store = ? AND external_product_id = ?;
+                            )sql");
+                            bindText(checked.get(), 1, checkedAt);
+                            bindText(checked.get(), 2, checkedAt);
+                            bindText(checked.get(), 3, store);
+                            bindText(checked.get(), 4, product.productId);
+                            checked.execute();
                             continue;
                         }
                         throw std::invalid_argument(
@@ -650,8 +678,9 @@ void StoreProductRepository::saveNormalizedProducts(
                     INSERT INTO store_products(
                         store, external_product_id, game_id,
                         price_minor, regular_price_minor, discount_percent,
-                        currency, purchasable, region, edition, offer_type)
-                    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        currency, purchasable, region, edition, offer_type,
+                        last_checked_at, last_successful_check_at)
+                    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(store, external_product_id) DO UPDATE SET
                         game_id = excluded.game_id,
                         price_minor = excluded.price_minor,
@@ -661,7 +690,9 @@ void StoreProductRepository::saveNormalizedProducts(
                         purchasable = excluded.purchasable,
                         region = excluded.region,
                         edition = excluded.edition,
-                        offer_type = excluded.offer_type;
+                        offer_type = excluded.offer_type,
+                        last_checked_at = excluded.last_checked_at,
+                        last_successful_check_at = excluded.last_successful_check_at;
                 )sql");
                 bindText(statement.get(), 1, store);
                 bindText(statement.get(), 2, product.productId);
@@ -674,6 +705,8 @@ void StoreProductRepository::saveNormalizedProducts(
                 bindText(statement.get(), 9, toString(product.region));
                 bindText(statement.get(), 10, toString(product.edition));
                 bindText(statement.get(), 11, toString(product.offerType));
+                bindText(statement.get(), 12, checkedAt);
+                bindText(statement.get(), 13, checkedAt);
                 statement.execute();
             }
 
@@ -755,12 +788,22 @@ std::vector<StoreProduct> StoreProductRepository::findProductsByGameId(
     Statement productsStatement(database_.handle(), R"sql(
         SELECT store, external_product_id, game_id,
                price_minor, regular_price_minor, discount_percent,
-               currency, purchasable, region, edition, offer_type
+               currency, purchasable, region, edition, offer_type,
+               last_checked_at, last_successful_check_at,
+               CASE
+                   WHEN last_successful_check_at IS NULL THEN 'Unknown'
+                   WHEN last_successful_check_at >=
+                        strftime('%Y-%m-%dT%H:%M:%fZ','now',?2) THEN 'Fresh'
+                   ELSE 'Stale'
+               END
         FROM store_products
-        WHERE game_id = ?
+        WHERE game_id = ?1
         ORDER BY store, external_product_id;
     )sql");
     bindText(productsStatement.get(), 1, gameId);
+    bindText(
+        productsStatement.get(), 2,
+        "-" + std::to_string(StaleAfterHours) + " hours");
 
     std::vector<StoreProduct> products;
     while (productsStatement.next()) {
@@ -815,7 +858,18 @@ std::vector<StoreProduct> StoreProductRepository::findProductsByGameId(
             parseRegion(columnText(productsStatement.get(), 8)),
             parseEdition(columnText(productsStatement.get(), 9)),
             parseOfferType(columnText(productsStatement.get(), 10)),
-            std::move(compatibility)});
+            std::move(compatibility),
+            sqlite3_column_type(productsStatement.get(), 11) == SQLITE_NULL
+                ? std::nullopt
+                : std::optional<std::string>{columnText(productsStatement.get(), 11)},
+            sqlite3_column_type(productsStatement.get(), 12) == SQLITE_NULL
+                ? std::nullopt
+                : std::optional<std::string>{columnText(productsStatement.get(), 12)},
+            columnText(productsStatement.get(), 13) == "Fresh"
+                ? PriceFreshness::Fresh
+                : columnText(productsStatement.get(), 13) == "Stale"
+                    ? PriceFreshness::Stale
+                    : PriceFreshness::Unknown});
     }
     return products;
 }
@@ -1006,6 +1060,19 @@ void StoreProductRepository::recordCollectionRejection(
     bindText(statement.get(), 3, gameId);
     bindText(statement.get(), 4, productId);
     bindText(statement.get(), 5, reason);
+    statement.execute();
+}
+
+void StoreProductRepository::recordProductCheckFailure(
+    Store store,
+    const std::string& productId) const {
+    Statement statement(database_.handle(), R"sql(
+        UPDATE store_products
+        SET last_checked_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+        WHERE store = ? AND external_product_id = ?;
+    )sql");
+    bindText(statement.get(), 1, toString(store));
+    bindText(statement.get(), 2, productId);
     statement.execute();
 }
 
