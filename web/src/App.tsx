@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from 'react'
-import { addAlertRule, deleteAlertRule, getAlertRules, getCollectionRuns, getGamePriceHistory, getGamePrices, getGames, getMe, getNotifications, login, logout, markNotificationRead, register } from './api'
+import { addAlertRule, deleteAlertRule, getAlertRules, getCollectionRuns, getExternalIdentities, getGamePriceHistory, getGamePrices, getGames, getMe, getNotifications, getOAuthUrl, login, logout, markNotificationRead, register, unlinkExternalIdentity } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
-import type { AlertRule, AlertRuleType, CollectionRun, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Money, Notification, User } from './types'
+import type { AlertRule, AlertRuleType, CollectionRun, ExternalIdentity, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Money, Notification, OAuthProvider, User } from './types'
 
 const formatMoney = (money: Money) =>
   new Intl.NumberFormat('ko-KR', {
@@ -37,7 +37,7 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const requestSequence = useRef(0)
-  const [token, setToken] = useState(() => localStorage.getItem('game-price-token') ?? '')
+  const [token, setToken] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('oauth_token') ?? localStorage.getItem('game-price-token') ?? '')
   const [user, setUser] = useState<User | null>(null)
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState('')
@@ -45,12 +45,13 @@ function App() {
   const [rules, setRules] = useState<AlertRule[]>([])
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [targetPrice, setTargetPrice] = useState('')
+  const [identities, setIdentities] = useState<ExternalIdentity[]>([])
 
   const refreshAccount = async (activeToken: string) => {
-    const [me, nextRules, nextNotifications] = await Promise.all([
-      getMe(activeToken), getAlertRules(activeToken), getNotifications(activeToken),
+    const [me, nextRules, nextNotifications, nextIdentities] = await Promise.all([
+      getMe(activeToken), getAlertRules(activeToken), getNotifications(activeToken), getExternalIdentities(activeToken),
     ])
-    setUser(me); setRules(nextRules); setNotifications(nextNotifications)
+    setUser({ ...me, email: nextIdentities[0]?.email ?? me.email }); setRules(nextRules); setNotifications(nextNotifications); setIdentities(nextIdentities)
   }
 
   const submitAuth = async (event: FormEvent) => {
@@ -70,6 +71,11 @@ function App() {
     }
     try { await addAlertRule(token, selectedGameId, type, amount); setRules(await getAlertRules(token)) }
     catch (reason) { setError(reason instanceof Error ? reason.message : '알림 등록에 실패했습니다.') }
+  }
+
+  const startSocialLogin = async (provider: OAuthProvider, link = false) => {
+    try { window.location.assign(await getOAuthUrl(provider, token, link)) }
+    catch (reason) { setError(reason instanceof Error ? reason.message : '소셜 로그인을 시작하지 못했습니다.') }
   }
 
   const selectGame = async (
@@ -173,6 +179,10 @@ function App() {
   }, [])
 
   useEffect(() => {
+    const hash = new URLSearchParams(window.location.hash.slice(1))
+    const callbackToken = hash.get('oauth_token')
+    if (callbackToken) localStorage.setItem('game-price-token', callbackToken)
+    if (callbackToken || hash.has('oauth_linked')) window.history.replaceState(null, '', window.location.pathname + window.location.search)
     if (!token) return
     void refreshAccount(token).catch(() => {
       localStorage.removeItem('game-price-token'); setToken(''); setUser(null)
@@ -202,7 +212,7 @@ function App() {
         {user ? (
           <>
             <div className="account-heading"><div><p className="eyebrow">MY ALERTS</p><h2>{user.email}</h2></div>
-              <button onClick={() => void logout(token).finally(() => { localStorage.removeItem('game-price-token'); setToken(''); setUser(null); setRules([]); setNotifications([]) })}>로그아웃</button>
+              <button onClick={() => void logout(token).finally(() => { localStorage.removeItem('game-price-token'); setToken(''); setUser(null); setRules([]); setNotifications([]); setIdentities([]) })}>로그아웃</button>
             </div>
             {selectedGameId && <div className="alert-controls">
               <button onClick={() => void createRule('PriceDrop')}>가격 하락 알림</button>
@@ -215,6 +225,14 @@ function App() {
               <div><h3>알림 규칙</h3>{rules.length === 0 && <p>등록된 규칙이 없습니다.</p>}{rules.map((rule) => <div className="account-row" key={rule.id}><span>{rule.gameId} · {rule.type}{rule.targetPriceMinor !== undefined ? ` · ₩${rule.targetPriceMinor.toLocaleString()}` : ''}</span><button onClick={() => void deleteAlertRule(token, rule.id).then(() => getAlertRules(token)).then(setRules)}>삭제</button></div>)}</div>
               <div><h3>알림함</h3>{notifications.length === 0 && <p>새 알림이 없습니다.</p>}{notifications.map((item) => <button className={`notification-row ${item.read ? 'read' : ''}`} key={item.id} onClick={() => void markNotificationRead(token, item.id).then(() => getNotifications(token)).then(setNotifications)}><strong>{item.gameId} · {item.store}</strong><span>{formatMoney(item.price)} · {item.message}</span></button>)}</div>
             </div>
+            <div className="social-connections"><h3>연결된 로그인</h3>
+              {(['google', 'kakao', 'naver'] as OAuthProvider[]).map((provider) => {
+                const label: ExternalIdentity['provider'] = provider === 'google' ? 'Google' : provider === 'kakao' ? 'Kakao' : 'Naver'
+                const identity = identities.find((item) => item.provider === label)
+                return identity ? <div className="social-identity" key={provider}><span>{label}{identity.email ? ` · ${identity.email}` : ''}</span><button onClick={() => void unlinkExternalIdentity(token, identity.id).then(() => getExternalIdentities(token)).then(setIdentities)}>연결 해제</button></div>
+                  : <button className={`social-button ${provider}`} key={provider} onClick={() => void startSocialLogin(provider, true)}>{label} 계정 연결</button>
+              })}
+            </div>
           </>
         ) : (
           <form className="auth-form" onSubmit={submitAuth}>
@@ -223,6 +241,7 @@ function App() {
             <input type="password" required minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="8자 이상 비밀번호" />
             <button type="submit">{authMode === 'login' ? '로그인' : '가입하기'}</button>
             <button type="button" className="text-button" onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}>{authMode === 'login' ? '처음이신가요? 회원가입' : '이미 계정이 있나요? 로그인'}</button>
+            <div className="social-login"><span>또는 소셜 계정으로 계속</span>{(['google', 'kakao', 'naver'] as OAuthProvider[]).map((provider) => <button type="button" className={`social-button ${provider}`} key={provider} onClick={() => void startSocialLogin(provider)}>{provider === 'google' ? 'Google' : provider === 'kakao' ? 'Kakao' : 'Naver'}</button>)}</div>
           </form>
         )}
       </section>

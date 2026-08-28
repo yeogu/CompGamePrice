@@ -16,6 +16,7 @@
 #include "game_price/notification/account_repository.h"
 #include "game_price/notification/alert_service.h"
 #include "game_price/notification/auth_service.h"
+#include "game_price/notification/oauth_service.h"
 
 #include <cstdint>
 #include <functional>
@@ -330,8 +331,8 @@ void testDatabaseSchemaVersion() {
     )sql");
     StoreProductRepository versionOneRepository(versionOneDatabase);
     versionOneRepository.initializeSchema();
-    expect(versionOneDatabase.userVersion() == 5,
-           "Schema version 1 should migrate to version 5");
+    expect(versionOneDatabase.userVersion() == 6,
+           "Schema version 1 should migrate to version 6");
     const auto migratedProducts =
         versionOneRepository.findProductsByGameId("stardew-valley");
     expect(migratedProducts.size() == 1,
@@ -381,8 +382,8 @@ void testDatabaseSchemaVersion() {
     )sql");
     StoreProductRepository versionTwoRepository(versionTwoDatabase);
     versionTwoRepository.initializeSchema();
-    expect(versionTwoDatabase.userVersion() == 5,
-           "Schema version 2 should migrate to version 5");
+    expect(versionTwoDatabase.userVersion() == 6,
+           "Schema version 2 should migrate to version 6");
     const auto versionTwoProducts = versionTwoRepository.findProductsByGameId("hades");
     expect(versionTwoProducts.size() == 1 &&
                versionTwoProducts.front().region == Region::KR &&
@@ -646,6 +647,39 @@ void testAuthenticationAndPriceAlerts() {
            "User should be able to remove an owned alert rule");
 }
 
+void testSocialIdentityLoginAndLinking() {
+    Database database(":memory:"); StoreProductRepository products(database); products.initializeSchema();
+    AccountRepository accounts(database); AuthService auth(accounts); OAuthService oauth(accounts);
+    const OAuthProfile google{OAuthProvider::Google,"google-user-1",std::string{"same@example.com"}};
+    const auto socialLogin=oauth.completeLogin(google);
+    expect(socialLogin.user.email=="Google-google-user-1@social.local" &&
+               auth.authenticate(socialLogin.token).has_value(),
+           "A new social identity should create its own user and session");
+    expect(oauth.completeLogin(google).user.id==socialLogin.user.id,
+           "The same provider subject should reuse its linked user");
+
+    const auto local=auth.registerUser("same@example.com","safe-password-123");
+    expect(local.user.id!=socialLogin.user.id,
+           "Matching provider email must not automatically merge accounts");
+    const OAuthProfile kakao{OAuthProvider::Kakao,"kakao-user-1",std::string{"same@example.com"}};
+    oauth.linkIdentity(local.user.id,kakao);
+    expect(accounts.findExternalIdentities(local.user.id).size()==1,
+           "An authenticated user should explicitly link a social identity");
+    bool rejectedCrossAccount=false;
+    try{oauth.linkIdentity(socialLogin.user.id,kakao);}catch(const std::invalid_argument&){rejectedCrossAccount=true;}
+    expect(rejectedCrossAccount,"A social identity must not link to two users");
+
+    const auto loginState=accounts.createOAuthState(OAuthProvider::Naver,std::nullopt);
+    const auto consumedLogin=accounts.consumeOAuthState(OAuthProvider::Naver,loginState);
+    expect(consumedLogin.has_value() && *consumedLogin==0 &&
+               !accounts.consumeOAuthState(OAuthProvider::Naver,loginState).has_value(),
+           "OAuth login state should be provider-bound and single-use");
+    const auto linkState=accounts.createOAuthState(OAuthProvider::Google,local.user.id);
+    expect(accounts.consumeOAuthState(OAuthProvider::Google,linkState)==
+               std::optional<std::int64_t>{local.user.id},
+           "OAuth link state should preserve the authenticated user");
+}
+
 void testExplicitCollectionTimestamp() {
     Database database(":memory:");
     StoreProductRepository repository(database);
@@ -889,6 +923,7 @@ int main() {
         {"Game query service report", testGameQueryServiceReport},
         {"ISO date validation", testIsoDateValidation},
         {"Authentication and price alerts", testAuthenticationAndPriceAlerts},
+        {"Social identity login and linking", testSocialIdentityLoginAndLinking},
         {"Explicit collection timestamp", testExplicitCollectionTimestamp},
         {"Recommendation rules", testRecommendationRules},
         {"Collection run tracking and failure isolation",

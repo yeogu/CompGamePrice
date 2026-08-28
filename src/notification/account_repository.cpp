@@ -90,6 +90,78 @@ void AccountRepository::deleteSession(const std::string& token) {
     Statement statement(database_.handle(), "DELETE FROM user_sessions WHERE token=?;");
     bindText(statement.get(), 1, token); statement.execute();
 }
+std::string AccountRepository::createOAuthState(
+    OAuthProvider provider, std::optional<std::int64_t> linkUserId) {
+    const auto state = randomToken();
+    Statement statement(database_.handle(), R"sql(
+        INSERT INTO oauth_states(state,provider,link_user_id,expires_at)
+        VALUES(?,?,?,strftime('%Y-%m-%dT%H:%M:%fZ','now','+10 minutes'));
+    )sql");
+    bindText(statement.get(),1,state); bindText(statement.get(),2,toString(provider));
+    if(linkUserId) sqlite3_bind_int64(statement.get(),3,*linkUserId); else sqlite3_bind_null(statement.get(),3);
+    statement.execute(); return state;
+}
+std::optional<std::int64_t> AccountRepository::consumeOAuthState(
+    OAuthProvider provider, const std::string& state) {
+    database_.execute("BEGIN IMMEDIATE;");
+    try {
+        Statement select(database_.handle(), R"sql(
+            SELECT link_user_id FROM oauth_states
+            WHERE state=? AND provider=? AND expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now');
+        )sql");
+        bindText(select.get(),1,state); bindText(select.get(),2,toString(provider));
+        if(!select.next()) { database_.execute("ROLLBACK;"); return std::nullopt; }
+        const bool hasUser=sqlite3_column_type(select.get(),0)!=SQLITE_NULL;
+        const auto userId=hasUser ? std::optional<std::int64_t>{sqlite3_column_int64(select.get(),0)} : std::optional<std::int64_t>{0};
+        Statement remove(database_.handle(),"DELETE FROM oauth_states WHERE state=?;");
+        bindText(remove.get(),1,state); remove.execute(); database_.execute("COMMIT;"); return userId;
+    } catch (...) { try { database_.execute("ROLLBACK;"); } catch (...) {} throw; }
+}
+std::optional<UserAccount> AccountRepository::findUserByExternalIdentity(
+    OAuthProvider provider, const std::string& providerUserId) const {
+    Statement statement(database_.handle(), R"sql(
+        SELECT u.id,u.email FROM external_identities e JOIN users u ON u.id=e.user_id
+        WHERE e.provider=? AND e.provider_user_id=?;
+    )sql");
+    bindText(statement.get(),1,toString(provider)); bindText(statement.get(),2,providerUserId);
+    if(!statement.next()) return std::nullopt;
+    return UserAccount{sqlite3_column_int64(statement.get(),0),text(statement.get(),1)};
+}
+ExternalIdentity AccountRepository::addExternalIdentity(
+    std::int64_t userId, const OAuthProfile& profile) {
+    Statement statement(database_.handle(), R"sql(
+        INSERT INTO external_identities(user_id,provider,provider_user_id,email)
+        VALUES(?,?,?,?);
+    )sql");
+    sqlite3_bind_int64(statement.get(),1,userId); bindText(statement.get(),2,toString(profile.provider));
+    bindText(statement.get(),3,profile.providerUserId);
+    if(profile.email) bindText(statement.get(),4,*profile.email); else sqlite3_bind_null(statement.get(),4);
+    statement.execute();
+    return ExternalIdentity{sqlite3_last_insert_rowid(database_.handle()),userId,
+        profile.provider,profile.providerUserId,profile.email};
+}
+std::vector<ExternalIdentity> AccountRepository::findExternalIdentities(std::int64_t userId) const {
+    Statement statement(database_.handle(), R"sql(
+        SELECT id,user_id,provider,provider_user_id,email
+        FROM external_identities WHERE user_id=? ORDER BY id;
+    )sql"); sqlite3_bind_int64(statement.get(),1,userId); std::vector<ExternalIdentity> result;
+    while(statement.next()) result.push_back(ExternalIdentity{
+        sqlite3_column_int64(statement.get(),0),sqlite3_column_int64(statement.get(),1),
+        oauthProviderFromString(text(statement.get(),2)),text(statement.get(),3),
+        sqlite3_column_type(statement.get(),4)==SQLITE_NULL?std::nullopt:std::optional<std::string>{text(statement.get(),4)}});
+    return result;
+}
+void AccountRepository::deleteExternalIdentity(std::int64_t userId,std::int64_t identityId) {
+    Statement guard(database_.handle(), R"sql(
+        SELECT u.password_hash,(SELECT COUNT(*) FROM external_identities WHERE user_id=u.id)
+        FROM users u WHERE u.id=?;
+    )sql"); sqlite3_bind_int64(guard.get(),1,userId);
+    if(!guard.next()) throw std::invalid_argument("user not found");
+    if(text(guard.get(),0)=="!social" && sqlite3_column_int(guard.get(),1)<=1)
+        throw std::invalid_argument("cannot remove the only login method");
+    Statement statement(database_.handle(),"DELETE FROM external_identities WHERE id=? AND user_id=?;");
+    sqlite3_bind_int64(statement.get(),1,identityId); sqlite3_bind_int64(statement.get(),2,userId); statement.execute();
+}
 AlertRule AccountRepository::addRule(std::int64_t userId, const std::string& gameId,
     AlertRuleType type, std::optional<std::int64_t> targetPrice) {
     if ((type == AlertRuleType::BelowTargetPrice) != targetPrice.has_value() ||

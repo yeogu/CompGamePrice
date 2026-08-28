@@ -17,6 +17,7 @@ add_library(game_price_core
     src/notification/alert_service.cpp
     src/notification/auth_service.cpp
     src/notification/notification.cpp
+    src/notification/oauth_service.cpp
     src/catalog/game_catalog.cpp
     src/collection/apple_app_store_provider.cpp
     src/collection/collection_service.cpp

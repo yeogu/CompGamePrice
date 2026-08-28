@@ -1,4 +1,4 @@
-import type { AlertRule, AlertRuleType, AuthResult, CollectionRun, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Notification, User } from './types'
+import type { AlertRule, AlertRuleType, AuthResult, CollectionRun, ExternalIdentity, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Notification, OAuthProvider, User } from './types'
 
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8080'
 
@@ -59,3 +59,6 @@ export const addAlertRule = (token: string, gameId: string, type: AlertRuleType,
 export const deleteAlertRule = (token: string, id: number) => requestJson<object>(`/api/alert-rules/${id}`, { method: 'DELETE' }, token)
 export const getNotifications = async (token: string) => (await requestJson<{ notifications: Notification[] }>('/api/notifications', {}, token)).notifications
 export const markNotificationRead = (token: string, id: number) => requestJson<object>(`/api/notifications/${id}/read`, { method: 'PATCH' }, token)
+export const getOAuthUrl = async (provider: OAuthProvider, token = '', link = false) => (await requestJson<{ authorizationUrl: string }>(`/api/oauth/${provider}/start${link ? '?link=true' : ''}`, {}, token)).authorizationUrl
+export const getExternalIdentities = async (token: string) => (await requestJson<{ identities: ExternalIdentity[] }>('/api/external-identities', {}, token)).identities
+export const unlinkExternalIdentity = (token: string, id: number) => requestJson<object>(`/api/external-identities/${id}`, { method: 'DELETE' }, token)

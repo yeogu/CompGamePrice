@@ -4,7 +4,9 @@
 #include "game_price/persistence/store_product_repository.h"
 #include "game_price/notification/account_repository.h"
 #include "game_price/notification/auth_service.h"
+#include "game_price/notification/oauth_service.h"
 #include "game_price/support/date_utils.h"
+#include <drogon/utils/Utilities.h>
 
 #include <drogon/drogon.h>
 
@@ -14,6 +16,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <map>
 
 namespace {
 
@@ -121,6 +124,44 @@ std::string databasePath() {
     return value ? value : GAME_PRICE_DATABASE_PATH;
 }
 
+struct OAuthConfig {
+    OAuthProvider provider;
+    std::string clientId;
+    std::string clientSecret;
+    std::string authorizeUrl;
+    std::string tokenOrigin;
+    std::string tokenPath;
+    std::string userOrigin;
+    std::string userPath;
+    std::string scope;
+};
+std::string env(const char* name) { const char* value=std::getenv(name); return value?value:""; }
+std::optional<OAuthConfig> oauthConfig(OAuthProvider provider) {
+    OAuthConfig config;
+    if(provider==OAuthProvider::Google) config={provider,env("GOOGLE_OAUTH_CLIENT_ID"),env("GOOGLE_OAUTH_CLIENT_SECRET"),"https://accounts.google.com/o/oauth2/v2/auth","https://oauth2.googleapis.com","/token","https://openidconnect.googleapis.com","/v1/userinfo","openid email profile"};
+    else if(provider==OAuthProvider::Kakao) config={provider,env("KAKAO_OAUTH_CLIENT_ID"),env("KAKAO_OAUTH_CLIENT_SECRET"),"https://kauth.kakao.com/oauth/authorize","https://kauth.kakao.com","/oauth/token","https://kapi.kakao.com","/v2/user/me","account_email profile_nickname"};
+    else config={provider,env("NAVER_OAUTH_CLIENT_ID"),env("NAVER_OAUTH_CLIENT_SECRET"),"https://nid.naver.com/oauth2.0/authorize","https://nid.naver.com","/oauth2.0/token","https://openapi.naver.com","/v1/nid/me",""};
+    return config.clientId.empty()||(provider!=OAuthProvider::Kakao&&config.clientSecret.empty())?std::nullopt:std::optional<OAuthConfig>{config};
+}
+std::string providerPath(OAuthProvider provider) {
+    std::string value=toString(provider); value[0]=static_cast<char>(std::tolower(value[0])); return value;
+}
+std::string callbackUri(OAuthProvider provider) {
+    auto base=env("OAUTH_CALLBACK_BASE"); if(base.empty()) base="http://127.0.0.1:8080";
+    return base+"/api/oauth/"+providerPath(provider)+"/callback";
+}
+std::string webAppUrl() { auto value=env("WEB_APP_URL"); return value.empty()?"http://127.0.0.1:5173":value; }
+std::string formEncode(const std::map<std::string,std::string>& fields) {
+    std::string result; for(const auto& [key,value]:fields){if(!result.empty())result+='&';result+=drogon::utils::urlEncodeComponent(key)+"="+drogon::utils::urlEncodeComponent(value);} return result;
+}
+std::optional<OAuthProfile> oauthProfile(OAuthProvider provider,const Json::Value& body) {
+    OAuthProfile profile; profile.provider=provider;
+    if(provider==OAuthProvider::Google){ if(!body["sub"].isString())return std::nullopt; profile.providerUserId=body["sub"].asString(); if(body["email"].isString())profile.email=body["email"].asString(); }
+    else if(provider==OAuthProvider::Kakao){ if(!body["id"].isIntegral())return std::nullopt; profile.providerUserId=body["id"].asString(); if(body["kakao_account"]["email"].isString())profile.email=body["kakao_account"]["email"].asString(); }
+    else { const auto& value=body["response"]; if(!value["id"].isString())return std::nullopt; profile.providerUserId=value["id"].asString(); if(value["email"].isString())profile.email=value["email"].asString(); }
+    return profile;
+}
+
 PriceComparisonCriteria comparisonCriteria(
     const drogon::HttpRequestPtr& request) {
     PriceComparisonCriteria criteria;
@@ -206,6 +247,7 @@ int main() {
         GameQueryService queryService(catalog, repository);
         AccountRepository accountRepository(database);
         AuthService authService(accountRepository);
+        OAuthService oauthService(accountRepository);
 
         drogon::app().registerPreRoutingAdvice(
             [](const drogon::HttpRequestPtr& request,
@@ -247,6 +289,81 @@ int main() {
         };
         drogon::app().registerHandler("/api/auth/register", registerAuthHandler(true), {drogon::Post});
         drogon::app().registerHandler("/api/auth/login", registerAuthHandler(false), {drogon::Post});
+
+        for (const auto provider : {OAuthProvider::Google, OAuthProvider::Kakao, OAuthProvider::Naver}) {
+            const auto path=providerPath(provider);
+            drogon::app().registerHandler(
+                "/api/oauth/"+path+"/start",
+                [provider,&accountRepository,&authService](const drogon::HttpRequestPtr& request,
+                    std::function<void(const HttpResponsePtr&)>&& callback) {
+                    const auto config=oauthConfig(provider);
+                    if(!config){callback(jsonError(drogon::k503ServiceUnavailable,"OAuth provider is not configured"));return;}
+                    std::optional<std::int64_t> linkUserId;
+                    if(request->getParameter("link")=="true"){
+                        const auto user=authenticatedUser(request,authService);
+                        if(!user){callback(jsonError(drogon::k401Unauthorized,"authentication required for account linking"));return;}
+                        linkUserId=user->id;
+                    }
+                    const auto state=accountRepository.createOAuthState(provider,linkUserId);
+                    std::map<std::string,std::string> query{{"client_id",config->clientId},{"redirect_uri",callbackUri(provider)},{"response_type","code"},{"state",state}};
+                    if(!config->scope.empty())query["scope"]=config->scope;
+                    Json::Value response; response["authorizationUrl"]=config->authorizeUrl+"?"+formEncode(query);
+                    callback(jsonResponse(response));
+                }, {drogon::Get});
+            drogon::app().registerHandler(
+                "/api/oauth/"+path+"/callback",
+                [provider,&accountRepository,&oauthService](const drogon::HttpRequestPtr& request,
+                    std::function<void(const HttpResponsePtr&)>&& callback) {
+                    const auto config=oauthConfig(provider); const auto code=request->getParameter("code"); const auto state=request->getParameter("state");
+                    if(!config||code.empty()||state.empty()){callback(jsonError(drogon::k400BadRequest,"invalid OAuth callback"));return;}
+                    const auto linkUser=accountRepository.consumeOAuthState(provider,state);
+                    if(!linkUser){callback(jsonError(drogon::k400BadRequest,"invalid or expired OAuth state"));return;}
+                    auto finalCallback=std::make_shared<std::function<void(const HttpResponsePtr&)>>(std::move(callback));
+                    auto tokenClient=drogon::HttpClient::newHttpClient(config->tokenOrigin);
+                    auto tokenRequest=drogon::HttpRequest::newHttpRequest(); tokenRequest->setMethod(drogon::Post); tokenRequest->setPath(config->tokenPath);
+                    tokenRequest->addHeader("Content-Type","application/x-www-form-urlencoded");
+                    std::map<std::string,std::string> tokenFields{{"grant_type","authorization_code"},{"client_id",config->clientId},{"redirect_uri",callbackUri(provider)},{"code",code}};
+                    if(!config->clientSecret.empty())tokenFields["client_secret"]=config->clientSecret;
+                    tokenRequest->setBody(formEncode(tokenFields));
+                    tokenClient->sendRequest(tokenRequest,[config=*config,provider,linkUser,&oauthService,finalCallback](drogon::ReqResult result,const HttpResponsePtr& response){
+                        if(result!=drogon::ReqResult::Ok||!response||!response->getJsonObject()||!(*response->getJsonObject())["access_token"].isString()){
+                            (*finalCallback)(jsonError(drogon::k502BadGateway,"OAuth token exchange failed"));return;
+                        }
+                        const auto accessToken=(*response->getJsonObject())["access_token"].asString();
+                        auto userClient=drogon::HttpClient::newHttpClient(config.userOrigin);
+                        auto userRequest=drogon::HttpRequest::newHttpRequest(); userRequest->setMethod(drogon::Get); userRequest->setPath(config.userPath);
+                        userRequest->addHeader("Authorization","Bearer "+accessToken);
+                        if(provider==OAuthProvider::Naver){userRequest->addHeader("X-Naver-Client-Id",config.clientId);userRequest->addHeader("X-Naver-Client-Secret",config.clientSecret);}
+                        userClient->sendRequest(userRequest,[provider,linkUser,&oauthService,finalCallback](drogon::ReqResult userResult,const HttpResponsePtr& userResponse){
+                            if(userResult!=drogon::ReqResult::Ok||!userResponse||!userResponse->getJsonObject()){
+                                (*finalCallback)(jsonError(drogon::k502BadGateway,"OAuth profile request failed"));return;
+                            }
+                            const auto profile=oauthProfile(provider,*userResponse->getJsonObject());
+                            if(!profile){(*finalCallback)(jsonError(drogon::k502BadGateway,"OAuth profile is invalid"));return;}
+                            try {
+                                if(*linkUser!=0){oauthService.linkIdentity(*linkUser,*profile);(*finalCallback)(HttpResponse::newRedirectionResponse(webAppUrl()+"/#oauth_linked="+providerPath(provider)));}
+                                else {const auto auth=oauthService.completeLogin(*profile);(*finalCallback)(HttpResponse::newRedirectionResponse(webAppUrl()+"/#oauth_token="+auth.token));}
+                            } catch(const std::exception& error){(*finalCallback)(jsonError(drogon::k409Conflict,error.what()));}
+                        },10);
+                    },10);
+                }, {drogon::Get});
+        }
+
+        drogon::app().registerHandler(
+            "/api/external-identities",
+            [&authService,&accountRepository](const drogon::HttpRequestPtr& request,std::function<void(const HttpResponsePtr&)>&& callback){
+                const auto user=authenticatedUser(request,authService); if(!user){callback(jsonError(drogon::k401Unauthorized,"authentication required"));return;}
+                Json::Value response; response["identities"]=Json::arrayValue;
+                for(const auto& identity:accountRepository.findExternalIdentities(user->id)){Json::Value item;item["id"]=Json::Int64(identity.id);item["provider"]=toString(identity.provider);if(identity.email)item["email"]=*identity.email;response["identities"].append(std::move(item));}
+                callback(jsonResponse(response));
+            }, {drogon::Get});
+        drogon::app().registerHandler(
+            "/api/external-identities/{1}",
+            [&authService,&accountRepository](const drogon::HttpRequestPtr& request,std::function<void(const HttpResponsePtr&)>&& callback,std::int64_t id){
+                const auto user=authenticatedUser(request,authService); if(!user){callback(jsonError(drogon::k401Unauthorized,"authentication required"));return;}
+                try{accountRepository.deleteExternalIdentity(user->id,id);callback(jsonResponse(Json::Value{}));}
+                catch(const std::invalid_argument& error){callback(jsonError(drogon::k400BadRequest,error.what()));}
+            }, {drogon::Delete});
 
         drogon::app().registerHandler(
             "/api/auth/me",

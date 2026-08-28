@@ -20,6 +20,9 @@ GAME_PRICE_DATABASE_PATH="${test_database}" "${tracker_binary}" seed-demo >/dev/
 GAME_PRICE_DATABASE_PATH="${test_database}" "${tracker_binary}" collect \
     --data-dir "${project_directory}/data" Hades >/dev/null
 GAME_PRICE_DATABASE_PATH="${test_database}" GAME_PRICE_API_PORT="${api_port}" \
+    GOOGLE_OAUTH_CLIENT_ID="google-test-id" GOOGLE_OAUTH_CLIENT_SECRET="google-test-secret" \
+    KAKAO_OAUTH_CLIENT_ID="kakao-test-id" KAKAO_OAUTH_CLIENT_SECRET="kakao-test-secret" \
+    NAVER_OAUTH_CLIENT_ID="naver-test-id" NAVER_OAUTH_CLIENT_SECRET="naver-test-secret" \
     "${api_binary}" >/dev/null 2>&1 &
 api_pid=$!
 
@@ -34,6 +37,21 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
 [[ "${status}" == "201" ]]
 auth_token=$(grep -o '"token":"[^"]*"' "${response_body}" | cut -d '"' -f 4)
 [[ -n "${auth_token}" ]]
+
+for provider in google kakao naver; do
+    status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+        "${api_base}/api/oauth/${provider}/start")
+    [[ "${status}" == "200" ]]
+    grep -q '"authorizationUrl":"https://' "${response_body}"
+    grep -q 'state=' "${response_body}"
+done
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/oauth/google/start?link=true")
+[[ "${status}" == "401" ]]
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -H "Authorization: Bearer ${auth_token}" \
+    "${api_base}/api/oauth/google/start?link=true")
+[[ "${status}" == "200" ]]
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/alert-rules")

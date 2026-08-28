@@ -312,14 +312,15 @@ DB 적재 사이에 지연이 생겨도 그래프에는 응답을 관측한 시�
 5개 필드 로컬 sample은 호환성을 위해 DB 적재 시각을 사용합니다. 관측 시각은
 `YYYY-MM-DDTHH:MM:SS.sssZ` UTC 형식만 허용하며 잘못된 값은 트랜잭션 전체를
 롤백합니다.
-DB schema는 SQLite `user_version`으로 관리하며 현재 버전은 5입니다. version 2는
+DB schema는 SQLite `user_version`으로 관리하며 현재 버전은 6입니다. version 2는
 `store_products`와 `price_history`에 선택적인 정상가와 0–100 정수 할인율을
 추가합니다. 기존 version 1 DB는 상품과 이력을 보존하면서 정상가 미상(NULL),
 할인율 0으로 자동 이전됩니다. version 3는 Store 상품에 Region, Edition,
 Offer Type을 추가하며 기존 상품은 `KR`, `Standard`, `BaseGame`으로 이전합니다.
 version 4는 상품별 플랫폼 호환성(예: Nintendo Switch 게임의 Switch 2 호환)을
 별도 관계로 저장합니다. version 5는 사용자, 세션, 알림 규칙, 알림과 이메일
-Outbox를 추가합니다. 새 DB는 바로 version 5로 초기화되며 프로그램보다 새로운 DB version은
+Outbox를 추가합니다. version 6는 Google, Kakao, Naver 외부 계정과 10분 만료
+OAuth state를 저장합니다. 새 DB는 바로 version 6으로 초기화되며 프로그램보다 새로운 DB version은
 데이터 손상을 피하기 위해 실행을 중단합니다.
 `PriceHistoryService`는 저장된 이력으로 현재가, 최저가, 최고가, 정수 기반
 평균가와 직전 관측 대비 가격 추이를 계산합니다.
@@ -366,6 +367,10 @@ GET, POST /api/alert-rules
 DELETE /api/alert-rules/{ruleId}
 GET /api/notifications
 PATCH /api/notifications/{notificationId}/read
+GET /api/oauth/{google|kakao|naver}/start
+GET /api/oauth/{google|kakao|naver}/callback
+GET /api/external-identities
+DELETE /api/external-identities/{identityId}
 ```
 
 비밀번호는 PBKDF2-HMAC-SHA256(무작위 salt, 210,000회 반복)으로 저장하며 원문을
@@ -377,6 +382,31 @@ PATCH /api/notifications/{notificationId}/read
 않습니다. 알림은 웹 알림함에 즉시 저장되고 `notification_outbox`에도 `PENDING`
 상태로 쌓입니다. 실제 이메일 발송은 이후 SMTP 또는 메일 API worker가 Outbox를
 처리하도록 분리되어 있습니다.
+
+소셜 로그인은 Authorization Code flow와 Provider별 고유 사용자 ID를 사용합니다.
+Provider가 같은 이메일을 반환하더라도 기존 계정을 자동 병합하지 않으며, 로그인된
+상태에서 `start?link=true`로 시작한 경우에만 명시적으로 연결합니다. Client Secret은
+Git에 저장하지 않고 다음 환경 변수로 전달합니다.
+
+```sh
+export GOOGLE_OAUTH_CLIENT_ID="..."
+export GOOGLE_OAUTH_CLIENT_SECRET="..."
+export KAKAO_OAUTH_CLIENT_ID="..."
+export KAKAO_OAUTH_CLIENT_SECRET="..." # Kakao 설정에서 Client Secret 사용 시
+export NAVER_OAUTH_CLIENT_ID="..."
+export NAVER_OAUTH_CLIENT_SECRET="..."
+export OAUTH_CALLBACK_BASE="http://127.0.0.1:8080"
+export WEB_APP_URL="http://127.0.0.1:5173"
+./build/game_price_api
+```
+
+각 Provider 개발자 Console에는 정확히 다음 callback을 등록해야 합니다.
+
+```text
+http://127.0.0.1:8080/api/oauth/google/callback
+http://127.0.0.1:8080/api/oauth/kakao/callback
+http://127.0.0.1:8080/api/oauth/naver/callback
+```
 
 API 응답은 가격을 `{ "minorAmount": 6500, "currency": "KRW" }`처럼 정수로
 전달합니다. Drogon이 설치되지 않은 환경에서는 CLI와 테스트만 빌드되고 API

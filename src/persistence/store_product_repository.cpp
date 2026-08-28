@@ -269,6 +269,22 @@ void StoreProductRepository::initializeSchema() const {
             created_at TEXT NOT NULL,
             expires_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS external_identities (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            provider TEXT NOT NULL CHECK(provider IN ('Google','Kakao','Naver')),
+            provider_user_id TEXT NOT NULL,
+            email TEXT,
+            created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+            UNIQUE(provider, provider_user_id),
+            UNIQUE(user_id, provider)
+        );
+        CREATE TABLE IF NOT EXISTS oauth_states (
+            state TEXT PRIMARY KEY,
+            provider TEXT NOT NULL CHECK(provider IN ('Google','Kakao','Naver')),
+            link_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            expires_at TEXT NOT NULL
+        );
         CREATE TABLE IF NOT EXISTS alert_rules (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -337,7 +353,7 @@ void StoreProductRepository::initializeSchema() const {
                     CHECK (offer_type IN ('BaseGame', 'DLC', 'Bundle', 'Subscription'));
             )sql");
         }
-        database_.execute("PRAGMA user_version = 5;");
+        database_.execute("PRAGMA user_version = 6;");
         database_.execute("COMMIT;");
     } catch (...) {
         try {
