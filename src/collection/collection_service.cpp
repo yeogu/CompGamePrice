@@ -85,9 +85,19 @@ CollectionResult CollectionService::collect(const Game& game) const {
             const auto runId = repository_.startCrawlRun(provider.store());
             try {
                 const auto products = provider.findProducts(game.id);
+                const auto providerRejections = provider.findRejections(game.id);
                 std::set<std::string> productIds;
                 std::size_t accepted = 0;
-                std::size_t rejected = 0;
+                std::size_t rejected = providerRejections.size();
+                for (const auto& rejection : providerRejections) {
+                    if (!rejection.productId.empty()) {
+                        repository_.recordProductCheckFailure(
+                            provider.store(), rejection.productId);
+                    }
+                    repository_.recordCollectionRejection(
+                        runId, provider.store(), game.id,
+                        rejection.productId, rejection.reason);
+                }
                 for (const auto& product : products) {
                     try {
                         if (!productIds.insert(product.productId).second) {
@@ -108,7 +118,7 @@ CollectionResult CollectionService::collect(const Game& game) const {
                     }
                 }
                 if (alertService_ && accepted > 0) alertService_->evaluateGame(game.id);
-                const bool allRejected = !products.empty() && accepted == 0;
+                const bool allRejected = rejected > 0 && accepted == 0;
                 const auto status = allRejected
                     ? CrawlRunStatus::Failed
                     : CrawlRunStatus::Succeeded;

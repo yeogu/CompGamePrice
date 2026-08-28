@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cctype>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -46,7 +47,9 @@ inline std::vector<std::string> split(const std::string& value, char delimiter) 
 }
 
 inline bool parseBool(const std::string& value) {
-    return value == "true" || value == "1" || value == "yes";
+    if (value == "true" || value == "1" || value == "yes") return true;
+    if (value == "false" || value == "0" || value == "no") return false;
+    throw std::invalid_argument("Invalid boolean value: " + value);
 }
 
 }  // namespace game_price

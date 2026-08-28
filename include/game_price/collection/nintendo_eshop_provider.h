@@ -13,6 +13,8 @@ public:
     explicit NintendoEShopProvider(const std::string& dataPath);
     Store store() const noexcept override;
     std::vector<StoreProduct> findProducts(const std::string& gameId) const override;
+    std::vector<ProviderRejection> findRejections(
+        const std::string& gameId) const override;
 
 private:
     struct RawProduct {
@@ -27,6 +29,7 @@ private:
     };
 
     std::vector<RawProduct> products_;
+    std::vector<ProviderRejection> rejections_;
 };
 
 }  // namespace game_price

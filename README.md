@@ -446,6 +446,9 @@ Store가 정상가를 제공하면 `regularPrice`도 포함됩니다. Web 가격
 (`productsRejected`), Provider 실패 수(`productsFailed`), 재시도 수(`retryCount`),
 시작·종료 시각과 오류 메시지가 포함됩니다. 정규화된 record 하나가 잘못된 경우
 정상 record는 저장하고 거부된 record와 사유는 `collection_rejections`에 격리합니다.
+Steam·Epic·Nintendo·Google Play·Apple App Store의 local 입력도 파일 전체를
+폐기하지 않고 식별 가능한 Game별 행 또는 block 단위로 parsing 오류를 격리합니다.
+파일을 열 수 없는 경우처럼 record로 분리할 수 없는 오류만 Provider 전체 실패가 됩니다.
 Web 상단의 최근 수집 실행 패널에서도 같은 요약을 확인할 수 있습니다.
 가격 이력 API는 Store별 전체 관측 시각과 정수 가격을 반환하며, `since`는
 선택적인 `YYYY-MM-DD` 시작일입니다. API 통합 테스트는 실제 서버를 임시

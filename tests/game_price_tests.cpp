@@ -143,16 +143,11 @@ void testProviderNormalization() {
            "Google Play micros should normalize to 6500 KRW");
     expect(googleProducts.front().supportedPlatforms == std::vector<Platform>{Platform::Android},
            "Google Play should support Android");
-    bool rejectedLossyGooglePrice = false;
-    try {
-        GooglePlayProvider invalid(
-            dataDirectory +
-            "/../tests/fixtures/google_play_products_invalid.txt");
-    } catch (const std::runtime_error&) {
-        rejectedLossyGooglePrice = true;
-    }
-    expect(rejectedLossyGooglePrice,
-           "Google Play should reject KRW micros that would lose precision");
+    GooglePlayProvider invalidGoogle(
+        dataDirectory + "/../tests/fixtures/google_play_products_invalid.txt");
+    expect(invalidGoogle.findProducts("stardew-valley").empty() &&
+               invalidGoogle.findRejections("stardew-valley").size() == 1,
+           "Google Play should isolate KRW micros that would lose precision");
 
     const auto appleProducts = apple.findProducts("stardew-valley");
     expect(appleProducts.size() == 1, "Apple should return one product");
@@ -160,6 +155,18 @@ void testProviderNormalization() {
            "Apple price should normalize to 6600 KRW");
     expect(appleProducts.front().supportedPlatforms.size() == 2,
            "Apple should normalize iOS and iPadOS");
+    AppleAppStoreProvider invalidApple(
+        dataDirectory +
+        "/../tests/fixtures/apple_app_store_products_invalid.csv");
+    expect(invalidApple.findProducts("stardew-valley").empty() &&
+               invalidApple.findRejections("stardew-valley").size() == 1,
+           "Apple should isolate an invalid price row");
+
+    SteamProvider invalidSteam(
+        dataDirectory + "/../tests/fixtures/steam_products_invalid.txt");
+    expect(invalidSteam.findProducts("stardew-valley").empty() &&
+               invalidSteam.findRejections("stardew-valley").size() == 1,
+           "Steam should isolate an invalid snapshot row");
 
     const auto epicProducts = epic.findProducts("hades");
     expect(epicProducts.size() == 1, "Epic should return one Hades product");
@@ -172,14 +179,11 @@ void testProviderNormalization() {
                std::vector<Platform>{Platform::Windows, Platform::MacOS},
            "Epic should normalize Windows and macOS");
 
-    bool rejectedInvalidEpicPrice = false;
-    try {
-        EpicGamesProvider invalid(
-            dataDirectory + "/../tests/fixtures/epic_games_products_invalid.txt");
-    } catch (const std::runtime_error&) {
-        rejectedInvalidEpicPrice = true;
-    }
-    expect(rejectedInvalidEpicPrice, "Epic should reject an invalid price block");
+    EpicGamesProvider invalidEpic(
+        dataDirectory + "/../tests/fixtures/epic_games_products_invalid.txt");
+    expect(invalidEpic.findProducts("hades").empty() &&
+               invalidEpic.findRejections("hades").size() == 1,
+           "Epic should isolate an invalid price block");
 
     const auto nintendoProducts = nintendo.findProducts("hades");
     expect(nintendoProducts.size() == 1,
@@ -194,15 +198,11 @@ void testProviderNormalization() {
                nintendoProducts.front().compatibility.front().status ==
                    CompatibilityStatus::Compatible,
            "Nintendo Provider should normalize Switch 2 compatibility separately");
-    bool rejectedInvalidNintendoProduct = false;
-    try {
-        NintendoEShopProvider invalid(
-            dataDirectory + "/../tests/fixtures/nintendo_eshop_products_invalid.csv");
-    } catch (const std::runtime_error&) {
-        rejectedInvalidNintendoProduct = true;
-    }
-    expect(rejectedInvalidNintendoProduct,
-           "Nintendo Provider should reject malformed identifiers and prices");
+    NintendoEShopProvider invalidNintendo(
+        dataDirectory + "/../tests/fixtures/nintendo_eshop_products_invalid.csv");
+    expect(invalidNintendo.findProducts("hades").empty() &&
+               invalidNintendo.findRejections("hades").size() == 1,
+           "Nintendo Provider should isolate malformed identifiers and prices");
 }
 
 void testEpicEndToEndComparison() {
@@ -258,6 +258,34 @@ void testEpicEndToEndComparison() {
                switch2Comparison->products.front().compatibility.front().status ==
                    CompatibilityStatus::Compatible,
            "Nintendo Switch 2 criteria should include a compatible Switch product");
+}
+
+void testProviderParsingPartialFailure() {
+    const std::string dataDirectory = TEST_SAMPLE_DATA_DIR;
+    GameCatalog catalog(dataDirectory + "/game_catalog.json");
+    const auto game = catalog.findById("hades");
+    expect(game.has_value(), "Catalog should contain Hades");
+    EpicGamesProvider provider(
+        dataDirectory + "/../tests/fixtures/epic_games_products_mixed.txt");
+    Database database(":memory:");
+    StoreProductRepository repository(database);
+    repository.initializeSchema();
+    std::vector<std::reference_wrapper<const StoreProductProvider>> providers{provider};
+    const auto result = CollectionService(
+        catalog, repository, providers).collect(*game);
+
+    expect(result.totalProducts == 1 && result.runs.size() == 1 &&
+               result.runs.front().status == CrawlRunStatus::Succeeded &&
+               result.runs.front().productsRejected == 1,
+           "A malformed source block must not block a valid block from the same Provider");
+    const auto runs = repository.findCrawlRuns();
+    const auto rejections = repository.findCollectionRejections(runs.front().id);
+    expect(rejections.size() == 1 &&
+               rejections.front().productId == "broken" &&
+               rejections.front().reason.find("Epic") != std::string::npos,
+           "A source parsing rejection must be linked to the collection quarantine");
+    expect(repository.findProductsByGameId(game->id).size() == 1,
+           "The valid source block must remain queryable after partial failure");
 }
 
 void testHistoryDeduplicationAndAnalysis() {
@@ -1330,6 +1358,7 @@ int main() {
     const std::vector<std::pair<std::string, std::function<void()>>> tests{
         {"Provider normalization", testProviderNormalization},
         {"Epic end-to-end comparison", testEpicEndToEndComparison},
+        {"Provider parsing partial failure", testProviderParsingPartialFailure},
         {"History deduplication and analysis", testHistoryDeduplicationAndAnalysis},
         {"Price observation integrity", testPriceObservationIntegrity},
         {"Database schema version", testDatabaseSchemaVersion},

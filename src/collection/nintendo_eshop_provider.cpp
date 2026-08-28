@@ -30,10 +30,12 @@ NintendoEShopProvider::NintendoEShopProvider(const std::string& dataPath) {
         line = trim(line);
         if (line.empty() || line.front() == '#') continue;
         const auto fields = split(line, ',');
-        if (fields.size() != 9) {
-            throw std::runtime_error("Invalid Nintendo eShop row");
-        }
+        const auto productIdValue = fields.empty() ? std::string{} : trim(fields[0]);
+        const auto gameIdValue = fields.size() > 1 ? trim(fields[1]) : std::string{};
         try {
+            if (fields.size() != 9) {
+                throw std::runtime_error("unexpected field count");
+            }
             const auto regularPrice = std::stoll(trim(fields[2]));
             const auto currentPrice = std::stoll(trim(fields[3]));
             const auto discount = std::stoi(trim(fields[4]));
@@ -41,17 +43,30 @@ NintendoEShopProvider::NintendoEShopProvider(const std::string& dataPath) {
             if (productId.empty() || !std::all_of(productId.begin(), productId.end(),
                     [](unsigned char value) { return std::isdigit(value) != 0; }) ||
                 regularPrice < currentPrice || currentPrice < 0 ||
-                discount < 0 || discount > 100 || trim(fields[5]) != "SWITCH") {
+                discount < 0 || discount > 100 || trim(fields[5]) != "SWITCH" ||
+                trim(fields[6]) != "KR") {
                 throw std::runtime_error("invalid value");
             }
             (void)parseCompatibility(trim(fields[8]));
             products_.push_back(RawProduct{
                 productId, trim(fields[1]), regularPrice, currentPrice, discount,
                 trim(fields[5]), trim(fields[8]), trim(fields[7]) == "AVAILABLE"});
-        } catch (const std::exception&) {
-            throw std::runtime_error("Invalid Nintendo eShop product row");
+        } catch (const std::exception& error) {
+            rejections_.push_back(ProviderRejection{
+                gameIdValue, productIdValue,
+                "Invalid Nintendo eShop product row: " +
+                    std::string(error.what())});
         }
     }
+}
+
+std::vector<ProviderRejection> NintendoEShopProvider::findRejections(
+    const std::string& gameId) const {
+    std::vector<ProviderRejection> result;
+    for (const auto& rejection : rejections_) {
+        if (rejection.gameId == gameId) result.push_back(rejection);
+    }
+    return result;
 }
 
 Store NintendoEShopProvider::store() const noexcept {

@@ -19,22 +19,50 @@ SteamProvider::SteamProvider(const std::string& dataPath) {
             continue;
         }
         const auto fields = split(line, '|');
-        if (fields.size() != 5 && fields.size() != 6 && fields.size() != 8) {
-            throw std::runtime_error("Invalid Steam row: " + line);
-        }
-        if (fields.size() == 8) {
-            products_.push_back(RawProduct{
-                fields[0], fields[1], std::stoll(fields[2]), std::stoll(fields[3]),
-                std::stoi(fields[4]), fields[5], parseBool(fields[6]), fields[7]});
-        } else {
-            products_.push_back(RawProduct{
-                fields[0], fields[1], std::nullopt, std::stoll(fields[2]), 0,
-                fields[3], parseBool(fields[4]),
-                fields.size() == 6
-                    ? std::optional<std::string>{fields[5]}
-                    : std::nullopt});
+        const auto productId = fields.empty() ? std::string{} : fields[0];
+        const auto gameId = fields.size() > 1 ? fields[1] : std::string{};
+        try {
+            if (fields.size() != 5 && fields.size() != 6 && fields.size() != 8) {
+                throw std::runtime_error("unexpected field count");
+            }
+            if (fields.size() == 8) {
+                for (const auto& platform : split(fields[5], ',')) {
+                    if (platform != "windows" && platform != "mac" &&
+                        platform != "linux") {
+                        throw std::runtime_error("unsupported platform flag");
+                    }
+                }
+                products_.push_back(RawProduct{
+                    fields[0], fields[1], std::stoll(fields[2]), std::stoll(fields[3]),
+                    std::stoi(fields[4]), fields[5], parseBool(fields[6]), fields[7]});
+            } else {
+                for (const auto& platform : split(fields[3], ',')) {
+                    if (platform != "windows" && platform != "mac" &&
+                        platform != "linux") {
+                        throw std::runtime_error("unsupported platform flag");
+                    }
+                }
+                products_.push_back(RawProduct{
+                    fields[0], fields[1], std::nullopt, std::stoll(fields[2]), 0,
+                    fields[3], parseBool(fields[4]),
+                    fields.size() == 6
+                        ? std::optional<std::string>{fields[5]}
+                        : std::nullopt});
+            }
+        } catch (const std::exception& error) {
+            rejections_.push_back(ProviderRejection{
+                gameId, productId, "Invalid Steam row: " + std::string(error.what())});
         }
     }
+}
+
+std::vector<ProviderRejection> SteamProvider::findRejections(
+    const std::string& gameId) const {
+    std::vector<ProviderRejection> result;
+    for (const auto& rejection : rejections_) {
+        if (rejection.gameId == gameId) result.push_back(rejection);
+    }
+    return result;
 }
 
 Store SteamProvider::store() const noexcept {

@@ -23,12 +23,20 @@ EpicGamesProvider::EpicGamesProvider(const std::string& dataPath) {
                 discount < 0 || discount > 100) {
                 throw std::runtime_error("invalid price");
             }
+            for (const auto& os : split(fields.at("compatible_os"), '|')) {
+                if (os != "WIN" && os != "MAC") {
+                    throw std::runtime_error("unsupported operating system");
+                }
+            }
             products_.push_back(RawProduct{
                 fields.at("offer_id"), fields.at("game_id"), regularPrice,
                 currentPrice, discount, fields.at("compatible_os"),
                 fields.at("status") == "ACTIVE"});
-        } catch (const std::exception&) {
-            throw std::runtime_error("Invalid Epic Games product block");
+        } catch (const std::exception& error) {
+            rejections_.push_back(ProviderRejection{
+                fields.count("game_id") ? fields.at("game_id") : "",
+                fields.count("offer_id") ? fields.at("offer_id") : "",
+                "Invalid Epic Games product block: " + std::string(error.what())});
         }
         fields.clear();
     };
@@ -43,11 +51,24 @@ EpicGamesProvider::EpicGamesProvider(const std::string& dataPath) {
         if (line.front() == '#') continue;
         const auto separator = line.find(':');
         if (separator == std::string::npos) {
-            throw std::runtime_error("Invalid Epic Games row: " + line);
+            rejections_.push_back(ProviderRejection{
+                fields.count("game_id") ? fields.at("game_id") : "",
+                fields.count("offer_id") ? fields.at("offer_id") : "",
+                "Invalid Epic Games row: missing separator"});
+            continue;
         }
         fields[trim(line.substr(0, separator))] = trim(line.substr(separator + 1));
     }
     appendProduct();
+}
+
+std::vector<ProviderRejection> EpicGamesProvider::findRejections(
+    const std::string& gameId) const {
+    std::vector<ProviderRejection> result;
+    for (const auto& rejection : rejections_) {
+        if (rejection.gameId == gameId) result.push_back(rejection);
+    }
+    return result;
 }
 
 Store EpicGamesProvider::store() const noexcept {

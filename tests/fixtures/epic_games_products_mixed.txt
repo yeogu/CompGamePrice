@@ -1,0 +1,15 @@
+offer_id: hades
+game_id: hades
+regular_price_krw: 27000
+current_price_krw: 25000
+discount_percent: 7
+compatible_os: WIN|MAC
+status: ACTIVE
+
+offer_id: broken
+game_id: hades
+regular_price_krw: 20000
+current_price_krw: 25000
+discount_percent: 7
+compatible_os: WIN
+status: ACTIVE

@@ -26,8 +26,12 @@ GooglePlayProvider::GooglePlayProvider(const std::string& dataPath) {
             products_.push_back(RawProduct{
                 fields.at("package_name"), fields.at("game_id"),
                 priceMicros, parseBool(fields.at("published"))});
-        } catch (const std::exception&) {
-            throw std::runtime_error("Invalid Google Play product block");
+        } catch (const std::exception& error) {
+            rejections_.push_back(ProviderRejection{
+                fields.count("game_id") ? fields.at("game_id") : "",
+                fields.count("package_name") ? fields.at("package_name") : "",
+                "Invalid Google Play product block: " +
+                    std::string(error.what())});
         }
         fields.clear();
     };
@@ -42,11 +46,24 @@ GooglePlayProvider::GooglePlayProvider(const std::string& dataPath) {
         if (line.front() == '#') continue;
         const auto separator = line.find('=');
         if (separator == std::string::npos) {
-            throw std::runtime_error("Invalid Google Play row: " + line);
+            rejections_.push_back(ProviderRejection{
+                fields.count("game_id") ? fields.at("game_id") : "",
+                fields.count("package_name") ? fields.at("package_name") : "",
+                "Invalid Google Play row: missing separator"});
+            continue;
         }
         fields[trim(line.substr(0, separator))] = trim(line.substr(separator + 1));
     }
     appendProduct();
+}
+
+std::vector<ProviderRejection> GooglePlayProvider::findRejections(
+    const std::string& gameId) const {
+    std::vector<ProviderRejection> result;
+    for (const auto& rejection : rejections_) {
+        if (rejection.gameId == gameId) result.push_back(rejection);
+    }
+    return result;
 }
 
 Store GooglePlayProvider::store() const noexcept {
