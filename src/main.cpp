@@ -9,6 +9,8 @@
 #include "game_price/collection/steam_provider.h"
 #include "game_price/persistence/database.h"
 #include "game_price/persistence/store_product_repository.h"
+#include "game_price/notification/account_repository.h"
+#include "game_price/notification/alert_service.h"
 #include "game_price/pricing/price_comparison_service.h"
 #include "game_price/pricing/price_history_service.h"
 #include "game_price/recommendation/purchase_recommendation_service.h"
@@ -39,7 +41,9 @@ CollectionResult collectStoreProducts(
     std::vector<std::reference_wrapper<const StoreProductProvider>> providers{
         steam, epicGames, googlePlay, appleAppStore, nintendo};
 
-    CollectionService service(repository, std::move(providers), 2);
+    AccountRepository accounts(repository.database());
+    AlertService alerts(accounts);
+    CollectionService service(repository, std::move(providers), 2, &alerts);
     const auto result = service.collect(game);
     std::cout << "Collection runs:\n";
     for (const auto& run : result.runs) {
@@ -60,7 +64,9 @@ CollectionResult collectSteamProduct(
     const std::string& dataDirectory) {
     SteamProvider steam(dataDirectory + "/steam_products.txt");
     std::vector<std::reference_wrapper<const StoreProductProvider>> providers{steam};
-    CollectionService service(repository, std::move(providers), 2);
+    AccountRepository accounts(repository.database());
+    AlertService alerts(accounts);
+    CollectionService service(repository, std::move(providers), 2, &alerts);
     const auto result = service.collect(game);
     std::cout << "Steam collection runs:\n";
     for (const auto& run : result.runs) {
@@ -81,7 +87,9 @@ CollectionResult collectAllSteamProducts(
     const std::string& dataDirectory) {
     SteamProvider steam(dataDirectory + "/steam_products.txt");
     std::vector<std::reference_wrapper<const StoreProductProvider>> providers{steam};
-    CollectionService service(repository, std::move(providers), 2);
+    AccountRepository accounts(repository.database());
+    AlertService alerts(accounts);
+    CollectionService service(repository, std::move(providers), 2, &alerts);
 
     CollectionResult combined;
     for (const auto& game : catalog.allGames()) {

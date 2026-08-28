@@ -13,6 +13,9 @@
 #include "game_price/support/date_utils.h"
 #include "game_price/collection/steam_provider.h"
 #include "game_price/persistence/store_product_repository.h"
+#include "game_price/notification/account_repository.h"
+#include "game_price/notification/alert_service.h"
+#include "game_price/notification/auth_service.h"
 
 #include <cstdint>
 #include <functional>
@@ -327,8 +330,8 @@ void testDatabaseSchemaVersion() {
     )sql");
     StoreProductRepository versionOneRepository(versionOneDatabase);
     versionOneRepository.initializeSchema();
-    expect(versionOneDatabase.userVersion() == 4,
-           "Schema version 1 should migrate to version 4");
+    expect(versionOneDatabase.userVersion() == 5,
+           "Schema version 1 should migrate to version 5");
     const auto migratedProducts =
         versionOneRepository.findProductsByGameId("stardew-valley");
     expect(migratedProducts.size() == 1,
@@ -378,8 +381,8 @@ void testDatabaseSchemaVersion() {
     )sql");
     StoreProductRepository versionTwoRepository(versionTwoDatabase);
     versionTwoRepository.initializeSchema();
-    expect(versionTwoDatabase.userVersion() == 4,
-           "Schema version 2 should migrate to version 4");
+    expect(versionTwoDatabase.userVersion() == 5,
+           "Schema version 2 should migrate to version 5");
     const auto versionTwoProducts = versionTwoRepository.findProductsByGameId("hades");
     expect(versionTwoProducts.size() == 1 &&
                versionTwoProducts.front().region == Region::KR &&
@@ -601,6 +604,46 @@ void testIsoDateValidation() {
            "UTC timestamp should reject hour 24");
     expect(!isUtcTimestamp("2026-08-26 09:30:45Z"),
            "UTC timestamp should require the snapshot format");
+}
+
+void testAuthenticationAndPriceAlerts() {
+    Database database(":memory:");
+    StoreProductRepository products(database); products.initializeSchema();
+    AccountRepository accounts(database); AuthService auth(accounts); AlertService alerts(accounts);
+    const auto registration = auth.registerUser("Buyer@Example.com", "safe-password-123");
+    expect(registration.user.email == "buyer@example.com" && !registration.token.empty(),
+           "Registration should normalize email and issue a session");
+    expect(auth.authenticate(registration.token).has_value(), "Session should authenticate");
+    expect(!auth.login("buyer@example.com", "wrong-password").has_value(),
+           "Wrong password should be rejected");
+    expect(auth.login("buyer@example.com", "safe-password-123").has_value(),
+           "Correct password should create a session");
+
+    const Game game{"alert-game", "Alert Game", "alert game", {Platform::Windows}};
+    auto product = StoreProduct{"alert-product", game.id, Store::Steam,
+        {Platform::Windows}, Money{20000, Currency::KRW}, true,
+        "2026-01-01T00:00:00.000Z"};
+    products.saveNormalizedProducts(game, {product});
+    accounts.addRule(registration.user.id, game.id, AlertRuleType::PriceDrop, std::nullopt);
+    accounts.addRule(registration.user.id, game.id, AlertRuleType::NewHistoricalLow, std::nullopt);
+    accounts.addRule(registration.user.id, game.id, AlertRuleType::BelowAverage, std::nullopt);
+    accounts.addRule(registration.user.id, game.id, AlertRuleType::BelowTargetPrice, 16000);
+    product.currentPrice.minorAmount = 15000;
+    product.observedAt = "2026-02-01T00:00:00.000Z";
+    products.saveNormalizedProducts(game, {product});
+    expect(alerts.evaluateGame(game.id) == 4,
+           "A price drop should satisfy all four configured rule types");
+    expect(alerts.evaluateGame(game.id) == 0, "Repeated evaluation must not duplicate alerts");
+    auto notifications = accounts.findNotifications(registration.user.id);
+    expect(notifications.size() == 4 && !notifications.front().read,
+           "User should receive four unread notifications");
+    accounts.markNotificationRead(registration.user.id, notifications.front().id);
+    expect(accounts.findNotifications(registration.user.id).front().read,
+           "Notification ownership-aware read update should persist");
+    const auto rules = accounts.findRules(registration.user.id);
+    accounts.deleteRule(registration.user.id, rules.front().id);
+    expect(accounts.findRules(registration.user.id).size() == 3,
+           "User should be able to remove an owned alert rule");
 }
 
 void testExplicitCollectionTimestamp() {
@@ -845,6 +888,7 @@ int main() {
         {"Game catalog validation", testGameCatalogValidation},
         {"Game query service report", testGameQueryServiceReport},
         {"ISO date validation", testIsoDateValidation},
+        {"Authentication and price alerts", testAuthenticationAndPriceAlerts},
         {"Explicit collection timestamp", testExplicitCollectionTimestamp},
         {"Recommendation rules", testRecommendationRules},
         {"Collection run tracking and failure isolation",

@@ -13,7 +13,7 @@ namespace game_price {
 
 class StoreProductRepository {
 public:
-    static constexpr int CurrentSchemaVersion = 4;
+    static constexpr int CurrentSchemaVersion = 5;
 
     explicit StoreProductRepository(Database& database);
 
@@ -40,6 +40,7 @@ public:
         std::size_t productsFound,
         const std::string& errorMessage) const;
     std::vector<CrawlRunRecord> findCrawlRuns() const;
+    Database& database() const noexcept;
 
 private:
     Database& database_;

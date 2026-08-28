@@ -2,6 +2,8 @@
 #include "game_price/domain/domain_types.h"
 #include "game_price/persistence/database.h"
 #include "game_price/persistence/store_product_repository.h"
+#include "game_price/notification/account_repository.h"
+#include "game_price/notification/auth_service.h"
 #include "game_price/support/date_utils.h"
 
 #include <drogon/drogon.h>
@@ -98,6 +100,8 @@ HttpResponsePtr jsonResponse(
     auto response = HttpResponse::newHttpJsonResponse(json);
     response->setStatusCode(status);
     response->addHeader("Access-Control-Allow-Origin", "*");
+    response->addHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
+    response->addHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, PATCH, OPTIONS");
     return response;
 }
 
@@ -170,6 +174,25 @@ PriceComparisonCriteria comparisonCriteria(
     return criteria;
 }
 
+std::string bearerToken(const drogon::HttpRequestPtr& request) {
+    const auto header = request->getHeader("Authorization");
+    return header.rfind("Bearer ", 0) == 0 ? header.substr(7) : "";
+}
+
+std::optional<UserAccount> authenticatedUser(
+    const drogon::HttpRequestPtr& request, const AuthService& auth) {
+    const auto token = bearerToken(request);
+    return token.empty() ? std::nullopt : auth.authenticate(token);
+}
+
+Json::Value authJson(const AuthResult& result) {
+    Json::Value json;
+    json["user"]["id"] = Json::Int64(result.user.id);
+    json["user"]["email"] = result.user.email;
+    json["token"] = result.token;
+    return json;
+}
+
 }  // namespace
 
 int main() {
@@ -181,6 +204,140 @@ int main() {
         repository.initializeSchema();
         GameCatalog catalog(std::string(SAMPLE_DATA_DIR) + "/game_catalog.json");
         GameQueryService queryService(catalog, repository);
+        AccountRepository accountRepository(database);
+        AuthService authService(accountRepository);
+
+        drogon::app().registerPreRoutingAdvice(
+            [](const drogon::HttpRequestPtr& request,
+               drogon::AdviceCallback&& callback,
+               drogon::AdviceChainCallback&& next) {
+                if (request->method() == drogon::Options) {
+                    callback(jsonResponse(Json::Value{}));
+                    return;
+                }
+                next();
+            });
+
+        const auto registerAuthHandler = [&authService](bool registration) {
+            return [&authService, registration](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                const auto body = request->getJsonObject();
+                if (!body || !(*body)["email"].isString() || !(*body)["password"].isString()) {
+                    callback(jsonError(drogon::k400BadRequest, "email and password are required"));
+                    return;
+                }
+                try {
+                    if (registration) {
+                        callback(jsonResponse(authJson(authService.registerUser(
+                            (*body)["email"].asString(), (*body)["password"].asString())),
+                            drogon::k201Created));
+                    } else {
+                        const auto result = authService.login(
+                            (*body)["email"].asString(), (*body)["password"].asString());
+                        callback(result ? jsonResponse(authJson(*result)) :
+                            jsonError(drogon::k401Unauthorized, "invalid credentials"));
+                    }
+                } catch (const std::invalid_argument& error) {
+                    callback(jsonError(drogon::k400BadRequest, error.what()));
+                } catch (const std::exception&) {
+                    callback(jsonError(drogon::k409Conflict, "account could not be created"));
+                }
+            };
+        };
+        drogon::app().registerHandler("/api/auth/register", registerAuthHandler(true), {drogon::Post});
+        drogon::app().registerHandler("/api/auth/login", registerAuthHandler(false), {drogon::Post});
+
+        drogon::app().registerHandler(
+            "/api/auth/me",
+            [&authService](const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                const auto user = authenticatedUser(request, authService);
+                if (!user) { callback(jsonError(drogon::k401Unauthorized, "authentication required")); return; }
+                Json::Value json; json["id"] = Json::Int64(user->id); json["email"] = user->email;
+                callback(jsonResponse(json));
+            }, {drogon::Get});
+        drogon::app().registerHandler(
+            "/api/auth/logout",
+            [&authService](const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                const auto token = bearerToken(request);
+                if (!token.empty()) authService.logout(token);
+                callback(jsonResponse(Json::Value{}));
+            }, {drogon::Post});
+
+        drogon::app().registerHandler(
+            "/api/alert-rules",
+            [&authService, &accountRepository](const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                const auto user = authenticatedUser(request, authService);
+                if (!user) { callback(jsonError(drogon::k401Unauthorized, "authentication required")); return; }
+                Json::Value response; response["rules"] = Json::arrayValue;
+                for (const auto& rule : accountRepository.findRules(user->id)) {
+                    Json::Value item; item["id"] = Json::Int64(rule.id); item["gameId"] = rule.gameId;
+                    item["type"] = toString(rule.type); item["active"] = rule.active;
+                    if (rule.targetPriceMinor) item["targetPriceMinor"] = Json::Int64(*rule.targetPriceMinor);
+                    response["rules"].append(std::move(item));
+                }
+                callback(jsonResponse(response));
+            }, {drogon::Get});
+        drogon::app().registerHandler(
+            "/api/alert-rules",
+            [&authService, &accountRepository, &catalog](const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                const auto user = authenticatedUser(request, authService);
+                if (!user) { callback(jsonError(drogon::k401Unauthorized, "authentication required")); return; }
+                const auto body = request->getJsonObject();
+                if (!body || !(*body)["gameId"].isString() || !(*body)["type"].isString()) {
+                    callback(jsonError(drogon::k400BadRequest, "gameId and type are required")); return;
+                }
+                if (!catalog.findById((*body)["gameId"].asString())) {
+                    callback(jsonError(drogon::k404NotFound, "game not found")); return;
+                }
+                try {
+                    const auto type = alertRuleTypeFromString((*body)["type"].asString());
+                    std::optional<std::int64_t> target;
+                    if ((*body).isMember("targetPriceMinor") && (*body)["targetPriceMinor"].isInt64())
+                        target = (*body)["targetPriceMinor"].asInt64();
+                    const auto rule = accountRepository.addRule(user->id, (*body)["gameId"].asString(), type, target);
+                    Json::Value response; response["id"] = Json::Int64(rule.id);
+                    callback(jsonResponse(response, drogon::k201Created));
+                } catch (const std::exception& error) {
+                    callback(jsonError(drogon::k400BadRequest, error.what()));
+                }
+            }, {drogon::Post});
+        drogon::app().registerHandler(
+            "/api/alert-rules/{1}",
+            [&authService, &accountRepository](const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback, std::int64_t id) {
+                const auto user = authenticatedUser(request, authService);
+                if (!user) { callback(jsonError(drogon::k401Unauthorized, "authentication required")); return; }
+                accountRepository.deleteRule(user->id, id); callback(jsonResponse(Json::Value{}));
+            }, {drogon::Delete});
+        drogon::app().registerHandler(
+            "/api/notifications",
+            [&authService, &accountRepository](const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                const auto user = authenticatedUser(request, authService);
+                if (!user) { callback(jsonError(drogon::k401Unauthorized, "authentication required")); return; }
+                Json::Value response; response["notifications"] = Json::arrayValue;
+                for (const auto& value : accountRepository.findNotifications(user->id)) {
+                    Json::Value item; item["id"] = Json::Int64(value.id); item["gameId"] = value.gameId;
+                    item["store"] = value.store; item["productId"] = value.productId;
+                    item["price"]["minorAmount"] = Json::Int64(value.priceMinor); item["price"]["currency"] = value.currency;
+                    item["message"] = value.message; item["createdAt"] = value.createdAt; item["read"] = value.read;
+                    response["notifications"].append(std::move(item));
+                }
+                callback(jsonResponse(response));
+            }, {drogon::Get});
+        drogon::app().registerHandler(
+            "/api/notifications/{1}/read",
+            [&authService, &accountRepository](const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback, std::int64_t id) {
+                const auto user = authenticatedUser(request, authService);
+                if (!user) { callback(jsonError(drogon::k401Unauthorized, "authentication required")); return; }
+                accountRepository.markNotificationRead(user->id, id); callback(jsonResponse(Json::Value{}));
+            }, {drogon::Patch});
 
         drogon::app().registerHandler(
             "/health",

@@ -81,3 +81,9 @@ export interface CollectionRun {
   finishedAt?: string
   errorMessage?: string
 }
+
+export interface User { id: number; email: string }
+export interface AuthResult { user: User; token: string }
+export type AlertRuleType = 'PriceDrop' | 'BelowTargetPrice' | 'NewHistoricalLow' | 'BelowAverage'
+export interface AlertRule { id: number; gameId: string; type: AlertRuleType; targetPriceMinor?: number; active: boolean }
+export interface Notification { id: number; gameId: string; store: string; productId: string; price: Money; message: string; createdAt: string; read: boolean }

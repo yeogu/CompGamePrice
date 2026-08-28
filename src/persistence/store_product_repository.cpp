@@ -165,6 +165,7 @@ CrawlRunStatus parseCrawlRunStatus(const std::string& value) {
 }  // namespace
 
 StoreProductRepository::StoreProductRepository(Database& database) : database_(database) {}
+Database& StoreProductRepository::database() const noexcept { return database_; }
 
 void StoreProductRepository::initializeSchema() const {
     const int existingVersion = database_.userVersion();
@@ -256,6 +257,56 @@ void StoreProductRepository::initializeSchema() const {
             error_message TEXT NOT NULL DEFAULT ''
         );
 
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+            password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+        );
+        CREATE TABLE IF NOT EXISTS user_sessions (
+            token TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS alert_rules (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            game_id TEXT NOT NULL,
+            rule_type TEXT NOT NULL CHECK(rule_type IN
+                ('PriceDrop','BelowTargetPrice','NewHistoricalLow','BelowAverage')),
+            target_price_minor INTEGER CHECK(target_price_minor >= 0),
+            active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)),
+            created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+            FOREIGN KEY(game_id) REFERENCES games(id) ON DELETE CASCADE,
+            CHECK((rule_type='BelowTargetPrice' AND target_price_minor IS NOT NULL) OR
+                  (rule_type!='BelowTargetPrice' AND target_price_minor IS NULL))
+        );
+        CREATE TABLE IF NOT EXISTS notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            rule_id INTEGER NOT NULL REFERENCES alert_rules(id) ON DELETE CASCADE,
+            game_id TEXT NOT NULL,
+            store TEXT NOT NULL,
+            external_product_id TEXT NOT NULL,
+            price_minor INTEGER NOT NULL,
+            currency TEXT NOT NULL,
+            message TEXT NOT NULL,
+            event_key TEXT NOT NULL UNIQUE,
+            created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+            read INTEGER NOT NULL DEFAULT 0 CHECK(read IN (0,1))
+        );
+        CREATE TABLE IF NOT EXISTS notification_outbox (
+            notification_id INTEGER PRIMARY KEY REFERENCES notifications(id) ON DELETE CASCADE,
+            channel TEXT NOT NULL DEFAULT 'email',
+            status TEXT NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING','SENT','FAILED'))
+        );
+        CREATE TRIGGER IF NOT EXISTS enqueue_notification_email
+        AFTER INSERT ON notifications
+        BEGIN
+            INSERT INTO notification_outbox(notification_id) VALUES(new.id);
+        END;
+
         )sql");
         if (existingVersion == 1) {
             database_.execute(R"sql(
@@ -286,7 +337,7 @@ void StoreProductRepository::initializeSchema() const {
                     CHECK (offer_type IN ('BaseGame', 'DLC', 'Bundle', 'Subscription'));
             )sql");
         }
-        database_.execute("PRAGMA user_version = 4;");
+        database_.execute("PRAGMA user_version = 5;");
         database_.execute("COMMIT;");
     } catch (...) {
         try {

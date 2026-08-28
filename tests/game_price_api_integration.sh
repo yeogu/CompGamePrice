@@ -29,6 +29,30 @@ for _ in {1..30}; do
 done
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -H 'Content-Type: application/json' -d '{"email":"test@example.com","password":"test-password-123"}' \
+    "${api_base}/api/auth/register")
+[[ "${status}" == "201" ]]
+auth_token=$(grep -o '"token":"[^"]*"' "${response_body}" | cut -d '"' -f 4)
+[[ -n "${auth_token}" ]]
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/alert-rules")
+[[ "${status}" == "401" ]]
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -H "Authorization: Bearer ${auth_token}" -H 'Content-Type: application/json' \
+    -d '{"gameId":"hades","type":"BelowTargetPrice","targetPriceMinor":30000}' \
+    "${api_base}/api/alert-rules")
+[[ "${status}" == "201" ]]
+GAME_PRICE_DATABASE_PATH="${test_database}" "${tracker_binary}" collect \
+    --data-dir "${project_directory}/data" Hades >/dev/null
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -H "Authorization: Bearer ${auth_token}" "${api_base}/api/notifications")
+[[ "${status}" == "200" ]]
+grep -q '"gameId":"hades"' "${response_body}"
+grep -q '"store":"Epic Games Store"' "${response_body}"
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/games/stardew-valley/prices")
 [[ "${status}" == "200" ]]
 grep -q '"purchaseUrl":"https://store.steampowered.com/app/413150"' "${response_body}"

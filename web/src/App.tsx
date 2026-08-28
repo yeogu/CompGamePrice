@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from 'react'
-import { getCollectionRuns, getGamePriceHistory, getGamePrices, getGames } from './api'
+import { addAlertRule, deleteAlertRule, getAlertRules, getCollectionRuns, getGamePriceHistory, getGamePrices, getGames, getMe, getNotifications, login, logout, markNotificationRead, register } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
-import type { CollectionRun, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Money } from './types'
+import type { AlertRule, AlertRuleType, CollectionRun, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Money, Notification, User } from './types'
 
 const formatMoney = (money: Money) =>
   new Intl.NumberFormat('ko-KR', {
@@ -37,6 +37,40 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const requestSequence = useRef(0)
+  const [token, setToken] = useState(() => localStorage.getItem('game-price-token') ?? '')
+  const [user, setUser] = useState<User | null>(null)
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [rules, setRules] = useState<AlertRule[]>([])
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [targetPrice, setTargetPrice] = useState('')
+
+  const refreshAccount = async (activeToken: string) => {
+    const [me, nextRules, nextNotifications] = await Promise.all([
+      getMe(activeToken), getAlertRules(activeToken), getNotifications(activeToken),
+    ])
+    setUser(me); setRules(nextRules); setNotifications(nextNotifications)
+  }
+
+  const submitAuth = async (event: FormEvent) => {
+    event.preventDefault(); setError('')
+    try {
+      const result = authMode === 'register' ? await register(email, password) : await login(email, password)
+      localStorage.setItem('game-price-token', result.token); setToken(result.token); setUser(result.user)
+      setPassword(''); await refreshAccount(result.token)
+    } catch (reason) { setError(reason instanceof Error ? reason.message : '인증에 실패했습니다.') }
+  }
+
+  const createRule = async (type: AlertRuleType) => {
+    if (!token || !selectedGameId) return
+    const amount = type === 'BelowTargetPrice' ? Number(targetPrice) : undefined
+    if (type === 'BelowTargetPrice' && (!Number.isInteger(amount) || (amount ?? -1) < 0)) {
+      setError('목표 가격을 원 단위 정수로 입력해주세요.'); return
+    }
+    try { await addAlertRule(token, selectedGameId, type, amount); setRules(await getAlertRules(token)) }
+    catch (reason) { setError(reason instanceof Error ? reason.message : '알림 등록에 실패했습니다.') }
+  }
 
   const selectGame = async (
     game: GameSummary,
@@ -138,6 +172,13 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  useEffect(() => {
+    if (!token) return
+    void refreshAccount(token).catch(() => {
+      localStorage.removeItem('game-price-token'); setToken(''); setUser(null)
+    })
+  }, [token])
+
   return (
     <main>
       <header className="hero">
@@ -156,6 +197,35 @@ function App() {
           </button>
         </form>
       </header>
+
+      <section className="account-panel">
+        {user ? (
+          <>
+            <div className="account-heading"><div><p className="eyebrow">MY ALERTS</p><h2>{user.email}</h2></div>
+              <button onClick={() => void logout(token).finally(() => { localStorage.removeItem('game-price-token'); setToken(''); setUser(null); setRules([]); setNotifications([]) })}>로그아웃</button>
+            </div>
+            {selectedGameId && <div className="alert-controls">
+              <button onClick={() => void createRule('PriceDrop')}>가격 하락 알림</button>
+              <button onClick={() => void createRule('NewHistoricalLow')}>새 역대 최저가</button>
+              <button onClick={() => void createRule('BelowAverage')}>평균가 이하</button>
+              <input type="number" min="0" value={targetPrice} onChange={(event) => setTargetPrice(event.target.value)} placeholder="목표 가격(KRW)" />
+              <button onClick={() => void createRule('BelowTargetPrice')}>목표가 알림</button>
+            </div>}
+            <div className="account-grid">
+              <div><h3>알림 규칙</h3>{rules.length === 0 && <p>등록된 규칙이 없습니다.</p>}{rules.map((rule) => <div className="account-row" key={rule.id}><span>{rule.gameId} · {rule.type}{rule.targetPriceMinor !== undefined ? ` · ₩${rule.targetPriceMinor.toLocaleString()}` : ''}</span><button onClick={() => void deleteAlertRule(token, rule.id).then(() => getAlertRules(token)).then(setRules)}>삭제</button></div>)}</div>
+              <div><h3>알림함</h3>{notifications.length === 0 && <p>새 알림이 없습니다.</p>}{notifications.map((item) => <button className={`notification-row ${item.read ? 'read' : ''}`} key={item.id} onClick={() => void markNotificationRead(token, item.id).then(() => getNotifications(token)).then(setNotifications)}><strong>{item.gameId} · {item.store}</strong><span>{formatMoney(item.price)} · {item.message}</span></button>)}</div>
+            </div>
+          </>
+        ) : (
+          <form className="auth-form" onSubmit={submitAuth}>
+            <div><p className="eyebrow">PRICE ALERTS</p><h2>{authMode === 'login' ? '로그인' : '회원가입'}</h2></div>
+            <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="email@example.com" />
+            <input type="password" required minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="8자 이상 비밀번호" />
+            <button type="submit">{authMode === 'login' ? '로그인' : '가입하기'}</button>
+            <button type="button" className="text-button" onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}>{authMode === 'login' ? '처음이신가요? 회원가입' : '이미 계정이 있나요? 로그인'}</button>
+          </form>
+        )}
+      </section>
 
       {error && <p className="notice error">{error}</p>}
 

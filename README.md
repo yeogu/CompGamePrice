@@ -312,13 +312,14 @@ DB 적재 사이에 지연이 생겨도 그래프에는 응답을 관측한 시�
 5개 필드 로컬 sample은 호환성을 위해 DB 적재 시각을 사용합니다. 관측 시각은
 `YYYY-MM-DDTHH:MM:SS.sssZ` UTC 형식만 허용하며 잘못된 값은 트랜잭션 전체를
 롤백합니다.
-DB schema는 SQLite `user_version`으로 관리하며 현재 버전은 4입니다. version 2는
+DB schema는 SQLite `user_version`으로 관리하며 현재 버전은 5입니다. version 2는
 `store_products`와 `price_history`에 선택적인 정상가와 0–100 정수 할인율을
 추가합니다. 기존 version 1 DB는 상품과 이력을 보존하면서 정상가 미상(NULL),
 할인율 0으로 자동 이전됩니다. version 3는 Store 상품에 Region, Edition,
 Offer Type을 추가하며 기존 상품은 `KR`, `Standard`, `BaseGame`으로 이전합니다.
 version 4는 상품별 플랫폼 호환성(예: Nintendo Switch 게임의 Switch 2 호환)을
-별도 관계로 저장합니다. 새 DB는 바로 version 4로 초기화되며 프로그램보다 새로운 DB version은
+별도 관계로 저장합니다. version 5는 사용자, 세션, 알림 규칙, 알림과 이메일
+Outbox를 추가합니다. 새 DB는 바로 version 5로 초기화되며 프로그램보다 새로운 DB version은
 데이터 손상을 피하기 위해 실행을 중단합니다.
 `PriceHistoryService`는 저장된 이력으로 현재가, 최저가, 최고가, 정수 기반
 평균가와 직전 관측 대비 가격 추이를 계산합니다.
@@ -336,7 +337,7 @@ Store별 최대 시도 횟수를 설정할 수 있고, 실패한 각 시도도 �
 
 ## HTTP API
 
-Web과 Mobile client가 같은 Core 로직을 사용하도록 Drogon 기반 read-only API를
+Web과 Mobile client가 같은 Core 로직을 사용하도록 Drogon 기반 API를
 제공합니다. macOS에서는 Drogon을 설치한 뒤 기존 빌드 명령을 실행합니다.
 
 ```sh
@@ -357,7 +358,25 @@ GET /api/games/{gameId}/prices
 GET /api/games/{gameId}/prices?platform=Windows
 GET /api/games/{gameId}/price-history?since=2026-01-01
 GET /api/collection-runs?limit=20
+POST /api/auth/register
+POST /api/auth/login
+GET /api/auth/me
+POST /api/auth/logout
+GET, POST /api/alert-rules
+DELETE /api/alert-rules/{ruleId}
+GET /api/notifications
+PATCH /api/notifications/{notificationId}/read
 ```
+
+비밀번호는 PBKDF2-HMAC-SHA256(무작위 salt, 210,000회 반복)으로 저장하며 원문을
+보관하지 않습니다. 로그인 시 발급되는 256-bit 세션 token은 30일 후 만료됩니다.
+사용자별 자원 API는 `Authorization: Bearer {token}`을 요구합니다.
+
+알림 규칙은 가격 하락, 사용자 목표가 이하, 새로운 역대 최저가, 관측 평균가 이하를
+지원합니다. 가격 수집 후 규칙을 평가하며 동일 관측에 대한 중복 알림은 만들지
+않습니다. 알림은 웹 알림함에 즉시 저장되고 `notification_outbox`에도 `PENDING`
+상태로 쌓입니다. 실제 이메일 발송은 이후 SMTP 또는 메일 API worker가 Outbox를
+처리하도록 분리되어 있습니다.
 
 API 응답은 가격을 `{ "minorAmount": 6500, "currency": "KRW" }`처럼 정수로
 전달합니다. Drogon이 설치되지 않은 환경에서는 CLI와 테스트만 빌드되고 API
@@ -392,6 +411,8 @@ Store 이름은 해당 그래프 선과 동일한 색상을 사용합니다.
 가격 카드의 추천 영역은 추천 등급뿐 아니라 역대 최저가와의 금액·비율 차이와
 판단 근거를 함께 표시합니다. 현재 규칙 기반 추천은 설명 가능하고 테스트 가능한
 기준선이며, 향후 AI 추천은 이 결과를 근거 데이터로 사용할 수 있습니다.
+회원가입·로그인 후 선택한 게임에 가격 알림을 등록하고, 발생한 알림을 사용자별
+알림함에서 확인하거나 읽음 처리할 수 있습니다.
 게임을 선택하면 `?game=hollow-knight` 형태로 현재 주소가 갱신되므로 특정 게임
 화면을 북마크하거나 공유할 수 있습니다. 가격 카드의 Store 링크는 API가 제공한
 공식 상품 페이지를 새 탭으로 엽니다.

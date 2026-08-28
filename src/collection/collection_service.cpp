@@ -1,4 +1,5 @@
 #include "game_price/collection/collection_service.h"
+#include "game_price/notification/alert_service.h"
 
 #include <exception>
 #include <stdexcept>
@@ -9,10 +10,11 @@ namespace game_price {
 CollectionService::CollectionService(
     StoreProductRepository& repository,
     std::vector<std::reference_wrapper<const StoreProductProvider>> providers,
-    std::size_t maxAttemptsPerStore)
+    std::size_t maxAttemptsPerStore,
+    const AlertService* alertService)
     : repository_(repository),
       providers_(std::move(providers)),
-      maxAttemptsPerStore_(maxAttemptsPerStore) {
+      maxAttemptsPerStore_(maxAttemptsPerStore), alertService_(alertService) {
     if (maxAttemptsPerStore_ == 0) {
         throw std::invalid_argument("maxAttemptsPerStore must be at least 1");
     }
@@ -33,6 +35,7 @@ CollectionResult CollectionService::collect(const Game& game) const {
                     }
                 }
                 repository_.saveNormalizedProducts(game, products);
+                if (alertService_) alertService_->evaluateGame(game.id);
                 repository_.finishCrawlRun(
                     runId, CrawlRunStatus::Succeeded, products.size(), "");
                 result.runs.push_back(CollectionRunResult{

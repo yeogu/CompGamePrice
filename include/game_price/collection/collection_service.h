@@ -10,13 +10,15 @@
 #include <vector>
 
 namespace game_price {
+class AlertService;
 
 class CollectionService {
 public:
     CollectionService(
         StoreProductRepository& repository,
         std::vector<std::reference_wrapper<const StoreProductProvider>> providers,
-        std::size_t maxAttemptsPerStore = 1);
+        std::size_t maxAttemptsPerStore = 1,
+        const AlertService* alertService = nullptr);
 
     CollectionResult collect(const Game& game) const;
 
@@ -24,6 +26,7 @@ private:
     StoreProductRepository& repository_;
     std::vector<std::reference_wrapper<const StoreProductProvider>> providers_;
     std::size_t maxAttemptsPerStore_;
+    const AlertService* alertService_{};
 };
 
 }  // namespace game_price

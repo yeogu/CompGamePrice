@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.14)
 project(game_price_tracker LANGUAGES CXX)
 
 find_package(SQLite3 REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -12,6 +13,10 @@ add_library(game_price_core
     src/app/command_line.cpp
     src/app/game_query_service.cpp
     src/domain/domain_types.cpp
+    src/notification/account_repository.cpp
+    src/notification/alert_service.cpp
+    src/notification/auth_service.cpp
+    src/notification/notification.cpp
     src/catalog/game_catalog.cpp
     src/collection/apple_app_store_provider.cpp
     src/collection/collection_service.cpp
@@ -35,6 +40,7 @@ if(TARGET SQLite3::SQLite3)
 else()
     target_link_libraries(game_price_core PUBLIC SQLite::SQLite3)
 endif()
+target_link_libraries(game_price_core PUBLIC OpenSSL::Crypto)
 
 add_executable(game_price_tracker src/main.cpp)
 target_link_libraries(game_price_tracker PRIVATE game_price_core)
