@@ -14,11 +14,26 @@ import tempfile
 import time
 from datetime import datetime, timezone
 from urllib.parse import urlencode
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 
 USER_AGENT = "CompGamePricePrototype/0.1 (local development)"
 ENDPOINT = "https://store.steampowered.com/api/appdetails"
+
+
+class PermanentCollectionError(ValueError):
+    pass
+
+
+class TransientCollectionError(RuntimeError):
+    def __init__(self, message: str, retry_after: float | None = None):
+        super().__init__(message)
+        self.retry_after = retry_after
+
+
+class SnapshotValidationError(PermanentCollectionError):
+    pass
 
 
 def tls_context() -> ssl.SSLContext:
@@ -61,23 +76,38 @@ def fetch(app_id: str, country_code: str, language: str, timeout: float) -> tupl
     query = urlencode({"appids": app_id, "cc": country_code, "l": language})
     source_url = f"{ENDPOINT}?{query}"
     request = Request(source_url, headers={"User-Agent": USER_AGENT})
-    with urlopen(request, timeout=timeout, context=tls_context()) as response:
-        return response.read(), response.status, source_url
+    try:
+        with urlopen(request, timeout=timeout, context=tls_context()) as response:
+            return response.read(), response.status, source_url
+    except HTTPError as error:
+        if error.code == 429 or error.code == 408 or 500 <= error.code < 600:
+            retry_after = error.headers.get("Retry-After")
+            try:
+                parsed_retry_after = float(retry_after) if retry_after else None
+            except ValueError:
+                parsed_retry_after = None
+            raise TransientCollectionError(
+                f"Steam HTTP {error.code}", parsed_retry_after
+            ) from error
+        raise PermanentCollectionError(f"Steam HTTP {error.code}") from error
 
 
 def normalized_row(raw: bytes, app_id: str, game_id: str) -> str:
-    payload = json.loads(raw)
+    try:
+        payload = json.loads(raw)
+    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+        raise SnapshotValidationError("Steam returned malformed JSON") from error
     envelope = payload.get(app_id)
     if not isinstance(envelope, dict) or envelope.get("success") is not True:
-        raise ValueError(f"Steam returned no successful data for app {app_id}")
+        raise SnapshotValidationError(f"Steam returned no successful data for app {app_id}")
 
     data = envelope.get("data")
     if not isinstance(data, dict) or data.get("steam_appid") != int(app_id):
-        raise ValueError("Steam response contains an unexpected app id")
+        raise SnapshotValidationError("Steam response contains an unexpected app id")
 
     price = data.get("price_overview")
     if not isinstance(price, dict) or price.get("currency") != "KRW":
-        raise ValueError("Steam response contains no KRW price")
+        raise SnapshotValidationError("Steam response contains no KRW price")
     raw_initial = price.get("initial")
     raw_final = price.get("final")
     discount_percent = price.get("discount_percent")
@@ -89,24 +119,24 @@ def normalized_row(raw: bytes, app_id: str, game_id: str) -> str:
         or raw_initial % 100 != 0
         or raw_final % 100 != 0
     ):
-        raise ValueError("Steam KRW prices have an unexpected representation")
+        raise SnapshotValidationError("Steam KRW prices have an unexpected representation")
     if (
         not isinstance(discount_percent, int)
         or not 0 <= discount_percent <= 100
     ):
-        raise ValueError("Steam discount percent has an unexpected representation")
+        raise SnapshotValidationError("Steam discount percent has an unexpected representation")
     initial_price_won = raw_initial // 100
     final_price_won = raw_final // 100
 
     platform_data = data.get("platforms")
     if not isinstance(platform_data, dict):
-        raise ValueError("Steam response contains no platform data")
+        raise SnapshotValidationError("Steam response contains no platform data")
     platforms = [
         name for name in ("windows", "mac", "linux")
         if platform_data.get(name) is True
     ]
     if not platforms:
-        raise ValueError("Steam response contains no supported platform")
+        raise SnapshotValidationError("Steam response contains no supported platform")
 
     return (
         f"{app_id}|{game_id}|{initial_price_won}|{final_price_won}|"
@@ -342,7 +372,9 @@ def collect_targets(
             sleeper(request_delay)
 
         last_error: Exception | None = None
+        attempts_used = 0
         for attempt in range(1, max_attempts + 1):
+            attempts_used = attempt
             try:
                 raw, status, source_url = fetcher(
                     app_id, country, language, timeout
@@ -355,13 +387,21 @@ def collect_targets(
                 )
                 last_error = None
                 break
+            except PermanentCollectionError as error:
+                last_error = error
+                break
             except Exception as error:
                 last_error = error
                 if attempt < max_attempts and retry_delay > 0:
-                    sleeper(retry_delay * (2 ** (attempt - 1)))
+                    provider_delay = getattr(error, "retry_after", None)
+                    sleeper(
+                        provider_delay
+                        if provider_delay is not None
+                        else retry_delay * (2 ** (attempt - 1))
+                    )
 
         if last_error is not None:
-            write_failure(output_directory, app_id, game_id, max_attempts, last_error)
+            write_failure(output_directory, app_id, game_id, attempts_used, last_error)
             failures.append((app_id, str(last_error)))
 
     if rows:

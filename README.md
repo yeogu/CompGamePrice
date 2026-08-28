@@ -200,7 +200,9 @@ Switch 2 전용 Edition, Upgrade Pack을 구분하면서 동일한 가격 비교
 다른 게임의 수집을 중단시키지 않습니다. 실패 내용은
 `steam_{appId}.error.json`에 남고 프로세스는 일부 실패를 나타내는 종료 코드 `1`을
 반환합니다. 호출 간격과 재시도는 `--request-delay`, `--max-attempts`,
-`--retry-delay`로 조정할 수 있습니다.
+`--retry-delay`로 조정할 수 있습니다. timeout, HTTP 408/429, 5xx는 일시 오류로
+분류하고 `Retry-After`가 있으면 이를 우선합니다. 잘못된 JSON, 상품 ID, 통화,
+가격 표현과 그 밖의 4xx는 영구 오류로 분류해 불필요하게 재시도하지 않습니다.
 
 `collect-steam-all`은 `data/game_catalog.json`에 등록된 모든 canonical Game을 순회하고,
 하나의 `steam_products.txt`에서 각 Game에 해당하는 상품을 찾아 정규화합니다.
@@ -345,7 +347,9 @@ idempotent하게 처리하고, 동일 시각의 다른 값과 현재 이력보�
 시작·종료 시각, 성공/실패, 발견 상품 수, 오류 메시지는 `crawl_runs`에
 기록되며 한 Store가 실패해도 나머지 Store 수집은 계속됩니다.
 Store별 최대 시도 횟수를 설정할 수 있고, 실패한 각 시도도 별도의
-`crawl_runs` 레코드로 남습니다. 현재 Prototype은 지연 없이 즉시 재시도합니다.
+`crawl_runs` 레코드로 남습니다. C++ 수집은 영구 오류를 즉시 종료하고 일시 오류만
+기본 250ms부터 두 배씩, 최대 30초까지 기다리는 bounded exponential backoff로
+재시도합니다.
 
 ## HTTP API
 

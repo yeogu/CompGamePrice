@@ -1,10 +1,14 @@
 #include "game_price/collection/collection_service.h"
+#include "game_price/collection/collection_error.h"
 #include "game_price/notification/alert_service.h"
 
 #include <exception>
+#include <chrono>
+#include <algorithm>
 #include <set>
 #include <stdexcept>
 #include <utility>
+#include <thread>
 
 namespace game_price {
 namespace {
@@ -35,6 +39,17 @@ void validateCatalogIdentity(
     }
 }
 
+std::chrono::milliseconds retryDelay(
+    std::chrono::milliseconds initial,
+    std::size_t failedAttempt) {
+    constexpr auto maximum = std::chrono::milliseconds{30'000};
+    auto delay = initial;
+    for (std::size_t index = 1; index < failedAttempt && delay < maximum; ++index) {
+        delay = std::min(delay * 2, maximum);
+    }
+    return delay;
+}
+
 }  // namespace
 
 CollectionService::CollectionService(
@@ -42,12 +57,23 @@ CollectionService::CollectionService(
     StoreProductRepository& repository,
     std::vector<std::reference_wrapper<const StoreProductProvider>> providers,
     std::size_t maxAttemptsPerStore,
-    const AlertService* alertService)
+    const AlertService* alertService,
+    std::chrono::milliseconds initialRetryDelay,
+    std::function<void(std::chrono::milliseconds)> sleeper)
     : catalog_(catalog), repository_(repository),
       providers_(std::move(providers)),
-      maxAttemptsPerStore_(maxAttemptsPerStore), alertService_(alertService) {
+      maxAttemptsPerStore_(maxAttemptsPerStore), alertService_(alertService),
+      initialRetryDelay_(initialRetryDelay), sleeper_(std::move(sleeper)) {
     if (maxAttemptsPerStore_ == 0) {
         throw std::invalid_argument("maxAttemptsPerStore must be at least 1");
+    }
+    if (initialRetryDelay_.count() < 0) {
+        throw std::invalid_argument("initialRetryDelay cannot be negative");
+    }
+    if (!sleeper_) {
+        sleeper_ = [](std::chrono::milliseconds delay) {
+            std::this_thread::sleep_for(delay);
+        };
     }
 }
 
@@ -98,6 +124,21 @@ CollectionResult CollectionService::collect(const Game& game) const {
                     attempt - 1, message});
                 result.totalProducts += accepted;
                 break;
+            } catch (const PermanentCollectionError& error) {
+                for (const auto& catalogProduct :
+                     catalog_.storeProducts(provider.store())) {
+                    if (catalogProduct.gameId == game.id) {
+                        repository_.recordProductCheckFailure(
+                            provider.store(), catalogProduct.productId);
+                    }
+                }
+                repository_.finishCrawlRun(
+                    runId, CrawlRunStatus::Failed, 0, 0, 1,
+                    attempt - 1, error.what());
+                result.runs.push_back(CollectionRunResult{
+                    provider.store(), CrawlRunStatus::Failed, attempt, 0, 0, 1,
+                    attempt - 1, error.what()});
+                break;
             } catch (const std::exception& error) {
                 for (const auto& catalogProduct :
                      catalog_.storeProducts(provider.store())) {
@@ -112,6 +153,9 @@ CollectionResult CollectionService::collect(const Game& game) const {
                 result.runs.push_back(CollectionRunResult{
                     provider.store(), CrawlRunStatus::Failed, attempt, 0, 0, 1,
                     attempt - 1, error.what()});
+                if (attempt < maxAttemptsPerStore_) {
+                    sleeper_(retryDelay(initialRetryDelay_, attempt));
+                }
             } catch (...) {
                 const std::string message = "Unknown collection error";
                 for (const auto& catalogProduct :
@@ -127,6 +171,9 @@ CollectionResult CollectionService::collect(const Game& game) const {
                 result.runs.push_back(CollectionRunResult{
                     provider.store(), CrawlRunStatus::Failed, attempt, 0, 0, 1,
                     attempt - 1, message});
+                if (attempt < maxAttemptsPerStore_) {
+                    sleeper_(retryDelay(initialRetryDelay_, attempt));
+                }
             }
         }
     }

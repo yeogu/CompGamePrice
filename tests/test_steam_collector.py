@@ -151,5 +151,62 @@ class SteamCollectorTest(unittest.TestCase):
             self.assertEqual(error["attempts"], 3)
             self.assertEqual(error["error"], "temporary Steam failure")
 
+    def test_permanent_validation_failure_is_not_retried(self):
+        attempts = 0
+        sleeps = []
+
+        def malformed_fetch(_app_id, _country, _language, _timeout):
+            nonlocal attempts
+            attempts += 1
+            raise steam_collector.SnapshotValidationError("malformed response")
+
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            successes, failures = steam_collector.collect_targets(
+                [("413150", "stardew-valley")], output,
+                "kr", "korean", 5,
+                request_delay=0,
+                max_attempts=3,
+                retry_delay=1,
+                fetcher=malformed_fetch,
+                sleeper=sleeps.append,
+            )
+            self.assertEqual(successes, 0)
+            self.assertEqual(len(failures), 1)
+            self.assertEqual(attempts, 1)
+            self.assertEqual(sleeps, [])
+            error = json.loads((output / "steam_413150.error.json").read_text())
+            self.assertEqual(error["attempts"], 1)
+
+    def test_rate_limit_retry_after_is_bounded_by_attempt_count(self):
+        fixture = (
+            ROOT / "tests" / "fixtures" / "steam_appdetails_413150.json"
+        ).read_bytes()
+        attempts = 0
+        sleeps = []
+
+        def rate_limited_fetch(app_id, _country, _language, _timeout):
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                raise steam_collector.TransientCollectionError(
+                    "Steam HTTP 429", retry_after=3
+                )
+            return fixture, 200, f"fixture://{app_id}"
+
+        with tempfile.TemporaryDirectory() as directory:
+            successes, failures = steam_collector.collect_targets(
+                [("413150", "stardew-valley")], Path(directory),
+                "kr", "korean", 5,
+                request_delay=0,
+                max_attempts=2,
+                retry_delay=1,
+                fetcher=rate_limited_fetch,
+                sleeper=sleeps.append,
+            )
+            self.assertEqual((successes, failures), (1, []))
+            self.assertEqual(attempts, 2)
+            self.assertEqual(sleeps, [3])
+
 if __name__ == "__main__":
     unittest.main()

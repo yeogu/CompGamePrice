@@ -2,6 +2,7 @@
 #include "game_price/app/game_query_service.h"
 #include "game_price/collection/apple_app_store_provider.h"
 #include "game_price/collection/collection_service.h"
+#include "game_price/collection/collection_error.h"
 #include "game_price/collection/epic_games_provider.h"
 #include "game_price/persistence/database.h"
 #include "game_price/catalog/game_catalog.h"
@@ -19,6 +20,7 @@
 #include "game_price/notification/oauth_service.h"
 
 #include <cstdint>
+#include <chrono>
 #include <sqlite3.h>
 #include <functional>
 #include <iostream>
@@ -61,7 +63,7 @@ public:
     Store store() const noexcept override { return Store::GooglePlay; }
 
     std::vector<StoreProduct> findProducts(const std::string&) const override {
-        throw std::runtime_error("simulated collection failure");
+        throw PermanentCollectionError("simulated collection failure");
     }
 };
 
@@ -71,8 +73,8 @@ public:
 
     std::vector<StoreProduct> findProducts(const std::string& gameId) const override {
         ++attempts_;
-        if (attempts_ == 1) {
-            throw std::runtime_error("temporary failure");
+        if (attempts_ <= 2) {
+            throw TransientCollectionError("temporary failure");
         }
         return {StoreProduct{
             "1406710800", gameId, Store::AppleAppStore, {Platform::IOS},
@@ -1074,11 +1076,19 @@ void testCollectionRunTrackingAndFailureIsolation() {
     std::vector<std::reference_wrapper<const StoreProductProvider>> providers{
         successfulProvider, failingProvider};
     GameCatalog catalog(std::string(TEST_SAMPLE_DATA_DIR) + "/game_catalog.json");
-    CollectionService service(catalog, repository, std::move(providers));
+    std::size_t permanentRetrySleeps = 0;
+    CollectionService service(
+        catalog, repository, std::move(providers), 3, nullptr,
+        std::chrono::milliseconds{100},
+        [&permanentRetrySleeps](std::chrono::milliseconds) {
+            ++permanentRetrySleeps;
+        });
 
     const Game game{"stardew-valley", "Stardew Valley", "stardew valley", {}};
     const auto result = service.collect(game);
     expect(result.runs.size() == 2, "Both Store collection runs should be reported");
+    expect(permanentRetrySleeps == 0,
+           "Permanent Provider errors must not be retried");
     expect(result.totalProducts == 1, "Successful Store product should still be saved");
     expect(result.runs[0].status == CrawlRunStatus::Succeeded,
            "First collection run should succeed");
@@ -1106,26 +1116,36 @@ void testCollectionRetryAfterTemporaryFailure() {
     FlakyTestProvider provider;
     std::vector<std::reference_wrapper<const StoreProductProvider>> providers{provider};
     GameCatalog catalog(std::string(TEST_SAMPLE_DATA_DIR) + "/game_catalog.json");
-    CollectionService service(catalog, repository, std::move(providers), 2);
+    std::vector<std::chrono::milliseconds> delays;
+    CollectionService service(
+        catalog, repository, std::move(providers), 3, nullptr,
+        std::chrono::milliseconds{100},
+        [&delays](std::chrono::milliseconds delay) { delays.push_back(delay); });
 
     const Game game{"stardew-valley", "Stardew Valley", "stardew valley", {}};
     const auto result = service.collect(game);
-    expect(result.runs.size() == 2, "A temporary failure should produce two attempts");
+    expect(result.runs.size() == 3, "Temporary failures should use bounded retries");
     expect(result.runs[0].status == CrawlRunStatus::Failed,
            "First collection attempt should fail");
     expect(result.runs[0].attemptNumber == 1, "First attempt number should be 1");
-    expect(result.runs[1].status == CrawlRunStatus::Succeeded,
-           "Second collection attempt should succeed");
-    expect(result.runs[1].attemptNumber == 2, "Second attempt number should be 2");
-    expect(result.runs[1].retryCount == 1,
-           "A successful second attempt should report one retry");
+    expect(result.runs[1].status == CrawlRunStatus::Failed,
+           "Second collection attempt should still report its failure");
+    expect(result.runs[2].status == CrawlRunStatus::Succeeded,
+           "Third collection attempt should succeed");
+    expect(result.runs[2].attemptNumber == 3, "Third attempt number should be 3");
+    expect(result.runs[2].retryCount == 2,
+           "A successful third attempt should report two retries");
+    expect(delays == std::vector<std::chrono::milliseconds>{
+                         std::chrono::milliseconds{100},
+                         std::chrono::milliseconds{200}},
+           "Transient retries should use exponential backoff");
     expect(result.totalProducts == 1, "Successful retry should save one product");
 
     const auto persistedRuns = repository.findCrawlRuns();
-    expect(persistedRuns.size() == 2, "Both retry attempts should be persisted");
+    expect(persistedRuns.size() == 3, "Every retry attempt should be persisted");
     expect(persistedRuns[0].status == CrawlRunStatus::Failed,
            "Failed retry attempt should remain in crawl history");
-    expect(persistedRuns[1].status == CrawlRunStatus::Succeeded,
+    expect(persistedRuns[2].status == CrawlRunStatus::Succeeded,
            "Successful retry attempt should be persisted");
 }
 
