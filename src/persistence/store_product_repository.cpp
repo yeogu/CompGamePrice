@@ -1,6 +1,7 @@
 #include "game_price/persistence/store_product_repository.h"
 
 #include "game_price/domain/domain_types.h"
+#include "game_price/domain/store_product_validator.h"
 #include "game_price/support/date_utils.h"
 
 #include <sqlite3.h>
@@ -140,19 +141,6 @@ std::optional<std::int64_t> regularPriceMinor(const StoreProduct& product) {
         throw std::runtime_error("Regular and current prices must use the same currency");
     }
     return product.regularPrice->minorAmount;
-}
-
-void validateDiscount(const StoreProduct& product) {
-    if (product.discountPercent < 0 || product.discountPercent > 100) {
-        throw std::runtime_error("Discount percent must be between 0 and 100");
-    }
-    if (product.discountPercent > 0 && !product.regularPrice) {
-        throw std::runtime_error("A discounted product requires a regular price");
-    }
-    if (product.regularPrice &&
-        product.regularPrice->minorAmount < product.currentPrice.minorAmount) {
-        throw std::runtime_error("Regular price cannot be lower than current price");
-    }
 }
 
 CrawlRunStatus parseCrawlRunStatus(const std::string& value) {
@@ -406,6 +394,7 @@ void StoreProductRepository::saveNormalizedProducts(
         }
 
         for (const auto& product : products) {
+            validateStoreProduct(product);
             if (product.gameId != game.id) {
                 throw std::runtime_error("StoreProduct gameId does not match Game id");
             }
@@ -424,7 +413,6 @@ void StoreProductRepository::saveNormalizedProducts(
                 }
             }
 
-            validateDiscount(product);
             const auto regularPrice = regularPriceMinor(product);
 
             const std::string store = toString(product.store);
@@ -500,11 +488,6 @@ void StoreProductRepository::saveNormalizedProducts(
             }
 
             if (shouldRecordHistory) {
-                if (product.observedAt && !isUtcTimestamp(*product.observedAt)) {
-                    throw std::runtime_error(
-                        "Invalid StoreProduct observedAt timestamp: " +
-                        *product.observedAt);
-                }
                 const char* insertSql = product.observedAt
                     ? R"sql(
                         INSERT INTO price_history(

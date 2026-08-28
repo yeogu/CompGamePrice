@@ -141,6 +141,16 @@ void testProviderNormalization() {
            "Google Play micros should normalize to 6500 KRW");
     expect(googleProducts.front().supportedPlatforms == std::vector<Platform>{Platform::Android},
            "Google Play should support Android");
+    bool rejectedLossyGooglePrice = false;
+    try {
+        GooglePlayProvider invalid(
+            dataDirectory +
+            "/../tests/fixtures/google_play_products_invalid.txt");
+    } catch (const std::runtime_error&) {
+        rejectedLossyGooglePrice = true;
+    }
+    expect(rejectedLossyGooglePrice,
+           "Google Play should reject KRW micros that would lose precision");
 
     const auto appleProducts = apple.findProducts("stardew-valley");
     expect(appleProducts.size() == 1, "Apple should return one product");
@@ -455,13 +465,65 @@ void testDiscountChangeHistory() {
     bool rejectedInvalidDiscount = false;
     try {
         repository.saveNormalizedProducts(game, {product});
-    } catch (const std::runtime_error&) {
+    } catch (const std::invalid_argument&) {
         rejectedInvalidDiscount = true;
     }
     expect(rejectedInvalidDiscount,
            "A discount without a regular price should be rejected");
     expect(repository.findPriceHistory(Store::Steam, "413150").size() == 4,
            "Invalid discount import should roll back without adding history");
+}
+
+void testStoreProductPriceValidation() {
+    const Game game{"stardew-valley", "Stardew Valley", "stardew valley", {}};
+    const auto isRejected = [&](StoreProduct product) {
+        Database database(":memory:");
+        StoreProductRepository repository(database);
+        repository.initializeSchema();
+        try {
+            repository.saveNormalizedProducts(game, {std::move(product)});
+        } catch (const std::invalid_argument&) {
+            return true;
+        }
+        return false;
+    };
+
+    auto negative = makeSteamProduct(-1);
+    expect(isRejected(negative), "Negative prices must be rejected");
+
+    auto excessive = makeSteamProduct(100'000'001);
+    expect(isRejected(excessive), "Excessive prices must be rejected");
+
+    auto wrongCurrency = makeSteamProduct(11200);
+    wrongCurrency.currentPrice.currency = static_cast<Currency>(999);
+    expect(isRejected(wrongCurrency), "Unsupported currencies must be rejected");
+
+    auto aboveRegular = makeSteamProduct(17000);
+    aboveRegular.regularPrice = Money{16000, Currency::KRW};
+    expect(isRejected(aboveRegular),
+           "A current price above its regular price must be rejected");
+
+    auto inconsistentDiscount = makeSteamProduct(12000);
+    inconsistentDiscount.regularPrice = Money{16000, Currency::KRW};
+    inconsistentDiscount.discountPercent = 10;
+    expect(isRejected(inconsistentDiscount),
+           "Discount percentage must agree with the actual price reduction");
+
+    auto noPlatforms = makeSteamProduct(11200);
+    noPlatforms.supportedPlatforms.clear();
+    expect(isRejected(noPlatforms),
+           "A product without a supported platform must be rejected");
+
+    Database database(":memory:");
+    StoreProductRepository repository(database);
+    repository.initializeSchema();
+    auto freeProduct = makeSteamProduct(0);
+    freeProduct.regularPrice = Money{0, Currency::KRW};
+    repository.saveNormalizedProducts(game, {freeProduct});
+    const auto stored = repository.findProductsByGameId(game.id);
+    expect(stored.size() == 1 && stored.front().currentPrice.minorAmount == 0 &&
+               stored.front().purchasable,
+           "An explicit purchasable zero price must remain a valid free offer");
 }
 
 void testPriceComparisonReadsRepository() {
@@ -750,7 +812,7 @@ void testExplicitCollectionTimestamp() {
     bool rejected = false;
     try {
         repository.saveNormalizedProducts(game, {product});
-    } catch (const std::runtime_error&) {
+    } catch (const std::invalid_argument&) {
         rejected = true;
     }
     expect(rejected, "Repository should reject an invalid collection timestamp");
@@ -1024,6 +1086,7 @@ int main() {
         {"History deduplication and analysis", testHistoryDeduplicationAndAnalysis},
         {"Database schema version", testDatabaseSchemaVersion},
         {"Discount change history", testDiscountChangeHistory},
+        {"Store product price validation", testStoreProductPriceValidation},
         {"Repository-backed comparison", testPriceComparisonReadsRepository},
         {"Game catalog search", testGameCatalogSearch},
         {"Game catalog validation", testGameCatalogValidation},

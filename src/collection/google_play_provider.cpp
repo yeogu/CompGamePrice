@@ -18,9 +18,14 @@ GooglePlayProvider::GooglePlayProvider(const std::string& dataPath) {
     auto appendProduct = [&]() {
         if (fields.empty()) return;
         try {
+            const auto priceMicros = std::stoll(fields.at("price_micros"));
+            constexpr std::int64_t microsPerWon = 1'000'000;
+            if (priceMicros < 0 || priceMicros % microsPerWon != 0) {
+                throw std::runtime_error("invalid KRW micros");
+            }
             products_.push_back(RawProduct{
                 fields.at("package_name"), fields.at("game_id"),
-                std::stoll(fields.at("price_micros")), parseBool(fields.at("published"))});
+                priceMicros, parseBool(fields.at("published"))});
         } catch (const std::exception&) {
             throw std::runtime_error("Invalid Google Play product block");
         }

@@ -1,0 +1,4 @@
+package_name=com.example.invalid
+game_id=stardew-valley
+price_micros=6500000001
+published=true

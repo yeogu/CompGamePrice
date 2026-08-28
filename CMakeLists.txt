@@ -13,6 +13,7 @@ add_library(game_price_core
     src/app/command_line.cpp
     src/app/game_query_service.cpp
     src/domain/domain_types.cpp
+    src/domain/store_product_validator.cpp
     src/notification/account_repository.cpp
     src/notification/alert_service.cpp
     src/notification/auth_service.cpp
