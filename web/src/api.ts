@@ -37,8 +37,12 @@ export function getGamePrices(
 export function getGamePriceHistory(
   gameId: string,
   since?: string,
+  platform = '',
 ): Promise<GamePriceHistoryResponse> {
-  const query = since ? `?since=${encodeURIComponent(since)}` : ''
+  const parameters = new URLSearchParams()
+  if (since) parameters.set('since', since)
+  if (platform) parameters.set('platform', platform)
+  const query = parameters.size > 0 ? `?${parameters}` : ''
   return getJson<GamePriceHistoryResponse>(
     `/api/games/${encodeURIComponent(gameId)}/price-history${query}`,
   )
@@ -56,7 +60,7 @@ export const login = (email: string, password: string) => requestJson<AuthResult
 export const getMe = (token: string) => requestJson<User>('/api/auth/me', {}, token)
 export const logout = (token: string) => requestJson<object>('/api/auth/logout', { method: 'POST' }, token)
 export const getAlertRules = async (token: string) => (await requestJson<{ rules: AlertRule[] }>('/api/alert-rules', {}, token)).rules
-export const addAlertRule = (token: string, gameId: string, type: AlertRuleType, targetPriceMinor?: number) => requestJson<{ id: number }>('/api/alert-rules', { method: 'POST', body: JSON.stringify({ gameId, type, ...(targetPriceMinor !== undefined ? { targetPriceMinor } : {}) }) }, token)
+export const addAlertRule = (token: string, gameId: string, type: AlertRuleType, targetPriceMinor?: number, platform?: string) => requestJson<{ id: number }>('/api/alert-rules', { method: 'POST', body: JSON.stringify({ gameId, type, ...(targetPriceMinor !== undefined ? { targetPriceMinor } : {}), ...(platform ? { platform } : {}) }) }, token)
 export const deleteAlertRule = (token: string, id: number) => requestJson<object>(`/api/alert-rules/${id}`, { method: 'DELETE' }, token)
 export const getNotifications = async (token: string) => (await requestJson<{ notifications: Notification[] }>('/api/notifications', {}, token)).notifications
 export const markNotificationRead = (token: string, id: number) => requestJson<object>(`/api/notifications/${id}/read`, { method: 'PATCH' }, token)

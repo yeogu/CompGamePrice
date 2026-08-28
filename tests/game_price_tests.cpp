@@ -332,8 +332,8 @@ void testDatabaseSchemaVersion() {
     )sql");
     StoreProductRepository versionOneRepository(versionOneDatabase);
     versionOneRepository.initializeSchema();
-    expect(versionOneDatabase.userVersion() == 7,
-           "Schema version 1 should migrate to version 7");
+    expect(versionOneDatabase.userVersion() == 8,
+           "Schema version 1 should migrate to version 8");
     const auto migratedProducts =
         versionOneRepository.findProductsByGameId("stardew-valley");
     expect(migratedProducts.size() == 1,
@@ -383,8 +383,8 @@ void testDatabaseSchemaVersion() {
     )sql");
     StoreProductRepository versionTwoRepository(versionTwoDatabase);
     versionTwoRepository.initializeSchema();
-    expect(versionTwoDatabase.userVersion() == 7,
-           "Schema version 2 should migrate to version 7");
+    expect(versionTwoDatabase.userVersion() == 8,
+           "Schema version 2 should migrate to version 8");
     const auto versionTwoProducts = versionTwoRepository.findProductsByGameId("hades");
     expect(versionTwoProducts.size() == 1 &&
                versionTwoProducts.front().region == Region::KR &&
@@ -642,6 +642,10 @@ void testAuthenticationAndPriceAlerts() {
     accounts.addRule(registration.user.id, game.id, AlertRuleType::NewHistoricalLow, std::nullopt);
     accounts.addRule(registration.user.id, game.id, AlertRuleType::BelowAverage, std::nullopt);
     accounts.addRule(registration.user.id, game.id, AlertRuleType::BelowTargetPrice, 16000);
+    bool rejectedDuplicate=false;
+    try{accounts.addRule(registration.user.id,game.id,AlertRuleType::BelowTargetPrice,16000);}
+    catch(const std::invalid_argument&){rejectedDuplicate=true;}
+    expect(rejectedDuplicate,"An identical alert rule should be rejected");
     product.currentPrice.minorAmount = 15000;
     product.observedAt = "2026-02-01T00:00:00.000Z";
     products.saveNormalizedProducts(game, {product});
@@ -691,6 +695,26 @@ void testSocialIdentityLoginAndLinking() {
     expect(accounts.consumeOAuthState(OAuthProvider::Google,linkState)==
                std::optional<std::int64_t>{local.user.id},
            "OAuth link state should preserve the authenticated user");
+}
+
+void testPlatformScopedTargetAlert() {
+    Database database(":memory:");StoreProductRepository products(database);products.initializeSchema();
+    AccountRepository accounts(database);AlertService alerts(accounts);AuthService auth(accounts);
+    const auto user=auth.registerUser("platform@example.com","safe-password-123").user;
+    const Game game{"multi-platform","Multi Platform","multi platform",{Platform::Windows,Platform::Android}};
+    auto windows=StoreProduct{"windows",game.id,Store::Steam,{Platform::Windows},Money{25000,Currency::KRW},true,"2026-01-01T00:00:00.000Z"};
+    auto android=StoreProduct{"android",game.id,Store::GooglePlay,{Platform::Android},Money{15000,Currency::KRW},true,"2026-01-01T00:00:00.000Z"};
+    products.saveNormalizedProducts(game,{windows,android});
+    accounts.addRule(user.id,game.id,AlertRuleType::BelowTargetPrice,20000,Platform::Windows);
+    windows.currentPrice.minorAmount=19000;windows.observedAt="2026-02-01T00:00:00.000Z";
+    android.currentPrice.minorAmount=10000;android.observedAt="2026-02-01T00:00:00.000Z";
+    products.saveNormalizedProducts(game,{windows,android});
+    expect(alerts.evaluateGame(game.id)==1,"A platform-scoped rule should create one matching alert");
+    const auto notifications=accounts.findNotifications(user.id);
+    expect(notifications.size()==1&&notifications.front().store=="Steam",
+           "Android price must not trigger a Windows target alert");
+    expect(accounts.findRules(user.id).front().platform==std::optional<Platform>{Platform::Windows},
+           "Repository should preserve the rule platform");
 }
 
 void testExplicitCollectionTimestamp() {
@@ -937,6 +961,7 @@ int main() {
         {"ISO date validation", testIsoDateValidation},
         {"Authentication and price alerts", testAuthenticationAndPriceAlerts},
         {"Social identity login and linking", testSocialIdentityLoginAndLinking},
+        {"Platform-scoped target alert", testPlatformScopedTargetAlert},
         {"Explicit collection timestamp", testExplicitCollectionTimestamp},
         {"Recommendation rules", testRecommendationRules},
         {"Collection run tracking and failure isolation",

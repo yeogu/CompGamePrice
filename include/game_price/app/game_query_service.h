@@ -53,7 +53,8 @@ public:
         const PriceComparisonCriteria& criteria = {}) const;
     std::optional<GamePriceHistoryReport> getGamePriceHistoryById(
         const std::string& gameId,
-        const std::optional<std::string>& observedSince = std::nullopt) const;
+        const std::optional<std::string>& observedSince = std::nullopt,
+        const PriceComparisonCriteria& criteria = {}) const;
     std::vector<CrawlRunRecord> getCollectionRuns() const;
 
 private:

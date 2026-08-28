@@ -78,16 +78,39 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     -H "Authorization: Bearer ${auth_token}" -H 'Content-Type: application/json' \
-    -d '{"gameId":"hades","type":"BelowTargetPrice","targetPriceMinor":30000}' \
+    -d '{"gameId":"hades","type":"BelowTargetPrice","targetPriceMinor":30000,"platform":"Nintendo Switch 2"}' \
     "${api_base}/api/alert-rules")
 [[ "${status}" == "201" ]]
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -H "Authorization: Bearer ${auth_token}" -H 'Content-Type: application/json' \
+    -d '{"gameId":"hades","type":"BelowTargetPrice","targetPriceMinor":30000,"platform":"Nintendo Switch 2"}' \
+    "${api_base}/api/alert-rules")
+[[ "${status}" == "409" ]]
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -H "Authorization: Bearer ${auth_token}" -H 'Content-Type: application/json' \
+    -d '{"gameId":"hades","type":"BelowTargetPrice","targetPriceMinor":0}' \
+    "${api_base}/api/alert-rules")
+[[ "${status}" == "400" ]]
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -H "Authorization: Bearer ${auth_token}" "${api_base}/api/alert-rules")
+[[ "${status}" == "200" ]]
+grep -q '"gameTitle":"Hades"' "${response_body}"
+grep -q '"platform":"Nintendo Switch 2"' "${response_body}"
 GAME_PRICE_DATABASE_PATH="${test_database}" "${tracker_binary}" collect \
     --data-dir "${project_directory}/data" Hades >/dev/null
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     -H "Authorization: Bearer ${auth_token}" "${api_base}/api/notifications")
 [[ "${status}" == "200" ]]
 grep -q '"gameId":"hades"' "${response_body}"
-grep -q '"store":"Epic Games Store"' "${response_body}"
+grep -q '"store":"Nintendo eShop"' "${response_body}"
+! grep -q '"store":"Epic Games Store"' "${response_body}"
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -H "Authorization: Bearer ${auth_token}" -X DELETE "${api_base}/api/alert-rules/999999")
+[[ "${status}" == "404" ]]
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -H "Authorization: Bearer ${auth_token}" -X PATCH "${api_base}/api/notifications/999999/read")
+[[ "${status}" == "404" ]]
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/games/stardew-valley/prices")
@@ -152,6 +175,12 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
 grep -q '"store":"Nintendo eShop"' "${response_body}"
 ! grep -q '"store":"Steam"' "${response_body}"
 ! grep -q '"store":"Epic Games Store"' "${response_body}"
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/games/hades/price-history?platform=Nintendo%20Switch%202")
+[[ "${status}" == "200" ]]
+grep -q '"store":"Nintendo eShop"' "${response_body}"
+! grep -q '"store":"Steam"' "${response_body}"
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/games/stardew-valley/prices?platform=Android")

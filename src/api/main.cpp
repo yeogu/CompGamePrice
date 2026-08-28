@@ -207,11 +207,8 @@ PriceComparisonCriteria comparisonCriteria(
         else if (platform == "Android") criteria.platform = Platform::Android;
         else if (platform == "iOS") criteria.platform = Platform::IOS;
         else if (platform == "iPadOS") criteria.platform = Platform::IPadOS;
-        else if (platform == "Nintendo Switch") {
-            criteria.platform = Platform::NintendoSwitch;
-        } else if (platform == "Nintendo Switch 2") {
-            criteria.platform = Platform::NintendoSwitch2;
-        }
+        else if (platform == "Nintendo Switch") criteria.platform = Platform::NintendoSwitch;
+        else if (platform == "Nintendo Switch 2") criteria.platform = Platform::NintendoSwitch2;
         else throw std::invalid_argument("unsupported platform");
     }
     return criteria;
@@ -220,10 +217,7 @@ PriceComparisonCriteria comparisonCriteria(
 std::string bearerToken(const drogon::HttpRequestPtr& request) {
     const auto header = request->getHeader("Authorization");
     if(header.rfind("Bearer ",0)==0)return header.substr(7);
-    const auto cookie=request->getHeader("Cookie"); const std::string prefix="game_price_session=";
-    const auto start=cookie.find(prefix); if(start==std::string::npos)return "";
-    const auto valueStart=start+prefix.size(); const auto end=cookie.find(';',valueStart);
-    return cookie.substr(valueStart,end==std::string::npos?std::string::npos:end-valueStart);
+    return request->getCookie("game_price_session");
 }
 
 void setSessionCookie(const HttpResponsePtr& response,const std::string& token) {
@@ -401,15 +395,17 @@ int main() {
 
         drogon::app().registerHandler(
             "/api/alert-rules",
-            [&authService, &accountRepository](const drogon::HttpRequestPtr& request,
+            [&authService, &accountRepository,&catalog](const drogon::HttpRequestPtr& request,
                 std::function<void(const HttpResponsePtr&)>&& callback) {
                 const auto user = authenticatedUser(request, authService);
                 if (!user) { callback(jsonError(drogon::k401Unauthorized, "authentication required")); return; }
                 Json::Value response; response["rules"] = Json::arrayValue;
                 for (const auto& rule : accountRepository.findRules(user->id)) {
                     Json::Value item; item["id"] = Json::Int64(rule.id); item["gameId"] = rule.gameId;
+                    const auto game=catalog.findById(rule.gameId);if(game)item["gameTitle"]=game->title;
                     item["type"] = toString(rule.type); item["active"] = rule.active;
                     if (rule.targetPriceMinor) item["targetPriceMinor"] = Json::Int64(*rule.targetPriceMinor);
+                    if(rule.platform)item["platform"]=toString(*rule.platform);
                     response["rules"].append(std::move(item));
                 }
                 callback(jsonResponse(response));
@@ -424,19 +420,29 @@ int main() {
                 if (!body || !(*body)["gameId"].isString() || !(*body)["type"].isString()) {
                     callback(jsonError(drogon::k400BadRequest, "gameId and type are required")); return;
                 }
-                if (!catalog.findById((*body)["gameId"].asString())) {
+                const auto game=catalog.findById((*body)["gameId"].asString());
+                if (!game) {
                     callback(jsonError(drogon::k404NotFound, "game not found")); return;
                 }
                 try {
                     const auto type = alertRuleTypeFromString((*body)["type"].asString());
                     std::optional<std::int64_t> target;
-                    if ((*body).isMember("targetPriceMinor") && (*body)["targetPriceMinor"].isInt64())
-                        target = (*body)["targetPriceMinor"].asInt64();
-                    const auto rule = accountRepository.addRule(user->id, (*body)["gameId"].asString(), type, target);
+                    if ((*body).isMember("targetPriceMinor")){
+                        if(!(*body)["targetPriceMinor"].isIntegral()){callback(jsonError(drogon::k400BadRequest,"targetPriceMinor must be an integer"));return;}
+                        target=(*body)["targetPriceMinor"].asInt64();
+                    }
+                    std::optional<Platform> platform;
+                    if((*body).isMember("platform")){
+                        if(!(*body)["platform"].isString()){callback(jsonError(drogon::k400BadRequest,"platform must be a string"));return;}
+                        const auto value=(*body)["platform"].asString();
+                        if(value=="Windows")platform=Platform::Windows;else if(value=="macOS")platform=Platform::MacOS;else if(value=="Linux")platform=Platform::Linux;else if(value=="Android")platform=Platform::Android;else if(value=="iOS")platform=Platform::IOS;else if(value=="iPadOS")platform=Platform::IPadOS;else if(value=="Nintendo Switch")platform=Platform::NintendoSwitch;else if(value=="Nintendo Switch 2")platform=Platform::NintendoSwitch2;else{callback(jsonError(drogon::k400BadRequest,"unsupported platform"));return;}
+                        if(std::find(game->supportedPlatforms.begin(),game->supportedPlatforms.end(),*platform)==game->supportedPlatforms.end()){callback(jsonError(drogon::k400BadRequest,"platform is not supported by game"));return;}
+                    }
+                    const auto rule = accountRepository.addRule(user->id, (*body)["gameId"].asString(), type, target,platform);
                     Json::Value response; response["id"] = Json::Int64(rule.id);
                     callback(jsonResponse(response, drogon::k201Created));
                 } catch (const std::exception& error) {
-                    callback(jsonError(drogon::k400BadRequest, error.what()));
+                    callback(jsonError(std::string(error.what())=="alert rule already exists"?drogon::k409Conflict:drogon::k400BadRequest, error.what()));
                 }
             }, {drogon::Post});
         drogon::app().registerHandler(
@@ -445,7 +451,7 @@ int main() {
                 std::function<void(const HttpResponsePtr&)>&& callback, std::int64_t id) {
                 const auto user = authenticatedUser(request, authService);
                 if (!user) { callback(jsonError(drogon::k401Unauthorized, "authentication required")); return; }
-                accountRepository.deleteRule(user->id, id); callback(jsonResponse(Json::Value{}));
+                if(!accountRepository.deleteRule(user->id,id)){callback(jsonError(drogon::k404NotFound,"alert rule not found"));return;}callback(jsonResponse(Json::Value{}));
             }, {drogon::Delete});
         drogon::app().registerHandler(
             "/api/notifications",
@@ -469,7 +475,7 @@ int main() {
                 std::function<void(const HttpResponsePtr&)>&& callback, std::int64_t id) {
                 const auto user = authenticatedUser(request, authService);
                 if (!user) { callback(jsonError(drogon::k401Unauthorized, "authentication required")); return; }
-                accountRepository.markNotificationRead(user->id, id); callback(jsonResponse(Json::Value{}));
+                if(!accountRepository.markNotificationRead(user->id,id)){callback(jsonError(drogon::k404NotFound,"notification not found"));return;}callback(jsonResponse(Json::Value{}));
             }, {drogon::Patch});
 
         drogon::app().registerHandler(
@@ -487,6 +493,7 @@ int main() {
             [&queryService](const drogon::HttpRequestPtr& request,
                             std::function<void(const HttpResponsePtr&)>&& callback) {
                 const auto query = request->getParameter("query");
+                if(query.size()>100){callback(jsonError(drogon::k400BadRequest,"query must contain at most 100 characters"));return;}
                 Json::Value response;
                 response["games"] = Json::arrayValue;
                 const auto games = query.empty()
@@ -546,10 +553,12 @@ int main() {
                         drogon::k400BadRequest, "since must use YYYY-MM-DD"));
                     return;
                 }
+                PriceComparisonCriteria criteria;
+                try{criteria=comparisonCriteria(request);}catch(const std::invalid_argument& error){callback(jsonError(drogon::k400BadRequest,error.what()));return;}
                 const auto report = queryService.getGamePriceHistoryById(
                     gameId,
                     since.empty() ? std::nullopt
-                                  : std::optional<std::string>{since});
+                                  : std::optional<std::string>{since},criteria);
                 if (!report) {
                     callback(jsonError(drogon::k404NotFound, "game not found"));
                     return;

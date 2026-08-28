@@ -19,7 +19,15 @@ std::size_t AlertService::evaluateGame(const std::string& gameId) const {
              (SELECT h.price_minor FROM price_history h WHERE h.store=p.store AND h.external_product_id=p.external_product_id ORDER BY h.observed_at DESC,h.id DESC LIMIT 1 OFFSET 1),
              (SELECT h.observed_at FROM price_history h WHERE h.store=p.store AND h.external_product_id=p.external_product_id ORDER BY h.observed_at DESC,h.id DESC LIMIT 1)
       FROM alert_rules r JOIN store_products p ON p.game_id=r.game_id
-      WHERE r.game_id=? AND r.active=1 AND p.purchasable=1;
+      WHERE r.game_id=? AND r.active=1 AND p.purchasable=1
+      AND (r.platform IS NULL OR EXISTS(
+            SELECT 1 FROM product_platforms pp
+            WHERE pp.store=p.store AND pp.external_product_id=p.external_product_id
+              AND pp.platform=r.platform)
+          OR EXISTS(
+            SELECT 1 FROM product_compatibility pc
+            WHERE pc.store=p.store AND pc.external_product_id=p.external_product_id
+              AND pc.platform=r.platform AND pc.status IN ('Native','Compatible')));
     )sql";
     sqlite3_stmt* row=nullptr; if(sqlite3_prepare_v2(db,sql,-1,&row,nullptr)!=SQLITE_OK) throw std::runtime_error(sqlite3_errmsg(db));
     bindText(row,1,gameId); std::size_t created=0;

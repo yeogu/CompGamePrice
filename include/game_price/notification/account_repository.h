@@ -30,11 +30,12 @@ public:
     std::vector<ExternalIdentity> findExternalIdentities(std::int64_t userId) const;
     void deleteExternalIdentity(std::int64_t userId, std::int64_t identityId);
     AlertRule addRule(std::int64_t userId, const std::string& gameId,
-                      AlertRuleType type, std::optional<std::int64_t> targetPrice);
+                      AlertRuleType type, std::optional<std::int64_t> targetPrice,
+                      std::optional<Platform> platform = std::nullopt);
     std::vector<AlertRule> findRules(std::int64_t userId) const;
-    void deleteRule(std::int64_t userId, std::int64_t ruleId);
+    bool deleteRule(std::int64_t userId, std::int64_t ruleId);
     std::vector<Notification> findNotifications(std::int64_t userId) const;
-    void markNotificationRead(std::int64_t userId, std::int64_t notificationId);
+    bool markNotificationRead(std::int64_t userId, std::int64_t notificationId);
     Database& database() const noexcept;
 private:
     Database& database_;

@@ -38,9 +38,10 @@ std::optional<GamePriceReport> GameQueryService::getGamePriceReportById(
 
 std::optional<GamePriceHistoryReport> GameQueryService::getGamePriceHistoryById(
     const std::string& gameId,
-    const std::optional<std::string>& observedSince) const {
+    const std::optional<std::string>& observedSince,
+    const PriceComparisonCriteria& criteria) const {
     const auto comparison = PriceComparisonService(catalog_, repository_)
-                                .compareByGameId(gameId);
+                                .compareByGameId(gameId,criteria);
     if (!comparison) return std::nullopt;
 
     std::vector<ProductPriceHistoryReport> histories;

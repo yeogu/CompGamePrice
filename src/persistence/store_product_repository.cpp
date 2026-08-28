@@ -300,6 +300,7 @@ void StoreProductRepository::initializeSchema() const {
             rule_type TEXT NOT NULL CHECK(rule_type IN
                 ('PriceDrop','BelowTargetPrice','NewHistoricalLow','BelowAverage')),
             target_price_minor INTEGER CHECK(target_price_minor >= 0),
+            platform TEXT,
             active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)),
             created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
             FOREIGN KEY(game_id) REFERENCES games(id) ON DELETE CASCADE,
@@ -366,7 +367,15 @@ void StoreProductRepository::initializeSchema() const {
             // rather than leaving recoverable credentials in the database.
             database_.execute("DELETE FROM user_sessions;");
         }
-        database_.execute("PRAGMA user_version = 7;");
+        if (existingVersion >= 5 && existingVersion < 8) {
+            database_.execute("ALTER TABLE alert_rules ADD COLUMN platform TEXT;");
+        }
+        database_.execute(R"sql(
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_alert_rules_identity
+            ON alert_rules(user_id,game_id,rule_type,
+                COALESCE(platform,''),COALESCE(target_price_minor,-1));
+        )sql");
+        database_.execute("PRAGMA user_version = 8;");
         database_.execute("COMMIT;");
     } catch (...) {
         try {

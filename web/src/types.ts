@@ -85,7 +85,7 @@ export interface CollectionRun {
 export interface User { id: number; email: string }
 export interface AuthResult { user: User; token: string }
 export type AlertRuleType = 'PriceDrop' | 'BelowTargetPrice' | 'NewHistoricalLow' | 'BelowAverage'
-export interface AlertRule { id: number; gameId: string; type: AlertRuleType; targetPriceMinor?: number; active: boolean }
+export interface AlertRule { id: number; gameId: string; gameTitle?: string; type: AlertRuleType; targetPriceMinor?: number; platform?: string; active: boolean }
 export interface Notification { id: number; gameId: string; store: string; productId: string; price: Money; message: string; createdAt: string; read: boolean }
 export type OAuthProvider = 'google' | 'kakao' | 'naver'
 export interface ExternalIdentity { id: number; provider: 'Google' | 'Kakao' | 'Naver'; email?: string }

@@ -48,11 +48,19 @@ std::string sessionTokenHash(const std::string& token) {
     return output.str();
 }
 AlertRule readRule(sqlite3_stmt* row) {
+    const auto platformName=sqlite3_column_type(row,5)==SQLITE_NULL?std::string{}:text(row,5);
+    std::optional<Platform> platform;
+    if(platformName=="Windows")platform=Platform::Windows;else if(platformName=="macOS")platform=Platform::MacOS;
+    else if(platformName=="Linux")platform=Platform::Linux;else if(platformName=="Android")platform=Platform::Android;
+    else if(platformName=="iOS")platform=Platform::IOS;else if(platformName=="iPadOS")platform=Platform::IPadOS;
+    else if(platformName=="Nintendo Switch")platform=Platform::NintendoSwitch;
+    else if(platformName=="Nintendo Switch 2")platform=Platform::NintendoSwitch2;
+    else if(!platformName.empty())throw std::runtime_error("Unknown alert platform in database");
     return AlertRule{sqlite3_column_int64(row, 0), sqlite3_column_int64(row, 1),
         text(row, 2), alertRuleTypeFromString(text(row, 3)),
         sqlite3_column_type(row, 4) == SQLITE_NULL ? std::nullopt :
             std::optional<std::int64_t>{sqlite3_column_int64(row, 4)},
-        sqlite3_column_int(row, 5) != 0};
+        platform,sqlite3_column_int(row, 6) != 0};
 }
 }  // namespace
 
@@ -187,34 +195,45 @@ void AccountRepository::deleteExternalIdentity(std::int64_t userId,std::int64_t 
     sqlite3_bind_int64(statement.get(),1,identityId); sqlite3_bind_int64(statement.get(),2,userId); statement.execute();
 }
 AlertRule AccountRepository::addRule(std::int64_t userId, const std::string& gameId,
-    AlertRuleType type, std::optional<std::int64_t> targetPrice) {
+    AlertRuleType type, std::optional<std::int64_t> targetPrice,std::optional<Platform> platform) {
     if ((type == AlertRuleType::BelowTargetPrice) != targetPrice.has_value() ||
-        (targetPrice && *targetPrice < 0)) throw std::invalid_argument("invalid target price");
+        (targetPrice && (*targetPrice <= 0 || *targetPrice > 1000000000)))
+        throw std::invalid_argument("target price must be between 1 and 1000000000 KRW");
+    Statement duplicate(database_.handle(),R"sql(
+        SELECT 1 FROM alert_rules WHERE user_id=? AND game_id=? AND rule_type=?
+        AND COALESCE(platform,'')=COALESCE(?,'')
+        AND COALESCE(target_price_minor,-1)=COALESCE(?,-1);
+    )sql");
+    sqlite3_bind_int64(duplicate.get(),1,userId);bindText(duplicate.get(),2,gameId);bindText(duplicate.get(),3,toString(type));
+    if(platform)bindText(duplicate.get(),4,toString(*platform));else sqlite3_bind_null(duplicate.get(),4);
+    if(targetPrice)sqlite3_bind_int64(duplicate.get(),5,*targetPrice);else sqlite3_bind_null(duplicate.get(),5);
+    if(duplicate.next())throw std::invalid_argument("alert rule already exists");
     Statement statement(database_.handle(), R"sql(
-        INSERT INTO alert_rules(user_id,game_id,rule_type,target_price_minor)
-        VALUES(?,?,?,?);
+        INSERT INTO alert_rules(user_id,game_id,rule_type,target_price_minor,platform)
+        VALUES(?,?,?,?,?);
     )sql");
     sqlite3_bind_int64(statement.get(), 1, userId); bindText(statement.get(), 2, gameId);
     bindText(statement.get(), 3, toString(type));
     if (targetPrice) sqlite3_bind_int64(statement.get(), 4, *targetPrice);
     else sqlite3_bind_null(statement.get(), 4);
+    if(platform)bindText(statement.get(),5,toString(*platform));else sqlite3_bind_null(statement.get(),5);
     statement.execute();
     return AlertRule{sqlite3_last_insert_rowid(database_.handle()), userId, gameId,
-                     type, targetPrice, true};
+                     type, targetPrice,platform,true};
 }
 std::vector<AlertRule> AccountRepository::findRules(std::int64_t userId) const {
     Statement statement(database_.handle(), R"sql(
-        SELECT id,user_id,game_id,rule_type,target_price_minor,active
+        SELECT id,user_id,game_id,rule_type,target_price_minor,platform,active
         FROM alert_rules WHERE user_id=? ORDER BY id DESC;
     )sql");
     sqlite3_bind_int64(statement.get(), 1, userId);
     std::vector<AlertRule> result; while (statement.next()) result.push_back(readRule(statement.get()));
     return result;
 }
-void AccountRepository::deleteRule(std::int64_t userId, std::int64_t ruleId) {
+bool AccountRepository::deleteRule(std::int64_t userId, std::int64_t ruleId) {
     Statement statement(database_.handle(), "DELETE FROM alert_rules WHERE id=? AND user_id=?;");
     sqlite3_bind_int64(statement.get(), 1, ruleId); sqlite3_bind_int64(statement.get(), 2, userId);
-    statement.execute();
+    statement.execute();return sqlite3_changes(database_.handle())>0;
 }
 std::vector<Notification> AccountRepository::findNotifications(std::int64_t userId) const {
     Statement statement(database_.handle(), R"sql(
@@ -230,9 +249,9 @@ std::vector<Notification> AccountRepository::findNotifications(std::int64_t user
         text(statement.get(),8), text(statement.get(),9), sqlite3_column_int(statement.get(),10)!=0});
     return result;
 }
-void AccountRepository::markNotificationRead(std::int64_t userId, std::int64_t id) {
+bool AccountRepository::markNotificationRead(std::int64_t userId, std::int64_t id) {
     Statement statement(database_.handle(), "UPDATE notifications SET read=1 WHERE id=? AND user_id=?;");
-    sqlite3_bind_int64(statement.get(),1,id); sqlite3_bind_int64(statement.get(),2,userId); statement.execute();
+    sqlite3_bind_int64(statement.get(),1,id); sqlite3_bind_int64(statement.get(),2,userId); statement.execute();return sqlite3_changes(database_.handle())>0;
 }
 Database& AccountRepository::database() const noexcept { return database_; }
 

@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include "game_price/domain/domain_types.h"
 
 namespace game_price {
 
@@ -28,6 +29,7 @@ struct AlertRule {
     std::string gameId;
     AlertRuleType type{AlertRuleType::PriceDrop};
     std::optional<std::int64_t> targetPriceMinor;
+    std::optional<Platform> platform;
     bool active{true};
 };
 struct Notification {

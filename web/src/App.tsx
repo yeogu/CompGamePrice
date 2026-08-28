@@ -46,6 +46,7 @@ function App() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [targetPrice, setTargetPrice] = useState('')
   const [identities, setIdentities] = useState<ExternalIdentity[]>([])
+  const [actionMessage, setActionMessage] = useState('')
 
   const refreshAccount = async (activeToken: string) => {
     const [me, nextRules, nextNotifications, nextIdentities] = await Promise.all([
@@ -65,12 +66,18 @@ function App() {
 
   const createRule = async (type: AlertRuleType) => {
     if (!token || !selectedGameId) return
-    const amount = type === 'BelowTargetPrice' ? Number(targetPrice) : undefined
-    if (type === 'BelowTargetPrice' && (!Number.isInteger(amount) || (amount ?? -1) < 0)) {
-      setError('목표 가격을 원 단위 정수로 입력해주세요.'); return
+    setError(''); setActionMessage('')
+    const amount = type === 'BelowTargetPrice' && targetPrice.trim() !== '' ? Number(targetPrice) : undefined
+    if (type === 'BelowTargetPrice' && (!Number.isInteger(amount) || (amount ?? 0) <= 0 || (amount ?? 0) > 1_000_000_000)) {
+      setError('목표 가격을 1원 이상 10억원 이하의 정수로 입력해주세요.'); return
     }
-    try { await addAlertRule(token, selectedGameId, type, amount); setRules(await getAlertRules(token)) }
+    try { await addAlertRule(token, selectedGameId, type, amount, selectedPlatform || undefined); setRules(await getAlertRules(token)); setTargetPrice(''); setActionMessage('알림 규칙을 등록했습니다.') }
     catch (reason) { setError(reason instanceof Error ? reason.message : '알림 등록에 실패했습니다.') }
+  }
+
+  const runAccountAction = async (action: () => Promise<void>, fallback: string) => {
+    setError(''); setActionMessage('')
+    try { await action() } catch (reason) { setError(reason instanceof Error ? reason.message : fallback) }
   }
 
   const startSocialLogin = async (provider: OAuthProvider, link = false) => {
@@ -100,7 +107,7 @@ function App() {
     try {
       const [priceReport, priceHistory] = await Promise.all([
         getGamePrices(game.id, platform),
-        getGamePriceHistory(game.id),
+        getGamePriceHistory(game.id, undefined, platform),
       ])
       if (requestId === requestSequence.current) {
         setReport(priceReport)
@@ -215,6 +222,7 @@ function App() {
               <button onClick={() => void logout(token).finally(() => { localStorage.removeItem('game-price-session'); setToken(''); setUser(null); setRules([]); setNotifications([]); setIdentities([]) })}>로그아웃</button>
             </div>
             {selectedGameId && <div className="alert-controls">
+              <strong>{report?.game.title ?? selectedGameId} · {selectedPlatform || '모든 플랫폼'}</strong>
               <button onClick={() => void createRule('PriceDrop')}>가격 하락 알림</button>
               <button onClick={() => void createRule('NewHistoricalLow')}>새 역대 최저가</button>
               <button onClick={() => void createRule('BelowAverage')}>평균가 이하</button>
@@ -222,14 +230,14 @@ function App() {
               <button onClick={() => void createRule('BelowTargetPrice')}>목표가 알림</button>
             </div>}
             <div className="account-grid">
-              <div><h3>알림 규칙</h3>{rules.length === 0 && <p>등록된 규칙이 없습니다.</p>}{rules.map((rule) => <div className="account-row" key={rule.id}><span>{rule.gameId} · {rule.type}{rule.targetPriceMinor !== undefined ? ` · ₩${rule.targetPriceMinor.toLocaleString()}` : ''}</span><button onClick={() => void deleteAlertRule(token, rule.id).then(() => getAlertRules(token)).then(setRules)}>삭제</button></div>)}</div>
-              <div><h3>알림함</h3>{notifications.length === 0 && <p>새 알림이 없습니다.</p>}{notifications.map((item) => <button className={`notification-row ${item.read ? 'read' : ''}`} key={item.id} onClick={() => void markNotificationRead(token, item.id).then(() => getNotifications(token)).then(setNotifications)}><strong>{item.gameId} · {item.store}</strong><span>{formatMoney(item.price)} · {item.message}</span></button>)}</div>
+              <div><h3>알림 규칙</h3>{rules.length === 0 && <p>등록된 규칙이 없습니다.</p>}{rules.map((rule) => <div className="account-row" key={rule.id}><span>{rule.gameTitle ?? rule.gameId} · {rule.platform ?? '모든 플랫폼'} · {rule.type}{rule.targetPriceMinor !== undefined ? ` · ₩${rule.targetPriceMinor.toLocaleString()}` : ''}</span><button onClick={() => void runAccountAction(async () => { await deleteAlertRule(token, rule.id); setRules(await getAlertRules(token)); setActionMessage('알림 규칙을 삭제했습니다.') }, '알림 삭제에 실패했습니다.')}>삭제</button></div>)}</div>
+              <div><h3>알림함</h3>{notifications.length === 0 && <p>새 알림이 없습니다.</p>}{notifications.map((item) => <button className={`notification-row ${item.read ? 'read' : ''}`} key={item.id} onClick={() => void runAccountAction(async () => { await markNotificationRead(token, item.id); setNotifications(await getNotifications(token)) }, '읽음 처리에 실패했습니다.')}><strong>{item.gameId} · {item.store}</strong><span>{formatMoney(item.price)} · {item.message}</span></button>)}</div>
             </div>
             <div className="social-connections"><h3>연결된 로그인</h3>
               {(['google', 'kakao', 'naver'] as OAuthProvider[]).map((provider) => {
                 const label: ExternalIdentity['provider'] = provider === 'google' ? 'Google' : provider === 'kakao' ? 'Kakao' : 'Naver'
                 const identity = identities.find((item) => item.provider === label)
-                return identity ? <div className="social-identity" key={provider}><span>{label}{identity.email ? ` · ${identity.email}` : ''}</span><button onClick={() => void unlinkExternalIdentity(token, identity.id).then(() => getExternalIdentities(token)).then(setIdentities)}>연결 해제</button></div>
+                return identity ? <div className="social-identity" key={provider}><span>{label}{identity.email ? ` · ${identity.email}` : ''}</span><button onClick={() => void runAccountAction(async () => { await unlinkExternalIdentity(token, identity.id); setIdentities(await getExternalIdentities(token)) }, '계정 연결 해제에 실패했습니다.')}>연결 해제</button></div>
                   : <button className={`social-button ${provider}`} key={provider} onClick={() => void startSocialLogin(provider, true)}>{label} 계정 연결</button>
               })}
             </div>
@@ -247,6 +255,7 @@ function App() {
       </section>
 
       {error && <p className="notice error">{error}</p>}
+      {actionMessage && <p className="notice success">{actionMessage}</p>}
 
       <section className="collection-panel" aria-label="최근 가격 수집 상태">
         <div className="collection-heading">
