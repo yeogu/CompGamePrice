@@ -22,13 +22,22 @@ PriceHistoryService::PriceHistoryService(const StoreProductRepository& repositor
 std::optional<PriceHistorySummary> PriceHistoryService::analyze(
     const StoreProduct& product,
     const std::optional<std::string>& observedSince) const {
-    const auto observations = observedSince
+    auto observations = observedSince
         ? repository_.findPriceHistorySince(
               product.store, product.productId, *observedSince)
         : repository_.findPriceHistory(product.store, product.productId);
     if (observations.empty()) {
         return std::nullopt;
     }
+
+    observations.erase(
+        std::remove_if(
+            observations.begin(), observations.end(),
+            [](const PriceObservation& observation) {
+                return !observation.purchasable;
+            }),
+        observations.end());
+    if (observations.empty()) return std::nullopt;
 
     const Currency currency = observations.front().price.currency;
     std::int64_t lowest = observations.front().price.minorAmount;

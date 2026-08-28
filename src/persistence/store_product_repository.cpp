@@ -6,6 +6,7 @@
 
 #include <sqlite3.h>
 
+#include <cstdlib>
 #include <stdexcept>
 #include <string>
 
@@ -143,6 +144,90 @@ std::optional<std::int64_t> regularPriceMinor(const StoreProduct& product) {
     return product.regularPrice->minorAmount;
 }
 
+std::string databaseUtcNow(sqlite3* database) {
+    Statement statement(
+        database, "SELECT strftime('%Y-%m-%dT%H:%M:%fZ', 'now');");
+    if (!statement.next()) {
+        throw std::runtime_error("Cannot read the database UTC timestamp");
+    }
+    return columnText(statement.get(), 0);
+}
+
+std::string nextUtcMillisecond(sqlite3* database, const std::string& timestamp) {
+    Statement statement(database, R"sql(
+        SELECT strftime(
+            '%Y-%m-%dT%H:%M:%fZ',
+            julianday(?) + (0.001 / 86400.0));
+    )sql");
+    bindText(statement.get(), 1, timestamp);
+    if (!statement.next()) {
+        throw std::runtime_error("Cannot advance the database UTC timestamp");
+    }
+    return columnText(statement.get(), 0);
+}
+
+bool observationStateMatches(
+    sqlite3_stmt* row,
+    const StoreProduct& product,
+    const std::optional<std::int64_t>& regularPrice,
+    const std::string& currency) {
+    const bool storedRegularIsNull =
+        sqlite3_column_type(row, 1) == SQLITE_NULL;
+    const bool regularMatches = regularPrice
+        ? !storedRegularIsNull && sqlite3_column_int64(row, 1) == *regularPrice
+        : storedRegularIsNull;
+    return sqlite3_column_int64(row, 0) == product.currentPrice.minorAmount &&
+        regularMatches &&
+        sqlite3_column_int(row, 2) == product.discountPercent &&
+        columnText(row, 3) == currency &&
+        (sqlite3_column_int(row, 4) != 0) == product.purchasable;
+}
+
+bool sameObservationState(
+    const PriceObservation& left,
+    const PriceObservation& right) {
+    return left.price == right.price &&
+        left.purchasable == right.purchasable &&
+        left.regularPrice == right.regularPrice &&
+        left.discountPercent == right.discountPercent;
+}
+
+void validatePriceObservation(const PriceObservation& observation) {
+    if (!isUtcTimestamp(observation.observedAt)) {
+        throw std::invalid_argument("Price observation timestamp must be UTC");
+    }
+    if (observation.price.currency != Currency::KRW ||
+        observation.price.minorAmount < 0 ||
+        observation.price.minorAmount > MaximumSupportedPriceMinor) {
+        throw std::invalid_argument("Price observation contains an invalid price");
+    }
+    if (observation.discountPercent < 0 || observation.discountPercent > 100) {
+        throw std::invalid_argument("Price observation contains an invalid discount");
+    }
+    if (observation.discountPercent > 0 && !observation.regularPrice) {
+        throw std::invalid_argument(
+            "A discounted observation requires a regular price");
+    }
+    if (observation.regularPrice) {
+        if (observation.regularPrice->currency != observation.price.currency ||
+            observation.regularPrice->minorAmount < observation.price.minorAmount ||
+            observation.regularPrice->minorAmount > MaximumSupportedPriceMinor) {
+            throw std::invalid_argument(
+                "Price observation contains an invalid regular price");
+        }
+        const auto regular = observation.regularPrice->minorAmount;
+        const int calculatedDiscount = regular == 0
+            ? 0
+            : static_cast<int>(
+                  ((regular - observation.price.minorAmount) * 100 + regular / 2) /
+                  regular);
+        if (std::abs(calculatedDiscount - observation.discountPercent) > 1) {
+            throw std::invalid_argument(
+                "Price observation discount does not match its prices");
+        }
+    }
+}
+
 CrawlRunStatus parseCrawlRunStatus(const std::string& value) {
     if (value == "RUNNING") return CrawlRunStatus::Running;
     if (value == "SUCCEEDED") return CrawlRunStatus::Succeeded;
@@ -234,6 +319,22 @@ void StoreProductRepository::initializeSchema() const {
 
         CREATE INDEX IF NOT EXISTS idx_price_history_product_time
             ON price_history(store, external_product_id, observed_at);
+
+        CREATE TABLE IF NOT EXISTS price_history_conflicts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            original_history_id INTEGER NOT NULL,
+            store TEXT NOT NULL,
+            external_product_id TEXT NOT NULL,
+            price_minor INTEGER NOT NULL,
+            regular_price_minor INTEGER,
+            discount_percent INTEGER NOT NULL,
+            currency TEXT NOT NULL,
+            purchasable INTEGER NOT NULL,
+            observed_at TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            quarantined_at TEXT NOT NULL DEFAULT
+                (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+        );
 
         CREATE TABLE IF NOT EXISTS crawl_runs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -382,12 +483,43 @@ void StoreProductRepository::initializeSchema() const {
                     CHECK(retry_count >= 0);
             )sql");
         }
+        if (existingVersion < 10) {
+            database_.execute(R"sql(
+                INSERT INTO price_history_conflicts(
+                    original_history_id, store, external_product_id,
+                    price_minor, regular_price_minor, discount_percent,
+                    currency, purchasable, observed_at, reason)
+                SELECT older.id, older.store, older.external_product_id,
+                       older.price_minor, older.regular_price_minor,
+                       older.discount_percent, older.currency,
+                       older.purchasable, older.observed_at,
+                       'duplicate timestamp migrated; latest row retained'
+                FROM price_history older
+                WHERE EXISTS(
+                    SELECT 1 FROM price_history newer
+                    WHERE newer.store = older.store
+                      AND newer.external_product_id = older.external_product_id
+                      AND newer.observed_at = older.observed_at
+                      AND newer.id > older.id);
+
+                DELETE FROM price_history
+                WHERE EXISTS(
+                    SELECT 1 FROM price_history newer
+                    WHERE newer.store = price_history.store
+                      AND newer.external_product_id = price_history.external_product_id
+                      AND newer.observed_at = price_history.observed_at
+                      AND newer.id > price_history.id);
+
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_price_history_unique_observation
+                    ON price_history(store, external_product_id, observed_at);
+            )sql");
+        }
         database_.execute(R"sql(
             CREATE UNIQUE INDEX IF NOT EXISTS idx_alert_rules_identity
             ON alert_rules(user_id,game_id,rule_type,
                 COALESCE(platform,''),COALESCE(target_price_minor,-1));
         )sql");
-        database_.execute("PRAGMA user_version = 9;");
+        database_.execute("PRAGMA user_version = 10;");
         database_.execute("COMMIT;");
     } catch (...) {
         try {
@@ -441,6 +573,40 @@ void StoreProductRepository::saveNormalizedProducts(
 
             const std::string store = toString(product.store);
             const std::string currency = toString(product.currentPrice.currency);
+            std::string observedAt = product.observedAt
+                ? *product.observedAt
+                : databaseUtcNow(database_.handle());
+            {
+                Statement statement(database_.handle(), R"sql(
+                    SELECT price_minor, regular_price_minor, discount_percent,
+                           currency, purchasable, observed_at
+                    FROM price_history
+                    WHERE store = ? AND external_product_id = ?
+                    ORDER BY observed_at DESC, id DESC
+                    LIMIT 1;
+                )sql");
+                bindText(statement.get(), 1, store);
+                bindText(statement.get(), 2, product.productId);
+                if (statement.next()) {
+                    const auto latestObservedAt = columnText(statement.get(), 5);
+                    if (!product.observedAt && observedAt <= latestObservedAt) {
+                        observedAt = nextUtcMillisecond(
+                            database_.handle(), latestObservedAt);
+                    }
+                    if (observedAt < latestObservedAt) {
+                        throw std::invalid_argument(
+                            "StoreProduct observation timestamp is older than current history");
+                    }
+                    if (observedAt == latestObservedAt) {
+                        if (observationStateMatches(
+                                statement.get(), product, regularPrice, currency)) {
+                            continue;
+                        }
+                        throw std::invalid_argument(
+                            "StoreProduct observation conflicts at the same timestamp");
+                    }
+                }
+            }
             bool shouldRecordHistory = true;
             {
                 Statement statement(database_.handle(), R"sql(
@@ -512,23 +678,13 @@ void StoreProductRepository::saveNormalizedProducts(
             }
 
             if (shouldRecordHistory) {
-                const char* insertSql = product.observedAt
-                    ? R"sql(
-                        INSERT INTO price_history(
-                            store, external_product_id, price_minor,
-                            regular_price_minor, discount_percent,
-                            currency, purchasable, observed_at)
-                        VALUES(?, ?, ?, ?, ?, ?, ?, ?);
-                    )sql"
-                    : R"sql(
-                        INSERT INTO price_history(
-                            store, external_product_id, price_minor,
-                            regular_price_minor, discount_percent,
-                            currency, purchasable, observed_at)
-                        VALUES(?, ?, ?, ?, ?, ?, ?,
-                            strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
-                    )sql";
-                Statement statement(database_.handle(), insertSql);
+                Statement statement(database_.handle(), R"sql(
+                    INSERT INTO price_history(
+                        store, external_product_id, price_minor,
+                        regular_price_minor, discount_percent,
+                        currency, purchasable, observed_at)
+                    VALUES(?, ?, ?, ?, ?, ?, ?, ?);
+                )sql");
                 bindText(statement.get(), 1, store);
                 bindText(statement.get(), 2, product.productId);
                 bindInt64(statement.get(), 3, product.currentPrice.minorAmount);
@@ -536,7 +692,7 @@ void StoreProductRepository::saveNormalizedProducts(
                 bindInt64(statement.get(), 5, product.discountPercent);
                 bindText(statement.get(), 6, currency);
                 bindInt64(statement.get(), 7, product.purchasable ? 1 : 0);
-                if (product.observedAt) bindText(statement.get(), 8, *product.observedAt);
+                bindText(statement.get(), 8, observedAt);
                 statement.execute();
             }
 
@@ -743,14 +899,22 @@ void StoreProductRepository::replacePriceHistory(
             bindText(statement.get(), 2, productId);
             statement.execute();
         }
-        const PriceObservation* previous = nullptr;
+        const PriceObservation* previousStored = nullptr;
+        const PriceObservation* previousInput = nullptr;
         for (const auto& observation : observations) {
-            const bool unchanged = previous &&
-                previous->price.minorAmount == observation.price.minorAmount &&
-                previous->price.currency == observation.price.currency &&
-                previous->purchasable == observation.purchasable &&
-                previous->regularPrice == observation.regularPrice &&
-                previous->discountPercent == observation.discountPercent;
+            validatePriceObservation(observation);
+            if (previousInput && observation.observedAt < previousInput->observedAt) {
+                throw std::invalid_argument(
+                    "Price observations must be ordered by timestamp");
+            }
+            if (previousInput && observation.observedAt == previousInput->observedAt) {
+                if (sameObservationState(*previousInput, observation)) continue;
+                throw std::invalid_argument(
+                    "Price observations conflict at the same timestamp");
+            }
+            previousInput = &observation;
+            const bool unchanged = previousStored &&
+                sameObservationState(*previousStored, observation);
             if (unchanged) continue;
 
             Statement statement(database_.handle(), R"sql(
@@ -773,7 +937,7 @@ void StoreProductRepository::replacePriceHistory(
             bindInt64(statement.get(), 7, observation.purchasable ? 1 : 0);
             bindText(statement.get(), 8, observation.observedAt);
             statement.execute();
-            previous = &observation;
+            previousStored = &observation;
         }
         database_.execute("COMMIT;");
     } catch (...) {

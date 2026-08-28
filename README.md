@@ -312,7 +312,7 @@ DB 적재 사이에 지연이 생겨도 그래프에는 응답을 관측한 시�
 5개 필드 로컬 sample은 호환성을 위해 DB 적재 시각을 사용합니다. 관측 시각은
 `YYYY-MM-DDTHH:MM:SS.sssZ` UTC 형식만 허용하며 잘못된 값은 트랜잭션 전체를
 롤백합니다.
-DB schema는 SQLite `user_version`으로 관리하며 현재 버전은 7입니다. version 2는
+DB schema는 SQLite `user_version`으로 관리하며 현재 버전은 10입니다. version 2는
 `store_products`와 `price_history`에 선택적인 정상가와 0–100 정수 할인율을
 추가합니다. 기존 version 1 DB는 상품과 이력을 보존하면서 정상가 미상(NULL),
 할인율 0으로 자동 이전됩니다. version 3는 Store 상품에 Region, Edition,
@@ -321,10 +321,17 @@ version 4는 상품별 플랫폼 호환성(예: Nintendo Switch 게임의 Switch
 별도 관계로 저장합니다. version 5는 사용자, 세션, 알림 규칙, 알림과 이메일
 Outbox를 추가합니다. version 6는 Google, Kakao, Naver 외부 계정과 10분 만료
 OAuth state를 저장합니다. version 7은 로그인 실패 횟수 제한 정보를 추가합니다.
-새 DB는 바로 version 7로 초기화되며 프로그램보다 새로운 DB version은
+version 8은 플랫폼별 알림 규칙과 중복 규칙 방지를 추가하고, version 9는 수집
+성공·거부·실패·재시도 지표와 validation quarantine을 추가합니다. version 10은
+Store product와 관측 시각 조합을 유일하게 만들며, 이전 DB에 같은 시각의 이력이
+여러 개 있으면 가장 최근 row를 유지하고 나머지는 `price_history_conflicts`에
+보존합니다. 새 DB는 바로 version 10으로 초기화되며 프로그램보다 새로운 DB version은
 데이터 손상을 피하기 위해 실행을 중단합니다.
 `PriceHistoryService`는 저장된 이력으로 현재가, 최저가, 최고가, 정수 기반
-평균가와 직전 관측 대비 가격 추이를 계산합니다.
+평균가와 직전 관측 대비 가격 추이를 계산합니다. 동일 시각의 동일 관측은
+idempotent하게 처리하고, 동일 시각의 다른 값과 현재 이력보다 과거인 신규 관측은
+현재 가격을 되돌리지 않도록 거부합니다. 구매 불가능 상태의 관측은 API 이력에는
+남지만 최저가·평균·추천 통계에서는 제외합니다.
 `PurchaseRecommendationService`는 이 통계만 사용해 `StrongBuy`, `Buy`,
 `Wait`, `InsufficientData` 중 하나와 판단 근거를 생성합니다. 외부 AI가
 추가되더라도 가격 계산과 추천 판정은 이 결정적 규칙의 결과를 사용합니다.

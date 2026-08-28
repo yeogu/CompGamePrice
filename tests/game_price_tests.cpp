@@ -302,6 +302,67 @@ void testHistoryDeduplicationAndAnalysis() {
            "The next changed price should preserve its observation date");
 }
 
+void testPriceObservationIntegrity() {
+    Database database(":memory:");
+    StoreProductRepository repository(database);
+    repository.initializeSchema();
+    const Game game{"stardew-valley", "Stardew Valley", "stardew valley", {}};
+
+    auto product = makeSteamProduct(16000);
+    product.observedAt = "2026-02-01T00:00:00.000Z";
+    repository.saveNormalizedProducts(game, {product});
+    repository.saveNormalizedProducts(game, {product});
+    expect(repository.findPriceHistory(Store::Steam, "413150").size() == 1,
+           "The same state at the same timestamp must be idempotent");
+
+    auto conflicting = product;
+    conflicting.currentPrice.minorAmount = 15000;
+    bool rejectedConflict = false;
+    try {
+        repository.saveNormalizedProducts(game, {conflicting});
+    } catch (const std::invalid_argument&) {
+        rejectedConflict = true;
+    }
+    expect(rejectedConflict,
+           "Different states at the same timestamp must conflict");
+
+    auto outOfOrder = product;
+    outOfOrder.observedAt = "2026-01-01T00:00:00.000Z";
+    bool rejectedOutOfOrder = false;
+    try {
+        repository.saveNormalizedProducts(game, {outOfOrder});
+    } catch (const std::invalid_argument&) {
+        rejectedOutOfOrder = true;
+    }
+    expect(rejectedOutOfOrder,
+           "An older observation must not overwrite the current product state");
+    const auto current = repository.findProductsByGameId(game.id);
+    expect(current.size() == 1 && current.front().currentPrice.minorAmount == 16000,
+           "Rejected timestamp conflicts must preserve the current price");
+
+    repository.replacePriceHistory(Store::Steam, "413150", {
+        {Money{100, Currency::KRW}, false, "2026-01-01T00:00:00.000Z"},
+        {Money{1000, Currency::KRW}, true, "2026-02-01T00:00:00.000Z"},
+        {Money{800, Currency::KRW}, true, "2026-03-01T00:00:00.000Z"}});
+    const auto summary = PriceHistoryService(repository).analyze(product);
+    expect(summary && summary->lowestPrice.minorAmount == 800 &&
+               summary->highestPrice.minorAmount == 1000 &&
+               summary->observationCount == 2,
+           "Historical statistics must exclude unavailable observations");
+
+    bool rejectedReplacementConflict = false;
+    try {
+        repository.replacePriceHistory(Store::Steam, "413150", {
+            {Money{1000, Currency::KRW}, true, "2026-04-01T00:00:00.000Z"},
+            {Money{900, Currency::KRW}, true, "2026-04-01T00:00:00.000Z"}});
+    } catch (const std::invalid_argument&) {
+        rejectedReplacementConflict = true;
+    }
+    expect(rejectedReplacementConflict &&
+               repository.findPriceHistory(Store::Steam, "413150").size() == 3,
+           "A conflicting replacement must roll back and preserve existing history");
+}
+
 void testDatabaseSchemaVersion() {
     Database database(":memory:");
     StoreProductRepository repository(database);
@@ -356,8 +417,8 @@ void testDatabaseSchemaVersion() {
     )sql");
     StoreProductRepository versionOneRepository(versionOneDatabase);
     versionOneRepository.initializeSchema();
-    expect(versionOneDatabase.userVersion() == 9,
-           "Schema version 1 should migrate to version 9");
+    expect(versionOneDatabase.userVersion() == 10,
+           "Schema version 1 should migrate to version 10");
     const auto migratedProducts =
         versionOneRepository.findProductsByGameId("stardew-valley");
     expect(migratedProducts.size() == 1,
@@ -407,8 +468,8 @@ void testDatabaseSchemaVersion() {
     )sql");
     StoreProductRepository versionTwoRepository(versionTwoDatabase);
     versionTwoRepository.initializeSchema();
-    expect(versionTwoDatabase.userVersion() == 9,
-           "Schema version 2 should migrate to version 9");
+    expect(versionTwoDatabase.userVersion() == 10,
+           "Schema version 2 should migrate to version 10");
     const auto versionTwoProducts = versionTwoRepository.findProductsByGameId("hades");
     expect(versionTwoProducts.size() == 1 &&
                versionTwoProducts.front().region == Region::KR &&
@@ -436,12 +497,63 @@ void testDatabaseSchemaVersion() {
     StoreProductRepository versionEightRepository(versionEightDatabase);
     versionEightRepository.initializeSchema();
     const auto migratedRuns = versionEightRepository.findCrawlRuns();
-    expect(versionEightDatabase.userVersion() == 9 && migratedRuns.size() == 1 &&
+    expect(versionEightDatabase.userVersion() == 10 && migratedRuns.size() == 1 &&
                migratedRuns.front().productsFound == 3 &&
                migratedRuns.front().productsRejected == 0 &&
                migratedRuns.front().productsFailed == 0 &&
                migratedRuns.front().retryCount == 0,
            "Version 8 migration should preserve runs and initialize reliability counters");
+
+    Database versionNineDatabase(":memory:");
+    versionNineDatabase.execute(R"sql(
+        CREATE TABLE price_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            store TEXT NOT NULL,
+            external_product_id TEXT NOT NULL,
+            price_minor INTEGER NOT NULL,
+            regular_price_minor INTEGER,
+            discount_percent INTEGER NOT NULL DEFAULT 0,
+            currency TEXT NOT NULL,
+            purchasable INTEGER NOT NULL,
+            observed_at TEXT NOT NULL
+        );
+        CREATE TABLE crawl_runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            store TEXT NOT NULL,
+            started_at TEXT NOT NULL,
+            finished_at TEXT,
+            status TEXT NOT NULL,
+            products_found INTEGER NOT NULL DEFAULT 0,
+            error_message TEXT NOT NULL DEFAULT '',
+            products_rejected INTEGER NOT NULL DEFAULT 0,
+            products_failed INTEGER NOT NULL DEFAULT 0,
+            retry_count INTEGER NOT NULL DEFAULT 0
+        );
+        INSERT INTO price_history(
+            store, external_product_id, price_minor, currency,
+            purchasable, observed_at)
+        VALUES
+            ('Steam','413150',16000,'KRW',1,'2026-01-01T00:00:00.000Z'),
+            ('Steam','413150',12000,'KRW',1,'2026-01-01T00:00:00.000Z');
+        PRAGMA user_version = 9;
+    )sql");
+    StoreProductRepository versionNineRepository(versionNineDatabase);
+    versionNineRepository.initializeSchema();
+    const auto deduplicated = versionNineRepository.findPriceHistory(
+        Store::Steam, "413150");
+    sqlite3_stmt* conflictCountStatement = nullptr;
+    sqlite3_prepare_v2(
+        versionNineDatabase.handle(),
+        "SELECT COUNT(*) FROM price_history_conflicts;", -1,
+        &conflictCountStatement, nullptr);
+    sqlite3_step(conflictCountStatement);
+    const int conflictCount = sqlite3_column_int(conflictCountStatement, 0);
+    sqlite3_finalize(conflictCountStatement);
+    expect(versionNineDatabase.userVersion() == 10 &&
+               deduplicated.size() == 1 &&
+               deduplicated.front().price.minorAmount == 12000 &&
+               conflictCount == 1,
+           "Version 9 migration should retain the latest duplicate and quarantine the other");
 }
 
 void testDiscountChangeHistory() {
@@ -1133,6 +1245,7 @@ int main() {
         {"Provider normalization", testProviderNormalization},
         {"Epic end-to-end comparison", testEpicEndToEndComparison},
         {"History deduplication and analysis", testHistoryDeduplicationAndAnalysis},
+        {"Price observation integrity", testPriceObservationIntegrity},
         {"Database schema version", testDatabaseSchemaVersion},
         {"Discount change history", testDiscountChangeHistory},
         {"Store product price validation", testStoreProductPriceValidation},
