@@ -628,6 +628,9 @@ int main() {
                     item["store"] = toString(run->store);
                     item["status"] = toString(run->status);
                     item["productsFound"] = Json::UInt64(run->productsFound);
+                    item["productsRejected"] = Json::UInt64(run->productsRejected);
+                    item["productsFailed"] = Json::UInt64(run->productsFailed);
+                    item["retryCount"] = Json::UInt64(run->retryCount);
                     item["startedAt"] = run->startedAt;
                     if (!run->finishedAt.empty()) item["finishedAt"] = run->finishedAt;
                     if (!run->errorMessage.empty()) {

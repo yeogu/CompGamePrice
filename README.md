@@ -428,9 +428,11 @@ Store가 정상가를 제공하면 `regularPrice`도 포함됩니다. Web 가격
 상품의 정상가와 할인율을 표시하고 가격 그래프 Tooltip에서도 당시 할인 정보를
 확인할 수 있습니다.
 `collection-runs`는 최근 수집 실행을 최신순으로 반환하며 `limit`은 1–100 사이의
-정수입니다. 응답에는 Store, 성공·실패 상태, 발견 상품 수, 시작·종료 시각과 실패
-메시지가 포함됩니다. Web 상단의 최근 수집 실행 패널에서 같은 정보를 확인할 수
-있어 자동 수집 실패를 DB나 터미널 없이 발견할 수 있습니다.
+정수입니다. 응답에는 Store, 성공 상품 수(`productsFound`), 검증 거부 수
+(`productsRejected`), Provider 실패 수(`productsFailed`), 재시도 수(`retryCount`),
+시작·종료 시각과 오류 메시지가 포함됩니다. 정규화된 record 하나가 잘못된 경우
+정상 record는 저장하고 거부된 record와 사유는 `collection_rejections`에 격리합니다.
+Web 상단의 최근 수집 실행 패널에서도 같은 요약을 확인할 수 있습니다.
 가격 이력 API는 Store별 전체 관측 시각과 정수 가격을 반환하며, `since`는
 선택적인 `YYYY-MM-DD` 시작일입니다. API 통합 테스트는 실제 서버를 임시
 포트에서 실행해 정상 응답과 잘못된 날짜, 없는 게임 응답을 확인합니다.

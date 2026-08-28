@@ -356,8 +356,8 @@ void testDatabaseSchemaVersion() {
     )sql");
     StoreProductRepository versionOneRepository(versionOneDatabase);
     versionOneRepository.initializeSchema();
-    expect(versionOneDatabase.userVersion() == 8,
-           "Schema version 1 should migrate to version 8");
+    expect(versionOneDatabase.userVersion() == 9,
+           "Schema version 1 should migrate to version 9");
     const auto migratedProducts =
         versionOneRepository.findProductsByGameId("stardew-valley");
     expect(migratedProducts.size() == 1,
@@ -407,14 +407,41 @@ void testDatabaseSchemaVersion() {
     )sql");
     StoreProductRepository versionTwoRepository(versionTwoDatabase);
     versionTwoRepository.initializeSchema();
-    expect(versionTwoDatabase.userVersion() == 8,
-           "Schema version 2 should migrate to version 8");
+    expect(versionTwoDatabase.userVersion() == 9,
+           "Schema version 2 should migrate to version 9");
     const auto versionTwoProducts = versionTwoRepository.findProductsByGameId("hades");
     expect(versionTwoProducts.size() == 1 &&
                versionTwoProducts.front().region == Region::KR &&
                versionTwoProducts.front().edition == GameEdition::Standard &&
                versionTwoProducts.front().offerType == OfferType::BaseGame,
            "Version 2 products should preserve data with default comparison identity");
+
+    Database versionEightDatabase(":memory:");
+    versionEightDatabase.execute(R"sql(
+        CREATE TABLE crawl_runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            store TEXT NOT NULL,
+            started_at TEXT NOT NULL,
+            finished_at TEXT,
+            status TEXT NOT NULL CHECK(status IN ('RUNNING','SUCCEEDED','FAILED')),
+            products_found INTEGER NOT NULL DEFAULT 0,
+            error_message TEXT NOT NULL DEFAULT ''
+        );
+        INSERT INTO crawl_runs(
+            store, started_at, finished_at, status, products_found, error_message)
+        VALUES('Steam', '2026-08-01T00:00:00.000Z',
+               '2026-08-01T00:00:01.000Z', 'SUCCEEDED', 3, '');
+        PRAGMA user_version = 8;
+    )sql");
+    StoreProductRepository versionEightRepository(versionEightDatabase);
+    versionEightRepository.initializeSchema();
+    const auto migratedRuns = versionEightRepository.findCrawlRuns();
+    expect(versionEightDatabase.userVersion() == 9 && migratedRuns.size() == 1 &&
+               migratedRuns.front().productsFound == 3 &&
+               migratedRuns.front().productsRejected == 0 &&
+               migratedRuns.front().productsFailed == 0 &&
+               migratedRuns.front().retryCount == 0,
+           "Version 8 migration should preserve runs and initialize reliability counters");
 }
 
 void testDiscountChangeHistory() {
@@ -879,6 +906,9 @@ void testCollectionRunTrackingAndFailureIsolation() {
            "First collection run should succeed");
     expect(result.runs[1].status == CrawlRunStatus::Failed,
            "Second collection run should fail without stopping the first");
+    expect(result.runs[1].productsFailed == 1 &&
+               result.runs[1].productsRejected == 0,
+           "A Provider failure should be separated from validation rejection");
 
     const auto persistedRuns = repository.findCrawlRuns();
     expect(persistedRuns.size() == 2, "Both crawl runs should be persisted");
@@ -909,6 +939,8 @@ void testCollectionRetryAfterTemporaryFailure() {
     expect(result.runs[1].status == CrawlRunStatus::Succeeded,
            "Second collection attempt should succeed");
     expect(result.runs[1].attemptNumber == 2, "Second attempt number should be 2");
+    expect(result.runs[1].retryCount == 1,
+           "A successful second attempt should report one retry");
     expect(result.totalProducts == 1, "Successful retry should save one product");
 
     const auto persistedRuns = repository.findCrawlRuns();
@@ -930,14 +962,16 @@ void testCatalogProductIdentityProtection() {
         repository.initializeSchema();
         ProductListTestProvider provider(std::move(products));
         std::vector<std::reference_wrapper<const StoreProductProvider>> providers{provider};
-        return CollectionService(catalog, repository, providers).collect(*game);
+        return CollectionService(catalog, repository, providers, 3).collect(*game);
     };
 
     auto unknown = makeSteamProduct(11200);
     unknown.productId = "999999999";
     const auto unknownResult = collectWith({unknown});
     expect(unknownResult.totalProducts == 0 &&
-               unknownResult.runs.back().status == CrawlRunStatus::Failed,
+               unknownResult.runs.size() == 1 &&
+               unknownResult.runs.back().status == CrawlRunStatus::Failed &&
+               unknownResult.runs.back().productsRejected == 1,
            "A product without a Catalog mapping must not be saved");
 
     auto wrongIdentity = makeSteamProduct(11200);
@@ -947,11 +981,26 @@ void testCatalogProductIdentityProtection() {
                wrongIdentityResult.runs.back().status == CrawlRunStatus::Failed,
            "Provider comparison identity must match the Catalog mapping");
 
-    const auto duplicateResult = collectWith(
+    Database partialDatabase(":memory:");
+    StoreProductRepository partialRepository(partialDatabase);
+    partialRepository.initializeSchema();
+    ProductListTestProvider duplicateProvider(
         {makeSteamProduct(11200), makeSteamProduct(11200)});
-    expect(duplicateResult.totalProducts == 0 &&
-               duplicateResult.runs.back().status == CrawlRunStatus::Failed,
-           "Duplicate product IDs in one Provider result must be rejected");
+    std::vector<std::reference_wrapper<const StoreProductProvider>> duplicateProviders{
+        duplicateProvider};
+    const auto duplicateResult = CollectionService(
+        catalog, partialRepository, duplicateProviders).collect(*game);
+    expect(duplicateResult.totalProducts == 1 &&
+               duplicateResult.runs.back().status == CrawlRunStatus::Succeeded &&
+               duplicateResult.runs.back().productsRejected == 1,
+           "A duplicate record must not block a valid normalized product");
+    const auto partialRuns = partialRepository.findCrawlRuns();
+    const auto rejections = partialRepository.findCollectionRejections(
+        partialRuns.back().id);
+    expect(rejections.size() == 1 &&
+               rejections.front().productId == "413150" &&
+               rejections.front().reason.find("duplicate") != std::string::npos,
+           "Rejected records must be quarantined with their reason");
 
     Database database(":memory:");
     StoreProductRepository repository(database);
@@ -963,7 +1012,7 @@ void testCatalogProductIdentityProtection() {
     bool rejectedReassignment = false;
     try {
         repository.saveNormalizedProducts(otherGame, {reassigned});
-    } catch (const std::runtime_error&) {
+    } catch (const std::invalid_argument&) {
         rejectedReassignment = true;
     }
     expect(rejectedReassignment,

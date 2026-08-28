@@ -77,6 +77,9 @@ export interface CollectionRun {
   store: string
   status: 'RUNNING' | 'SUCCEEDED' | 'FAILED'
   productsFound: number
+  productsRejected: number
+  productsFailed: number
+  retryCount: number
   startedAt: string
   finishedAt?: string
   errorMessage?: string

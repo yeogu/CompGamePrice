@@ -50,7 +50,9 @@ CollectionResult collectStoreProducts(
     for (const auto& run : result.runs) {
         std::cout << "- " << toString(run.store) << ": " << toString(run.status)
                   << ", attempt=" << run.attemptNumber
-                  << ", products=" << run.productsFound;
+                  << ", products=" << run.productsFound
+                  << ", rejected=" << run.productsRejected
+                  << ", failed=" << run.productsFailed;
         if (!run.errorMessage.empty()) std::cout << ", error=" << run.errorMessage;
         std::cout << '\n';
     }
@@ -74,7 +76,9 @@ CollectionResult collectSteamProduct(
     for (const auto& run : result.runs) {
         std::cout << "- " << toString(run.store) << ": " << toString(run.status)
                   << ", attempt=" << run.attemptNumber
-                  << ", products=" << run.productsFound;
+                  << ", products=" << run.productsFound
+                  << ", rejected=" << run.productsRejected
+                  << ", failed=" << run.productsFailed;
         if (!run.errorMessage.empty()) std::cout << ", error=" << run.errorMessage;
         std::cout << '\n';
     }
@@ -134,6 +138,9 @@ bool printCollectionRuns(const GameQueryService& queryService) {
         std::cout << "- #" << run.id << ' ' << toString(run.store)
                   << ": " << toString(run.status)
                   << ", products=" << run.productsFound
+                  << ", rejected=" << run.productsRejected
+                  << ", failed=" << run.productsFailed
+                  << ", retries=" << run.retryCount
                   << ", started=" << run.startedAt;
         if (!run.finishedAt.empty()) std::cout << ", finished=" << run.finishedAt;
         if (!run.errorMessage.empty()) std::cout << ", error=" << run.errorMessage;

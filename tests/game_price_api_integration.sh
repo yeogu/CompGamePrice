@@ -203,6 +203,9 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/collection-runs?limit=5")
 [[ "${status}" == "200" ]]
 grep -q '"store":"Epic Games Store"' "${response_body}"
+grep -q '"productsRejected":0' "${response_body}"
+grep -q '"productsFailed":0' "${response_body}"
+grep -q '"retryCount":0' "${response_body}"
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/collection-runs?limit=invalid")

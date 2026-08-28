@@ -13,7 +13,7 @@ namespace game_price {
 
 class StoreProductRepository {
 public:
-    static constexpr int CurrentSchemaVersion = 8;
+    static constexpr int CurrentSchemaVersion = 9;
 
     explicit StoreProductRepository(Database& database);
 
@@ -38,8 +38,19 @@ public:
         std::int64_t runId,
         CrawlRunStatus status,
         std::size_t productsFound,
+        std::size_t productsRejected,
+        std::size_t productsFailed,
+        std::size_t retryCount,
         const std::string& errorMessage) const;
+    void recordCollectionRejection(
+        std::int64_t runId,
+        Store store,
+        const std::string& gameId,
+        const std::string& productId,
+        const std::string& reason) const;
     std::vector<CrawlRunRecord> findCrawlRuns() const;
+    std::vector<CollectionRejection> findCollectionRejections(
+        std::int64_t runId) const;
     Database& database() const noexcept;
 
 private:

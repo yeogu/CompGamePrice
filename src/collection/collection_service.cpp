@@ -7,6 +7,35 @@
 #include <utility>
 
 namespace game_price {
+namespace {
+
+void validateCatalogIdentity(
+    const GameCatalog& catalog,
+    const Game& game,
+    const StoreProductProvider& provider,
+    const StoreProduct& product) {
+    if (product.store != provider.store()) {
+        throw std::invalid_argument(
+            "Provider returned a product for a different Store");
+    }
+    const auto catalogProduct = catalog.findStoreProduct(
+        product.store, product.productId);
+    if (!catalogProduct || catalogProduct->gameId != game.id) {
+        throw std::invalid_argument(
+            "Provider returned a Store product without an exact Catalog mapping: " +
+            product.productId);
+    }
+    if (product.gameId != catalogProduct->gameId ||
+        product.region != catalogProduct->region ||
+        product.edition != catalogProduct->edition ||
+        product.offerType != catalogProduct->offerType) {
+        throw std::invalid_argument(
+            "Provider product identity does not match the Catalog: " +
+            product.productId);
+    }
+}
+
+}  // namespace
 
 CollectionService::CollectionService(
     const GameCatalog& catalog,
@@ -31,50 +60,57 @@ CollectionResult CollectionService::collect(const Game& game) const {
             try {
                 const auto products = provider.findProducts(game.id);
                 std::set<std::string> productIds;
+                std::size_t accepted = 0;
+                std::size_t rejected = 0;
                 for (const auto& product : products) {
-                    if (product.store != provider.store()) {
-                        throw std::runtime_error(
-                            "Provider returned a product for a different Store");
-                    }
-                    if (!productIds.insert(product.productId).second) {
-                        throw std::runtime_error(
-                            "Provider returned a duplicate Store product: " +
-                            product.productId);
-                    }
-                    const auto catalogProduct = catalog_.findStoreProduct(
-                        product.store, product.productId);
-                    if (!catalogProduct || catalogProduct->gameId != game.id) {
-                        throw std::runtime_error(
-                            "Provider returned a Store product without an exact Catalog mapping: " +
-                            product.productId);
-                    }
-                    if (product.gameId != catalogProduct->gameId ||
-                        product.region != catalogProduct->region ||
-                        product.edition != catalogProduct->edition ||
-                        product.offerType != catalogProduct->offerType) {
-                        throw std::runtime_error(
-                            "Provider product identity does not match the Catalog: " +
-                            product.productId);
+                    try {
+                        if (!productIds.insert(product.productId).second) {
+                            throw std::invalid_argument(
+                                "Provider returned a duplicate Store product: " +
+                                product.productId);
+                        }
+                        validateCatalogIdentity(catalog_, game, provider, product);
+                        repository_.saveNormalizedProducts(game, {product});
+                        ++accepted;
+                    } catch (const std::invalid_argument& error) {
+                        repository_.recordCollectionRejection(
+                            runId, provider.store(), game.id,
+                            product.productId, error.what());
+                        ++rejected;
                     }
                 }
-                repository_.saveNormalizedProducts(game, products);
-                if (alertService_) alertService_->evaluateGame(game.id);
+                if (alertService_ && accepted > 0) alertService_->evaluateGame(game.id);
+                const bool allRejected = !products.empty() && accepted == 0;
+                const auto status = allRejected
+                    ? CrawlRunStatus::Failed
+                    : CrawlRunStatus::Succeeded;
+                const std::string message = allRejected
+                    ? "All normalized products were rejected"
+                    : rejected > 0
+                        ? std::to_string(rejected) + " normalized product(s) rejected"
+                        : "";
                 repository_.finishCrawlRun(
-                    runId, CrawlRunStatus::Succeeded, products.size(), "");
+                    runId, status, accepted, rejected, 0, attempt - 1, message);
                 result.runs.push_back(CollectionRunResult{
-                    provider.store(), CrawlRunStatus::Succeeded,
-                    attempt, products.size(), ""});
-                result.totalProducts += products.size();
+                    provider.store(), status, attempt, accepted, rejected, 0,
+                    attempt - 1, message});
+                result.totalProducts += accepted;
                 break;
             } catch (const std::exception& error) {
-                repository_.finishCrawlRun(runId, CrawlRunStatus::Failed, 0, error.what());
+                repository_.finishCrawlRun(
+                    runId, CrawlRunStatus::Failed, 0, 0, 1,
+                    attempt - 1, error.what());
                 result.runs.push_back(CollectionRunResult{
-                    provider.store(), CrawlRunStatus::Failed, attempt, 0, error.what()});
+                    provider.store(), CrawlRunStatus::Failed, attempt, 0, 0, 1,
+                    attempt - 1, error.what()});
             } catch (...) {
                 const std::string message = "Unknown collection error";
-                repository_.finishCrawlRun(runId, CrawlRunStatus::Failed, 0, message);
+                repository_.finishCrawlRun(
+                    runId, CrawlRunStatus::Failed, 0, 0, 1,
+                    attempt - 1, message);
                 result.runs.push_back(CollectionRunResult{
-                    provider.store(), CrawlRunStatus::Failed, attempt, 0, message});
+                    provider.store(), CrawlRunStatus::Failed, attempt, 0, 0, 1,
+                    attempt - 1, message});
             }
         }
     }

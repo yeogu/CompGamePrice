@@ -281,7 +281,10 @@ function App() {
               <span className="status-dot" />
               <strong>{run.store}</strong>
               <span>{run.status === 'SUCCEEDED' ? '성공' : run.status === 'FAILED' ? '실패' : '실행 중'}</span>
-              <small>{run.productsFound}개 상품</small>
+              <small>
+                성공 {run.productsFound} · 검증 거부 {run.productsRejected} · 실패 {run.productsFailed}
+                {run.retryCount > 0 ? ` · 재시도 ${run.retryCount}` : ''}
+              </small>
               {run.errorMessage && <p>{run.errorMessage}</p>}
             </article>
           ))}

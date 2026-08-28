@@ -245,6 +245,17 @@ void StoreProductRepository::initializeSchema() const {
             error_message TEXT NOT NULL DEFAULT ''
         );
 
+        CREATE TABLE IF NOT EXISTS collection_rejections (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            crawl_run_id INTEGER NOT NULL REFERENCES crawl_runs(id) ON DELETE CASCADE,
+            store TEXT NOT NULL,
+            game_id TEXT NOT NULL,
+            external_product_id TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            rejected_at TEXT NOT NULL DEFAULT
+                (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+        );
+
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT NOT NULL UNIQUE COLLATE NOCASE,
@@ -358,12 +369,25 @@ void StoreProductRepository::initializeSchema() const {
         if (existingVersion >= 5 && existingVersion < 8) {
             database_.execute("ALTER TABLE alert_rules ADD COLUMN platform TEXT;");
         }
+        if (existingVersion < 9) {
+            database_.execute(R"sql(
+                ALTER TABLE crawl_runs
+                    ADD COLUMN products_rejected INTEGER NOT NULL DEFAULT 0
+                    CHECK(products_rejected >= 0);
+                ALTER TABLE crawl_runs
+                    ADD COLUMN products_failed INTEGER NOT NULL DEFAULT 0
+                    CHECK(products_failed >= 0);
+                ALTER TABLE crawl_runs
+                    ADD COLUMN retry_count INTEGER NOT NULL DEFAULT 0
+                    CHECK(retry_count >= 0);
+            )sql");
+        }
         database_.execute(R"sql(
             CREATE UNIQUE INDEX IF NOT EXISTS idx_alert_rules_identity
             ON alert_rules(user_id,game_id,rule_type,
                 COALESCE(platform,''),COALESCE(target_price_minor,-1));
         )sql");
-        database_.execute("PRAGMA user_version = 8;");
+        database_.execute("PRAGMA user_version = 9;");
         database_.execute("COMMIT;");
     } catch (...) {
         try {
@@ -408,7 +432,7 @@ void StoreProductRepository::saveNormalizedProducts(
                 bindText(statement.get(), 1, toString(product.store));
                 bindText(statement.get(), 2, product.productId);
                 if (statement.next() && columnText(statement.get(), 0) != game.id) {
-                    throw std::runtime_error(
+                    throw std::invalid_argument(
                         "A Store product cannot be reassigned to a different Game");
                 }
             }
@@ -775,6 +799,9 @@ void StoreProductRepository::finishCrawlRun(
     std::int64_t runId,
     CrawlRunStatus status,
     std::size_t productsFound,
+    std::size_t productsRejected,
+    std::size_t productsFailed,
+    std::size_t retryCount,
     const std::string& errorMessage) const {
     if (status == CrawlRunStatus::Running) {
         throw std::runtime_error("A finished crawl run cannot remain RUNNING");
@@ -782,22 +809,46 @@ void StoreProductRepository::finishCrawlRun(
     Statement statement(database_.handle(), R"sql(
         UPDATE crawl_runs
         SET finished_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
-            status = ?, products_found = ?, error_message = ?
+            status = ?, products_found = ?, products_rejected = ?,
+            products_failed = ?, retry_count = ?, error_message = ?
         WHERE id = ? AND status = 'RUNNING';
     )sql");
     bindText(statement.get(), 1, toString(status));
     bindInt64(statement.get(), 2, static_cast<std::int64_t>(productsFound));
-    bindText(statement.get(), 3, errorMessage);
-    bindInt64(statement.get(), 4, runId);
+    bindInt64(statement.get(), 3, static_cast<std::int64_t>(productsRejected));
+    bindInt64(statement.get(), 4, static_cast<std::int64_t>(productsFailed));
+    bindInt64(statement.get(), 5, static_cast<std::int64_t>(retryCount));
+    bindText(statement.get(), 6, errorMessage);
+    bindInt64(statement.get(), 7, runId);
     statement.execute();
     if (sqlite3_changes(database_.handle()) != 1) {
         throw std::runtime_error("Crawl run was not found or already finished");
     }
 }
 
+void StoreProductRepository::recordCollectionRejection(
+    std::int64_t runId,
+    Store store,
+    const std::string& gameId,
+    const std::string& productId,
+    const std::string& reason) const {
+    Statement statement(database_.handle(), R"sql(
+        INSERT INTO collection_rejections(
+            crawl_run_id, store, game_id, external_product_id, reason)
+        VALUES(?, ?, ?, ?, ?);
+    )sql");
+    bindInt64(statement.get(), 1, runId);
+    bindText(statement.get(), 2, toString(store));
+    bindText(statement.get(), 3, gameId);
+    bindText(statement.get(), 4, productId);
+    bindText(statement.get(), 5, reason);
+    statement.execute();
+}
+
 std::vector<CrawlRunRecord> StoreProductRepository::findCrawlRuns() const {
     Statement statement(database_.handle(), R"sql(
-        SELECT id, store, status, products_found, started_at,
+        SELECT id, store, status, products_found, products_rejected,
+               products_failed, retry_count, started_at,
                COALESCE(finished_at, ''), error_message
         FROM crawl_runs
         ORDER BY id;
@@ -810,11 +861,38 @@ std::vector<CrawlRunRecord> StoreProductRepository::findCrawlRuns() const {
             parseStore(columnText(statement.get(), 1)),
             parseCrawlRunStatus(columnText(statement.get(), 2)),
             static_cast<std::size_t>(sqlite3_column_int64(statement.get(), 3)),
+            static_cast<std::size_t>(sqlite3_column_int64(statement.get(), 4)),
+            static_cast<std::size_t>(sqlite3_column_int64(statement.get(), 5)),
+            static_cast<std::size_t>(sqlite3_column_int64(statement.get(), 6)),
+            columnText(statement.get(), 7),
+            columnText(statement.get(), 8),
+            columnText(statement.get(), 9)});
+    }
+    return runs;
+}
+
+std::vector<CollectionRejection>
+StoreProductRepository::findCollectionRejections(std::int64_t runId) const {
+    Statement statement(database_.handle(), R"sql(
+        SELECT id, crawl_run_id, store, game_id, external_product_id,
+               reason, rejected_at
+        FROM collection_rejections
+        WHERE crawl_run_id = ?
+        ORDER BY id;
+    )sql");
+    bindInt64(statement.get(), 1, runId);
+    std::vector<CollectionRejection> rejections;
+    while (statement.next()) {
+        rejections.push_back(CollectionRejection{
+            sqlite3_column_int64(statement.get(), 0),
+            sqlite3_column_int64(statement.get(), 1),
+            parseStore(columnText(statement.get(), 2)),
+            columnText(statement.get(), 3),
             columnText(statement.get(), 4),
             columnText(statement.get(), 5),
             columnText(statement.get(), 6)});
     }
-    return runs;
+    return rejections;
 }
 
 }  // namespace game_price
