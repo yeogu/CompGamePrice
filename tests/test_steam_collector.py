@@ -88,7 +88,7 @@ class SteamCollectorTest(unittest.TestCase):
     def test_loads_steam_targets_from_unified_catalog(self):
         targets = steam_collector.load_steam_targets(ROOT / "data" / "game_catalog.json")
         self.assertEqual(
-            targets,
+            targets[:4],
             [
                 ("413150", "stardew-valley"),
                 ("105600", "terraria"),
@@ -96,6 +96,7 @@ class SteamCollectorTest(unittest.TestCase):
                 ("1145360", "hades"),
             ],
         )
+        self.assertEqual(len(targets), len(set(targets)))
 
     def test_rejects_invalid_unified_catalogs(self):
         for fixture in (

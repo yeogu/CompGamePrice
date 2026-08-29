@@ -104,6 +104,10 @@ def run_pipeline(
                     str(output_directory),
                 ],
                 check=False,
+                env={
+                    **os.environ,
+                    "GAME_PRICE_CATALOG_PATH": str(catalog_path),
+                },
             )
             import_exit_code = completed.returncode
 

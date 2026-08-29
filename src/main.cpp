@@ -29,6 +29,11 @@ namespace {
 
 using namespace game_price;
 
+std::string catalogPath() {
+    const char* value = std::getenv("GAME_PRICE_CATALOG_PATH");
+    return value ? value : std::string(SAMPLE_DATA_DIR) + "/game_catalog.json";
+}
+
 CollectionResult collectStoreProducts(
     const GameCatalog& catalog,
     const Game& game,
@@ -337,7 +342,7 @@ int main(int argc, char* argv[]) {
         repository.initializeSchema();
 
         const std::string defaultDataDirectory = SAMPLE_DATA_DIR;
-        GameCatalog catalog(defaultDataDirectory + "/game_catalog.json");
+        GameCatalog catalog(catalogPath());
         GameQueryService queryService(catalog, repository);
 
         if (options.command == AppCommand::CollectionRuns) {

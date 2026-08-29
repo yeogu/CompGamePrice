@@ -41,8 +41,9 @@ class SteamPipelineTest(unittest.TestCase):
         def fixture_fetch(app_id, _country, _language, _timeout):
             return fixture, 200, f"fixture://steam/{app_id}"
 
-        def fake_runner(command, check):
+        def fake_runner(command, check, env):
             self.assertFalse(check)
+            self.assertEqual(env["GAME_PRICE_CATALOG_PATH"], str(TEST_CATALOG))
             commands.append(command)
             return Completed(0)
 
@@ -151,7 +152,7 @@ class SteamPipelineTest(unittest.TestCase):
                 database_path=root / "missing.db",
                 database_backup_directory=root / "backups",
                 fetcher=fixture_fetch,
-                command_runner=lambda _command, check: Completed(0),
+                command_runner=lambda _command, check, env: Completed(0),
             )
             self.assertEqual(exit_code, 1)
             report = json.loads((output / "steam_pipeline_run.json").read_text())
