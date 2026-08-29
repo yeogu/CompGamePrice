@@ -96,3 +96,4 @@ export interface AlertRule { id: number; gameId: string; gameTitle?: string; typ
 export interface Notification { id: number; gameId: string; store: string; productId: string; price: Money; message: string; createdAt: string; read: boolean }
 export type OAuthProvider = 'google' | 'kakao' | 'naver'
 export interface ExternalIdentity { id: number; provider: 'Google' | 'Kakao' | 'Naver'; email?: string }
+export interface UserPreferences { emailNotificationsEnabled: boolean; region: 'KR'; currency: 'KRW' }

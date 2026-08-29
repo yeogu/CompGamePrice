@@ -98,6 +98,11 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 
 .results { padding-top: 12px; }
 .result-heading { display: flex; align-items: end; justify-content: space-between; gap: 30px; margin-bottom: 28px; }
+.favorite-button { padding: 10px 13px; color: #b7f4d2; background: #13271d; border: 1px solid #315141; border-radius: 10px; font-weight: 800; white-space: nowrap; }
+.game-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: -8px 0 24px; }
+.game-summary div { display: grid; gap: 5px; padding: 14px; background: #0b1812; border: 1px solid #213a2d; border-radius: 11px; }
+.game-summary span { color: #82968b; font-size: .76rem; }
+.game-summary strong { color: #eef8f2; }
 h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04em; }
 .game-platforms { margin: 8px 0 0; color: #91a79b; }
 .best-summary { display: grid; justify-items: end; }
@@ -216,6 +221,11 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .view-description, .empty-state { color: #91a79b; }
 .profile-card { display: flex; align-items: center; gap: 16px; margin-top: 28px; padding: 20px; background: #0b1812; border-radius: 14px; }
 .profile-card p { margin: 5px 0 0; color: #82968b; }
+.preference-card { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 16px; margin-top: 18px; padding: 20px; background: #0b1812; border-radius: 14px; }
+.preference-card h3, .preference-card p { margin: 0; }
+.preference-card p { margin-top: 5px; color: #82968b; font-size: .86rem; }
+.toggle { display: flex; align-items: center; gap: 8px; color: #b7f4d2; font-weight: 800; }
+.preference-meta { grid-column: 1 / -1; display: flex; gap: 18px; padding-top: 12px; border-top: 1px solid #213a2d; color: #82968b; }
 .modal-backdrop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px; background: rgba(2, 8, 5, .78); backdrop-filter: blur(8px); }
 .auth-modal { position: relative; width: min(440px, 100%); padding: 34px; background: #101f18; border: 1px solid #365244; border-radius: 22px; box-shadow: 0 30px 80px rgba(0, 0, 0, .5); }
 .auth-modal > p:not(.eyebrow) { color: #91a79b; }
@@ -237,5 +247,7 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
   .app-main { width: calc(100% - 24px); }
   .hero { padding-top: 28px; }
   .inline-alert-card { grid-template-columns: 1fr; }
+  .game-summary { grid-template-columns: repeat(2, 1fr); }
+  .preference-card { grid-template-columns: 1fr; }
   .view-panel { padding: 24px 18px; }
 }

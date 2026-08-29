@@ -1,7 +1,7 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react'
-import { addAlertRule, deleteAlertRule, getAlertRules, getCollectionRuns, getExternalIdentities, getGamePriceHistory, getGamePrices, getGames, getMe, getNotifications, getOAuthUrl, login, logout, markNotificationRead, register, unlinkExternalIdentity } from './api'
+import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, getAlertRules, getCollectionRuns, getExternalIdentities, getFavorites, getGamePriceHistory, getGamePrices, getGames, getMe, getNotifications, getOAuthUrl, getPreferences, login, logout, markNotificationRead, register, unlinkExternalIdentity, updatePreferences } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
-import type { AlertRule, AlertRuleType, CollectionRun, ExternalIdentity, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Money, Notification, OAuthProvider, User } from './types'
+import type { AlertRule, AlertRuleType, CollectionRun, ExternalIdentity, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Money, Notification, OAuthProvider, User, UserPreferences } from './types'
 
 const formatMoney = (money: Money) =>
   new Intl.NumberFormat('ko-KR', {
@@ -25,7 +25,7 @@ const recommendationReason: Record<string, string> = {
   'Current price is not close enough to the historical low.': '현재 가격이 역대 최저가와 충분히 가깝지 않습니다.',
 }
 
-type AppView = 'games' | 'alerts' | 'notifications' | 'account' | 'collection'
+type AppView = 'games' | 'favorites' | 'alerts' | 'notifications' | 'account' | 'collection'
 
 function App() {
   const [query, setQuery] = useState('')
@@ -48,6 +48,8 @@ function App() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [targetPrice, setTargetPrice] = useState('')
   const [identities, setIdentities] = useState<ExternalIdentity[]>([])
+  const [favorites, setFavorites] = useState<GameSummary[]>([])
+  const [preferences, setPreferences] = useState<UserPreferences>({ emailNotificationsEnabled: true, region: 'KR', currency: 'KRW' })
   const [actionMessage, setActionMessage] = useState('')
   const [activeView, setActiveView] = useState<AppView>('games')
   const [authOpen, setAuthOpen] = useState(false)
@@ -60,10 +62,10 @@ function App() {
   const suggestionSequence = useRef(0)
 
   const refreshAccount = async (activeToken: string) => {
-    const [me, nextRules, nextNotifications, nextIdentities] = await Promise.all([
-      getMe(activeToken), getAlertRules(activeToken), getNotifications(activeToken), getExternalIdentities(activeToken),
+    const [me, nextRules, nextNotifications, nextIdentities, nextFavorites, nextPreferences] = await Promise.all([
+      getMe(activeToken), getAlertRules(activeToken), getNotifications(activeToken), getExternalIdentities(activeToken), getFavorites(activeToken), getPreferences(activeToken),
     ])
-    setUser({ ...me, email: nextIdentities[0]?.email ?? me.email }); setRules(nextRules); setNotifications(nextNotifications); setIdentities(nextIdentities)
+    setUser({ ...me, email: nextIdentities[0]?.email ?? me.email }); setRules(nextRules); setNotifications(nextNotifications); setIdentities(nextIdentities); setFavorites(nextFavorites); setPreferences(nextPreferences)
   }
 
   const submitAuth = async (event: FormEvent) => {
@@ -135,6 +137,7 @@ function App() {
     setRules([])
     setNotifications([])
     setIdentities([])
+    setFavorites([])
     navigate('games')
   }
 
@@ -152,6 +155,31 @@ function App() {
   const runAccountAction = async (action: () => Promise<void>, fallback: string) => {
     setError(''); setActionMessage('')
     try { await action() } catch (reason) { setError(reason instanceof Error ? reason.message : fallback) }
+  }
+
+  const toggleFavorite = async () => {
+    if (!token || !report) {
+      setAuthOpen(true)
+      return
+    }
+    const saved = favorites.some((game) => game.id === report.game.id)
+    await runAccountAction(async () => {
+      if (saved) {
+        await deleteFavorite(token, report.game.id)
+      } else {
+        await addFavorite(token, report.game.id)
+      }
+      setFavorites(await getFavorites(token))
+      setActionMessage(saved ? '관심 게임에서 제거했습니다.' : '관심 게임에 추가했습니다.')
+    }, '관심 게임을 변경하지 못했습니다.')
+  }
+
+  const savePreferences = async (enabled: boolean) => {
+    await runAccountAction(async () => {
+      const updated = await updatePreferences(token, { ...preferences, emailNotificationsEnabled: enabled })
+      setPreferences(updated)
+      setActionMessage('알림 설정을 저장했습니다.')
+    }, '알림 설정을 저장하지 못했습니다.')
   }
 
   const startSocialLogin = async (provider: OAuthProvider, link = false) => {
@@ -328,6 +356,7 @@ function App() {
         </button>
         <nav aria-label="주 메뉴">
           <button className={activeView === 'games' ? 'active' : ''} onClick={openGameFinder}>게임 찾기</button>
+          <button className={activeView === 'favorites' ? 'active' : ''} onClick={() => user ? navigate('favorites') : setAuthOpen(true)}>관심 게임</button>
           <button className={activeView === 'alerts' ? 'active' : ''} onClick={() => user ? navigate('alerts') : setAuthOpen(true)}>가격 알림</button>
           <button className={activeView === 'notifications' ? 'active' : ''} onClick={() => user ? navigate('notifications') : setAuthOpen(true)}>
             알림함 {notifications.filter((item) => !item.read).length > 0 && <span className="nav-count">{notifications.filter((item) => !item.read).length}</span>}
@@ -394,10 +423,10 @@ function App() {
         </form>
       </header>
 
-      {showGameResults && user && selectedGameId && <section className="inline-alert-card">
-        <div><strong>{report?.game.title ?? selectedGameId} 가격 알림</strong><span>{selectedPlatform || '모든 플랫폼'}</span></div>
+      {showGameResults && selectedGameId && <section className="inline-alert-card">
+        <div><strong>{report?.game.title ?? selectedGameId} 가격 알림</strong><span>{selectedPlatform || '모든 플랫폼'}{report?.cheapest ? ` · 현재 ${formatMoney(report.cheapest.price)}` : ''}</span></div>
         <input type="number" min="0" value={targetPrice} onChange={(event) => setTargetPrice(event.target.value)} placeholder="목표 가격(KRW)" />
-        <button onClick={() => void createRule('BelowTargetPrice')}>목표가 알림</button>
+        {user ? <button onClick={() => void createRule('BelowTargetPrice')}>목표가 알림</button> : <button onClick={() => setAuthOpen(true)}>로그인하고 알림 받기</button>}
       </section>}
 
       {showGameResults && games.length > 0 && (
@@ -441,6 +470,16 @@ function App() {
                 <small>{report.cheapest.store}</small>
               </div>
             )}
+            <button className="favorite-button" onClick={() => void toggleFavorite()}>
+              {favorites.some((game) => game.id === report.game.id) ? '★ 관심 게임' : '☆ 관심 게임 추가'}
+            </button>
+          </div>
+
+          <div className="game-summary" aria-label="게임 가격 요약">
+            <div><span>비교 Store</span><strong>{report.products.length}곳</strong></div>
+            <div><span>역대 최저</span><strong>{report.products.some((product) => product.history) ? formatMoney(report.products.filter((product) => product.history).reduce((lowest, product) => product.history!.lowestPrice.minorAmount < lowest.minorAmount ? product.history!.lowestPrice : lowest, report.products.find((product) => product.history)!.history!.lowestPrice)) : '데이터 없음'}</strong></div>
+            <div><span>최대 할인</span><strong>{Math.max(0, ...report.products.map((product) => product.discountPercent))}%</strong></div>
+            <div><span>최신 가격</span><strong>{report.products.filter((product) => !product.stale).length}/{report.products.length}</strong></div>
           </div>
 
           <div className="platform-filter" aria-label="플랫폼 필터">
@@ -542,6 +581,14 @@ function App() {
       )}
       </>}
 
+      {activeView === 'favorites' && user && <section className="view-panel">
+        <p className="eyebrow">WATCHLIST</p>
+        <h1 className="view-title">관심 게임</h1>
+        <p className="view-description">자주 확인하는 게임을 모아두고 가격 상세로 바로 이동하세요.</p>
+        {favorites.length === 0 && <p className="empty-state">아직 관심 게임이 없습니다.</p>}
+        <div className="game-list">{favorites.map((game) => <button key={game.id} onClick={() => { navigate('games'); setShowGameResults(true); setGames([game]); setQuery(game.title); void selectGame(game) }}><strong>{game.title}</strong><small>{game.platforms.join(' · ')}</small></button>)}</div>
+      </section>}
+
       {activeView === 'alerts' && user && <section className="view-panel">
         <p className="eyebrow">PRICE ALERTS</p>
         <h1 className="view-title">내 가격 알림</h1>
@@ -566,6 +613,11 @@ function App() {
         <p className="eyebrow">ACCOUNT</p>
         <h1 className="view-title">계정 설정</h1>
         <div className="profile-card"><span className="avatar large">{user.email.slice(0, 1).toUpperCase()}</span><div><strong>{user.email}</strong><p>가격 알림 {rules.length}개 · 읽지 않은 알림 {notifications.filter((item) => !item.read).length}개</p></div></div>
+        <div className="preference-card">
+          <div><h3>이메일 가격 알림</h3><p>목표 가격 도달 알림을 이메일 발송 대기열에 추가합니다.</p></div>
+          <label className="toggle"><input type="checkbox" checked={preferences.emailNotificationsEnabled} onChange={(event) => void savePreferences(event.target.checked)} /><span>{preferences.emailNotificationsEnabled ? '사용' : '사용 안 함'}</span></label>
+          <div className="preference-meta"><span>지역 <strong>{preferences.region}</strong></span><span>통화 <strong>{preferences.currency}</strong></span></div>
+        </div>
         <div className="social-connections"><h3>연결된 로그인</h3>
           {(['google', 'kakao', 'naver'] as OAuthProvider[]).map((provider) => {
             const label: ExternalIdentity['provider'] = provider === 'google' ? 'Google' : provider === 'kakao' ? 'Kakao' : 'Naver'

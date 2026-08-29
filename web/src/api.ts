@@ -1,4 +1,4 @@
-import type { AlertRule, AlertRuleType, AuthResult, CollectionRun, ExternalIdentity, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Notification, OAuthProvider, User } from './types'
+import type { AlertRule, AlertRuleType, AuthResult, CollectionRun, ExternalIdentity, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Notification, OAuthProvider, User, UserPreferences } from './types'
 
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8080'
 
@@ -67,3 +67,8 @@ export const markNotificationRead = (token: string, id: number) => requestJson<o
 export const getOAuthUrl = async (provider: OAuthProvider, token = '', link = false) => (await requestJson<{ authorizationUrl: string }>(`/api/oauth/${provider}/start${link ? '?link=true' : ''}`, {}, token)).authorizationUrl
 export const getExternalIdentities = async (token: string) => (await requestJson<{ identities: ExternalIdentity[] }>('/api/external-identities', {}, token)).identities
 export const unlinkExternalIdentity = (token: string, id: number) => requestJson<object>(`/api/external-identities/${id}`, { method: 'DELETE' }, token)
+export const getFavorites = async (token: string) => (await requestJson<{ games: GameSummary[] }>('/api/favorites', {}, token)).games
+export const addFavorite = (token: string, gameId: string) => requestJson<{ gameId: string }>('/api/favorites', { method: 'POST', body: JSON.stringify({ gameId }) }, token)
+export const deleteFavorite = (token: string, gameId: string) => requestJson<object>(`/api/favorites/${encodeURIComponent(gameId)}`, { method: 'DELETE' }, token)
+export const getPreferences = (token: string) => requestJson<UserPreferences>('/api/account/preferences', {}, token)
+export const updatePreferences = (token: string, preferences: UserPreferences) => requestJson<UserPreferences>('/api/account/preferences', { method: 'PATCH', body: JSON.stringify(preferences) }, token)
