@@ -53,6 +53,11 @@ const authenticationErrorMessage = (reason: unknown, mode: 'login' | 'register')
     : '회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.'
 }
 
+const canonicalIdFromTitle = (title: string) => title
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-|-$/g, '')
+
 type AppView = 'games' | 'favorites' | 'alerts' | 'notifications' | 'account' | 'collection' | 'admin'
 
 function App() {
@@ -87,6 +92,7 @@ function App() {
   const [adminQuery, setAdminQuery] = useState('')
   const [adminCandidates, setAdminCandidates] = useState<StoreProductCandidate[]>([])
   const [adminSearching, setAdminSearching] = useState(false)
+  const [pendingCandidate, setPendingCandidate] = useState<StoreProductCandidate | null>(null)
   const [actionMessage, setActionMessage] = useState('')
   const [activeView, setActiveView] = useState<AppView>('games')
   const [authOpen, setAuthOpen] = useState(false)
@@ -283,6 +289,7 @@ function App() {
     setAdminSearching(true)
     setError('')
     setAdminResult(null)
+    setPendingCandidate(null)
     try {
       setAdminCandidates(await searchStoreCandidates(adminStore, adminQuery.trim()))
     } catch (reason) {
@@ -293,9 +300,17 @@ function App() {
   }
 
   const chooseCatalogCandidate = (candidate: StoreProductCandidate) => {
+    const suggestedGameId = canonicalIdFromTitle(candidate.title)
     setAdminAppId(candidate.externalProductId)
+    setAdminGameId(suggestedGameId)
+    setPendingCandidate(candidate)
     setAdminCandidates([])
-    void runCatalogImport(false, candidate.externalProductId, '')
+    setAdminResult(null)
+    if (!suggestedGameId) {
+      setError('한글 제목은 영문 canonical Game ID를 입력한 뒤 Preview해주세요.')
+      return
+    }
+    void runCatalogImport(false, candidate.externalProductId, suggestedGameId)
   }
 
   const startSocialLogin = async (provider: OAuthProvider, link = false) => {
@@ -791,6 +806,11 @@ function App() {
           <button disabled={!adminQuery.trim() || adminSearching} onClick={() => void searchCatalogCandidates()}>{adminSearching ? '검색 중…' : 'Store 검색'}</button>
         </div>
         {adminCandidates.length > 0 && <div className="candidate-list">{adminCandidates.map((candidate) => <button key={`${candidate.store}:${candidate.externalProductId}`} onClick={() => chooseCatalogCandidate(candidate)}><strong>{candidate.title}</strong><span>{candidate.store} · {candidate.platforms.join(' · ') || '플랫폼 확인 필요'}</span><small>상품 ID {candidate.externalProductId}</small></button>)}</div>}
+        {pendingCandidate && !adminResult && <div className="candidate-confirmation">
+          <div><strong>{pendingCandidate.title}</strong><span>상품 ID {pendingCandidate.externalProductId}</span></div>
+          <label>Canonical Game ID<input value={adminGameId} onChange={(event) => setAdminGameId(event.target.value)} placeholder="예: dave-the-diver" /></label>
+          <button disabled={!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(adminGameId.trim())} onClick={() => void runCatalogImport(false)}>Preview</button>
+        </div>}
         <details className="advanced-admin"><summary>고급 입력: 상품 ID 직접 사용</summary>
         <div className="admin-form">
           <label>Steam App ID<input value={adminAppId} onChange={(event) => setAdminAppId(event.target.value)} placeholder="예: 1245620" inputMode="numeric" /></label>

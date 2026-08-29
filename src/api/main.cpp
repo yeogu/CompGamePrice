@@ -182,6 +182,19 @@ std::mutex& catalogToolMutex() {
     return mutex;
 }
 
+std::string catalogImportError(const std::string& output) {
+    const auto marker = output.rfind("error: ");
+    if (marker == std::string::npos) {
+        return output.empty() ? "catalog import failed" : output;
+    }
+    auto message = output.substr(marker + 7);
+    while (!message.empty() &&
+           (message.back() == '\n' || message.back() == '\r')) {
+        message.pop_back();
+    }
+    return message;
+}
+
 Json::Value runCatalogImport(
     const std::string& appId,
     const std::string& gameId,
@@ -212,7 +225,12 @@ Json::Value runCatalogImport(
     std::error_code ignored;
     std::filesystem::remove(temporary, ignored);
     if (exitCode != 0) {
-        throw std::invalid_argument(output.empty() ? "catalog import failed" : output);
+        const auto message = catalogImportError(output);
+        if (message == "Steam title cannot produce a canonical game id") {
+            throw std::invalid_argument(
+                "canonical game ID is required for this title");
+        }
+        throw std::invalid_argument(message);
     }
     const auto jsonEnd = output.rfind("}\n");
     if (jsonEnd == std::string::npos) {
