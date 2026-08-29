@@ -4,37 +4,175 @@
     {
       "id": "stardew-valley",
       "title": "Stardew Valley",
-      "platforms": ["Windows", "macOS", "Linux", "Android", "iOS", "iPadOS"],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux",
+        "Android",
+        "iOS",
+        "iPadOS"
+      ],
       "products": [
-        { "store": "Steam", "productId": "413150", "productUrl": "https://store.steampowered.com/app/413150", "platforms": ["Windows", "macOS", "Linux"], "region": "KR", "edition": "Standard", "offerType": "BaseGame" },
-        { "store": "GooglePlay", "productId": "com.chucklefish.stardewvalley", "productUrl": "https://play.google.com/store/apps/details?id=com.chucklefish.stardewvalley", "platforms": ["Android"], "region": "KR", "edition": "Standard", "offerType": "BaseGame" },
-        { "store": "AppleAppStore", "productId": "1406710800", "productUrl": "https://apps.apple.com/app/id1406710800", "platforms": ["iOS", "iPadOS"], "region": "KR", "edition": "Standard", "offerType": "BaseGame" }
+        {
+          "store": "Steam",
+          "productId": "413150",
+          "productUrl": "https://store.steampowered.com/app/413150",
+          "platforms": [
+            "Windows",
+            "macOS",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "GooglePlay",
+          "productId": "com.chucklefish.stardewvalley",
+          "productUrl": "https://play.google.com/store/apps/details?id=com.chucklefish.stardewvalley",
+          "platforms": [
+            "Android"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "AppleAppStore",
+          "productId": "1406710800",
+          "productUrl": "https://apps.apple.com/app/id1406710800",
+          "platforms": [
+            "iOS",
+            "iPadOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
       ]
     },
     {
       "id": "terraria",
       "title": "Terraria",
-      "platforms": ["Windows", "macOS", "Linux", "Android", "iOS", "iPadOS"],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux",
+        "Android",
+        "iOS",
+        "iPadOS"
+      ],
       "products": [
-        { "store": "Steam", "productId": "105600", "productUrl": "https://store.steampowered.com/app/105600", "platforms": ["Windows", "macOS", "Linux"], "region": "KR", "edition": "Standard", "offerType": "BaseGame" }
+        {
+          "store": "Steam",
+          "productId": "105600",
+          "productUrl": "https://store.steampowered.com/app/105600",
+          "platforms": [
+            "Windows",
+            "macOS",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
       ]
     },
     {
       "id": "hollow-knight",
       "title": "Hollow Knight",
-      "platforms": ["Windows", "macOS", "Linux"],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
       "products": [
-        { "store": "Steam", "productId": "367520", "productUrl": "https://store.steampowered.com/app/367520", "platforms": ["Windows", "macOS", "Linux"], "region": "KR", "edition": "Standard", "offerType": "BaseGame" }
+        {
+          "store": "Steam",
+          "productId": "367520",
+          "productUrl": "https://store.steampowered.com/app/367520",
+          "platforms": [
+            "Windows",
+            "macOS",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
       ]
     },
     {
       "id": "hades",
       "title": "Hades",
-      "platforms": ["Windows", "macOS", "NintendoSwitch", "NintendoSwitch2"],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "NintendoSwitch",
+        "NintendoSwitch2"
+      ],
       "products": [
-        { "store": "Steam", "productId": "1145360", "productUrl": "https://store.steampowered.com/app/1145360", "platforms": ["Windows", "macOS"], "region": "KR", "edition": "Standard", "offerType": "BaseGame" },
-        { "store": "EpicGamesStore", "productId": "hades", "productUrl": "https://store.epicgames.com/p/hades", "platforms": ["Windows", "macOS"], "region": "KR", "edition": "Standard", "offerType": "BaseGame" },
-        { "store": "NintendoEShop", "productId": "70010000033131", "productUrl": "https://www.nintendo.com/us/store/products/hades-switch/", "platforms": ["NintendoSwitch"], "region": "KR", "edition": "Standard", "offerType": "BaseGame", "compatibility": [{ "platform": "NintendoSwitch2", "status": "Compatible" }] }
+        {
+          "store": "Steam",
+          "productId": "1145360",
+          "productUrl": "https://store.steampowered.com/app/1145360",
+          "platforms": [
+            "Windows",
+            "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "EpicGamesStore",
+          "productId": "hades",
+          "productUrl": "https://store.epicgames.com/p/hades",
+          "platforms": [
+            "Windows",
+            "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000033131",
+          "productUrl": "https://www.nintendo.com/us/store/products/hades-switch/",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame",
+          "compatibility": [
+            {
+              "platform": "NintendoSwitch2",
+              "status": "Compatible"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "elden-ring",
+      "title": "ELDEN RING",
+      "platforms": [
+        "Windows"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1245620",
+          "productUrl": "https://store.steampowered.com/app/1245620",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
       ]
     }
   ]
