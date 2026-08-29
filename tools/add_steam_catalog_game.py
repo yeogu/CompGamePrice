@@ -88,24 +88,32 @@ def updated_catalog(catalog: dict, game: dict) -> dict:
     return {**catalog, "games": [*catalog["games"], game]}
 
 
+def load_catalog(catalog_path: Path) -> dict:
+    return json.loads(catalog_path.read_text(encoding="utf-8"))
+
+
+def write_catalog(catalog_path: Path, catalog: dict) -> None:
+    backup = catalog_path.with_suffix(catalog_path.suffix + ".bak")
+    shutil.copy2(catalog_path, backup)
+    steam.atomic_write(
+        catalog_path,
+        (json.dumps(catalog, ensure_ascii=False, indent=2) + "\n").encode("utf-8"),
+    )
+    try:
+        steam.load_steam_targets(catalog_path)
+    except Exception:
+        shutil.copy2(backup, catalog_path)
+        raise
+
+
 def import_game(catalog_path: Path, raw: bytes, app_id: str, apply: bool) -> dict:
     if not app_id.isdigit():
         raise CatalogImportError("Steam app id must be numeric")
-    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    catalog = load_catalog(catalog_path)
     game = catalog_game(raw, app_id)
     updated = updated_catalog(catalog, game)
     if apply:
-        backup = catalog_path.with_suffix(catalog_path.suffix + ".bak")
-        shutil.copy2(catalog_path, backup)
-        steam.atomic_write(
-            catalog_path,
-            (json.dumps(updated, ensure_ascii=False, indent=2) + "\n").encode("utf-8"),
-        )
-        try:
-            steam.load_steam_targets(catalog_path)
-        except Exception:
-            shutil.copy2(backup, catalog_path)
-            raise
+        write_catalog(catalog_path, updated)
     return game
 
 

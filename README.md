@@ -281,6 +281,25 @@ python3 tools/run_steam_pipeline.py
 거부합니다. 기존 canonical game ID, 제목 또는 Steam App ID와 중복되어도
 카탈로그를 변경하지 않습니다.
 
+여러 게임은 App ID를 한 줄에 하나씩 적은 파일로 일괄 검토합니다. `#` 뒤에는
+메모를 적을 수 있습니다. 예시는 `data/steam_app_ids.example.txt`에 있습니다.
+
+```sh
+python3 tools/batch_add_steam_catalog_games.py \
+  --input data/steam_app_ids.example.txt
+```
+
+모든 항목의 preview가 올바르고 거부 항목이 없을 때만 적용합니다. 하나라도
+DLC, 중복 또는 잘못된 상품이면 전체 적용을 중단하므로 카탈로그가 부분적으로
+변경되지 않습니다.
+
+```sh
+python3 tools/batch_add_steam_catalog_games.py \
+  --input data/steam_app_ids.example.txt \
+  --apply
+python3 tools/run_steam_pipeline.py
+```
+
 기본 대상은 Stardew Valley Steam app `413150`, 국가 코드는 `kr`입니다. 수집기는
 Python 표준 라이브러리만 사용하며 다음 파일을 원자적으로 교체합니다.
 
