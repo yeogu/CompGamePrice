@@ -99,3 +99,4 @@ export interface ExternalIdentity { id: number; provider: 'Google' | 'Kakao' | '
 export interface UserPreferences { emailNotificationsEnabled: boolean; region: 'KR'; currency: 'KRW' }
 export interface CatalogAdminResult { game: GameSummary & { products: Array<{ store: string; productId: string; productUrl: string }> }; applied: boolean; requiresApiRestart: boolean }
 export interface CatalogCollectionJob { id: number; status: 'IDLE' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'; error?: string }
+export interface StoreProductCandidate { store: string; externalProductId: string; title: string; productUrl: string; platforms: string[] }

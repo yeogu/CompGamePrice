@@ -177,10 +177,16 @@ std::string shellQuoted(const std::string& value) {
     return result;
 }
 
+std::mutex& catalogToolMutex() {
+    static std::mutex mutex;
+    return mutex;
+}
+
 Json::Value runCatalogImport(
     const std::string& appId,
     const std::string& gameId,
     bool apply) {
+    std::lock_guard<std::mutex> toolLock(catalogToolMutex());
     const auto temporary = std::filesystem::temp_directory_path() /
         ("compgameprice-catalog-" + appId + ".json");
     const auto script = std::filesystem::path(PROJECT_SOURCE_DIR) /
@@ -218,6 +224,32 @@ Json::Value runCatalogImport(
     std::istringstream jsonInput(output.substr(0, jsonEnd + 1));
     if (!Json::parseFromStream(builder, jsonInput, &result, &errors)) {
         throw std::runtime_error("catalog importer returned invalid JSON");
+    }
+    return result;
+}
+
+Json::Value runStoreSearch(const std::string& store, const std::string& query) {
+    std::lock_guard<std::mutex> toolLock(catalogToolMutex());
+    if (store != "Steam") {
+        throw std::invalid_argument("store is not supported yet");
+    }
+    const auto temporary = std::filesystem::temp_directory_path() /
+        "compgameprice-store-search.json";
+    const auto script = std::filesystem::path(PROJECT_SOURCE_DIR) /
+        "tools/search_steam_catalog.py";
+    const auto command = "python3 " + shellQuoted(script.string()) +
+        " --query " + shellQuoted(query) +
+        " > " + shellQuoted(temporary.string()) + " 2>&1";
+    const auto exitCode = std::system(command.c_str());
+    std::ifstream input(temporary);
+    Json::Value result;
+    Json::CharReaderBuilder builder;
+    std::string errors;
+    const auto parsed = Json::parseFromStream(builder, input, &result, &errors);
+    std::error_code ignored;
+    std::filesystem::remove(temporary, ignored);
+    if (exitCode != 0 || !parsed) {
+        throw std::runtime_error("Store search failed");
     }
     return result;
 }
@@ -824,6 +856,35 @@ int main() {
                 }
             },
             {drogon::Post});
+        drogon::app().registerHandler(
+            "/api/admin/catalog/candidates",
+            [](const drogon::HttpRequestPtr& request,
+               std::function<void(const HttpResponsePtr&)>&& callback) {
+                if (!catalogAdminEnabled() || !isLoopbackRequest(request)) {
+                    callback(jsonError(
+                        drogon::k403Forbidden,
+                        "catalog admin is disabled"));
+                    return;
+                }
+                const auto store = request->getParameter("store");
+                const auto query = request->getParameter("query");
+                if (query.empty() || query.size() > 100) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "query must contain between 1 and 100 characters"));
+                    return;
+                }
+                try {
+                    callback(jsonResponse(runStoreSearch(store, query)));
+                } catch (const std::invalid_argument& error) {
+                    callback(jsonError(drogon::k400BadRequest, error.what()));
+                } catch (const std::exception& error) {
+                    callback(jsonError(
+                        drogon::k502BadGateway,
+                        error.what()));
+                }
+            },
+            {drogon::Get});
         drogon::app().registerHandler(
             "/api/admin/catalog/collection",
             [&catalogCollectionJob](

@@ -1,7 +1,7 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react'
-import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, getAlertRules, getCatalogAdminStatus, getCatalogCollectionJob, getCollectionRuns, getExternalIdentities, getFavorites, getGamePriceHistory, getGamePrices, getGames, getMe, getNotifications, getOAuthUrl, getPreferences, importSteamCatalogGame, login, logout, markNotificationRead, register, startCatalogCollection, unlinkExternalIdentity, updatePreferences } from './api'
+import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, getAlertRules, getCatalogAdminStatus, getCatalogCollectionJob, getCollectionRuns, getExternalIdentities, getFavorites, getGamePriceHistory, getGamePrices, getGames, getMe, getNotifications, getOAuthUrl, getPreferences, importSteamCatalogGame, login, logout, markNotificationRead, register, searchStoreCandidates, startCatalogCollection, unlinkExternalIdentity, updatePreferences } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
-import type { AlertRule, AlertRuleType, CatalogAdminResult, CatalogCollectionJob, CollectionRun, ExternalIdentity, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Money, Notification, OAuthProvider, User, UserPreferences } from './types'
+import type { AlertRule, AlertRuleType, CatalogAdminResult, CatalogCollectionJob, CollectionRun, ExternalIdentity, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Money, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
 
 const formatMoney = (money: Money) =>
   new Intl.NumberFormat('ko-KR', {
@@ -83,6 +83,10 @@ function App() {
   const [adminGameId, setAdminGameId] = useState('')
   const [adminResult, setAdminResult] = useState<CatalogAdminResult | null>(null)
   const [catalogJob, setCatalogJob] = useState<CatalogCollectionJob | null>(null)
+  const [adminStore, setAdminStore] = useState('Steam')
+  const [adminQuery, setAdminQuery] = useState('')
+  const [adminCandidates, setAdminCandidates] = useState<StoreProductCandidate[]>([])
+  const [adminSearching, setAdminSearching] = useState(false)
   const [actionMessage, setActionMessage] = useState('')
   const [activeView, setActiveView] = useState<AppView>('games')
   const [authOpen, setAuthOpen] = useState(false)
@@ -250,11 +254,15 @@ function App() {
     }, '알림 설정을 저장하지 못했습니다.')
   }
 
-  const runCatalogImport = async (apply: boolean) => {
+  const runCatalogImport = async (
+    apply: boolean,
+    appId = adminAppId.trim(),
+    gameId = adminGameId.trim(),
+  ) => {
     setError('')
     setActionMessage('')
     try {
-      const result = await importSteamCatalogGame(adminAppId.trim(), adminGameId.trim(), apply)
+      const result = await importSteamCatalogGame(appId, gameId, apply)
       setAdminResult(result)
       setActionMessage(apply ? '카탈로그에 등록했습니다. API를 재시작한 뒤 가격을 수집해주세요.' : 'Steam 상품 검증이 완료되었습니다.')
     } catch (reason) {
@@ -269,6 +277,25 @@ function App() {
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '가격 수집을 시작하지 못했습니다.')
     }
+  }
+
+  const searchCatalogCandidates = async () => {
+    setAdminSearching(true)
+    setError('')
+    setAdminResult(null)
+    try {
+      setAdminCandidates(await searchStoreCandidates(adminStore, adminQuery.trim()))
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Store 상품을 검색하지 못했습니다.')
+    } finally {
+      setAdminSearching(false)
+    }
+  }
+
+  const chooseCatalogCandidate = (candidate: StoreProductCandidate) => {
+    setAdminAppId(candidate.externalProductId)
+    setAdminCandidates([])
+    void runCatalogImport(false, candidate.externalProductId, '')
   }
 
   const startSocialLogin = async (provider: OAuthProvider, link = false) => {
@@ -756,13 +783,21 @@ function App() {
 
       {activeView === 'admin' && catalogAdminEnabled && <section className="view-panel">
         <p className="eyebrow">LOCAL ADMIN</p>
-        <h1 className="view-title">Steam 카탈로그 관리</h1>
-        <p className="view-description">Steam App ID를 먼저 검증하고 결과가 맞을 때만 등록하세요.</p>
+        <h1 className="view-title">Store 상품 연결</h1>
+        <p className="view-description">게임 이름으로 Store를 검색하고 본편 상품이 맞는지 확인한 뒤 등록하세요.</p>
+        <div className="admin-search">
+          <select aria-label="Store" value={adminStore} onChange={(event) => setAdminStore(event.target.value)}><option value="Steam">Steam</option></select>
+          <input aria-label="Store 게임 이름" value={adminQuery} onChange={(event) => setAdminQuery(event.target.value)} placeholder="예: Sekiro" />
+          <button disabled={!adminQuery.trim() || adminSearching} onClick={() => void searchCatalogCandidates()}>{adminSearching ? '검색 중…' : 'Store 검색'}</button>
+        </div>
+        {adminCandidates.length > 0 && <div className="candidate-list">{adminCandidates.map((candidate) => <button key={`${candidate.store}:${candidate.externalProductId}`} onClick={() => chooseCatalogCandidate(candidate)}><strong>{candidate.title}</strong><span>{candidate.store} · {candidate.platforms.join(' · ') || '플랫폼 확인 필요'}</span><small>상품 ID {candidate.externalProductId}</small></button>)}</div>}
+        <details className="advanced-admin"><summary>고급 입력: 상품 ID 직접 사용</summary>
         <div className="admin-form">
           <label>Steam App ID<input value={adminAppId} onChange={(event) => setAdminAppId(event.target.value)} placeholder="예: 1245620" inputMode="numeric" /></label>
           <label>Canonical Game ID (선택)<input value={adminGameId} onChange={(event) => setAdminGameId(event.target.value)} placeholder="한글 제목이면 예: dave-the-diver" /></label>
           <button disabled={!/^\d+$/.test(adminAppId.trim())} onClick={() => void runCatalogImport(false)}>Preview</button>
         </div>
+        </details>
         {adminResult && <article className="admin-preview">
           <h2>{adminResult.game.title}</h2>
           <p><strong>ID</strong> {adminResult.game.id}</p>

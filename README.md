@@ -128,6 +128,11 @@ WEB_APP_URL=http://127.0.0.1:5173 \
 시작`을 누르면 background 작업으로 전체 Steam 가격을 갱신하며 화면에서
 `RUNNING`, `SUCCEEDED`, `FAILED` 상태를 확인할 수 있습니다.
 
+관리자는 App ID를 미리 알 필요 없이 Store와 게임 이름으로 상품 후보를 검색할
+수 있습니다. 검색 결과는 `store`, `externalProductId`, `title`, `productUrl`,
+`platforms`로 구성된 공통 후보 형태를 사용합니다. 현재 검색 어댑터는 Steam부터
+지원하며 App ID 직접 입력은 검색 실패 시 사용하는 고급 옵션으로 남겨둡니다.
+
 Steam과 Apple 수집, DB 반영, 수집 상태 점검, 알림 Outbox 처리를 한 번에
 실행하려면 다음 운영 명령을 사용합니다. 한 단계가 실패해도 나머지 독립 단계는
 계속 실행되며 마지막 JSON 요약과 종료 코드로 실패를 확인할 수 있습니다.
