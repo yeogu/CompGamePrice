@@ -110,6 +110,10 @@ if(BUILD_TESTING)
             NAME macos_schedule_tests
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_macos_schedule.py
         )
+        add_test(
+            NAME collection_health_tests
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_collection_health.py
+        )
         if(APPLE)
             add_test(
                 NAME macos_schedule_script_syntax
