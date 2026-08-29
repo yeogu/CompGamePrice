@@ -9,7 +9,7 @@ api_base="http://127.0.0.1:${api_port}"
 response_body="/tmp/game_price_api_response_$$.json"
 test_database="/tmp/game_price_api_test_$$.db"
 cookie_jar="/tmp/game_price_api_cookie_$$.txt"
-project_directory=$(cd "$(dirname "${tracker_binary}")/.." && pwd)
+project_directory=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 
 cleanup() {
     if [[ -n "${api_pid:-}" ]]; then kill "${api_pid}" 2>/dev/null || true; fi

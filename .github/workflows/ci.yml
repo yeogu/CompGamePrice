@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            curl \
+            libdrogon-dev \
+            libsqlite3-dev \
+            libssl-dev
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Configure C++
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DBUILD_GAME_PRICE_API=ON
+
+      - name: Build C++ and API
+        run: cmake --build build --config Release --parallel --target game_price_tracker game_price_api game_price_tests
+
+      - name: Run Python tests
+        run: python3 -m unittest discover -s tests -p 'test_*.py' -v
+
+      - name: Run CTest
+        run: ctest --test-dir build --build-config Release --output-on-failure
+
+      - name: Install web dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Build web frontend
+        working-directory: web
+        run: npm run build

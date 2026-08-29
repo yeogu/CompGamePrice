@@ -39,6 +39,27 @@ cmake --build build
 ./build/game_price_tracker
 ```
 
+## Continuous integration
+
+GitHub Actions는 push와 pull request마다 clean Ubuntu 환경에서 C++/API를
+configure·build하고, Python `unittest`, 전체 CTest integration/E2E, Web production
+build를 실행합니다. 로컬에서 같은 검증을 실행하려면 Drogon, SQLite, OpenSSL,
+Python 3, curl과 Node.js 22가 설치된 상태에서 다음 명령을 사용합니다.
+
+```sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+  -DBUILD_TESTING=ON -DBUILD_GAME_PRICE_API=ON
+cmake --build build --config Release --parallel \
+  --target game_price_tracker game_price_api game_price_tests
+python3 -m unittest discover -s tests -p 'test_*.py' -v
+ctest --test-dir build --build-config Release --output-on-failure
+npm --prefix web ci
+npm --prefix web run build
+```
+
+CI는 repository fixture와 local sample data만 사용하며 Steam live API와 OAuth
+credential을 요구하는 흐름은 실행하지 않습니다.
+
 인자 없이 실행하면 수집, 비교, 이력 분석을 모두 수행합니다. 외부 스케줄러와
 조회 작업을 분리할 때는 다음 CLI 명령을 사용합니다.
 

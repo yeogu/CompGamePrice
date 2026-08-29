@@ -10,7 +10,7 @@ test_root="$(mktemp -d)"
 test_database="${test_root}/data-reliability.db"
 test_data="${test_root}/data"
 response_body="${test_root}/response.json"
-project_directory="$(cd "$(dirname "${tracker_binary}")/.." && pwd)"
+project_directory="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 api_pid=""
 
 cleanup() {
@@ -65,4 +65,3 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
 [[ "${status}" == "200" ]]
 grep -q '"productsRejected":1' "${response_body}"
 grep -q '"productsFound":1' "${response_body}"
-
