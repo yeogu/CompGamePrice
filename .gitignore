@@ -16,9 +16,12 @@ snapshots/
 __pycache__/
 web/node_modules/
 web/dist/
+web/playwright-report/
+web/test-results/
 web/*.tsbuildinfo
 web/vite.config.js
 web/vite.config.d.ts
+/.vite/
 
 # Editor and operating-system files
 .vscode/
