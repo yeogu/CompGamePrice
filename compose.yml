@@ -1,0 +1,47 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.api
+    environment:
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      WEB_APP_URL: ${WEB_APP_URL:-http://127.0.0.1:8088}
+    volumes:
+      - game-price-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=2)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  web:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.web
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-8088}:80"
+    restart: unless-stopped
+
+  backup:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.api
+    command:
+      - python3
+      - /app/tools/database_backup.py
+      - backup
+      - --database
+      - /data/game_prices.db
+      - --output-dir
+      - /backups
+    profiles: ["maintenance"]
+    volumes:
+      - game-price-data:/data:ro
+      - ./backups:/backups
+
+volumes:
+  game-price-data:

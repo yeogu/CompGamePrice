@@ -60,6 +60,23 @@ npm --prefix web run build
 CI는 repository fixture와 local sample data만 사용하며 Steam live API와 OAuth
 credential을 요구하는 흐름은 실행하지 않습니다.
 
+## Container deployment
+
+Docker Compose는 API, same-origin Web reverse proxy와 영속 SQLite volume을
+제공합니다. 로컬 또는 NAS에서 다음 명령으로 실행할 수 있습니다.
+
+```sh
+docker compose up --build -d
+curl http://127.0.0.1:8088/health
+```
+
+HTTPS reverse proxy 뒤에서는 `COOKIE_SECURE=true`와 실제 `WEB_APP_URL`을 환경변수로
+설정합니다. DB 백업은 maintenance profile로 명시적으로 실행합니다.
+
+```sh
+docker compose --profile maintenance run --rm backup
+```
+
 인자 없이 실행하면 수집, 비교, 이력 분석을 모두 수행합니다. 외부 스케줄러와
 조회 작업을 분리할 때는 다음 CLI 명령을 사용합니다.
 

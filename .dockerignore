@@ -1,0 +1,9 @@
+.git
+build
+cmake-build-*
+snapshots
+backups
+web/node_modules
+web/dist
+work
+.DS_Store
