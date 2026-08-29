@@ -322,7 +322,7 @@ private:
     std::string error_;
 };
 
-Json::Value runCatalogSyncTool(bool synchronize, int batchSize) {
+Json::Value runCatalogSyncCommand(const std::string& arguments) {
     const auto project = std::filesystem::path(PROJECT_SOURCE_DIR);
     const auto temporary = std::filesystem::temp_directory_path() /
         "compgameprice-catalog-sync.json";
@@ -330,12 +330,7 @@ Json::Value runCatalogSyncTool(bool synchronize, int batchSize) {
         (project / "tools/sync_steam_catalog.py").string()) +
         " --catalog " + shellQuoted(
             (project / "data/game_catalog.json").string()) +
-        " --database " + shellQuoted(databasePath());
-    if (synchronize) {
-        command += " --batch-size " + std::to_string(batchSize);
-    } else {
-        command += " --status";
-    }
+        " --database " + shellQuoted(databasePath()) + arguments;
     command += " > " + shellQuoted(temporary.string()) + " 2>&1";
     const auto exitCode = std::system(command.c_str());
     std::ifstream input(temporary);
@@ -349,6 +344,22 @@ Json::Value runCatalogSyncTool(bool synchronize, int batchSize) {
         throw std::runtime_error("Steam catalog synchronization failed");
     }
     return result;
+}
+
+Json::Value runCatalogSyncTool(bool synchronize, int batchSize) {
+    if (synchronize) {
+        return runCatalogSyncCommand(
+            " --batch-size " + std::to_string(batchSize));
+    }
+    return runCatalogSyncCommand(" --status");
+}
+
+void resolveCatalogReview(
+    const std::string& appId,
+    const std::string& resolution) {
+    runCatalogSyncCommand(
+        " --resolve-app-id " + appId +
+        " --resolution " + resolution);
 }
 
 class CatalogSyncJob {
@@ -377,6 +388,16 @@ public:
     Json::Value json() const {
         std::lock_guard<std::mutex> lock(mutex_);
         return result_;
+    }
+
+    bool resolve(const std::string& appId, const std::string& resolution) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (result_["status"].asString() == "RUNNING") {
+            return false;
+        }
+        resolveCatalogReview(appId, resolution);
+        result_ = runCatalogSyncTool(false, 0);
+        return true;
     }
 
 private:
@@ -1065,6 +1086,49 @@ int main() {
                     drogon::k202Accepted));
             },
             {drogon::Post});
+        drogon::app().registerHandler(
+            "/api/admin/catalog/sync/reviews/{1}",
+            [&catalogSyncJob](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback,
+                const std::string& appId) {
+                if (!catalogAdminEnabled() || !isLoopbackRequest(request)) {
+                    callback(jsonError(
+                        drogon::k403Forbidden,
+                        "catalog admin is disabled"));
+                    return;
+                }
+                const auto body = request->getJsonObject();
+                if (!validSteamAppId(appId) ||
+                    !body ||
+                    !(*body)["resolution"].isString()) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "valid appId and resolution are required"));
+                    return;
+                }
+                const auto resolution = (*body)["resolution"].asString();
+                if (resolution != "APPROVED" && resolution != "REJECTED") {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "resolution must be APPROVED or REJECTED"));
+                    return;
+                }
+                try {
+                    if (!catalogSyncJob.resolve(appId, resolution)) {
+                        callback(jsonError(
+                            drogon::k409Conflict,
+                            "catalog synchronization is running"));
+                        return;
+                    }
+                    callback(jsonResponse(catalogSyncJob.json()));
+                } catch (const std::exception& error) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        error.what()));
+                }
+            },
+            {drogon::Patch});
 
         drogon::app().registerHandler(
             "/health",

@@ -79,3 +79,4 @@ export const startCatalogCollection = () => requestJson<CatalogCollectionJob>('/
 export const searchStoreCandidates = async (store: string, query: string) => (await requestJson<{ candidates: StoreProductCandidate[] }>(`/api/admin/catalog/candidates?store=${encodeURIComponent(store)}&query=${encodeURIComponent(query)}`)).candidates
 export const getCatalogSyncJob = () => requestJson<CatalogSyncJob>('/api/admin/catalog/sync')
 export const startCatalogSync = (batchSize: number) => requestJson<CatalogSyncJob>('/api/admin/catalog/sync', { method: 'POST', body: JSON.stringify({ batchSize }) })
+export const resolveCatalogSyncReview = (appId: string, resolution: 'APPROVED' | 'REJECTED') => requestJson<CatalogSyncJob>(`/api/admin/catalog/sync/reviews/${encodeURIComponent(appId)}`, { method: 'PATCH', body: JSON.stringify({ resolution }) })

@@ -235,7 +235,10 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .sync-summary { display: flex; flex-wrap: wrap; gap: 8px 16px; padding-top: 14px; border-top: 1px solid #213a2d; color: #a9bdb2; }
 .sync-summary.succeeded strong { color: #73d49b; }
 .sync-summary.failed strong, .sync-summary.failed p { color: #ffb4a8; }
-.sync-reviews > div { display: grid; grid-template-columns: minmax(180px, 1fr) 2fr auto; gap: 12px; padding: 10px 0; border-top: 1px solid #213a2d; color: #91a79b; }
+.sync-reviews > div { display: grid; grid-template-columns: minmax(180px, 1fr) 2fr auto auto; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid #213a2d; color: #91a79b; }
+.review-actions { display: flex; gap: 6px; }
+.review-actions button { padding: 8px 10px; font-size: .78rem; }
+.review-actions .danger { color: #ffc7c7; border-color: #743b3b; }
 .admin-form { display: grid; grid-template-columns: 1fr 1fr auto; align-items: end; gap: 12px; margin-top: 24px; }
 .admin-search { display: grid; grid-template-columns: 150px 1fr auto; gap: 10px; margin-top: 24px; }
 .admin-search input, .admin-search select { padding: 12px; color: #eef8f2; background: #0b1812; border: 1px solid #315141; border-radius: 9px; }

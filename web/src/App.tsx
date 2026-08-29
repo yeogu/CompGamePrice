@@ -1,5 +1,5 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react'
-import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, getAlertRules, getCatalogAdminStatus, getCatalogCollectionJob, getCatalogSyncJob, getCollectionRuns, getExternalIdentities, getFavorites, getGamePriceHistory, getGamePrices, getGames, getMe, getNotifications, getOAuthUrl, getPreferences, importSteamCatalogGame, login, logout, markNotificationRead, register, searchStoreCandidates, startCatalogCollection, startCatalogSync, unlinkExternalIdentity, updatePreferences } from './api'
+import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, getAlertRules, getCatalogAdminStatus, getCatalogCollectionJob, getCatalogSyncJob, getCollectionRuns, getExternalIdentities, getFavorites, getGamePriceHistory, getGamePrices, getGames, getMe, getNotifications, getOAuthUrl, getPreferences, importSteamCatalogGame, login, logout, markNotificationRead, register, resolveCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, unlinkExternalIdentity, updatePreferences } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
 import type { AlertRule, AlertRuleType, CatalogAdminResult, CatalogCollectionJob, CatalogSyncJob, CollectionRun, ExternalIdentity, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Money, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
 
@@ -90,6 +90,7 @@ function App() {
   const [catalogJob, setCatalogJob] = useState<CatalogCollectionJob | null>(null)
   const [catalogSyncJob, setCatalogSyncJob] = useState<CatalogSyncJob | null>(null)
   const [catalogSyncBatchSize, setCatalogSyncBatchSize] = useState(20)
+  const [reviewingAppId, setReviewingAppId] = useState('')
   const [adminStore, setAdminStore] = useState('Steam')
   const [adminQuery, setAdminQuery] = useState('')
   const [adminCandidates, setAdminCandidates] = useState<StoreProductCandidate[]>([])
@@ -277,6 +278,14 @@ function App() {
       const result = await importSteamCatalogGame(appId, canonicalGameId, apply)
       setAdminGameId(result.game.id)
       setAdminResult(result)
+      if (apply && reviewingAppId === appId) {
+        try {
+          setCatalogSyncJob(await resolveCatalogSyncReview(appId, 'APPROVED'))
+          setReviewingAppId('')
+        } catch (reason) {
+          setAdminError(reason instanceof Error ? `게임은 등록됐지만 검토 상태를 갱신하지 못했습니다: ${reason.message}` : '게임은 등록됐지만 검토 상태를 갱신하지 못했습니다.')
+        }
+      }
       setActionMessage(apply ? '카탈로그에 등록했습니다. API를 재시작한 뒤 가격을 수집해주세요.' : 'Steam 상품 검증이 완료되었습니다.')
     } catch (reason) {
       setAdminError(reason instanceof Error ? reason.message : 'Steam 상품을 검증하지 못했습니다.')
@@ -303,6 +312,36 @@ function App() {
     }
   }
 
+  const inspectCatalogReview = (review: NonNullable<CatalogSyncJob['pendingReviews']>[number]) => {
+    const suggestedGameId = canonicalIdFromTitle(review.title)
+    setReviewingAppId(review.externalProductId)
+    setAdminAppId(review.externalProductId)
+    setAdminGameId(suggestedGameId)
+    setPendingCandidate({
+      store: 'Steam',
+      externalProductId: review.externalProductId,
+      title: review.title,
+      productUrl: `https://store.steampowered.com/app/${review.externalProductId}`,
+      platforms: [],
+    })
+    setAdminResult(null)
+    setAdminError(suggestedGameId ? review.reason : `${review.reason}. 영문 게임명 또는 canonical Game ID를 입력해주세요.`)
+  }
+
+  const rejectCatalogReview = async (appId: string) => {
+    setAdminError('')
+    try {
+      setCatalogSyncJob(await resolveCatalogSyncReview(appId, 'REJECTED'))
+      if (reviewingAppId === appId) {
+        setReviewingAppId('')
+        setPendingCandidate(null)
+      }
+      setActionMessage(`Steam App ${appId}를 카탈로그 등록 대상에서 제외했습니다.`)
+    } catch (reason) {
+      setAdminError(reason instanceof Error ? reason.message : '검토 항목을 제외하지 못했습니다.')
+    }
+  }
+
   const searchCatalogCandidates = async () => {
     setAdminSearching(true)
     setError('')
@@ -320,6 +359,7 @@ function App() {
 
   const chooseCatalogCandidate = (candidate: StoreProductCandidate) => {
     const suggestedGameId = canonicalIdFromTitle(candidate.title)
+    setReviewingAppId('')
     setAdminAppId(candidate.externalProductId)
     setAdminGameId(suggestedGameId)
     setPendingCandidate(candidate)
@@ -850,7 +890,7 @@ function App() {
             {catalogSyncJob.lastAppId && <small>마지막 App ID {catalogSyncJob.lastAppId}</small>}
             {catalogSyncJob.error && <p>{catalogSyncJob.error}</p>}
           </div>}
-          {(catalogSyncJob?.pendingReviews?.length ?? 0) > 0 && <details className="sync-reviews"><summary>검토 대기 {catalogSyncJob?.pendingReviews?.length}개 보기</summary>{catalogSyncJob?.pendingReviews?.map((review) => <div key={review.externalProductId}><strong>{review.title || `App ${review.externalProductId}`}</strong><span>{review.reason}</span><small>App ID {review.externalProductId}</small></div>)}</details>}
+          {(catalogSyncJob?.pendingReviews?.length ?? 0) > 0 && <details className="sync-reviews"><summary>검토 대기 {catalogSyncJob?.pendingReviews?.length}개 보기</summary>{catalogSyncJob?.pendingReviews?.map((review) => <div key={review.externalProductId}><strong>{review.title || `App ${review.externalProductId}`}</strong><span>{review.reason}</span><small>App ID {review.externalProductId}</small><div className="review-actions"><button onClick={() => inspectCatalogReview(review)}>수동 검토</button><button className="danger" onClick={() => void rejectCatalogReview(review.externalProductId)}>제외</button></div></div>)}</details>}
         </article>
         <div className="admin-search">
           <select aria-label="Store" value={adminStore} onChange={(event) => setAdminStore(event.target.value)}><option value="Steam">Steam</option></select>

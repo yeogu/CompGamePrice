@@ -94,6 +94,15 @@ class SteamCatalogSyncTest(unittest.TestCase):
         status = sync.synchronization_status(database)
         self.assertEqual(status["status"], "SUCCEEDED")
         self.assertEqual(len(status["pendingReviews"]), 2)
+        resolved = sync.resolve_review(database, "10", "APPROVED")
+        self.assertEqual(resolved["status"], "APPROVED")
+        sync.resolve_review(database, "20", "REJECTED")
+        self.assertEqual(sync.synchronization_status(database)["pendingReviews"], [])
+        with sqlite3.connect(database) as connection:
+            outcomes = connection.execute(
+                "SELECT external_product_id, outcome FROM catalog_sync_seen ORDER BY external_product_id"
+            ).fetchall()
+        self.assertEqual(outcomes, [("10", "APPROVED"), ("20", "REJECTED")])
 
     def test_skips_non_games_and_does_not_process_seen_apps_twice(self):
         apps = [{"appid": 10, "name": "Soundtrack"}]
@@ -114,6 +123,8 @@ class SteamCatalogSyncTest(unittest.TestCase):
             sync.synchronize(Path("unused"), Path("unused"), 0)
         with self.assertRaisesRegex(ValueError, "malformed"):
             sync.parse_app_list(b"not-json")
+        with self.assertRaisesRegex(ValueError, "resolution"):
+            sync.resolve_review(Path("unused"), "10", "INVALID")
 
     def test_catalog_write_failure_does_not_mark_product_as_seen(self):
         with tempfile.TemporaryDirectory() as directory:

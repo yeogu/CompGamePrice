@@ -198,6 +198,11 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     -H 'Content-Type: application/json' -d '{"batchSize":20}' \
     "${api_base}/api/admin/catalog/sync")
 [[ "${status}" == "403" ]]
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -X PATCH -H 'Content-Type: application/json' \
+    -d '{"resolution":"REJECTED"}' \
+    "${api_base}/api/admin/catalog/sync/reviews/413150")
+[[ "${status}" == "403" ]]
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/games?query=terraria")

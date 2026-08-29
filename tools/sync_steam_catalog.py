@@ -260,6 +260,36 @@ def synchronization_status(database_path: Path, review_limit: int = 20) -> dict:
     return result
 
 
+def resolve_review(
+    database_path: Path,
+    app_id: str,
+    resolution: str,
+) -> dict:
+    if not app_id.isdigit():
+        raise ValueError("Steam app id must be numeric")
+    if resolution not in {"APPROVED", "REJECTED"}:
+        raise ValueError("resolution must be APPROVED or REJECTED")
+    with sqlite3.connect(database_path) as connection:
+        initialize_state(connection)
+        cursor = connection.execute(
+            """
+            UPDATE catalog_sync_review
+            SET status = ?
+            WHERE provider = ? AND external_product_id = ? AND status = 'PENDING'
+            """,
+            (resolution, "Steam", app_id),
+        )
+        if cursor.rowcount != 1:
+            raise ValueError("pending Steam catalog review was not found")
+        record_seen(connection, app_id, resolution, utc_now())
+        connection.commit()
+    return {
+        "provider": "Steam",
+        "externalProductId": app_id,
+        "status": resolution,
+    }
+
+
 def synchronize(
     catalog_path: Path,
     database_path: Path,
@@ -340,9 +370,19 @@ def main() -> int:
     parser.add_argument("--database", default=root / "build/game_prices.db", type=Path)
     parser.add_argument("--batch-size", default=20, type=int)
     parser.add_argument("--status", action="store_true")
+    parser.add_argument("--resolve-app-id")
+    parser.add_argument("--resolution", choices=("APPROVED", "REJECTED"))
     arguments = parser.parse_args()
     try:
-        if arguments.status:
+        if arguments.resolve_app_id:
+            if not arguments.resolution:
+                raise ValueError("--resolution is required with --resolve-app-id")
+            report = resolve_review(
+                arguments.database,
+                arguments.resolve_app_id,
+                arguments.resolution,
+            )
+        elif arguments.status:
             report = synchronization_status(arguments.database)
         else:
             report = synchronize(
