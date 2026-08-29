@@ -27,6 +27,9 @@ const recommendationReason: Record<string, string> = {
 
 const authenticationErrorMessage = (reason: unknown, mode: 'login' | 'register') => {
   const message = reason instanceof Error ? reason.message : ''
+  if (message === 'Failed to fetch' || message.includes('NetworkError')) {
+    return '서버와 일시적으로 연결되지 않았습니다. 잠시 후 다시 시도해주세요.'
+  }
   if (message === 'invalid credentials') {
     return '이메일 또는 비밀번호가 올바르지 않습니다.'
   }
