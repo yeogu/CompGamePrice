@@ -44,6 +44,33 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     -b "${cookie_jar}" "${api_base}/api/auth/me")
 [[ "${status}" == "200" ]]
 
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -H 'Content-Type: application/json' \
+    -d '{"gameId":"hades"}' \
+    "${api_base}/api/favorites")
+[[ "${status}" == "401" ]]
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -b "${cookie_jar}" -H 'Content-Type: application/json' \
+    -d '{"gameId":"hades"}' \
+    "${api_base}/api/favorites")
+[[ "${status}" == "201" ]]
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -b "${cookie_jar}" "${api_base}/api/favorites")
+[[ "${status}" == "200" ]]
+grep -q '"id":"hades"' "${response_body}"
+grep -q '"title":"Hades"' "${response_body}"
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -b "${cookie_jar}" "${api_base}/api/account/preferences")
+[[ "${status}" == "200" ]]
+grep -q '"emailNotificationsEnabled":true' "${response_body}"
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -b "${cookie_jar}" -H 'Content-Type: application/json' -X PATCH \
+    -d '{"emailNotificationsEnabled":false,"region":"KR","currency":"KRW"}' \
+    "${api_base}/api/account/preferences")
+[[ "${status}" == "200" ]]
+grep -q '"emailNotificationsEnabled":false' "${response_body}"
+
 for _ in {1..5}; do
     status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
         -H 'Content-Type: application/json' \

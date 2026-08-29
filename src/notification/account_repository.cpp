@@ -253,6 +253,87 @@ bool AccountRepository::markNotificationRead(std::int64_t userId, std::int64_t i
     Statement statement(database_.handle(), "UPDATE notifications SET read=1 WHERE id=? AND user_id=?;");
     sqlite3_bind_int64(statement.get(),1,id); sqlite3_bind_int64(statement.get(),2,userId); statement.execute();return sqlite3_changes(database_.handle())>0;
 }
+
+bool AccountRepository::addFavoriteGame(
+    std::int64_t userId,
+    const std::string& gameId) {
+    Statement statement(database_.handle(), R"sql(
+        INSERT OR IGNORE INTO favorite_games(user_id, game_id)
+        VALUES(?, ?);
+    )sql");
+    sqlite3_bind_int64(statement.get(), 1, userId);
+    bindText(statement.get(), 2, gameId);
+    statement.execute();
+    return sqlite3_changes(database_.handle()) > 0;
+}
+
+std::vector<std::string> AccountRepository::findFavoriteGameIds(
+    std::int64_t userId) const {
+    Statement statement(database_.handle(), R"sql(
+        SELECT game_id
+        FROM favorite_games
+        WHERE user_id = ?
+        ORDER BY created_at DESC, game_id ASC;
+    )sql");
+    sqlite3_bind_int64(statement.get(), 1, userId);
+    std::vector<std::string> result;
+    while (statement.next()) {
+        result.push_back(text(statement.get(), 0));
+    }
+    return result;
+}
+
+bool AccountRepository::deleteFavoriteGame(
+    std::int64_t userId,
+    const std::string& gameId) {
+    Statement statement(database_.handle(), R"sql(
+        DELETE FROM favorite_games
+        WHERE user_id = ? AND game_id = ?;
+    )sql");
+    sqlite3_bind_int64(statement.get(), 1, userId);
+    bindText(statement.get(), 2, gameId);
+    statement.execute();
+    return sqlite3_changes(database_.handle()) > 0;
+}
+
+UserPreferences AccountRepository::findPreferences(std::int64_t userId) const {
+    Statement statement(database_.handle(), R"sql(
+        SELECT email_notifications_enabled, region, currency
+        FROM user_preferences
+        WHERE user_id = ?;
+    )sql");
+    sqlite3_bind_int64(statement.get(), 1, userId);
+    if (!statement.next()) {
+        return UserPreferences{};
+    }
+    return UserPreferences{
+        sqlite3_column_int(statement.get(), 0) != 0,
+        text(statement.get(), 1),
+        text(statement.get(), 2)};
+}
+
+UserPreferences AccountRepository::updatePreferences(
+    std::int64_t userId,
+    const UserPreferences& preferences) {
+    if (preferences.region != "KR" || preferences.currency != "KRW") {
+        throw std::invalid_argument("only KR and KRW are supported");
+    }
+    Statement statement(database_.handle(), R"sql(
+        INSERT INTO user_preferences(
+            user_id, email_notifications_enabled, region, currency)
+        VALUES(?, ?, ?, ?)
+        ON CONFLICT(user_id) DO UPDATE SET
+            email_notifications_enabled = excluded.email_notifications_enabled,
+            region = excluded.region,
+            currency = excluded.currency;
+    )sql");
+    sqlite3_bind_int64(statement.get(), 1, userId);
+    sqlite3_bind_int(statement.get(), 2, preferences.emailNotificationsEnabled ? 1 : 0);
+    bindText(statement.get(), 3, preferences.region);
+    bindText(statement.get(), 4, preferences.currency);
+    statement.execute();
+    return preferences;
+}
 Database& AccountRepository::database() const noexcept { return database_; }
 
 }  // namespace game_price

@@ -11,6 +11,11 @@ enum class AlertRuleType { PriceDrop, BelowTargetPrice, NewHistoricalLow, BelowA
 enum class OAuthProvider { Google, Kakao, Naver };
 
 struct UserAccount { std::int64_t id{}; std::string email; };
+struct UserPreferences {
+    bool emailNotificationsEnabled{true};
+    std::string region{"KR"};
+    std::string currency{"KRW"};
+};
 struct ExternalIdentity {
     std::int64_t id{};
     std::int64_t userId{};

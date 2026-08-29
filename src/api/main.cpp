@@ -252,6 +252,14 @@ Json::Value authJson(const AuthResult& result) {
     return json;
 }
 
+Json::Value preferencesJson(const UserPreferences& preferences) {
+    Json::Value json;
+    json["emailNotificationsEnabled"] = preferences.emailNotificationsEnabled;
+    json["region"] = preferences.region;
+    json["currency"] = preferences.currency;
+    return json;
+}
+
 }  // namespace
 
 int main() {
@@ -401,6 +409,139 @@ int main() {
                 if (!token.empty()) authService.logout(token);
                 auto response=jsonResponse(Json::Value{});clearSessionCookie(response);callback(response);
             }, {drogon::Post});
+
+        drogon::app().registerHandler(
+            "/api/favorites",
+            [&authService, &accountRepository, &catalog](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                const auto user = authenticatedUser(request, authService);
+                if (!user) {
+                    callback(jsonError(
+                        drogon::k401Unauthorized,
+                        "authentication required"));
+                    return;
+                }
+                Json::Value response;
+                response["games"] = Json::arrayValue;
+                for (const auto& gameId :
+                     accountRepository.findFavoriteGameIds(user->id)) {
+                    const auto game = catalog.findById(gameId);
+                    if (game) {
+                        response["games"].append(gameJson(*game));
+                    }
+                }
+                callback(jsonResponse(response));
+            },
+            {drogon::Get});
+        drogon::app().registerHandler(
+            "/api/favorites",
+            [&authService, &accountRepository, &catalog](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                const auto user = authenticatedUser(request, authService);
+                if (!user) {
+                    callback(jsonError(
+                        drogon::k401Unauthorized,
+                        "authentication required"));
+                    return;
+                }
+                const auto body = request->getJsonObject();
+                if (!body || !(*body)["gameId"].isString()) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "gameId is required"));
+                    return;
+                }
+                const auto gameId = (*body)["gameId"].asString();
+                if (!catalog.findById(gameId)) {
+                    callback(jsonError(drogon::k404NotFound, "game not found"));
+                    return;
+                }
+                const auto created =
+                    accountRepository.addFavoriteGame(user->id, gameId);
+                Json::Value response;
+                response["gameId"] = gameId;
+                callback(jsonResponse(
+                    response,
+                    created ? drogon::k201Created : drogon::k200OK));
+            },
+            {drogon::Post});
+        drogon::app().registerHandler(
+            "/api/favorites/{1}",
+            [&authService, &accountRepository](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback,
+                const std::string& gameId) {
+                const auto user = authenticatedUser(request, authService);
+                if (!user) {
+                    callback(jsonError(
+                        drogon::k401Unauthorized,
+                        "authentication required"));
+                    return;
+                }
+                if (!accountRepository.deleteFavoriteGame(user->id, gameId)) {
+                    callback(jsonError(
+                        drogon::k404NotFound,
+                        "favorite game not found"));
+                    return;
+                }
+                callback(jsonResponse(Json::Value{}));
+            },
+            {drogon::Delete});
+
+        drogon::app().registerHandler(
+            "/api/account/preferences",
+            [&authService, &accountRepository](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                const auto user = authenticatedUser(request, authService);
+                if (!user) {
+                    callback(jsonError(
+                        drogon::k401Unauthorized,
+                        "authentication required"));
+                    return;
+                }
+                callback(jsonResponse(
+                    preferencesJson(accountRepository.findPreferences(user->id))));
+            },
+            {drogon::Get});
+        drogon::app().registerHandler(
+            "/api/account/preferences",
+            [&authService, &accountRepository](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                const auto user = authenticatedUser(request, authService);
+                if (!user) {
+                    callback(jsonError(
+                        drogon::k401Unauthorized,
+                        "authentication required"));
+                    return;
+                }
+                const auto body = request->getJsonObject();
+                if (!body ||
+                    !(*body)["emailNotificationsEnabled"].isBool() ||
+                    !(*body)["region"].isString() ||
+                    !(*body)["currency"].isString()) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "emailNotificationsEnabled, region, and currency are required"));
+                    return;
+                }
+                try {
+                    const UserPreferences preferences{
+                        (*body)["emailNotificationsEnabled"].asBool(),
+                        (*body)["region"].asString(),
+                        (*body)["currency"].asString()};
+                    callback(jsonResponse(preferencesJson(
+                        accountRepository.updatePreferences(
+                            user->id,
+                            preferences))));
+                } catch (const std::invalid_argument& error) {
+                    callback(jsonError(drogon::k400BadRequest, error.what()));
+                }
+            },
+            {drogon::Patch});
 
         drogon::app().registerHandler(
             "/api/alert-rules",

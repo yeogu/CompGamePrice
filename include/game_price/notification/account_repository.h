@@ -36,6 +36,13 @@ public:
     bool deleteRule(std::int64_t userId, std::int64_t ruleId);
     std::vector<Notification> findNotifications(std::int64_t userId) const;
     bool markNotificationRead(std::int64_t userId, std::int64_t notificationId);
+    bool addFavoriteGame(std::int64_t userId, const std::string& gameId);
+    std::vector<std::string> findFavoriteGameIds(std::int64_t userId) const;
+    bool deleteFavoriteGame(std::int64_t userId, const std::string& gameId);
+    UserPreferences findPreferences(std::int64_t userId) const;
+    UserPreferences updatePreferences(
+        std::int64_t userId,
+        const UserPreferences& preferences);
     Database& database() const noexcept;
 private:
     Database& database_;

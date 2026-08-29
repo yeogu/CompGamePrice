@@ -428,9 +428,28 @@ void StoreProductRepository::initializeSchema() const {
         );
         CREATE TRIGGER IF NOT EXISTS enqueue_notification_email
         AFTER INSERT ON notifications
+        WHEN COALESCE(
+            (SELECT email_notifications_enabled
+             FROM user_preferences
+             WHERE user_id = new.user_id),
+            1) = 1
         BEGIN
             INSERT INTO notification_outbox(notification_id) VALUES(new.id);
         END;
+
+        CREATE TABLE IF NOT EXISTS favorite_games (
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            game_id TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+            created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+            PRIMARY KEY(user_id, game_id)
+        );
+        CREATE TABLE IF NOT EXISTS user_preferences (
+            user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            email_notifications_enabled INTEGER NOT NULL DEFAULT 1
+                CHECK(email_notifications_enabled IN (0,1)),
+            region TEXT NOT NULL DEFAULT 'KR' CHECK(region IN ('KR')),
+            currency TEXT NOT NULL DEFAULT 'KRW' CHECK(currency IN ('KRW'))
+        );
 
         )sql");
         if (existingVersion == 1) {
@@ -536,7 +555,22 @@ void StoreProductRepository::initializeSchema() const {
             ON alert_rules(user_id,game_id,rule_type,
                 COALESCE(platform,''),COALESCE(target_price_minor,-1));
         )sql");
-        database_.execute("PRAGMA user_version = 11;");
+        if (existingVersion < 12) {
+            database_.execute(R"sql(
+                DROP TRIGGER IF EXISTS enqueue_notification_email;
+                CREATE TRIGGER enqueue_notification_email
+                AFTER INSERT ON notifications
+                WHEN COALESCE(
+                    (SELECT email_notifications_enabled
+                     FROM user_preferences
+                     WHERE user_id = new.user_id),
+                    1) = 1
+                BEGIN
+                    INSERT INTO notification_outbox(notification_id) VALUES(new.id);
+                END;
+            )sql");
+        }
+        database_.execute("PRAGMA user_version = 12;");
         database_.execute("COMMIT;");
     } catch (...) {
         try {

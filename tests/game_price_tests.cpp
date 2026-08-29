@@ -447,8 +447,8 @@ void testDatabaseSchemaVersion() {
     )sql");
     StoreProductRepository versionOneRepository(versionOneDatabase);
     versionOneRepository.initializeSchema();
-    expect(versionOneDatabase.userVersion() == 11,
-           "Schema version 1 should migrate to version 11");
+    expect(versionOneDatabase.userVersion() == 12,
+           "Schema version 1 should migrate to version 12");
     const auto migratedProducts =
         versionOneRepository.findProductsByGameId("stardew-valley");
     expect(migratedProducts.size() == 1,
@@ -503,8 +503,8 @@ void testDatabaseSchemaVersion() {
     )sql");
     StoreProductRepository versionTwoRepository(versionTwoDatabase);
     versionTwoRepository.initializeSchema();
-    expect(versionTwoDatabase.userVersion() == 11,
-           "Schema version 2 should migrate to version 11");
+    expect(versionTwoDatabase.userVersion() == 12,
+           "Schema version 2 should migrate to version 12");
     const auto versionTwoProducts = versionTwoRepository.findProductsByGameId("hades");
     expect(versionTwoProducts.size() == 1 &&
                versionTwoProducts.front().region == Region::KR &&
@@ -532,7 +532,7 @@ void testDatabaseSchemaVersion() {
     StoreProductRepository versionEightRepository(versionEightDatabase);
     versionEightRepository.initializeSchema();
     const auto migratedRuns = versionEightRepository.findCrawlRuns();
-    expect(versionEightDatabase.userVersion() == 11 && migratedRuns.size() == 1 &&
+    expect(versionEightDatabase.userVersion() == 12 && migratedRuns.size() == 1 &&
                migratedRuns.front().productsFound == 3 &&
                migratedRuns.front().productsRejected == 0 &&
                migratedRuns.front().productsFailed == 0 &&
@@ -584,7 +584,7 @@ void testDatabaseSchemaVersion() {
     sqlite3_step(conflictCountStatement);
     const int conflictCount = sqlite3_column_int(conflictCountStatement, 0);
     sqlite3_finalize(conflictCountStatement);
-    expect(versionNineDatabase.userVersion() == 11 &&
+    expect(versionNineDatabase.userVersion() == 12 &&
                deduplicated.size() == 1 &&
                deduplicated.front().price.minorAmount == 12000 &&
                conflictCount == 1,
@@ -1465,6 +1465,51 @@ void testCommandLineModes() {
     expect(rejectedUnknownCommand, "Unknown CLI commands should be rejected");
 }
 
+void testFavoriteGamesAndPreferences() {
+    Database database(":memory:");
+    StoreProductRepository(database).initializeSchema();
+    AccountRepository accounts(database);
+    AuthService auth(accounts);
+    const auto user = auth.registerUser(
+        "preferences@example.com",
+        "safe-password-123").user;
+
+    database.execute(R"sql(
+        INSERT INTO games(id, title, normalized_title)
+        VALUES('stardew-valley', 'Stardew Valley', 'stardew valley');
+    )sql");
+    expect(
+        accounts.addFavoriteGame(user.id, "stardew-valley"),
+        "A game should be added to a user's favorites");
+    expect(
+        !accounts.addFavoriteGame(user.id, "stardew-valley"),
+        "Adding the same favorite should be idempotent");
+    expect(
+        accounts.findFavoriteGameIds(user.id) ==
+            std::vector<std::string>{"stardew-valley"},
+        "Favorites should be scoped to their owner");
+    expect(
+        accounts.findFavoriteGameIds(user.id + 1).empty(),
+        "Another user must not see favorites");
+    expect(
+        accounts.deleteFavoriteGame(user.id, "stardew-valley"),
+        "The owner should remove a favorite");
+
+    const auto defaults = accounts.findPreferences(user.id);
+    expect(
+        defaults.emailNotificationsEnabled &&
+            defaults.region == "KR" &&
+            defaults.currency == "KRW",
+        "MVP preferences should default to email, KR, and KRW");
+    const auto updated = accounts.updatePreferences(
+        user.id,
+        UserPreferences{false, "KR", "KRW"});
+    expect(
+        !updated.emailNotificationsEnabled &&
+            !accounts.findPreferences(user.id).emailNotificationsEnabled,
+        "Email notification preference should persist");
+}
+
 }  // namespace
 
 int main() {
@@ -1504,6 +1549,7 @@ int main() {
          testCollectionRetryAfterTemporaryFailure},
         {"Catalog product identity protection",
          testCatalogProductIdentityProtection},
+        {"Favorite games and preferences", testFavoriteGamesAndPreferences},
         {"Command line modes", testCommandLineModes}};
 
     std::size_t passed = 0;
