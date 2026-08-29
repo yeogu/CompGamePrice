@@ -174,6 +174,92 @@
           "offerType": "BaseGame"
         }
       ]
+    },
+    {
+      "id": "cyberpunk-2077",
+      "title": "Cyberpunk 2077",
+      "platforms": [
+        "Windows",
+        "macOS"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1091500",
+          "productUrl": "https://store.steampowered.com/app/1091500",
+          "platforms": [
+            "Windows",
+            "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "baldur-s-gate-3",
+      "title": "Baldur's Gate 3",
+      "platforms": [
+        "Windows",
+        "macOS"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1086940",
+          "productUrl": "https://store.steampowered.com/app/1086940",
+          "platforms": [
+            "Windows",
+            "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "dave-the-diver",
+      "title": "데이브 더 다이버",
+      "platforms": [
+        "Windows",
+        "macOS"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1868140",
+          "productUrl": "https://store.steampowered.com/app/1868140",
+          "platforms": [
+            "Windows",
+            "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "palworld",
+      "title": "Palworld / 팰월드",
+      "platforms": [
+        "Windows"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1623730",
+          "productUrl": "https://store.steampowered.com/app/1623730",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
     }
   ]
 }
