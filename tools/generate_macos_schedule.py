@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate a macOS launchd plist for the Steam collection pipeline."""
+"""Generate a macOS launchd plist for daily application operations."""
 
 from __future__ import annotations
 
@@ -22,32 +22,20 @@ def schedule_definition(project_directory: Path, hour: int, minute: int) -> dict
         "Label": LABEL,
         "ProgramArguments": [
             sys.executable,
-            str(project / "tools" / "run_steam_pipeline.py"),
+            str(project / "tools" / "run_daily_operations.py"),
             "--tracker",
             str(project / "build" / "game_price_tracker"),
-            "--catalog",
-            str(project / "data" / "game_catalog.json"),
             "--output-dir",
             str(project / "snapshots" / "latest"),
-            "--archive-dir",
-            str(project / "snapshots" / "archive"),
-            "--archive-retention-days",
-            "90",
-            "--log-max-bytes",
-            "1048576",
-            "--log-keep-bytes",
-            "524288",
             "--database",
             str(project / "build" / "game_prices.db"),
-            "--database-backup-dir",
-            str(project / "snapshots" / "db-backups"),
-            "--database-backup-retention-days",
-            "30",
+            "--outbox-file",
+            str(project / "snapshots" / "notification-outbox.jsonl"),
         ],
         "WorkingDirectory": str(project),
         "StartCalendarInterval": {"Hour": hour, "Minute": minute},
-        "StandardOutPath": str(log_directory / "steam_pipeline.stdout.log"),
-        "StandardErrorPath": str(log_directory / "steam_pipeline.stderr.log"),
+        "StandardOutPath": str(log_directory / "daily_operations.stdout.log"),
+        "StandardErrorPath": str(log_directory / "daily_operations.stderr.log"),
         "ProcessType": "Background",
         "RunAtLoad": False,
     }
