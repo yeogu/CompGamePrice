@@ -1,5 +1,5 @@
 # Review the preview before applying these candidates.
 1091500  # Cyberpunk 2077
 1086940  # Baldur's Gate 3
-1868140  # DAVE THE DIVER
+1868140,dave-the-diver  # DAVE THE DIVER (Steam KR title is Korean)
 1623730  # Palworld

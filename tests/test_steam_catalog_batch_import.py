@@ -21,18 +21,24 @@ class SteamCatalogBatchImportTest(unittest.TestCase):
     def test_loads_unique_ids_and_ignores_comments(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "steam_app_ids.txt"
-            path.write_text("413150 # Stardew Valley\n\n105600\n", encoding="utf-8")
-            self.assertEqual(batch_import.load_app_ids(path), ["413150", "105600"])
+            path.write_text(
+                "413150 # Stardew Valley\n\n105600,terraria\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(
+                batch_import.load_targets(path),
+                [("413150", None), ("105600", "terraria")],
+            )
 
     def test_rejects_duplicate_or_non_numeric_ids(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "steam_app_ids.txt"
             path.write_text("413150\n413150\n", encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "Duplicate"):
-                batch_import.load_app_ids(path)
+                batch_import.load_targets(path)
             path.write_text("not-an-id\n", encoding="utf-8")
-            with self.assertRaisesRegex(ValueError, "numeric"):
-                batch_import.load_app_ids(path)
+            with self.assertRaisesRegex(ValueError, "app_id"):
+                batch_import.load_targets(path)
 
     def test_isolates_rejected_product_without_partial_catalog(self):
         valid = (ROOT / "tests/fixtures/steam_appdetails_413150.json").read_bytes()
@@ -46,7 +52,7 @@ class SteamCatalogBatchImportTest(unittest.TestCase):
         original = {"schemaVersion": 4, "games": []}
         updated, accepted, rejected = batch_import.prepare_batch(
             original,
-            ["413150", "999999"],
+            [("413150", None), ("999999", None)],
             fetcher,
             0,
         )

@@ -23,7 +23,7 @@ def canonical_id(title: str) -> str:
     return value
 
 
-def catalog_game(raw: bytes, app_id: str) -> dict:
+def catalog_game(raw: bytes, app_id: str, game_id: str | None = None) -> dict:
     try:
         payload = json.loads(raw)
     except (json.JSONDecodeError, UnicodeDecodeError) as error:
@@ -54,8 +54,13 @@ def catalog_game(raw: bytes, app_id: str) -> dict:
     ]
     if not platforms:
         raise CatalogImportError("Steam game has no supported PC platform")
+    resolved_game_id = game_id or canonical_id(title)
+    if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", resolved_game_id):
+        raise CatalogImportError(
+            "Canonical game id must contain lowercase letters, numbers, and hyphens"
+        )
     return {
-        "id": canonical_id(title),
+        "id": resolved_game_id,
         "title": title.strip(),
         "platforms": platforms,
         "products": [
@@ -106,11 +111,17 @@ def write_catalog(catalog_path: Path, catalog: dict) -> None:
         raise
 
 
-def import_game(catalog_path: Path, raw: bytes, app_id: str, apply: bool) -> dict:
+def import_game(
+    catalog_path: Path,
+    raw: bytes,
+    app_id: str,
+    apply: bool,
+    game_id: str | None = None,
+) -> dict:
     if not app_id.isdigit():
         raise CatalogImportError("Steam app id must be numeric")
     catalog = load_catalog(catalog_path)
-    game = catalog_game(raw, app_id)
+    game = catalog_game(raw, app_id, game_id)
     updated = updated_catalog(catalog, game)
     if apply:
         write_catalog(catalog_path, updated)
@@ -122,6 +133,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--app-id", required=True)
     parser.add_argument("--catalog", default=root / "data/game_catalog.json", type=Path)
+    parser.add_argument("--game-id")
     parser.add_argument("--input", type=Path, help="Use a saved Steam response for testing")
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--timeout", default=15.0, type=float)
@@ -131,7 +143,13 @@ def main() -> int:
     else:
         raw, _, _ = steam.fetch(arguments.app_id, "kr", "korean", arguments.timeout)
     try:
-        game = import_game(arguments.catalog, raw, arguments.app_id, arguments.apply)
+        game = import_game(
+            arguments.catalog,
+            raw,
+            arguments.app_id,
+            arguments.apply,
+            arguments.game_id,
+        )
     except (CatalogImportError, json.JSONDecodeError, OSError) as error:
         parser.error(str(error))
     print(json.dumps(game, ensure_ascii=False, indent=2))

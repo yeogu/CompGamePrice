@@ -12,8 +12,8 @@ import add_steam_catalog_game as catalog_import
 import collect_steam_snapshot as steam
 
 
-def load_app_ids(path: Path) -> list[str]:
-    app_ids = []
+def load_targets(path: Path) -> list[tuple[str, str | None]]:
+    targets = []
     seen = set()
     for line_number, raw_line in enumerate(
         path.read_text(encoding="utf-8").splitlines(),
@@ -22,22 +22,25 @@ def load_app_ids(path: Path) -> list[str]:
         value = raw_line.split("#", 1)[0].strip()
         if not value:
             continue
-        if not value.isdigit():
+        fields = [field.strip() for field in value.split(",")]
+        if len(fields) > 2 or not fields[0].isdigit():
             raise ValueError(
-                f"Steam app id on line {line_number} must be numeric"
+                f"Line {line_number} must contain app_id or app_id,game-id"
             )
-        if value in seen:
-            raise ValueError(f"Duplicate Steam app id in input: {value}")
-        seen.add(value)
-        app_ids.append(value)
-    if not app_ids:
+        app_id = fields[0]
+        game_id = fields[1] if len(fields) == 2 and fields[1] else None
+        if app_id in seen:
+            raise ValueError(f"Duplicate Steam app id in input: {app_id}")
+        seen.add(app_id)
+        targets.append((app_id, game_id))
+    if not targets:
         raise ValueError("Steam app id list is empty")
-    return app_ids
+    return targets
 
 
 def prepare_batch(
     catalog: dict,
-    app_ids: list[str],
+    targets: list[tuple[str, str | None]],
     fetcher,
     request_delay: float,
 ) -> tuple[dict, list[dict], list[dict]]:
@@ -46,12 +49,12 @@ def prepare_batch(
     updated = catalog
     accepted = []
     rejected = []
-    for index, app_id in enumerate(app_ids):
+    for index, (app_id, game_id) in enumerate(targets):
         if index > 0 and request_delay > 0:
             time.sleep(request_delay)
         try:
             raw = fetcher(app_id)
-            game = catalog_import.catalog_game(raw, app_id)
+            game = catalog_import.catalog_game(raw, app_id, game_id)
             updated = catalog_import.updated_catalog(updated, game)
             accepted.append(game)
         except Exception as error:
@@ -70,7 +73,7 @@ def main() -> int:
     arguments = parser.parse_args()
 
     try:
-        app_ids = load_app_ids(arguments.input)
+        targets = load_targets(arguments.input)
         catalog = catalog_import.load_catalog(arguments.catalog)
 
         def fetch_app(app_id: str) -> bytes:
@@ -84,7 +87,7 @@ def main() -> int:
 
         updated, accepted, rejected = prepare_batch(
             catalog,
-            app_ids,
+            targets,
             fetch_app,
             arguments.request_delay,
         )
