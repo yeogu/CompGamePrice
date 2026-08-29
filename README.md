@@ -2,6 +2,9 @@
 
 AI를 활용하여 개발하는 크로스 플랫폼 게임 가격 비교 Prototype입니다.
 
+가격 데이터의 identity, validation, history, freshness, collection reliability와
+잔여 위험은 [Data Reliability Audit](docs/data-reliability-audit.md)에 정리되어 있습니다.
+
 서로 다른 Steam, Epic Games Store, Google Play, Apple App Store, Nintendo eShop
 로컬 데이터 형식을 공통
 `StoreProduct` 모델로 정규화하고, 공통 Provider 인터페이스를 통해

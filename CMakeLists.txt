@@ -148,6 +148,15 @@ if(BUILD_TESTING)
                     ${CURL_EXECUTABLE}
             )
             set_tests_properties(user_price_alert_e2e PROPERTIES TIMEOUT 15)
+            add_test(
+                NAME data_reliability_e2e
+                COMMAND bash
+                    ${CMAKE_CURRENT_SOURCE_DIR}/tests/data_reliability_e2e.sh
+                    $<TARGET_FILE:game_price_api>
+                    $<TARGET_FILE:game_price_tracker>
+                    ${CURL_EXECUTABLE}
+            )
+            set_tests_properties(data_reliability_e2e PROPERTIES TIMEOUT 15)
         endif()
     endif()
 endif()
