@@ -114,6 +114,10 @@ if(BUILD_TESTING)
             NAME collection_health_tests
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_collection_health.py
         )
+        add_test(
+            NAME notification_outbox_tests
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_notification_outbox.py
+        )
         if(APPLE)
             add_test(
                 NAME macos_schedule_script_syntax
