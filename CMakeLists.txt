@@ -95,6 +95,10 @@ if(BUILD_TESTING)
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_steam_collector.py
         )
         add_test(
+            NAME steam_catalog_import_tests
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_steam_catalog_import.py
+        )
+        add_test(
             NAME steam_pipeline_tests
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_steam_pipeline.py
         )

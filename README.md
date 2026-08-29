@@ -262,6 +262,25 @@ Switch 2 전용 Edition, Upgrade Pack을 구분하면서 동일한 가격 비교
 새 게임은 이 JSON에 Game과 Store별 `productId`를 한 번만 등록하면 됩니다.
 파이프라인은 네트워크 요청 전에 필수 필드와 중복 Game/상품 ID를 검증합니다.
 
+Steam 게임 한 개를 안전하게 추가하는 Catalog Import Prototype도 제공합니다.
+기본 실행은 카탈로그를 수정하지 않고 Steam 응답에서 생성될 항목만 보여줍니다.
+
+```sh
+python3 tools/add_steam_catalog_game.py --app-id 1245620
+```
+
+출력된 제목, 플랫폼, `Standard + BaseGame` 분류가 맞는지 확인한 뒤 실제로
+추가합니다. 적용 전 원본은 `data/game_catalog.json.bak`으로 보관됩니다.
+
+```sh
+python3 tools/add_steam_catalog_game.py --app-id 1245620 --apply
+python3 tools/run_steam_pipeline.py
+```
+
+이 Prototype은 Steam 응답의 `type`이 `game`인 PC 상품만 허용하며 DLC 등은
+거부합니다. 기존 canonical game ID, 제목 또는 Steam App ID와 중복되어도
+카탈로그를 변경하지 않습니다.
+
 기본 대상은 Stardew Valley Steam app `413150`, 국가 코드는 `kr`입니다. 수집기는
 Python 표준 라이브러리만 사용하며 다음 파일을 원자적으로 교체합니다.
 
