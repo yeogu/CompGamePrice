@@ -1,5 +1,27 @@
 import { expect, test } from '@playwright/test'
 
+test('game autocomplete selects a catalog game with the keyboard', async ({ page }) => {
+  await page.goto('/')
+  const search = page.getByLabel('게임 이름')
+
+  await search.fill('Ha')
+  await expect(page.getByRole('option', { name: /Hades/ })).toBeVisible()
+  await search.press('ArrowDown')
+  await search.press('Enter')
+
+  await expect(page).toHaveURL(/\?game=hades/)
+  await expect(page.getByRole('heading', { name: 'Hades' }).last()).toBeVisible()
+  await expect(page.getByRole('listbox')).toHaveCount(0)
+})
+
+test('game autocomplete reports an empty catalog match', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('게임 이름').fill('not-a-catalog-game')
+  await expect(page.getByText('등록된 게임이 없습니다.')).toBeVisible()
+  await page.getByLabel('게임 이름').press('Escape')
+  await expect(page.getByRole('listbox')).toHaveCount(0)
+})
+
 test('user can search, inspect prices, create an alert, and log out', async ({ page }) => {
   await page.goto('/')
 

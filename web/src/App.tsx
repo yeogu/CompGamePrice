@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from 'react'
+import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react'
 import { addAlertRule, deleteAlertRule, getAlertRules, getCollectionRuns, getExternalIdentities, getGamePriceHistory, getGamePrices, getGames, getMe, getNotifications, getOAuthUrl, login, logout, markNotificationRead, register, unlinkExternalIdentity } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
 import type { AlertRule, AlertRuleType, CollectionRun, ExternalIdentity, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Money, Notification, OAuthProvider, User } from './types'
@@ -53,6 +53,11 @@ function App() {
   const [authOpen, setAuthOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showGameResults, setShowGameResults] = useState(false)
+  const [suggestions, setSuggestions] = useState<GameSummary[]>([])
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false)
+  const [activeSuggestion, setActiveSuggestion] = useState(-1)
+  const autocompleteRef = useRef<HTMLDivElement>(null)
+  const suggestionSequence = useRef(0)
 
   const refreshAccount = async (activeToken: string) => {
     const [me, nextRules, nextNotifications, nextIdentities] = await Promise.all([
@@ -83,10 +88,43 @@ function App() {
     setReport(null)
     setHistory(null)
     setShowGameResults(false)
+    setSuggestions([])
+    setSuggestionsOpen(false)
     const address = new URL(window.location.href)
     address.searchParams.delete('game')
     address.searchParams.delete('platform')
     window.history.replaceState(null, '', address)
+  }
+
+  const chooseSuggestion = (game: GameSummary) => {
+    setQuery(game.title)
+    setGames([game])
+    setSuggestionsOpen(false)
+    setActiveSuggestion(-1)
+    setShowGameResults(true)
+    void selectGame(game)
+  }
+
+  const handleAutocompleteKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (!suggestionsOpen || suggestions.length === 0) {
+      if (event.key === 'Escape') {
+        setSuggestionsOpen(false)
+      }
+      return
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      setActiveSuggestion((current) => (current + 1) % suggestions.length)
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      setActiveSuggestion((current) => current <= 0 ? suggestions.length - 1 : current - 1)
+    } else if (event.key === 'Enter' && activeSuggestion >= 0) {
+      event.preventDefault()
+      chooseSuggestion(suggestions[activeSuggestion])
+    } else if (event.key === 'Escape') {
+      setSuggestionsOpen(false)
+      setActiveSuggestion(-1)
+    }
   }
 
   const signOut = async () => {
@@ -176,6 +214,7 @@ function App() {
     setReport(null)
     setHistory(null)
     setShowGameResults(true)
+    setSuggestionsOpen(false)
     try {
       const matches = await getGames(query.trim())
       if (requestId !== requestSequence.current) return
@@ -223,6 +262,45 @@ function App() {
       .catch(() => setCollectionStatusError('수집 상태를 불러오지 못했습니다.'))
     // Load the catalog and initial game once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    const value = query.trim()
+    if (value.length === 0) {
+      setSuggestions([])
+      setSuggestionsOpen(false)
+      setActiveSuggestion(-1)
+      return
+    }
+    const requestId = ++suggestionSequence.current
+    const timer = window.setTimeout(() => {
+      void getGames(value)
+        .then((matches) => {
+          if (requestId !== suggestionSequence.current) {
+            return
+          }
+          setSuggestions(matches.slice(0, 6))
+          setSuggestionsOpen(true)
+          setActiveSuggestion(-1)
+        })
+        .catch(() => {
+          if (requestId === suggestionSequence.current) {
+            setSuggestions([])
+            setSuggestionsOpen(true)
+          }
+        })
+    }, 250)
+    return () => window.clearTimeout(timer)
+  }, [query])
+
+  useEffect(() => {
+    const closeAutocomplete = (event: MouseEvent) => {
+      if (!autocompleteRef.current?.contains(event.target as Node)) {
+        setSuggestionsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', closeAutocomplete)
+    return () => document.removeEventListener('mousedown', closeAutocomplete)
   }, [])
 
   useEffect(() => {
@@ -278,12 +356,35 @@ function App() {
         <h1>어디서 사야 가장 저렴할까?</h1>
         <p className="intro">Steam과 모바일 Store 가격을 한눈에 비교해보세요.</p>
         <form onSubmit={submitSearch} className="search-form">
-          <input
-            aria-label="게임 이름"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="게임 이름을 입력하세요"
-          />
+          <div className="autocomplete" ref={autocompleteRef}>
+            <input
+              aria-label="게임 이름"
+              aria-autocomplete="list"
+              aria-controls="game-suggestions"
+              aria-expanded={suggestionsOpen}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onFocus={() => query.trim() && setSuggestionsOpen(true)}
+              onKeyDown={handleAutocompleteKeyDown}
+              placeholder="게임 이름을 입력하세요"
+              role="combobox"
+            />
+            {suggestionsOpen && <div className="suggestions" id="game-suggestions" role="listbox">
+              {suggestions.map((game, index) => <button
+                aria-selected={index === activeSuggestion}
+                className={index === activeSuggestion ? 'active' : ''}
+                key={game.id}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => chooseSuggestion(game)}
+                role="option"
+                type="button"
+              >
+                <strong>{game.title}</strong>
+                <span>{game.platforms.join(' · ')}</span>
+              </button>)}
+              {suggestions.length === 0 && <p>등록된 게임이 없습니다.</p>}
+            </div>}
+          </div>
           <button disabled={loading} type="submit">
             {loading ? '조회 중…' : '가격 찾기'}
           </button>
