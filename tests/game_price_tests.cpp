@@ -975,7 +975,10 @@ void testAuthenticationAndPriceAlerts() {
            "User should be able to remove an owned alert rule");
 }
 
-void testPriceAlertsUseComparableBaseGameOffers() {
+void expectOfferDoesNotTriggerDefaultPriceAlert(
+    const std::string& productId,
+    GameEdition edition,
+    OfferType offerType) {
     Database database(":memory:");
     StoreProductRepository products(database);
     products.initializeSchema();
@@ -985,38 +988,97 @@ void testPriceAlertsUseComparableBaseGameOffers() {
     const auto user = auth.registerUser(
         "comparable-alert@example.com", "safe-password-123").user;
     const Game game{
-        "comparable-alert-game", "Comparable Alert Game",
-        "comparable alert game", {Platform::Windows}};
-
-    const auto offer = [&](const std::string& id, std::int64_t price,
-                           GameEdition edition, OfferType offerType) {
-        return StoreProduct{
-            id, game.id, Store::Steam, {Platform::Windows},
-            Money{price, Currency::KRW}, true,
-            "2026-01-01T00:00:00.000Z", std::nullopt, 0,
-            Region::KR, edition, offerType};
-    };
-    auto baseGame = offer(
-        "standard-base", 20000, GameEdition::Standard, OfferType::BaseGame);
-    products.saveNormalizedProducts(game, {
-        baseGame,
-        offer("cheap-dlc", 100, GameEdition::Standard, OfferType::DLC),
-        offer("cheap-bundle", 200, GameEdition::Standard, OfferType::Bundle),
-        offer("cheap-subscription", 300, GameEdition::Standard,
-              OfferType::Subscription),
-        offer("cheap-deluxe", 400, GameEdition::Deluxe,
-              OfferType::BaseGame)});
+        "non-comparable-alert-game",
+        "Non-comparable Alert Game",
+        "non comparable alert game",
+        {Platform::Windows}};
+    const StoreProduct product{
+        productId,
+        game.id,
+        Store::Steam,
+        {Platform::Windows},
+        Money{100, Currency::KRW},
+        true,
+        "2026-01-01T00:00:00.000Z",
+        std::nullopt,
+        0,
+        Region::KR,
+        edition,
+        offerType};
+    products.saveNormalizedProducts(game, {product});
     accounts.addRule(
         user.id, game.id, AlertRuleType::BelowTargetPrice, 1000,
         Platform::Windows);
 
-    expect(alerts.evaluateGame(game.id) == 0 &&
-               accounts.findNotifications(user.id).empty(),
-           "DLC, Bundle, Subscription, and Deluxe prices must not trigger a default alert");
+    expect(
+        alerts.evaluateGame(game.id) == 0 &&
+            accounts.findNotifications(user.id).empty(),
+        productId + " must not trigger a default Standard BaseGame alert");
+}
 
-    baseGame.currentPrice.minorAmount = 900;
-    baseGame.observedAt = "2026-02-01T00:00:00.000Z";
+void testDlcDoesNotTriggerDefaultPriceAlert() {
+    expectOfferDoesNotTriggerDefaultPriceAlert(
+        "cheap-dlc",
+        GameEdition::Standard,
+        OfferType::DLC);
+}
+
+void testDeluxeDoesNotTriggerDefaultPriceAlert() {
+    expectOfferDoesNotTriggerDefaultPriceAlert(
+        "cheap-deluxe",
+        GameEdition::Deluxe,
+        OfferType::BaseGame);
+}
+
+void testBundleDoesNotTriggerDefaultPriceAlert() {
+    expectOfferDoesNotTriggerDefaultPriceAlert(
+        "cheap-bundle",
+        GameEdition::Standard,
+        OfferType::Bundle);
+}
+
+void testSubscriptionDoesNotTriggerDefaultPriceAlert() {
+    expectOfferDoesNotTriggerDefaultPriceAlert(
+        "cheap-subscription",
+        GameEdition::Standard,
+        OfferType::Subscription);
+}
+
+void testStandardBaseGameTriggersDefaultPriceAlert() {
+    Database database(":memory:");
+    StoreProductRepository products(database);
+    products.initializeSchema();
+    AccountRepository accounts(database);
+    AuthService auth(accounts);
+    AlertService alerts(accounts);
+    const auto user = auth.registerUser(
+        "standard-alert@example.com", "safe-password-123").user;
+    const Game game{
+        "standard-alert-game",
+        "Standard Alert Game",
+        "standard alert game",
+        {Platform::Windows}};
+    const StoreProduct baseGame{
+        "standard-base",
+        game.id,
+        Store::Steam,
+        {Platform::Windows},
+        Money{900, Currency::KRW},
+        true,
+        "2026-01-01T00:00:00.000Z",
+        std::nullopt,
+        0,
+        Region::KR,
+        GameEdition::Standard,
+        OfferType::BaseGame};
     products.saveNormalizedProducts(game, {baseGame});
+    accounts.addRule(
+        user.id,
+        game.id,
+        AlertRuleType::BelowTargetPrice,
+        1000,
+        Platform::Windows);
+
     expect(alerts.evaluateGame(game.id) == 1,
            "A matching Standard BaseGame should trigger the default target alert");
     const auto notifications = accounts.findNotifications(user.id);
@@ -1422,8 +1484,16 @@ int main() {
         {"Game query service report", testGameQueryServiceReport},
         {"ISO date validation", testIsoDateValidation},
         {"Authentication and price alerts", testAuthenticationAndPriceAlerts},
-        {"Comparable offer price alerts",
-         testPriceAlertsUseComparableBaseGameOffers},
+        {"Standard BaseGame price alert",
+         testStandardBaseGameTriggersDefaultPriceAlert},
+        {"DLC excluded from default price alerts",
+         testDlcDoesNotTriggerDefaultPriceAlert},
+        {"Deluxe excluded from default price alerts",
+         testDeluxeDoesNotTriggerDefaultPriceAlert},
+        {"Bundle excluded from default price alerts",
+         testBundleDoesNotTriggerDefaultPriceAlert},
+        {"Subscription excluded from default price alerts",
+         testSubscriptionDoesNotTriggerDefaultPriceAlert},
         {"Social identity login and linking", testSocialIdentityLoginAndLinking},
         {"Platform-scoped target alert", testPlatformScopedTargetAlert},
         {"Explicit collection timestamp", testExplicitCollectionTimestamp},

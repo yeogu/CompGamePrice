@@ -64,3 +64,5 @@ GAME_PRICE_DATABASE_PATH="${database}" "${tracker_binary}" collect \
 grep -q '"store":"Nintendo eShop"' "${body}"
 ! grep -q '"store":"Steam"' "${body}"
 ! grep -q '"store":"Epic Games Store"' "${body}"
+notification_count=$(grep -o '"id":[0-9][0-9]*' "${body}" | wc -l | tr -d ' ')
+[[ "${notification_count}" == "1" ]]
