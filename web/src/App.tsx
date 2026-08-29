@@ -25,6 +25,31 @@ const recommendationReason: Record<string, string> = {
   'Current price is not close enough to the historical low.': '현재 가격이 역대 최저가와 충분히 가깝지 않습니다.',
 }
 
+const authenticationErrorMessage = (reason: unknown, mode: 'login' | 'register') => {
+  const message = reason instanceof Error ? reason.message : ''
+  if (message === 'invalid credentials') {
+    return '이메일 또는 비밀번호가 올바르지 않습니다.'
+  }
+  if (message.includes('too many login attempts')) {
+    return '로그인 시도가 너무 많습니다. 15분 후 다시 시도해주세요.'
+  }
+  if (message.includes('already') || message.includes('could not be created')) {
+    return '이미 가입된 이메일이거나 계정을 만들 수 없습니다.'
+  }
+  if (message.includes('password')) {
+    return '비밀번호는 8자 이상이어야 합니다.'
+  }
+  if (message.includes('email')) {
+    return '올바른 이메일 주소를 입력해주세요.'
+  }
+  if (message) {
+    return message
+  }
+  return mode === 'login'
+    ? '로그인에 실패했습니다. 잠시 후 다시 시도해주세요.'
+    : '회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.'
+}
+
 type AppView = 'games' | 'favorites' | 'alerts' | 'notifications' | 'account' | 'collection'
 
 function App() {
@@ -53,6 +78,8 @@ function App() {
   const [actionMessage, setActionMessage] = useState('')
   const [activeView, setActiveView] = useState<AppView>('games')
   const [authOpen, setAuthOpen] = useState(false)
+  const [authError, setAuthError] = useState('')
+  const [authSubmitting, setAuthSubmitting] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showGameResults, setShowGameResults] = useState(false)
   const [suggestions, setSuggestions] = useState<GameSummary[]>([])
@@ -69,12 +96,29 @@ function App() {
   }
 
   const submitAuth = async (event: FormEvent) => {
-    event.preventDefault(); setError('')
+    event.preventDefault()
+    setAuthError('')
+    setAuthSubmitting(true)
     try {
       const result = authMode === 'register' ? await register(email, password) : await login(email, password)
-      localStorage.setItem('game-price-session', '1'); setToken('cookie'); setUser(result.user)
-      setPassword(''); await refreshAccount('cookie'); setAuthOpen(false)
-    } catch (reason) { setError(reason instanceof Error ? reason.message : '인증에 실패했습니다.') }
+      localStorage.setItem('game-price-session', '1')
+      setToken('cookie')
+      setUser(result.user)
+      setPassword('')
+      await refreshAccount('cookie')
+      setAuthOpen(false)
+      setActionMessage(authMode === 'login' ? '로그인했습니다.' : '회원가입과 로그인이 완료되었습니다.')
+    } catch (reason) {
+      setAuthError(authenticationErrorMessage(reason, authMode))
+    } finally {
+      setAuthSubmitting(false)
+    }
+  }
+
+  const openAuth = (mode: 'login' | 'register') => {
+    setAuthMode(mode)
+    setAuthError('')
+    setAuthOpen(true)
   }
 
   const navigate = (view: AppView) => {
@@ -159,7 +203,7 @@ function App() {
 
   const toggleFavorite = async () => {
     if (!token || !report) {
-      setAuthOpen(true)
+      openAuth('login')
       return
     }
     const saved = favorites.some((game) => game.id === report.game.id)
@@ -356,9 +400,9 @@ function App() {
         </button>
         <nav aria-label="주 메뉴">
           <button className={activeView === 'games' ? 'active' : ''} onClick={openGameFinder}>게임 찾기</button>
-          <button className={activeView === 'favorites' ? 'active' : ''} onClick={() => user ? navigate('favorites') : setAuthOpen(true)}>관심 게임</button>
-          <button className={activeView === 'alerts' ? 'active' : ''} onClick={() => user ? navigate('alerts') : setAuthOpen(true)}>가격 알림</button>
-          <button className={activeView === 'notifications' ? 'active' : ''} onClick={() => user ? navigate('notifications') : setAuthOpen(true)}>
+          <button className={activeView === 'favorites' ? 'active' : ''} onClick={() => user ? navigate('favorites') : openAuth('login')}>관심 게임</button>
+          <button className={activeView === 'alerts' ? 'active' : ''} onClick={() => user ? navigate('alerts') : openAuth('login')}>가격 알림</button>
+          <button className={activeView === 'notifications' ? 'active' : ''} onClick={() => user ? navigate('notifications') : openAuth('login')}>
             알림함 {notifications.filter((item) => !item.read).length > 0 && <span className="nav-count">{notifications.filter((item) => !item.read).length}</span>}
           </button>
           <button className={activeView === 'collection' ? 'active' : ''} onClick={() => navigate('collection')}>수집 상태</button>
@@ -373,8 +417,8 @@ function App() {
           ) : (
             <>
               <p>로그인하면 원하는 가격에 알림을 받을 수 있어요.</p>
-              <button onClick={() => { setAuthMode('login'); setAuthOpen(true) }}>로그인</button>
-              <button className="secondary" onClick={() => { setAuthMode('register'); setAuthOpen(true) }}>회원가입</button>
+              <button onClick={() => openAuth('login')}>로그인</button>
+              <button className="secondary" onClick={() => openAuth('register')}>회원가입</button>
             </>
           )}
         </div>
@@ -426,7 +470,7 @@ function App() {
       {showGameResults && selectedGameId && <section className="inline-alert-card">
         <div><strong>{report?.game.title ?? selectedGameId} 가격 알림</strong><span>{selectedPlatform || '모든 플랫폼'}{report?.cheapest ? ` · 현재 ${formatMoney(report.cheapest.price)}` : ''}</span></div>
         <input type="number" min="0" value={targetPrice} onChange={(event) => setTargetPrice(event.target.value)} placeholder="목표 가격(KRW)" />
-        {user ? <button onClick={() => void createRule('BelowTargetPrice')}>목표가 알림</button> : <button onClick={() => setAuthOpen(true)}>로그인하고 알림 받기</button>}
+        {user ? <button onClick={() => void createRule('BelowTargetPrice')}>목표가 알림</button> : <button onClick={() => openAuth('login')}>로그인하고 알림 받기</button>}
       </section>}
 
       {showGameResults && games.length > 0 && (
@@ -647,11 +691,12 @@ function App() {
         <p className="eyebrow">WELCOME</p>
         <h2 id="auth-title">{authMode === 'login' ? '로그인' : '회원가입'}</h2>
         <p>가격이 원하는 수준에 도달하면 놓치지 않고 확인하세요.</p>
+        {authError && <p className="auth-feedback error" role="alert">{authError}</p>}
         <form className="auth-form" onSubmit={submitAuth}>
-          <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="email@example.com" />
-          <input type="password" required minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="8자 이상 비밀번호" />
-          <button type="submit">{authMode === 'login' ? '로그인' : '가입하기'}</button>
-          <button type="button" className="text-button" onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}>{authMode === 'login' ? '처음이신가요? 회원가입' : '이미 계정이 있나요? 로그인'}</button>
+          <input type="email" required disabled={authSubmitting} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="email@example.com" />
+          <input type="password" required disabled={authSubmitting} minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="8자 이상 비밀번호" />
+          <button disabled={authSubmitting} type="submit">{authSubmitting ? '확인 중…' : authMode === 'login' ? '로그인' : '가입하기'}</button>
+          <button type="button" className="text-button" disabled={authSubmitting} onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError('') }}>{authMode === 'login' ? '처음이신가요? 회원가입' : '이미 계정이 있나요? 로그인'}</button>
           <div className="social-login">{(['google', 'kakao', 'naver'] as OAuthProvider[]).map((provider) => <button type="button" className={`social-button ${provider}`} key={provider} onClick={() => void startSocialLogin(provider)}>{provider === 'google' ? 'Google' : provider === 'kakao' ? 'Kakao' : 'Naver'}</button>)}</div>
         </form>
       </section>

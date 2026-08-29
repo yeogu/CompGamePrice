@@ -37,6 +37,20 @@ test('platform filtering preserves the current scroll position', async ({ page }
   expect(Math.abs(after - before)).toBeLessThan(40)
 })
 
+test('login failure stays visible in the authentication dialog', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: '로그인', exact: true }).click()
+  await page.getByPlaceholder('email@example.com').fill('missing-user@example.com')
+  await page.getByPlaceholder('8자 이상 비밀번호').fill('wrong-password')
+  await page.getByRole('button', { name: '로그인', exact: true }).last().click()
+
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByRole('alert')).toHaveText(
+    '이메일 또는 비밀번호가 올바르지 않습니다.',
+  )
+})
+
 test('user can search, inspect prices, create an alert, and log out', async ({ page }) => {
   await page.goto('/')
 

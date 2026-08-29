@@ -229,6 +229,7 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .modal-backdrop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px; background: rgba(2, 8, 5, .78); backdrop-filter: blur(8px); }
 .auth-modal { position: relative; width: min(440px, 100%); padding: 34px; background: #101f18; border: 1px solid #365244; border-radius: 22px; box-shadow: 0 30px 80px rgba(0, 0, 0, .5); }
 .auth-modal > p:not(.eyebrow) { color: #91a79b; }
+.auth-modal .auth-feedback { margin: 18px 0 -8px; padding: 12px 14px; color: #ffb4a8; background: #271713; border: 1px solid #633a34; border-radius: 10px; font-size: .88rem; }
 .auth-modal .auth-form { display: grid; grid-template-columns: 1fr; align-items: stretch; margin-top: 24px; }
 .auth-modal .auth-form .text-button, .auth-modal .social-login { grid-column: 1; }
 .auth-modal .social-login { justify-content: stretch; }
