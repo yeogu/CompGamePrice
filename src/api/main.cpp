@@ -19,6 +19,8 @@
 #include <regex>
 #include <sstream>
 #include <iterator>
+#include <mutex>
+#include <thread>
 #include <stdexcept>
 #include <string>
 #include <map>
@@ -220,6 +222,56 @@ Json::Value runCatalogImport(
     return result;
 }
 
+class CatalogCollectionJob {
+public:
+    bool start() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (status_ == "RUNNING") {
+            return false;
+        }
+        ++id_;
+        status_ = "RUNNING";
+        error_.clear();
+        std::thread([this]() { run(); }).detach();
+        return true;
+    }
+
+    Json::Value json() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        Json::Value result;
+        result["id"] = Json::UInt64(id_);
+        result["status"] = status_;
+        if (!error_.empty()) {
+            result["error"] = error_;
+        }
+        return result;
+    }
+
+private:
+    void run() {
+        const auto project = std::filesystem::path(PROJECT_SOURCE_DIR);
+        const auto command = "python3 " + shellQuoted(
+            (project / "tools/run_steam_pipeline.py").string()) +
+            " --tracker " + shellQuoted(
+                (project / "build/game_price_tracker").string()) +
+            " --catalog " + shellQuoted(
+                (project / "data/game_catalog.json").string()) +
+            " --output-dir " + shellQuoted(
+                (project / "snapshots/latest").string());
+        const auto exitCode = std::system(command.c_str());
+        std::lock_guard<std::mutex> lock(mutex_);
+        status_ = exitCode == 0 ? "SUCCEEDED" : "FAILED";
+        if (exitCode != 0) {
+            error_ = "Steam collection pipeline failed";
+        }
+    }
+
+    mutable std::mutex mutex_;
+    std::uint64_t id_{};
+    std::string status_{"IDLE"};
+    std::string error_;
+};
+
 struct OAuthConfig {
     OAuthProvider provider;
     std::string clientId;
@@ -359,6 +411,7 @@ int main() {
         AccountRepository accountRepository(database);
         AuthService authService(accountRepository);
         OAuthService oauthService(accountRepository);
+        CatalogCollectionJob catalogCollectionJob;
 
         drogon::app().registerPreRoutingAdvice(
             [](const drogon::HttpRequestPtr& request,
@@ -724,7 +777,7 @@ int main() {
             {drogon::Get});
         drogon::app().registerHandler(
             "/api/admin/catalog/steam",
-            [](const drogon::HttpRequestPtr& request,
+            [&catalog](const drogon::HttpRequestPtr& request,
                std::function<void(const HttpResponsePtr&)>&& callback) {
                 if (!catalogAdminEnabled() || !isLoopbackRequest(request)) {
                     callback(jsonError(
@@ -756,7 +809,11 @@ int main() {
                     Json::Value response;
                     response["game"] = runCatalogImport(appId, gameId, apply);
                     response["applied"] = apply;
-                    response["requiresApiRestart"] = apply;
+                    if (apply) {
+                        catalog.reload(
+                            std::string(SAMPLE_DATA_DIR) + "/game_catalog.json");
+                    }
+                    response["requiresApiRestart"] = false;
                     callback(jsonResponse(response));
                 } catch (const std::invalid_argument& error) {
                     callback(jsonError(drogon::k400BadRequest, error.what()));
@@ -765,6 +822,42 @@ int main() {
                         drogon::k500InternalServerError,
                         error.what()));
                 }
+            },
+            {drogon::Post});
+        drogon::app().registerHandler(
+            "/api/admin/catalog/collection",
+            [&catalogCollectionJob](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                if (!catalogAdminEnabled() || !isLoopbackRequest(request)) {
+                    callback(jsonError(
+                        drogon::k403Forbidden,
+                        "catalog admin is disabled"));
+                    return;
+                }
+                callback(jsonResponse(catalogCollectionJob.json()));
+            },
+            {drogon::Get});
+        drogon::app().registerHandler(
+            "/api/admin/catalog/collection",
+            [&catalogCollectionJob](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                if (!catalogAdminEnabled() || !isLoopbackRequest(request)) {
+                    callback(jsonError(
+                        drogon::k403Forbidden,
+                        "catalog admin is disabled"));
+                    return;
+                }
+                if (!catalogCollectionJob.start()) {
+                    callback(jsonError(
+                        drogon::k409Conflict,
+                        "collection is already running"));
+                    return;
+                }
+                callback(jsonResponse(
+                    catalogCollectionJob.json(),
+                    drogon::k202Accepted));
             },
             {drogon::Post});
 

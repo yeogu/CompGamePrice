@@ -185,6 +185,12 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     -d '{"appId":"1245620","apply":false}' \
     "${api_base}/api/admin/catalog/steam")
 [[ "${status}" == "403" ]]
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/admin/catalog/collection")
+[[ "${status}" == "403" ]]
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -X POST "${api_base}/api/admin/catalog/collection")
+[[ "${status}" == "403" ]]
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/games?query=terraria")

@@ -124,8 +124,9 @@ WEB_APP_URL=http://127.0.0.1:5173 \
 ```
 
 웹 사이드바의 `카탈로그 관리`에서 Steam App ID를 preview한 후 등록할 수
-있습니다. 등록 후 API를 재시작하고 `python3 tools/run_steam_pipeline.py`로
-가격을 수집합니다.
+있습니다. 등록된 게임은 API 재시작 없이 검색에 반영됩니다. `Steam 가격 수집
+시작`을 누르면 background 작업으로 전체 Steam 가격을 갱신하며 화면에서
+`RUNNING`, `SUCCEEDED`, `FAILED` 상태를 확인할 수 있습니다.
 
 Steam과 Apple 수집, DB 반영, 수집 상태 점검, 알림 Outbox 처리를 한 번에
 실행하려면 다음 운영 명령을 사용합니다. 한 단계가 실패해도 나머지 독립 단계는

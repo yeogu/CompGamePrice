@@ -1,7 +1,7 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react'
-import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, getAlertRules, getCatalogAdminStatus, getCollectionRuns, getExternalIdentities, getFavorites, getGamePriceHistory, getGamePrices, getGames, getMe, getNotifications, getOAuthUrl, getPreferences, importSteamCatalogGame, login, logout, markNotificationRead, register, unlinkExternalIdentity, updatePreferences } from './api'
+import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, getAlertRules, getCatalogAdminStatus, getCatalogCollectionJob, getCollectionRuns, getExternalIdentities, getFavorites, getGamePriceHistory, getGamePrices, getGames, getMe, getNotifications, getOAuthUrl, getPreferences, importSteamCatalogGame, login, logout, markNotificationRead, register, startCatalogCollection, unlinkExternalIdentity, updatePreferences } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
-import type { AlertRule, AlertRuleType, CatalogAdminResult, CollectionRun, ExternalIdentity, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Money, Notification, OAuthProvider, User, UserPreferences } from './types'
+import type { AlertRule, AlertRuleType, CatalogAdminResult, CatalogCollectionJob, CollectionRun, ExternalIdentity, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Money, Notification, OAuthProvider, User, UserPreferences } from './types'
 
 const formatMoney = (money: Money) =>
   new Intl.NumberFormat('ko-KR', {
@@ -82,6 +82,7 @@ function App() {
   const [adminAppId, setAdminAppId] = useState('')
   const [adminGameId, setAdminGameId] = useState('')
   const [adminResult, setAdminResult] = useState<CatalogAdminResult | null>(null)
+  const [catalogJob, setCatalogJob] = useState<CatalogCollectionJob | null>(null)
   const [actionMessage, setActionMessage] = useState('')
   const [activeView, setActiveView] = useState<AppView>('games')
   const [authOpen, setAuthOpen] = useState(false)
@@ -261,6 +262,15 @@ function App() {
     }
   }
 
+  const collectCatalogPrices = async () => {
+    setError('')
+    try {
+      setCatalogJob(await startCatalogCollection())
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : '가격 수집을 시작하지 못했습니다.')
+    }
+  }
+
   const startSocialLogin = async (provider: OAuthProvider, link = false) => {
     try { window.location.assign(await getOAuthUrl(provider, token, link)) }
     catch (reason) { setError(reason instanceof Error ? reason.message : '소셜 로그인을 시작하지 못했습니다.') }
@@ -371,11 +381,32 @@ function App() {
       .then(setCollectionRuns)
       .catch(() => setCollectionStatusError('수집 상태를 불러오지 못했습니다.'))
     void getCatalogAdminStatus()
-      .then((status) => setCatalogAdminEnabled(status.enabled))
+      .then((status) => {
+        setCatalogAdminEnabled(status.enabled)
+        if (status.enabled) {
+          void getCatalogCollectionJob().then(setCatalogJob)
+        }
+      })
       .catch(() => setCatalogAdminEnabled(false))
     // Load the catalog and initial game once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (catalogJob?.status !== 'RUNNING') {
+      return
+    }
+    const timer = window.setInterval(() => {
+      void getCatalogCollectionJob().then((job) => {
+        setCatalogJob(job)
+        if (job.status === 'SUCCEEDED') {
+          setActionMessage('Steam 가격 수집이 완료되었습니다. 새 게임을 바로 검색할 수 있습니다.')
+          void getCollectionRuns().then(setCollectionRuns)
+        }
+      })
+    }, 1000)
+    return () => window.clearInterval(timer)
+  }, [catalogJob?.status])
 
   useEffect(() => {
     const value = query.trim()
@@ -738,8 +769,9 @@ function App() {
           <p><strong>플랫폼</strong> {adminResult.game.platforms.join(' · ')}</p>
           <p><strong>Steam App ID</strong> {adminResult.game.products[0]?.productId}</p>
           {!adminResult.applied && <button onClick={() => void runCatalogImport(true)}>이 상품을 카탈로그에 등록</button>}
-          {adminResult.requiresApiRestart && <p className="notice success">API 재시작 후 Steam 수집 파이프라인을 실행해주세요.</p>}
+          {adminResult.applied && <button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectCatalogPrices()}>{catalogJob?.status === 'RUNNING' ? '가격 수집 중…' : 'Steam 가격 수집 시작'}</button>}
         </article>}
+        {catalogJob && catalogJob.status !== 'IDLE' && <div className={`admin-job ${catalogJob.status.toLowerCase()}`}><strong>수집 상태: {catalogJob.status}</strong>{catalogJob.error && <span>{catalogJob.error}</span>}</div>}
       </section>}
     </main>
 

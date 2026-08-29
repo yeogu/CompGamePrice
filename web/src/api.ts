@@ -1,4 +1,4 @@
-import type { AlertRule, AlertRuleType, AuthResult, CatalogAdminResult, CollectionRun, ExternalIdentity, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Notification, OAuthProvider, User, UserPreferences } from './types'
+import type { AlertRule, AlertRuleType, AuthResult, CatalogAdminResult, CatalogCollectionJob, CollectionRun, ExternalIdentity, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Notification, OAuthProvider, User, UserPreferences } from './types'
 
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8080'
 
@@ -74,3 +74,5 @@ export const getPreferences = (token: string) => requestJson<UserPreferences>('/
 export const updatePreferences = (token: string, preferences: UserPreferences) => requestJson<UserPreferences>('/api/account/preferences', { method: 'PATCH', body: JSON.stringify(preferences) }, token)
 export const getCatalogAdminStatus = () => requestJson<{ enabled: boolean }>('/api/admin/catalog/status')
 export const importSteamCatalogGame = (appId: string, gameId: string, apply: boolean) => requestJson<CatalogAdminResult>('/api/admin/catalog/steam', { method: 'POST', body: JSON.stringify({ appId, ...(gameId ? { gameId } : {}), apply }) })
+export const getCatalogCollectionJob = () => requestJson<CatalogCollectionJob>('/api/admin/catalog/collection')
+export const startCatalogCollection = () => requestJson<CatalogCollectionJob>('/api/admin/catalog/collection', { method: 'POST' })

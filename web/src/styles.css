@@ -232,6 +232,9 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .admin-preview { margin-top: 20px; padding: 20px; background: #0b1812; border: 1px solid #315141; border-radius: 14px; }
 .admin-preview h2 { margin-top: 0; }
 .admin-preview p { color: #a9bdb2; }
+.admin-job { display: grid; gap: 4px; margin-top: 14px; padding: 14px; background: #0b1812; border: 1px solid #315141; border-radius: 10px; }
+.admin-job.succeeded { border-color: #39835a; }
+.admin-job.failed { color: #ffb4a8; border-color: #633a34; }
 .modal-backdrop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px; background: rgba(2, 8, 5, .78); backdrop-filter: blur(8px); }
 .auth-modal { position: relative; width: min(440px, 100%); padding: 34px; background: #101f18; border: 1px solid #365244; border-radius: 22px; box-shadow: 0 30px 80px rgba(0, 0, 0, .5); }
 .auth-modal > p:not(.eyebrow) { color: #91a79b; }

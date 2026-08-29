@@ -6,6 +6,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <shared_mutex>
 
 namespace game_price {
 
@@ -24,11 +25,12 @@ struct CatalogStoreProduct {
 class GameCatalog {
 public:
     explicit GameCatalog(const std::string& dataPath);
+    void reload(const std::string& dataPath);
 
     std::optional<Game> findByName(const std::string& name) const;
     std::optional<Game> findById(const std::string& id) const;
     std::vector<Game> searchByName(const std::string& query) const;
-    const std::vector<Game>& allGames() const noexcept;
+    std::vector<Game> allGames() const;
     std::vector<CatalogStoreProduct> storeProducts(Store store) const;
     std::optional<CatalogStoreProduct> findStoreProduct(
         Store store,
@@ -37,6 +39,7 @@ public:
 private:
     std::vector<Game> games_;
     std::vector<CatalogStoreProduct> storeProducts_;
+    mutable std::shared_mutex mutex_;
 };
 
 }  // namespace game_price

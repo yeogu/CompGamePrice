@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <fstream>
 #include <iterator>
+#include <mutex>
+#include <shared_mutex>
 #include <stdexcept>
 
 namespace game_price {
@@ -307,7 +309,15 @@ GameCatalog::GameCatalog(const std::string& dataPath) {
     if (games_.empty()) throw std::runtime_error("Game Catalog games array cannot be empty");
 }
 
+void GameCatalog::reload(const std::string& dataPath) {
+    GameCatalog refreshed(dataPath);
+    std::unique_lock<std::shared_mutex> lock(mutex_);
+    games_.swap(refreshed.games_);
+    storeProducts_.swap(refreshed.storeProducts_);
+}
+
 std::optional<Game> GameCatalog::findByName(const std::string& name) const {
+    std::shared_lock<std::shared_mutex> lock(mutex_);
     const auto normalized = normalizeName(name);
     const auto found = std::find_if(games_.begin(), games_.end(), [&](const Game& game) {
         return game.normalizedTitle == normalized;
@@ -316,6 +326,7 @@ std::optional<Game> GameCatalog::findByName(const std::string& name) const {
 }
 
 std::optional<Game> GameCatalog::findById(const std::string& id) const {
+    std::shared_lock<std::shared_mutex> lock(mutex_);
     const auto found = std::find_if(games_.begin(), games_.end(), [&](const Game& game) {
         return game.id == id;
     });
@@ -323,6 +334,7 @@ std::optional<Game> GameCatalog::findById(const std::string& id) const {
 }
 
 std::vector<Game> GameCatalog::searchByName(const std::string& query) const {
+    std::shared_lock<std::shared_mutex> lock(mutex_);
     const auto normalized = normalizeName(query);
     if (normalized.empty()) return {};
 
@@ -335,11 +347,13 @@ std::vector<Game> GameCatalog::searchByName(const std::string& query) const {
     return matches;
 }
 
-const std::vector<Game>& GameCatalog::allGames() const noexcept {
+std::vector<Game> GameCatalog::allGames() const {
+    std::shared_lock<std::shared_mutex> lock(mutex_);
     return games_;
 }
 
 std::vector<CatalogStoreProduct> GameCatalog::storeProducts(Store store) const {
+    std::shared_lock<std::shared_mutex> lock(mutex_);
     std::vector<CatalogStoreProduct> result;
     std::copy_if(
         storeProducts_.begin(), storeProducts_.end(), std::back_inserter(result),
@@ -350,6 +364,7 @@ std::vector<CatalogStoreProduct> GameCatalog::storeProducts(Store store) const {
 std::optional<CatalogStoreProduct> GameCatalog::findStoreProduct(
     Store store,
     const std::string& productId) const {
+    std::shared_lock<std::shared_mutex> lock(mutex_);
     const auto found = std::find_if(
         storeProducts_.begin(), storeProducts_.end(),
         [store, &productId](const CatalogStoreProduct& product) {
