@@ -114,6 +114,19 @@ snapshot을 공통 `StoreProduct`로 변환합니다.
 python3 tools/run_steam_pipeline.py
 ```
 
+로컬 Catalog Admin UI를 사용할 때만 API를 다음처럼 실행합니다. 관리 API는
+기본적으로 비활성화되어 있고 loopback 요청만 허용합니다.
+
+```sh
+CATALOG_ADMIN_ENABLED=true \
+WEB_APP_URL=http://127.0.0.1:5173 \
+./build/game_price_api
+```
+
+웹 사이드바의 `카탈로그 관리`에서 Steam App ID를 preview한 후 등록할 수
+있습니다. 등록 후 API를 재시작하고 `python3 tools/run_steam_pipeline.py`로
+가격을 수집합니다.
+
 Steam과 Apple 수집, DB 반영, 수집 상태 점검, 알림 Outbox 처리를 한 번에
 실행하려면 다음 운영 명령을 사용합니다. 한 단계가 실패해도 나머지 독립 단계는
 계속 실행되며 마지막 JSON 요약과 종료 코드로 실패를 확인할 수 있습니다.

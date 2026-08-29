@@ -97,3 +97,4 @@ export interface Notification { id: number; gameId: string; store: string; produ
 export type OAuthProvider = 'google' | 'kakao' | 'naver'
 export interface ExternalIdentity { id: number; provider: 'Google' | 'Kakao' | 'Naver'; email?: string }
 export interface UserPreferences { emailNotificationsEnabled: boolean; region: 'KR'; currency: 'KRW' }
+export interface CatalogAdminResult { game: GameSummary & { products: Array<{ store: string; productId: string; productUrl: string }> }; applied: boolean; requiresApiRestart: boolean }

@@ -177,6 +177,16 @@ grep -q '"id":"hades"' "${response_body}"
 grep -q '"platforms":\["Windows","macOS","Linux"\]' "${response_body}"
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/admin/catalog/status")
+[[ "${status}" == "200" ]]
+grep -q '"enabled":false' "${response_body}"
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -H 'Content-Type: application/json' \
+    -d '{"appId":"1245620","apply":false}' \
+    "${api_base}/api/admin/catalog/steam")
+[[ "${status}" == "403" ]]
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/games?query=terraria")
 [[ "${status}" == "200" ]]
 grep -q '"id":"terraria"' "${response_body}"

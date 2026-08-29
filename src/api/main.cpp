@@ -14,6 +14,11 @@
 #include <algorithm>
 #include <cctype>
 #include <iostream>
+#include <filesystem>
+#include <fstream>
+#include <regex>
+#include <sstream>
+#include <iterator>
 #include <stdexcept>
 #include <string>
 #include <map>
@@ -133,6 +138,86 @@ int serverPort() {
 std::string databasePath() {
     const char* value = std::getenv("GAME_PRICE_DATABASE_PATH");
     return value ? value : GAME_PRICE_DATABASE_PATH;
+}
+
+bool catalogAdminEnabled() {
+    const char* value = std::getenv("CATALOG_ADMIN_ENABLED");
+    return value && std::string(value) == "true";
+}
+
+bool isLoopbackRequest(const drogon::HttpRequestPtr& request) {
+    const auto address = request->peerAddr().toIp();
+    return address == "127.0.0.1" || address == "::1";
+}
+
+bool validSteamAppId(const std::string& value) {
+    return !value.empty() &&
+        std::all_of(value.begin(), value.end(), [](unsigned char character) {
+            return std::isdigit(character) != 0;
+        });
+}
+
+bool validCanonicalGameId(const std::string& value) {
+    static const std::regex pattern{"[a-z0-9]+(?:-[a-z0-9]+)*"};
+    return value.empty() || std::regex_match(value, pattern);
+}
+
+std::string shellQuoted(const std::string& value) {
+    std::string result{"'"};
+    for (const auto character : value) {
+        if (character == '\'') {
+            result += "'\\''";
+        } else {
+            result += character;
+        }
+    }
+    result += '\'';
+    return result;
+}
+
+Json::Value runCatalogImport(
+    const std::string& appId,
+    const std::string& gameId,
+    bool apply) {
+    const auto temporary = std::filesystem::temp_directory_path() /
+        ("compgameprice-catalog-" + appId + ".json");
+    const auto script = std::filesystem::path(PROJECT_SOURCE_DIR) /
+        "tools/add_steam_catalog_game.py";
+    const auto catalog = std::filesystem::path(SAMPLE_DATA_DIR) /
+        "game_catalog.json";
+    std::string command = "python3 " + shellQuoted(script.string()) +
+        " --app-id " + appId +
+        " --catalog " + shellQuoted(catalog.string());
+    if (!gameId.empty()) {
+        command += " --game-id " + gameId;
+    }
+    if (apply) {
+        command += " --apply";
+    }
+    command += " > " + shellQuoted(temporary.string());
+    command += " 2>&1";
+    const auto exitCode = std::system(command.c_str());
+    std::ifstream input(temporary);
+    const std::string output{
+        std::istreambuf_iterator<char>{input},
+        std::istreambuf_iterator<char>{}};
+    std::error_code ignored;
+    std::filesystem::remove(temporary, ignored);
+    if (exitCode != 0) {
+        throw std::invalid_argument(output.empty() ? "catalog import failed" : output);
+    }
+    const auto jsonEnd = output.rfind("}\n");
+    if (jsonEnd == std::string::npos) {
+        throw std::runtime_error("catalog importer returned invalid output");
+    }
+    Json::Value result;
+    Json::CharReaderBuilder builder;
+    std::string errors;
+    std::istringstream jsonInput(output.substr(0, jsonEnd + 1));
+    if (!Json::parseFromStream(builder, jsonInput, &result, &errors)) {
+        throw std::runtime_error("catalog importer returned invalid JSON");
+    }
+    return result;
 }
 
 struct OAuthConfig {
@@ -627,6 +712,61 @@ int main() {
                 if (!user) { callback(jsonError(drogon::k401Unauthorized, "authentication required")); return; }
                 if(!accountRepository.markNotificationRead(user->id,id)){callback(jsonError(drogon::k404NotFound,"notification not found"));return;}callback(jsonResponse(Json::Value{}));
             }, {drogon::Patch});
+
+        drogon::app().registerHandler(
+            "/api/admin/catalog/status",
+            [](const drogon::HttpRequestPtr&,
+               std::function<void(const HttpResponsePtr&)>&& callback) {
+                Json::Value response;
+                response["enabled"] = catalogAdminEnabled();
+                callback(jsonResponse(response));
+            },
+            {drogon::Get});
+        drogon::app().registerHandler(
+            "/api/admin/catalog/steam",
+            [](const drogon::HttpRequestPtr& request,
+               std::function<void(const HttpResponsePtr&)>&& callback) {
+                if (!catalogAdminEnabled() || !isLoopbackRequest(request)) {
+                    callback(jsonError(
+                        drogon::k403Forbidden,
+                        "catalog admin is disabled"));
+                    return;
+                }
+                const auto body = request->getJsonObject();
+                if (!body || !(*body)["appId"].isString()) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "appId is required"));
+                    return;
+                }
+                const auto appId = (*body)["appId"].asString();
+                const auto gameId = (*body)["gameId"].isString()
+                    ? (*body)["gameId"].asString()
+                    : std::string{};
+                if (!validSteamAppId(appId) ||
+                    !validCanonicalGameId(gameId)) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "invalid appId or gameId"));
+                    return;
+                }
+                const auto apply = (*body)["apply"].isBool() &&
+                    (*body)["apply"].asBool();
+                try {
+                    Json::Value response;
+                    response["game"] = runCatalogImport(appId, gameId, apply);
+                    response["applied"] = apply;
+                    response["requiresApiRestart"] = apply;
+                    callback(jsonResponse(response));
+                } catch (const std::invalid_argument& error) {
+                    callback(jsonError(drogon::k400BadRequest, error.what()));
+                } catch (const std::exception& error) {
+                    callback(jsonError(
+                        drogon::k500InternalServerError,
+                        error.what()));
+                }
+            },
+            {drogon::Post});
 
         drogon::app().registerHandler(
             "/health",

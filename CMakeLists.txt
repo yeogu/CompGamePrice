@@ -71,6 +71,7 @@ if(BUILD_GAME_PRICE_API)
         target_link_libraries(game_price_api PRIVATE game_price_core Drogon::Drogon)
         target_compile_definitions(game_price_api PRIVATE
             SAMPLE_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data"
+            PROJECT_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
             GAME_PRICE_DATABASE_PATH="${CMAKE_CURRENT_BINARY_DIR}/game_prices.db"
         )
         enable_project_warnings(game_price_api)

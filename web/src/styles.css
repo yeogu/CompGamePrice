@@ -226,6 +226,12 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .preference-card p { margin-top: 5px; color: #82968b; font-size: .86rem; }
 .toggle { display: flex; align-items: center; gap: 8px; color: #b7f4d2; font-weight: 800; }
 .preference-meta { grid-column: 1 / -1; display: flex; gap: 18px; padding-top: 12px; border-top: 1px solid #213a2d; color: #82968b; }
+.admin-form { display: grid; grid-template-columns: 1fr 1fr auto; align-items: end; gap: 12px; margin-top: 24px; }
+.admin-form label { display: grid; gap: 7px; color: #a9bdb2; font-size: .82rem; font-weight: 700; }
+.admin-form input { padding: 12px; color: #eef8f2; background: #0b1812; border: 1px solid #315141; border-radius: 9px; }
+.admin-preview { margin-top: 20px; padding: 20px; background: #0b1812; border: 1px solid #315141; border-radius: 14px; }
+.admin-preview h2 { margin-top: 0; }
+.admin-preview p { color: #a9bdb2; }
 .modal-backdrop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px; background: rgba(2, 8, 5, .78); backdrop-filter: blur(8px); }
 .auth-modal { position: relative; width: min(440px, 100%); padding: 34px; background: #101f18; border: 1px solid #365244; border-radius: 22px; box-shadow: 0 30px 80px rgba(0, 0, 0, .5); }
 .auth-modal > p:not(.eyebrow) { color: #91a79b; }
@@ -250,5 +256,6 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
   .inline-alert-card { grid-template-columns: 1fr; }
   .game-summary { grid-template-columns: repeat(2, 1fr); }
   .preference-card { grid-template-columns: 1fr; }
+  .admin-form { grid-template-columns: 1fr; }
   .view-panel { padding: 24px 18px; }
 }

@@ -1,7 +1,7 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react'
-import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, getAlertRules, getCollectionRuns, getExternalIdentities, getFavorites, getGamePriceHistory, getGamePrices, getGames, getMe, getNotifications, getOAuthUrl, getPreferences, login, logout, markNotificationRead, register, unlinkExternalIdentity, updatePreferences } from './api'
+import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, getAlertRules, getCatalogAdminStatus, getCollectionRuns, getExternalIdentities, getFavorites, getGamePriceHistory, getGamePrices, getGames, getMe, getNotifications, getOAuthUrl, getPreferences, importSteamCatalogGame, login, logout, markNotificationRead, register, unlinkExternalIdentity, updatePreferences } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
-import type { AlertRule, AlertRuleType, CollectionRun, ExternalIdentity, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Money, Notification, OAuthProvider, User, UserPreferences } from './types'
+import type { AlertRule, AlertRuleType, CatalogAdminResult, CollectionRun, ExternalIdentity, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Money, Notification, OAuthProvider, User, UserPreferences } from './types'
 
 const formatMoney = (money: Money) =>
   new Intl.NumberFormat('ko-KR', {
@@ -53,7 +53,7 @@ const authenticationErrorMessage = (reason: unknown, mode: 'login' | 'register')
     : '회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.'
 }
 
-type AppView = 'games' | 'favorites' | 'alerts' | 'notifications' | 'account' | 'collection'
+type AppView = 'games' | 'favorites' | 'alerts' | 'notifications' | 'account' | 'collection' | 'admin'
 
 function App() {
   const [query, setQuery] = useState('')
@@ -78,6 +78,10 @@ function App() {
   const [identities, setIdentities] = useState<ExternalIdentity[]>([])
   const [favorites, setFavorites] = useState<GameSummary[]>([])
   const [preferences, setPreferences] = useState<UserPreferences>({ emailNotificationsEnabled: true, region: 'KR', currency: 'KRW' })
+  const [catalogAdminEnabled, setCatalogAdminEnabled] = useState(false)
+  const [adminAppId, setAdminAppId] = useState('')
+  const [adminGameId, setAdminGameId] = useState('')
+  const [adminResult, setAdminResult] = useState<CatalogAdminResult | null>(null)
   const [actionMessage, setActionMessage] = useState('')
   const [activeView, setActiveView] = useState<AppView>('games')
   const [authOpen, setAuthOpen] = useState(false)
@@ -245,6 +249,18 @@ function App() {
     }, '알림 설정을 저장하지 못했습니다.')
   }
 
+  const runCatalogImport = async (apply: boolean) => {
+    setError('')
+    setActionMessage('')
+    try {
+      const result = await importSteamCatalogGame(adminAppId.trim(), adminGameId.trim(), apply)
+      setAdminResult(result)
+      setActionMessage(apply ? '카탈로그에 등록했습니다. API를 재시작한 뒤 가격을 수집해주세요.' : 'Steam 상품 검증이 완료되었습니다.')
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Steam 상품을 검증하지 못했습니다.')
+    }
+  }
+
   const startSocialLogin = async (provider: OAuthProvider, link = false) => {
     try { window.location.assign(await getOAuthUrl(provider, token, link)) }
     catch (reason) { setError(reason instanceof Error ? reason.message : '소셜 로그인을 시작하지 못했습니다.') }
@@ -354,6 +370,9 @@ function App() {
     void getCollectionRuns()
       .then(setCollectionRuns)
       .catch(() => setCollectionStatusError('수집 상태를 불러오지 못했습니다.'))
+    void getCatalogAdminStatus()
+      .then((status) => setCatalogAdminEnabled(status.enabled))
+      .catch(() => setCatalogAdminEnabled(false))
     // Load the catalog and initial game once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -425,6 +444,7 @@ function App() {
             알림함 {notifications.filter((item) => !item.read).length > 0 && <span className="nav-count">{notifications.filter((item) => !item.read).length}</span>}
           </button>
           <button className={activeView === 'collection' ? 'active' : ''} onClick={() => navigate('collection')}>수집 상태</button>
+          {catalogAdminEnabled && <button className={activeView === 'admin' ? 'active' : ''} onClick={() => navigate('admin')}>카탈로그 관리</button>}
         </nav>
         <div className="sidebar-user">
           {user ? (
@@ -701,6 +721,25 @@ function App() {
           <small>성공 {run.productsFound} · 검증 거부 {run.productsRejected} · 실패 {run.productsFailed}{run.retryCount > 0 ? ` · 재시도 ${run.retryCount}` : ''}</small>
           {run.errorMessage && <p>{run.errorMessage}</p>}
         </article>)}</div>
+      </section>}
+
+      {activeView === 'admin' && catalogAdminEnabled && <section className="view-panel">
+        <p className="eyebrow">LOCAL ADMIN</p>
+        <h1 className="view-title">Steam 카탈로그 관리</h1>
+        <p className="view-description">Steam App ID를 먼저 검증하고 결과가 맞을 때만 등록하세요.</p>
+        <div className="admin-form">
+          <label>Steam App ID<input value={adminAppId} onChange={(event) => setAdminAppId(event.target.value)} placeholder="예: 1245620" inputMode="numeric" /></label>
+          <label>Canonical Game ID (선택)<input value={adminGameId} onChange={(event) => setAdminGameId(event.target.value)} placeholder="한글 제목이면 예: dave-the-diver" /></label>
+          <button disabled={!/^\d+$/.test(adminAppId.trim())} onClick={() => void runCatalogImport(false)}>Preview</button>
+        </div>
+        {adminResult && <article className="admin-preview">
+          <h2>{adminResult.game.title}</h2>
+          <p><strong>ID</strong> {adminResult.game.id}</p>
+          <p><strong>플랫폼</strong> {adminResult.game.platforms.join(' · ')}</p>
+          <p><strong>Steam App ID</strong> {adminResult.game.products[0]?.productId}</p>
+          {!adminResult.applied && <button onClick={() => void runCatalogImport(true)}>이 상품을 카탈로그에 등록</button>}
+          {adminResult.requiresApiRestart && <p className="notice success">API 재시작 후 Steam 수집 파이프라인을 실행해주세요.</p>}
+        </article>}
       </section>}
     </main>
 
