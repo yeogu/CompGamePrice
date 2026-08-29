@@ -1441,6 +1441,13 @@ void testCommandLineModes() {
     }
     expect(rejectedMissingAllSteamDataDirectory,
            "collect-steam-all should require a snapshot data directory");
+    const auto collectAppleAll = parseCommandLine(
+        {"collect-apple-all", "--data-dir", "snapshots/latest"});
+    expect(
+        collectAppleAll.command == AppCommand::CollectAppleAll &&
+            collectAppleAll.dataDirectory ==
+                std::optional<std::string>{"snapshots/latest"},
+        "collect-apple-all should select Apple snapshot import mode");
     const auto runs = parseCommandLine({"runs"});
     expect(runs.command == AppCommand::CollectionRuns,
            "runs should select collection run history mode");

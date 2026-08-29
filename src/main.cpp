@@ -109,6 +109,37 @@ CollectionResult collectAllSteamProducts(
     return combined;
 }
 
+CollectionResult collectAllAppleProducts(
+    const GameCatalog& catalog,
+    StoreProductRepository& repository,
+    const std::string& dataDirectory) {
+    AppleAppStoreProvider apple(
+        dataDirectory + "/apple_app_store_products.csv");
+    std::vector<std::reference_wrapper<const StoreProductProvider>> providers{
+        apple};
+    AccountRepository accounts(repository.database());
+    AlertService alerts(accounts);
+    CollectionService service(
+        catalog,
+        repository,
+        std::move(providers),
+        2,
+        &alerts);
+
+    CollectionResult combined;
+    for (const auto& game : catalog.allGames()) {
+        const auto result = service.collect(game);
+        combined.runs.insert(
+            combined.runs.end(),
+            result.runs.begin(),
+            result.runs.end());
+        combined.totalProducts += result.totalProducts;
+        std::cout << "- " << game.title << ": " << result.totalProducts
+                  << " Apple product(s) saved\n";
+    }
+    return combined;
+}
+
 bool collectionCompletedSuccessfully(const CollectionResult& result) {
     std::vector<std::pair<Store, CrawlRunStatus>> finalStatuses;
     for (const auto& run : result.runs) {
@@ -334,6 +365,19 @@ int main(int argc, char* argv[]) {
                 catalog, repository, options.dataDirectory.value());
             std::cout << "Saved " << result.totalProducts
                       << " normalized Steam products to SQLite.\n";
+            return static_cast<int>(
+                collectionCompletedSuccessfully(result)
+                    ? AppExitCode::Success
+                    : AppExitCode::CollectionFailed);
+        }
+        if (options.command == AppCommand::CollectAppleAll) {
+            std::cout << "Apple catalog collection:\n";
+            const auto result = collectAllAppleProducts(
+                catalog,
+                repository,
+                options.dataDirectory.value());
+            std::cout << "Saved " << result.totalProducts
+                      << " normalized Apple products to SQLite.\n";
             return static_cast<int>(
                 collectionCompletedSuccessfully(result)
                     ? AppExitCode::Success

@@ -114,6 +114,18 @@ snapshot을 공통 `StoreProduct`로 변환합니다.
 python3 tools/run_steam_pipeline.py
 ```
 
+Steam과 Apple 수집, DB 반영, 수집 상태 점검, 알림 Outbox 처리를 한 번에
+실행하려면 다음 운영 명령을 사용합니다. 한 단계가 실패해도 나머지 독립 단계는
+계속 실행되며 마지막 JSON 요약과 종료 코드로 실패를 확인할 수 있습니다.
+
+```bash
+python3 tools/run_daily_operations.py \
+  --outbox-file snapshots/notification-outbox.jsonl
+```
+
+SMTP를 사용할 때는 `--outbox-file` 대신 `SMTP_HOST`, `SMTP_FROM`과 선택적인
+`SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` 환경 변수를 설정합니다.
+
 이 명령은 기본적으로 `data/game_catalog.json`의 Steam 상품을 수집하고,
 `snapshots/latest`에 저장한 뒤 `build/game_price_tracker collect-steam-all`을
 실행합니다. 다른 실행 파일이나 경로를 사용할 수도 있습니다.
