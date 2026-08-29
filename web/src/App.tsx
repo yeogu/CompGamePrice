@@ -92,6 +92,8 @@ function App() {
   const [adminQuery, setAdminQuery] = useState('')
   const [adminCandidates, setAdminCandidates] = useState<StoreProductCandidate[]>([])
   const [adminSearching, setAdminSearching] = useState(false)
+  const [adminImporting, setAdminImporting] = useState(false)
+  const [adminError, setAdminError] = useState('')
   const [pendingCandidate, setPendingCandidate] = useState<StoreProductCandidate | null>(null)
   const [actionMessage, setActionMessage] = useState('')
   const [activeView, setActiveView] = useState<AppView>('games')
@@ -265,14 +267,19 @@ function App() {
     appId = adminAppId.trim(),
     gameId = adminGameId.trim(),
   ) => {
-    setError('')
+    const canonicalGameId = canonicalIdFromTitle(gameId)
+    setAdminError('')
+    setAdminImporting(true)
     setActionMessage('')
     try {
-      const result = await importSteamCatalogGame(appId, gameId, apply)
+      const result = await importSteamCatalogGame(appId, canonicalGameId, apply)
+      setAdminGameId(result.game.id)
       setAdminResult(result)
       setActionMessage(apply ? '카탈로그에 등록했습니다. API를 재시작한 뒤 가격을 수집해주세요.' : 'Steam 상품 검증이 완료되었습니다.')
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Steam 상품을 검증하지 못했습니다.')
+      setAdminError(reason instanceof Error ? reason.message : 'Steam 상품을 검증하지 못했습니다.')
+    } finally {
+      setAdminImporting(false)
     }
   }
 
@@ -288,6 +295,7 @@ function App() {
   const searchCatalogCandidates = async () => {
     setAdminSearching(true)
     setError('')
+    setAdminError('')
     setAdminResult(null)
     setPendingCandidate(null)
     try {
@@ -306,8 +314,9 @@ function App() {
     setPendingCandidate(candidate)
     setAdminCandidates([])
     setAdminResult(null)
+    setAdminError('')
     if (!suggestedGameId) {
-      setError('한글 제목은 영문 canonical Game ID를 입력한 뒤 Preview해주세요.')
+      setAdminError('영문 게임명 또는 canonical Game ID를 입력한 뒤 Preview해주세요.')
       return
     }
     void runCatalogImport(false, candidate.externalProductId, suggestedGameId)
@@ -808,15 +817,20 @@ function App() {
         {adminCandidates.length > 0 && <div className="candidate-list">{adminCandidates.map((candidate) => <button key={`${candidate.store}:${candidate.externalProductId}`} onClick={() => chooseCatalogCandidate(candidate)}><strong>{candidate.title}</strong><span>{candidate.store} · {candidate.platforms.join(' · ') || '플랫폼 확인 필요'}</span><small>상품 ID {candidate.externalProductId}</small></button>)}</div>}
         {pendingCandidate && !adminResult && <div className="candidate-confirmation">
           <div><strong>{pendingCandidate.title}</strong><span>상품 ID {pendingCandidate.externalProductId}</span></div>
-          <label>Canonical Game ID<input value={adminGameId} onChange={(event) => setAdminGameId(event.target.value)} placeholder="예: dave-the-diver" /></label>
-          <button disabled={!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(adminGameId.trim())} onClick={() => void runCatalogImport(false)}>Preview</button>
+          <label>영문 게임명 또는 Canonical Game ID
+            <input value={adminGameId} onChange={(event) => setAdminGameId(event.target.value)} placeholder="예: Ogu and the Secret Forest" />
+            {adminGameId.trim() && <small>저장 ID: {canonicalIdFromTitle(adminGameId) || '영문 또는 숫자를 입력해주세요.'}</small>}
+          </label>
+          <button disabled={!canonicalIdFromTitle(adminGameId) || adminImporting} onClick={() => void runCatalogImport(false)}>{adminImporting ? '확인 중…' : 'Preview'}</button>
+          {adminError && <p className="admin-feedback error" role="alert">{adminError}</p>}
         </div>}
         <details className="advanced-admin"><summary>고급 입력: 상품 ID 직접 사용</summary>
         <div className="admin-form">
           <label>Steam App ID<input value={adminAppId} onChange={(event) => setAdminAppId(event.target.value)} placeholder="예: 1245620" inputMode="numeric" /></label>
           <label>Canonical Game ID (선택)<input value={adminGameId} onChange={(event) => setAdminGameId(event.target.value)} placeholder="한글 제목이면 예: dave-the-diver" /></label>
-          <button disabled={!/^\d+$/.test(adminAppId.trim())} onClick={() => void runCatalogImport(false)}>Preview</button>
+          <button disabled={!/^\d+$/.test(adminAppId.trim()) || adminImporting} onClick={() => void runCatalogImport(false)}>{adminImporting ? '확인 중…' : 'Preview'}</button>
         </div>
+        {adminError && !pendingCandidate && <p className="admin-feedback error" role="alert">{adminError}</p>}
         </details>
         {adminResult && <article className="admin-preview">
           <h2>{adminResult.game.title}</h2>

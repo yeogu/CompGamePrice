@@ -236,6 +236,9 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .candidate-confirmation > div, .candidate-confirmation label { display: grid; gap: 5px; }
 .candidate-confirmation span, .candidate-confirmation label { color: #a9bdb2; font-size: .8rem; }
 .candidate-confirmation input { padding: 11px; color: #eef8f2; background: #101f18; border: 1px solid #315141; border-radius: 9px; }
+.candidate-confirmation label small { color: #7fae94; }
+.candidate-confirmation .admin-feedback { grid-column: 1 / -1; margin: 0; }
+.admin-feedback.error { padding: 10px 12px; color: #ffc7c7; background: #351919; border: 1px solid #743b3b; border-radius: 9px; }
 .advanced-admin { margin-top: 18px; color: #a9bdb2; }
 .advanced-admin summary { cursor: pointer; font-weight: 700; }
 .admin-form label { display: grid; gap: 7px; color: #a9bdb2; font-size: .82rem; font-weight: 700; }
