@@ -25,6 +25,8 @@ const recommendationReason: Record<string, string> = {
   'Current price is not close enough to the historical low.': '현재 가격이 역대 최저가와 충분히 가깝지 않습니다.',
 }
 
+type AppView = 'games' | 'alerts' | 'notifications' | 'account' | 'collection'
+
 function App() {
   const [query, setQuery] = useState('')
   const [games, setGames] = useState<GameSummary[]>([])
@@ -47,6 +49,9 @@ function App() {
   const [targetPrice, setTargetPrice] = useState('')
   const [identities, setIdentities] = useState<ExternalIdentity[]>([])
   const [actionMessage, setActionMessage] = useState('')
+  const [activeView, setActiveView] = useState<AppView>('games')
+  const [authOpen, setAuthOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const refreshAccount = async (activeToken: string) => {
     const [me, nextRules, nextNotifications, nextIdentities] = await Promise.all([
@@ -60,8 +65,24 @@ function App() {
     try {
       const result = authMode === 'register' ? await register(email, password) : await login(email, password)
       localStorage.setItem('game-price-session', '1'); setToken('cookie'); setUser(result.user)
-      setPassword(''); await refreshAccount('cookie')
+      setPassword(''); await refreshAccount('cookie'); setAuthOpen(false)
     } catch (reason) { setError(reason instanceof Error ? reason.message : '인증에 실패했습니다.') }
+  }
+
+  const navigate = (view: AppView) => {
+    setActiveView(view)
+    setSidebarOpen(false)
+  }
+
+  const signOut = async () => {
+    await logout(token)
+    localStorage.removeItem('game-price-session')
+    setToken('')
+    setUser(null)
+    setRules([])
+    setNotifications([])
+    setIdentities([])
+    navigate('games')
   }
 
   const createRule = async (type: AlertRuleType) => {
@@ -197,7 +218,42 @@ function App() {
   }, [token])
 
   return (
-    <main>
+    <div className="app-shell">
+      <button className="mobile-menu" aria-label="메뉴 열기" onClick={() => setSidebarOpen(true)}>☰</button>
+      {sidebarOpen && <button className="sidebar-backdrop" aria-label="메뉴 닫기" onClick={() => setSidebarOpen(false)} />}
+      <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
+        <button className="brand" onClick={() => navigate('games')}>
+          <span>CGP</span>
+          <strong>CompGamePrice</strong>
+        </button>
+        <nav aria-label="주 메뉴">
+          <button className={activeView === 'games' ? 'active' : ''} onClick={() => navigate('games')}>게임 찾기</button>
+          <button className={activeView === 'alerts' ? 'active' : ''} onClick={() => user ? navigate('alerts') : setAuthOpen(true)}>가격 알림</button>
+          <button className={activeView === 'notifications' ? 'active' : ''} onClick={() => user ? navigate('notifications') : setAuthOpen(true)}>
+            알림함 {notifications.filter((item) => !item.read).length > 0 && <span className="nav-count">{notifications.filter((item) => !item.read).length}</span>}
+          </button>
+          <button className={activeView === 'collection' ? 'active' : ''} onClick={() => navigate('collection')}>수집 상태</button>
+        </nav>
+        <div className="sidebar-user">
+          {user ? (
+            <>
+              <span className="avatar">{user.email.slice(0, 1).toUpperCase()}</span>
+              <div><strong>{user.email}</strong><button onClick={() => navigate('account')}>계정 설정</button></div>
+              <button className="logout-button" onClick={() => void signOut()}>로그아웃</button>
+            </>
+          ) : (
+            <>
+              <p>로그인하면 원하는 가격에 알림을 받을 수 있어요.</p>
+              <button onClick={() => { setAuthMode('login'); setAuthOpen(true) }}>로그인</button>
+              <button className="secondary" onClick={() => { setAuthMode('register'); setAuthOpen(true) }}>회원가입</button>
+            </>
+          )}
+        </div>
+      </aside>
+      <main className="app-main">
+      {error && <p className="notice error">{error}</p>}
+      {actionMessage && <p className="notice success">{actionMessage}</p>}
+      {activeView === 'games' && <>
       <header className="hero">
         <p className="eyebrow">GAME PRICE TRACKER</p>
         <h1>어디서 사야 가장 저렴할까?</h1>
@@ -215,81 +271,11 @@ function App() {
         </form>
       </header>
 
-      <section className="account-panel">
-        {user ? (
-          <>
-            <div className="account-heading"><div><p className="eyebrow">MY ALERTS</p><h2>{user.email}</h2></div>
-              <button onClick={() => void logout(token).finally(() => { localStorage.removeItem('game-price-session'); setToken(''); setUser(null); setRules([]); setNotifications([]); setIdentities([]) })}>로그아웃</button>
-            </div>
-            {selectedGameId && <div className="alert-controls">
-              <strong>{report?.game.title ?? selectedGameId} · {selectedPlatform || '모든 플랫폼'}</strong>
-              <button onClick={() => void createRule('PriceDrop')}>가격 하락 알림</button>
-              <button onClick={() => void createRule('NewHistoricalLow')}>새 역대 최저가</button>
-              <button onClick={() => void createRule('BelowAverage')}>평균가 이하</button>
-              <input type="number" min="0" value={targetPrice} onChange={(event) => setTargetPrice(event.target.value)} placeholder="목표 가격(KRW)" />
-              <button onClick={() => void createRule('BelowTargetPrice')}>목표가 알림</button>
-            </div>}
-            <div className="account-grid">
-              <div><h3>알림 규칙</h3>{rules.length === 0 && <p>등록된 규칙이 없습니다.</p>}{rules.map((rule) => <div className="account-row" key={rule.id}><span>{rule.gameTitle ?? rule.gameId} · {rule.platform ?? '모든 플랫폼'} · {rule.type}{rule.targetPriceMinor !== undefined ? ` · ₩${rule.targetPriceMinor.toLocaleString()}` : ''}</span><button onClick={() => void runAccountAction(async () => { await deleteAlertRule(token, rule.id); setRules(await getAlertRules(token)); setActionMessage('알림 규칙을 삭제했습니다.') }, '알림 삭제에 실패했습니다.')}>삭제</button></div>)}</div>
-              <div><h3>알림함</h3>{notifications.length === 0 && <p>새 알림이 없습니다.</p>}{notifications.map((item) => <button className={`notification-row ${item.read ? 'read' : ''}`} key={item.id} onClick={() => void runAccountAction(async () => { await markNotificationRead(token, item.id); setNotifications(await getNotifications(token)) }, '읽음 처리에 실패했습니다.')}><strong>{item.gameId} · {item.store}</strong><span>{formatMoney(item.price)} · {item.message}</span></button>)}</div>
-            </div>
-            <div className="social-connections"><h3>연결된 로그인</h3>
-              {(['google', 'kakao', 'naver'] as OAuthProvider[]).map((provider) => {
-                const label: ExternalIdentity['provider'] = provider === 'google' ? 'Google' : provider === 'kakao' ? 'Kakao' : 'Naver'
-                const identity = identities.find((item) => item.provider === label)
-                return identity ? <div className="social-identity" key={provider}><span>{label}{identity.email ? ` · ${identity.email}` : ''}</span><button onClick={() => void runAccountAction(async () => { await unlinkExternalIdentity(token, identity.id); setIdentities(await getExternalIdentities(token)) }, '계정 연결 해제에 실패했습니다.')}>연결 해제</button></div>
-                  : <button className={`social-button ${provider}`} key={provider} onClick={() => void startSocialLogin(provider, true)}>{label} 계정 연결</button>
-              })}
-            </div>
-          </>
-        ) : (
-          <form className="auth-form" onSubmit={submitAuth}>
-            <div><p className="eyebrow">PRICE ALERTS</p><h2>{authMode === 'login' ? '로그인' : '회원가입'}</h2></div>
-            <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="email@example.com" />
-            <input type="password" required minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="8자 이상 비밀번호" />
-            <button type="submit">{authMode === 'login' ? '로그인' : '가입하기'}</button>
-            <button type="button" className="text-button" onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}>{authMode === 'login' ? '처음이신가요? 회원가입' : '이미 계정이 있나요? 로그인'}</button>
-            <div className="social-login"><span>또는 소셜 계정으로 계속</span>{(['google', 'kakao', 'naver'] as OAuthProvider[]).map((provider) => <button type="button" className={`social-button ${provider}`} key={provider} onClick={() => void startSocialLogin(provider)}>{provider === 'google' ? 'Google' : provider === 'kakao' ? 'Kakao' : 'Naver'}</button>)}</div>
-          </form>
-        )}
-      </section>
-
-      {error && <p className="notice error">{error}</p>}
-      {actionMessage && <p className="notice success">{actionMessage}</p>}
-
-      <section className="collection-panel" aria-label="최근 가격 수집 상태">
-        <div className="collection-heading">
-          <div>
-            <p className="eyebrow">COLLECTION STATUS</p>
-            <h2>최근 수집 실행</h2>
-          </div>
-          {collectionRuns[0] && (
-            <time dateTime={collectionRuns[0].startedAt}>
-              {new Intl.DateTimeFormat('ko-KR', {
-                dateStyle: 'medium', timeStyle: 'short',
-              }).format(new Date(collectionRuns[0].startedAt))}
-            </time>
-          )}
-        </div>
-        {collectionStatusError && <p className="status-message error-text">{collectionStatusError}</p>}
-        {!collectionStatusError && collectionRuns.length === 0 && (
-          <p className="status-message">아직 저장된 수집 실행이 없습니다.</p>
-        )}
-        <div className="collection-run-list">
-          {collectionRuns.map((run) => (
-            <article key={run.id} className={`collection-run ${run.status.toLowerCase()}`}>
-              <span className="status-dot" />
-              <strong>{run.store}</strong>
-              <span>{run.status === 'SUCCEEDED' ? '성공' : run.status === 'FAILED' ? '실패' : '실행 중'}</span>
-              <small>
-                성공 {run.productsFound} · 검증 거부 {run.productsRejected} · 실패 {run.productsFailed}
-                {run.retryCount > 0 ? ` · 재시도 ${run.retryCount}` : ''}
-              </small>
-              {run.errorMessage && <p>{run.errorMessage}</p>}
-            </article>
-          ))}
-        </div>
-      </section>
+      {user && selectedGameId && <section className="inline-alert-card">
+        <div><strong>{report?.game.title ?? selectedGameId} 가격 알림</strong><span>{selectedPlatform || '모든 플랫폼'}</span></div>
+        <input type="number" min="0" value={targetPrice} onChange={(event) => setTargetPrice(event.target.value)} placeholder="목표 가격(KRW)" />
+        <button onClick={() => void createRule('BelowTargetPrice')}>목표가 알림</button>
+      </section>}
 
       {games.length > 0 && (
         <section className="panel">
@@ -431,7 +417,71 @@ function App() {
         {history && <PriceHistoryChart histories={history.histories} />}
         </>
       )}
+      </>}
+
+      {activeView === 'alerts' && user && <section className="view-panel">
+        <p className="eyebrow">PRICE ALERTS</p>
+        <h1 className="view-title">내 가격 알림</h1>
+        <p className="view-description">게임 상세에서 설정한 목표 가격과 가격 변동 규칙입니다.</p>
+        {rules.length === 0 && <p className="empty-state">등록된 가격 알림이 없습니다.</p>}
+        {rules.map((rule) => <div className="account-row" key={rule.id}>
+          <span><strong>{rule.gameTitle ?? rule.gameId}</strong> · {rule.platform ?? '모든 플랫폼'} · {rule.type}{rule.targetPriceMinor !== undefined ? ` · ₩${rule.targetPriceMinor.toLocaleString()}` : ''}</span>
+          <button onClick={() => void runAccountAction(async () => { await deleteAlertRule(token, rule.id); setRules(await getAlertRules(token)); setActionMessage('알림 규칙을 삭제했습니다.') }, '알림 삭제에 실패했습니다.')}>삭제</button>
+        </div>)}
+      </section>}
+
+      {activeView === 'notifications' && user && <section className="view-panel">
+        <p className="eyebrow">NOTIFICATIONS</p>
+        <h1 className="view-title">알림함</h1>
+        {notifications.length === 0 && <p className="empty-state">새 알림이 없습니다.</p>}
+        {notifications.map((item) => <button className={`notification-row ${item.read ? 'read' : ''}`} key={item.id} onClick={() => void runAccountAction(async () => { await markNotificationRead(token, item.id); setNotifications(await getNotifications(token)) }, '읽음 처리에 실패했습니다.')}>
+          <strong>{item.gameId} · {item.store}</strong><span>{formatMoney(item.price)} · {item.message}</span>
+        </button>)}
+      </section>}
+
+      {activeView === 'account' && user && <section className="view-panel">
+        <p className="eyebrow">ACCOUNT</p>
+        <h1 className="view-title">계정 설정</h1>
+        <div className="profile-card"><span className="avatar large">{user.email.slice(0, 1).toUpperCase()}</span><div><strong>{user.email}</strong><p>가격 알림 {rules.length}개 · 읽지 않은 알림 {notifications.filter((item) => !item.read).length}개</p></div></div>
+        <div className="social-connections"><h3>연결된 로그인</h3>
+          {(['google', 'kakao', 'naver'] as OAuthProvider[]).map((provider) => {
+            const label: ExternalIdentity['provider'] = provider === 'google' ? 'Google' : provider === 'kakao' ? 'Kakao' : 'Naver'
+            const identity = identities.find((item) => item.provider === label)
+            return identity ? <div className="social-identity" key={provider}><span>{label}{identity.email ? ` · ${identity.email}` : ''}</span><button onClick={() => void runAccountAction(async () => { await unlinkExternalIdentity(token, identity.id); setIdentities(await getExternalIdentities(token)) }, '계정 연결 해제에 실패했습니다.')}>연결 해제</button></div>
+              : <button className={`social-button ${provider}`} key={provider} onClick={() => void startSocialLogin(provider, true)}>{label} 계정 연결</button>
+          })}
+        </div>
+      </section>}
+
+      {activeView === 'collection' && <section className="view-panel collection-panel" aria-label="최근 가격 수집 상태">
+        <p className="eyebrow">COLLECTION STATUS</p>
+        <h1 className="view-title">최근 수집 실행</h1>
+        {collectionStatusError && <p className="status-message error-text">{collectionStatusError}</p>}
+        {!collectionStatusError && collectionRuns.length === 0 && <p className="empty-state">아직 저장된 수집 실행이 없습니다.</p>}
+        <div className="collection-run-list">{collectionRuns.map((run) => <article key={run.id} className={`collection-run ${run.status.toLowerCase()}`}>
+          <span className="status-dot" /><strong>{run.store}</strong><span>{run.status === 'SUCCEEDED' ? '성공' : run.status === 'FAILED' ? '실패' : '실행 중'}</span>
+          <small>성공 {run.productsFound} · 검증 거부 {run.productsRejected} · 실패 {run.productsFailed}{run.retryCount > 0 ? ` · 재시도 ${run.retryCount}` : ''}</small>
+          {run.errorMessage && <p>{run.errorMessage}</p>}
+        </article>)}</div>
+      </section>}
     </main>
+
+    {authOpen && <div className="modal-backdrop" role="presentation" onMouseDown={() => setAuthOpen(false)}>
+      <section className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title" onMouseDown={(event) => event.stopPropagation()}>
+        <button className="modal-close" aria-label="닫기" onClick={() => setAuthOpen(false)}>×</button>
+        <p className="eyebrow">WELCOME</p>
+        <h2 id="auth-title">{authMode === 'login' ? '로그인' : '회원가입'}</h2>
+        <p>가격이 원하는 수준에 도달하면 놓치지 않고 확인하세요.</p>
+        <form className="auth-form" onSubmit={submitAuth}>
+          <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="email@example.com" />
+          <input type="password" required minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="8자 이상 비밀번호" />
+          <button type="submit">{authMode === 'login' ? '로그인' : '가입하기'}</button>
+          <button type="button" className="text-button" onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}>{authMode === 'login' ? '처음이신가요? 회원가입' : '이미 계정이 있나요? 로그인'}</button>
+          <div className="social-login">{(['google', 'kakao', 'naver'] as OAuthProvider[]).map((provider) => <button type="button" className={`social-button ${provider}`} key={provider} onClick={() => void startSocialLogin(provider)}>{provider === 'google' ? 'Google' : provider === 'kakao' ? 'Kakao' : 'Naver'}</button>)}</div>
+        </form>
+      </section>
+    </div>}
+    </div>
   )
 }
 

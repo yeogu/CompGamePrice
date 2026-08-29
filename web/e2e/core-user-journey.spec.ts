@@ -10,17 +10,19 @@ test('user can search, inspect prices, create an alert, and log out', async ({ p
   await expect(page.getByText('Epic Games Store').first()).toBeVisible()
   await expect(page.getByText('PRICE HISTORY')).toBeVisible()
 
-  await page.getByRole('button', { name: '처음이신가요? 회원가입' }).click()
+  await page.getByRole('button', { name: '회원가입', exact: true }).click()
+  await expect(page.getByRole('dialog')).toBeVisible()
   await page.getByPlaceholder('email@example.com').fill('browser-flow@example.com')
   await page.getByPlaceholder('8자 이상 비밀번호').fill('browser-password-123')
   await page.getByRole('button', { name: '가입하기' }).click()
-  await expect(page.getByRole('heading', { name: 'browser-flow@example.com' })).toBeVisible()
+  await expect(page.getByText('browser-flow@example.com').first()).toBeVisible()
 
   await page.getByPlaceholder('목표 가격(KRW)').fill('20000')
   await page.getByRole('button', { name: '목표가 알림' }).click()
   await expect(page.getByText('알림 규칙을 등록했습니다.')).toBeVisible()
+  await page.getByRole('button', { name: '가격 알림', exact: true }).click()
   await expect(page.getByText(/Hades · 모든 플랫폼 · BelowTargetPrice · ₩20,000/)).toBeVisible()
 
   await page.getByRole('button', { name: '로그아웃' }).click()
-  await expect(page.getByRole('heading', { name: '로그인' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '로그인', exact: true })).toBeVisible()
 })
