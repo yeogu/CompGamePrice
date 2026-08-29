@@ -128,6 +128,25 @@ WEB_APP_URL=http://127.0.0.1:5173 \
 시작`을 누르면 background 작업으로 전체 Steam 가격을 갱신하며 화면에서
 `RUNNING`, `SUCCEEDED`, `FAILED` 상태를 확인할 수 있습니다.
 
+같은 화면의 `Steam 자동 동기화`는 Steam 전체 App 목록에서 아직 처리하지 않은
+항목을 작은 배치로 검사합니다. Steam에서 `game`으로 확인되고 제목이 명확한
+일반판 본편만 자동 등록합니다. 한글 제목처럼 canonical ID를 자동 생성할 수 없는
+항목과 Deluxe, DLC, Bundle 등으로 의심되는 항목은 SQLite의 검토 대기열로
+분리합니다. 처리 완료 App ID와 최근 실행 결과도 SQLite에 저장되므로 다음 실행은
+중단 지점 이후의 미처리 항목을 계속 검사합니다.
+
+웹을 사용하지 않고 동일한 동기화를 실행하거나 상태를 확인할 수도 있습니다.
+
+```sh
+python3 tools/sync_steam_catalog.py --batch-size 20
+python3 tools/sync_steam_catalog.py --status
+```
+
+동기화는 카탈로그 발견 단계입니다. 새로 등록된 게임의 실제 현재 가격은 이후
+`python3 tools/run_steam_pipeline.py` 또는 관리자 화면의 가격 수집 버튼으로
+수집합니다. 자동 테스트는 Steam live API를 호출하지 않고 repository fixture를
+사용합니다.
+
 관리자는 App ID를 미리 알 필요 없이 Store와 게임 이름으로 상품 후보를 검색할
 수 있습니다. 검색 결과는 `store`, `externalProductId`, `title`, `productUrl`,
 `platforms`로 구성된 공통 후보 형태를 사용합니다. 현재 검색 어댑터는 Steam부터
