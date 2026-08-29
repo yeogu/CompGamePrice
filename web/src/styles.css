@@ -226,6 +226,16 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .preference-card p { margin-top: 5px; color: #82968b; font-size: .86rem; }
 .toggle { display: flex; align-items: center; gap: 8px; color: #b7f4d2; font-weight: 800; }
 .preference-meta { grid-column: 1 / -1; display: flex; gap: 18px; padding-top: 12px; border-top: 1px solid #213a2d; color: #82968b; }
+.catalog-sync-panel { display: grid; grid-template-columns: 1fr 170px auto; align-items: end; gap: 14px; margin-top: 24px; padding: 20px; background: #0b1812; border: 1px solid #315141; border-radius: 14px; }
+.catalog-sync-panel h2, .catalog-sync-panel p { margin: 0; }
+.catalog-sync-panel p { margin-top: 6px; color: #91a79b; font-size: .86rem; }
+.catalog-sync-panel label { display: grid; gap: 6px; color: #a9bdb2; font-size: .8rem; }
+.catalog-sync-panel input { padding: 11px; color: #eef8f2; background: #101f18; border: 1px solid #315141; border-radius: 9px; }
+.sync-summary, .sync-reviews { grid-column: 1 / -1; }
+.sync-summary { display: flex; flex-wrap: wrap; gap: 8px 16px; padding-top: 14px; border-top: 1px solid #213a2d; color: #a9bdb2; }
+.sync-summary.succeeded strong { color: #73d49b; }
+.sync-summary.failed strong, .sync-summary.failed p { color: #ffb4a8; }
+.sync-reviews > div { display: grid; grid-template-columns: minmax(180px, 1fr) 2fr auto; gap: 12px; padding: 10px 0; border-top: 1px solid #213a2d; color: #91a79b; }
 .admin-form { display: grid; grid-template-columns: 1fr 1fr auto; align-items: end; gap: 12px; margin-top: 24px; }
 .admin-search { display: grid; grid-template-columns: 150px 1fr auto; gap: 10px; margin-top: 24px; }
 .admin-search input, .admin-search select { padding: 12px; color: #eef8f2; background: #0b1812; border: 1px solid #315141; border-radius: 9px; }
@@ -273,6 +283,8 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
   .inline-alert-card { grid-template-columns: 1fr; }
   .game-summary { grid-template-columns: repeat(2, 1fr); }
   .preference-card { grid-template-columns: 1fr; }
+  .catalog-sync-panel { grid-template-columns: 1fr; }
+  .sync-reviews > div { grid-template-columns: 1fr; }
   .admin-form { grid-template-columns: 1fr; }
   .admin-search { grid-template-columns: 1fr; }
   .candidate-confirmation { grid-template-columns: 1fr; }

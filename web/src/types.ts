@@ -100,3 +100,16 @@ export interface UserPreferences { emailNotificationsEnabled: boolean; region: '
 export interface CatalogAdminResult { game: GameSummary & { products: Array<{ store: string; productId: string; productUrl: string }> }; applied: boolean; requiresApiRestart: boolean }
 export interface CatalogCollectionJob { id: number; status: 'IDLE' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'; error?: string }
 export interface StoreProductCandidate { store: string; externalProductId: string; title: string; productUrl: string; platforms: string[] }
+export interface CatalogSyncReview { externalProductId: string; title: string; reason: string; status: 'PENDING'; createdAt: string }
+export interface CatalogSyncJob {
+  provider: string
+  status: 'IDLE' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'
+  accepted: number
+  review: number
+  skipped: number
+  failed: number
+  processed?: number
+  lastAppId?: string
+  error?: string
+  pendingReviews?: CatalogSyncReview[]
+}

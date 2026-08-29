@@ -1,7 +1,7 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react'
-import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, getAlertRules, getCatalogAdminStatus, getCatalogCollectionJob, getCollectionRuns, getExternalIdentities, getFavorites, getGamePriceHistory, getGamePrices, getGames, getMe, getNotifications, getOAuthUrl, getPreferences, importSteamCatalogGame, login, logout, markNotificationRead, register, searchStoreCandidates, startCatalogCollection, unlinkExternalIdentity, updatePreferences } from './api'
+import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, getAlertRules, getCatalogAdminStatus, getCatalogCollectionJob, getCatalogSyncJob, getCollectionRuns, getExternalIdentities, getFavorites, getGamePriceHistory, getGamePrices, getGames, getMe, getNotifications, getOAuthUrl, getPreferences, importSteamCatalogGame, login, logout, markNotificationRead, register, searchStoreCandidates, startCatalogCollection, startCatalogSync, unlinkExternalIdentity, updatePreferences } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
-import type { AlertRule, AlertRuleType, CatalogAdminResult, CatalogCollectionJob, CollectionRun, ExternalIdentity, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Money, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
+import type { AlertRule, AlertRuleType, CatalogAdminResult, CatalogCollectionJob, CatalogSyncJob, CollectionRun, ExternalIdentity, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Money, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
 
 const formatMoney = (money: Money) =>
   new Intl.NumberFormat('ko-KR', {
@@ -88,6 +88,8 @@ function App() {
   const [adminGameId, setAdminGameId] = useState('')
   const [adminResult, setAdminResult] = useState<CatalogAdminResult | null>(null)
   const [catalogJob, setCatalogJob] = useState<CatalogCollectionJob | null>(null)
+  const [catalogSyncJob, setCatalogSyncJob] = useState<CatalogSyncJob | null>(null)
+  const [catalogSyncBatchSize, setCatalogSyncBatchSize] = useState(20)
   const [adminStore, setAdminStore] = useState('Steam')
   const [adminQuery, setAdminQuery] = useState('')
   const [adminCandidates, setAdminCandidates] = useState<StoreProductCandidate[]>([])
@@ -292,6 +294,15 @@ function App() {
     }
   }
 
+  const synchronizeCatalog = async () => {
+    setAdminError('')
+    try {
+      setCatalogSyncJob(await startCatalogSync(catalogSyncBatchSize))
+    } catch (reason) {
+      setAdminError(reason instanceof Error ? reason.message : 'Steam 카탈로그 동기화를 시작하지 못했습니다.')
+    }
+  }
+
   const searchCatalogCandidates = async () => {
     setAdminSearching(true)
     setError('')
@@ -436,6 +447,7 @@ function App() {
         setCatalogAdminEnabled(status.enabled)
         if (status.enabled) {
           void getCatalogCollectionJob().then(setCatalogJob)
+          void getCatalogSyncJob().then(setCatalogSyncJob)
         }
       })
       .catch(() => setCatalogAdminEnabled(false))
@@ -458,6 +470,22 @@ function App() {
     }, 1000)
     return () => window.clearInterval(timer)
   }, [catalogJob?.status])
+
+  useEffect(() => {
+    if (catalogSyncJob?.status !== 'RUNNING') {
+      return
+    }
+    const timer = window.setInterval(() => {
+      void getCatalogSyncJob().then((job) => {
+        setCatalogSyncJob(job)
+        if (job.status === 'SUCCEEDED') {
+          setActionMessage(`Steam 카탈로그 동기화 완료: 자동 등록 ${job.accepted}개, 검토 대기 ${job.review}개`)
+          void getGames().then(setGames)
+        }
+      })
+    }, 1000)
+    return () => window.clearInterval(timer)
+  }, [catalogSyncJob?.status])
 
   useEffect(() => {
     const value = query.trim()
@@ -809,6 +837,21 @@ function App() {
         <p className="eyebrow">LOCAL ADMIN</p>
         <h1 className="view-title">Store 상품 연결</h1>
         <p className="view-description">게임 이름으로 Store를 검색하고 본편 상품이 맞는지 확인한 뒤 등록하세요.</p>
+        <article className="catalog-sync-panel">
+          <div>
+            <h2>Steam 자동 동기화</h2>
+            <p>아직 처리하지 않은 상품을 제한된 배치로 검사합니다. 확실한 일반판 본편만 자동 등록됩니다.</p>
+          </div>
+          <label>한 번에 처리할 수<input type="number" min="1" max="100" value={catalogSyncBatchSize} onChange={(event) => setCatalogSyncBatchSize(Number(event.target.value))} /></label>
+          <button disabled={catalogSyncJob?.status === 'RUNNING' || catalogSyncBatchSize < 1 || catalogSyncBatchSize > 100} onClick={() => void synchronizeCatalog()}>{catalogSyncJob?.status === 'RUNNING' ? '동기화 중…' : '다음 배치 동기화'}</button>
+          {catalogSyncJob && <div className={`sync-summary ${catalogSyncJob.status.toLowerCase()}`}>
+            <strong>{catalogSyncJob.status}</strong>
+            <span>자동 등록 {catalogSyncJob.accepted ?? 0} · 검토 {catalogSyncJob.review ?? 0} · 제외 {catalogSyncJob.skipped ?? 0} · 실패 {catalogSyncJob.failed ?? 0}</span>
+            {catalogSyncJob.lastAppId && <small>마지막 App ID {catalogSyncJob.lastAppId}</small>}
+            {catalogSyncJob.error && <p>{catalogSyncJob.error}</p>}
+          </div>}
+          {(catalogSyncJob?.pendingReviews?.length ?? 0) > 0 && <details className="sync-reviews"><summary>검토 대기 {catalogSyncJob?.pendingReviews?.length}개 보기</summary>{catalogSyncJob?.pendingReviews?.map((review) => <div key={review.externalProductId}><strong>{review.title || `App ${review.externalProductId}`}</strong><span>{review.reason}</span><small>App ID {review.externalProductId}</small></div>)}</details>}
+        </article>
         <div className="admin-search">
           <select aria-label="Store" value={adminStore} onChange={(event) => setAdminStore(event.target.value)}><option value="Steam">Steam</option></select>
           <input aria-label="Store 게임 이름" value={adminQuery} onChange={(event) => setAdminQuery(event.target.value)} placeholder="예: Sekiro" />

@@ -209,6 +209,57 @@ def update_state(
     connection.commit()
 
 
+def synchronization_status(database_path: Path, review_limit: int = 20) -> dict:
+    if not 1 <= review_limit <= 100:
+        raise ValueError("review limit must be between 1 and 100")
+    with sqlite3.connect(database_path) as connection:
+        initialize_state(connection)
+        row = connection.execute(
+            """
+            SELECT status, started_at, finished_at, last_app_id,
+                   accepted_count, review_count, skipped_count, failed_count,
+                   error_message
+            FROM catalog_sync_state
+            WHERE provider = ?
+            """,
+            ("Steam",),
+        ).fetchone()
+        reviews = connection.execute(
+            """
+            SELECT external_product_id, title, reason, status, created_at
+            FROM catalog_sync_review
+            WHERE provider = ? AND status = 'PENDING'
+            ORDER BY created_at DESC
+            LIMIT ?
+            """,
+            ("Steam", review_limit),
+        ).fetchall()
+    result = {
+        "provider": "Steam",
+        "status": row[0] if row else "IDLE",
+        "startedAt": row[1] if row else None,
+        "finishedAt": row[2] if row else None,
+        "lastAppId": row[3] if row else None,
+        "accepted": row[4] if row else 0,
+        "review": row[5] if row else 0,
+        "skipped": row[6] if row else 0,
+        "failed": row[7] if row else 0,
+        "error": row[8] if row else None,
+        "pendingReviews": [],
+    }
+    for review in reviews:
+        result["pendingReviews"].append(
+            {
+                "externalProductId": review[0],
+                "title": review[1],
+                "reason": review[2],
+                "status": review[3],
+                "createdAt": review[4],
+            }
+        )
+    return result
+
+
 def synchronize(
     catalog_path: Path,
     database_path: Path,
@@ -276,6 +327,7 @@ def synchronize(
             update_state(connection, "SUCCEEDED", started_at, report)
             return report
         except Exception as error:
+            connection.rollback()
             report["status"] = "FAILED"
             update_state(connection, "FAILED", started_at, report, str(error))
             raise
@@ -287,13 +339,17 @@ def main() -> int:
     parser.add_argument("--catalog", default=root / "data/game_catalog.json", type=Path)
     parser.add_argument("--database", default=root / "build/game_prices.db", type=Path)
     parser.add_argument("--batch-size", default=20, type=int)
+    parser.add_argument("--status", action="store_true")
     arguments = parser.parse_args()
     try:
-        report = synchronize(
-            arguments.catalog,
-            arguments.database,
-            arguments.batch_size,
-        )
+        if arguments.status:
+            report = synchronization_status(arguments.database)
+        else:
+            report = synchronize(
+                arguments.catalog,
+                arguments.database,
+                arguments.batch_size,
+            )
     except (ValueError, OSError, json.JSONDecodeError, sqlite3.Error) as error:
         parser.error(str(error))
     print(json.dumps(report, ensure_ascii=False, indent=2))

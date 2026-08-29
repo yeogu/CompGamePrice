@@ -322,6 +322,85 @@ private:
     std::string error_;
 };
 
+Json::Value runCatalogSyncTool(bool synchronize, int batchSize) {
+    const auto project = std::filesystem::path(PROJECT_SOURCE_DIR);
+    const auto temporary = std::filesystem::temp_directory_path() /
+        "compgameprice-catalog-sync.json";
+    std::string command = "python3 " + shellQuoted(
+        (project / "tools/sync_steam_catalog.py").string()) +
+        " --catalog " + shellQuoted(
+            (project / "data/game_catalog.json").string()) +
+        " --database " + shellQuoted(databasePath());
+    if (synchronize) {
+        command += " --batch-size " + std::to_string(batchSize);
+    } else {
+        command += " --status";
+    }
+    command += " > " + shellQuoted(temporary.string()) + " 2>&1";
+    const auto exitCode = std::system(command.c_str());
+    std::ifstream input(temporary);
+    Json::Value result;
+    Json::CharReaderBuilder builder;
+    std::string errors;
+    const auto parsed = Json::parseFromStream(builder, input, &result, &errors);
+    std::error_code ignored;
+    std::filesystem::remove(temporary, ignored);
+    if (exitCode != 0 || !parsed) {
+        throw std::runtime_error("Steam catalog synchronization failed");
+    }
+    return result;
+}
+
+class CatalogSyncJob {
+public:
+    explicit CatalogSyncJob(GameCatalog& catalog)
+        : catalog_(catalog) {
+        try {
+            result_ = runCatalogSyncTool(false, 0);
+        } catch (const std::exception&) {
+            result_["provider"] = "Steam";
+            result_["status"] = "IDLE";
+        }
+    }
+
+    bool start(int batchSize) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (result_["status"].asString() == "RUNNING") {
+            return false;
+        }
+        result_["provider"] = "Steam";
+        result_["status"] = "RUNNING";
+        std::thread([this, batchSize]() { run(batchSize); }).detach();
+        return true;
+    }
+
+    Json::Value json() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return result_;
+    }
+
+private:
+    void run(int batchSize) {
+        Json::Value next;
+        try {
+            runCatalogSyncTool(true, batchSize);
+            next = runCatalogSyncTool(false, 0);
+            catalog_.reload(
+                std::string(SAMPLE_DATA_DIR) + "/game_catalog.json");
+        } catch (const std::exception& error) {
+            next["provider"] = "Steam";
+            next["status"] = "FAILED";
+            next["error"] = error.what();
+        }
+        std::lock_guard<std::mutex> lock(mutex_);
+        result_ = next;
+    }
+
+    GameCatalog& catalog_;
+    mutable std::mutex mutex_;
+    Json::Value result_;
+};
+
 struct OAuthConfig {
     OAuthProvider provider;
     std::string clientId;
@@ -462,6 +541,7 @@ int main() {
         AuthService authService(accountRepository);
         OAuthService oauthService(accountRepository);
         CatalogCollectionJob catalogCollectionJob;
+        CatalogSyncJob catalogSyncJob(catalog);
 
         drogon::app().registerPreRoutingAdvice(
             [](const drogon::HttpRequestPtr& request,
@@ -936,6 +1016,52 @@ int main() {
                 }
                 callback(jsonResponse(
                     catalogCollectionJob.json(),
+                    drogon::k202Accepted));
+            },
+            {drogon::Post});
+        drogon::app().registerHandler(
+            "/api/admin/catalog/sync",
+            [&catalogSyncJob](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                if (!catalogAdminEnabled() || !isLoopbackRequest(request)) {
+                    callback(jsonError(
+                        drogon::k403Forbidden,
+                        "catalog admin is disabled"));
+                    return;
+                }
+                callback(jsonResponse(catalogSyncJob.json()));
+            },
+            {drogon::Get});
+        drogon::app().registerHandler(
+            "/api/admin/catalog/sync",
+            [&catalogSyncJob](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                if (!catalogAdminEnabled() || !isLoopbackRequest(request)) {
+                    callback(jsonError(
+                        drogon::k403Forbidden,
+                        "catalog admin is disabled"));
+                    return;
+                }
+                const auto body = request->getJsonObject();
+                const auto batchSize = body && (*body)["batchSize"].isInt()
+                    ? (*body)["batchSize"].asInt()
+                    : 20;
+                if (batchSize < 1 || batchSize > 100) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "batchSize must be between 1 and 100"));
+                    return;
+                }
+                if (!catalogSyncJob.start(batchSize)) {
+                    callback(jsonError(
+                        drogon::k409Conflict,
+                        "catalog synchronization is already running"));
+                    return;
+                }
+                callback(jsonResponse(
+                    catalogSyncJob.json(),
                     drogon::k202Accepted));
             },
             {drogon::Post});

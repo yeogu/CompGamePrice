@@ -6,6 +6,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -90,6 +91,9 @@ class SteamCatalogSyncTest(unittest.TestCase):
                 "SELECT external_product_id, status FROM catalog_sync_review ORDER BY external_product_id"
             ).fetchall()
         self.assertEqual(reviews, [("10", "PENDING"), ("20", "PENDING")])
+        status = sync.synchronization_status(database)
+        self.assertEqual(status["status"], "SUCCEEDED")
+        self.assertEqual(len(status["pendingReviews"]), 2)
 
     def test_skips_non_games_and_does_not_process_seen_apps_twice(self):
         apps = [{"appid": 10, "name": "Soundtrack"}]
@@ -110,6 +114,36 @@ class SteamCatalogSyncTest(unittest.TestCase):
             sync.synchronize(Path("unused"), Path("unused"), 0)
         with self.assertRaisesRegex(ValueError, "malformed"):
             sync.parse_app_list(b"not-json")
+
+    def test_catalog_write_failure_does_not_mark_product_as_seen(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            catalog = root / "catalog.json"
+            database = root / "catalog.db"
+            catalog.write_text(
+                json.dumps({"schemaVersion": 4, "games": []}),
+                encoding="utf-8",
+            )
+            apps = [{"appid": 10, "name": "First Game"}]
+            with mock.patch.object(
+                sync.catalog_import,
+                "write_catalog",
+                side_effect=OSError("disk full"),
+            ):
+                with self.assertRaisesRegex(OSError, "disk full"):
+                    sync.synchronize(
+                        catalog,
+                        database,
+                        1,
+                        app_list_fetcher=lambda: self.app_list(apps),
+                        detail_fetcher=lambda app_id: self.detail_for(app_id, "First Game"),
+                    )
+            with sqlite3.connect(database) as connection:
+                seen_count = connection.execute(
+                    "SELECT COUNT(*) FROM catalog_sync_seen"
+                ).fetchone()[0]
+            self.assertEqual(seen_count, 0)
+            self.assertEqual(sync.synchronization_status(database)["status"], "FAILED")
 
 
 if __name__ == "__main__":
