@@ -52,6 +52,7 @@ function App() {
   const [activeView, setActiveView] = useState<AppView>('games')
   const [authOpen, setAuthOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [showGameResults, setShowGameResults] = useState(false)
 
   const refreshAccount = async (activeToken: string) => {
     const [me, nextRules, nextNotifications, nextIdentities] = await Promise.all([
@@ -72,6 +73,20 @@ function App() {
   const navigate = (view: AppView) => {
     setActiveView(view)
     setSidebarOpen(false)
+  }
+
+  const openGameFinder = () => {
+    navigate('games')
+    setQuery('')
+    setSelectedGameId('')
+    setSelectedPlatform('')
+    setReport(null)
+    setHistory(null)
+    setShowGameResults(false)
+    const address = new URL(window.location.href)
+    address.searchParams.delete('game')
+    address.searchParams.delete('platform')
+    window.history.replaceState(null, '', address)
   }
 
   const signOut = async () => {
@@ -160,6 +175,7 @@ function App() {
     setSelectedPlatform('')
     setReport(null)
     setHistory(null)
+    setShowGameResults(true)
     try {
       const matches = await getGames(query.trim())
       if (requestId !== requestSequence.current) return
@@ -186,13 +202,16 @@ function App() {
         const requestedGameId = new URLSearchParams(window.location.search).get('game')
         const requestedPlatform = new URLSearchParams(window.location.search).get('platform') ?? ''
         const initialGame = catalogGames.find((game) => game.id === requestedGameId)
-          ?? catalogGames[0]
+        if (!initialGame) {
+          return
+        }
+        setShowGameResults(true)
         const initialPlatform = initialGame.platforms.includes(requestedPlatform)
           ? requestedPlatform
           : ''
         void selectGame(
           initialGame,
-          requestedGameId !== initialGame.id || requestedPlatform !== initialPlatform,
+          requestedPlatform !== initialPlatform,
           initialPlatform,
         )
       })
@@ -222,12 +241,12 @@ function App() {
       <button className="mobile-menu" aria-label="메뉴 열기" onClick={() => setSidebarOpen(true)}>☰</button>
       {sidebarOpen && <button className="sidebar-backdrop" aria-label="메뉴 닫기" onClick={() => setSidebarOpen(false)} />}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-        <button className="brand" onClick={() => navigate('games')}>
+        <button className="brand" onClick={openGameFinder}>
           <span>CGP</span>
           <strong>CompGamePrice</strong>
         </button>
         <nav aria-label="주 메뉴">
-          <button className={activeView === 'games' ? 'active' : ''} onClick={() => navigate('games')}>게임 찾기</button>
+          <button className={activeView === 'games' ? 'active' : ''} onClick={openGameFinder}>게임 찾기</button>
           <button className={activeView === 'alerts' ? 'active' : ''} onClick={() => user ? navigate('alerts') : setAuthOpen(true)}>가격 알림</button>
           <button className={activeView === 'notifications' ? 'active' : ''} onClick={() => user ? navigate('notifications') : setAuthOpen(true)}>
             알림함 {notifications.filter((item) => !item.read).length > 0 && <span className="nav-count">{notifications.filter((item) => !item.read).length}</span>}
@@ -271,13 +290,13 @@ function App() {
         </form>
       </header>
 
-      {user && selectedGameId && <section className="inline-alert-card">
+      {showGameResults && user && selectedGameId && <section className="inline-alert-card">
         <div><strong>{report?.game.title ?? selectedGameId} 가격 알림</strong><span>{selectedPlatform || '모든 플랫폼'}</span></div>
         <input type="number" min="0" value={targetPrice} onChange={(event) => setTargetPrice(event.target.value)} placeholder="목표 가격(KRW)" />
         <button onClick={() => void createRule('BelowTargetPrice')}>목표가 알림</button>
       </section>}
 
-      {games.length > 0 && (
+      {showGameResults && games.length > 0 && (
         <section className="panel">
           <div className="catalog-heading">
             <h2>{query.trim() ? '검색 결과' : '게임 카탈로그'}</h2>
@@ -300,7 +319,7 @@ function App() {
         </section>
       )}
 
-      {report && (
+      {showGameResults && report && (
         <>
         <section className="results">
           <div className="result-heading">

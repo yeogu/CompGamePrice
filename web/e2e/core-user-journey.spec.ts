@@ -3,6 +3,9 @@ import { expect, test } from '@playwright/test'
 test('user can search, inspect prices, create an alert, and log out', async ({ page }) => {
   await page.goto('/')
 
+  await expect(page.getByRole('heading', { name: '게임 카탈로그' })).toHaveCount(0)
+  await expect(page.getByText('PRICE HISTORY')).toHaveCount(0)
+
   await page.getByLabel('게임 이름').fill('Hades')
   await page.getByRole('button', { name: '가격 찾기' }).click()
   await expect(page.getByRole('heading', { name: 'Hades' }).last()).toBeVisible()
