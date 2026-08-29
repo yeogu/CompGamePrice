@@ -22,6 +22,21 @@ test('game autocomplete reports an empty catalog match', async ({ page }) => {
   await expect(page.getByRole('listbox')).toHaveCount(0)
 })
 
+test('platform filtering preserves the current scroll position', async ({ page }) => {
+  await page.goto('/?game=stardew-valley')
+  const platformFilter = page.getByLabel('플랫폼 필터')
+  await expect(platformFilter).toBeVisible()
+  await platformFilter.scrollIntoViewIfNeeded()
+  const before = await page.evaluate(() => window.scrollY)
+
+  await platformFilter.getByRole('button', { name: 'Linux', exact: true }).click()
+  await expect(page).toHaveURL(/platform=Linux/)
+  await expect(platformFilter.getByRole('button', { name: 'Linux', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  const after = await page.evaluate(() => window.scrollY)
+
+  expect(Math.abs(after - before)).toBeLessThan(40)
+})
+
 test('user can search, inspect prices, create an alert, and log out', async ({ page }) => {
   await page.goto('/')
 

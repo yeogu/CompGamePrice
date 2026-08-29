@@ -164,13 +164,16 @@ function App() {
     updateAddress = true,
     platform = '',
   ) => {
+    const changingGame = selectedGameId !== '' && selectedGameId !== game.id
     const requestId = ++requestSequence.current
     setLoading(true)
     setError('')
     setSelectedGameId(game.id)
     setSelectedPlatform(platform)
-    setReport(null)
-    setHistory(null)
+    if (changingGame) {
+      setReport(null)
+      setHistory(null)
+    }
     if (updateAddress) {
       const address = new URL(window.location.href)
       address.searchParams.set('game', game.id)
