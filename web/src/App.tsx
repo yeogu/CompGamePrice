@@ -92,10 +92,26 @@ function App() {
   const suggestionSequence = useRef(0)
 
   const refreshAccount = async (activeToken: string) => {
-    const [me, nextRules, nextNotifications, nextIdentities, nextFavorites, nextPreferences] = await Promise.all([
-      getMe(activeToken), getAlertRules(activeToken), getNotifications(activeToken), getExternalIdentities(activeToken), getFavorites(activeToken), getPreferences(activeToken),
+    const [me, nextRules, nextNotifications, nextIdentities] = await Promise.all([
+      getMe(activeToken),
+      getAlertRules(activeToken),
+      getNotifications(activeToken),
+      getExternalIdentities(activeToken),
     ])
-    setUser({ ...me, email: nextIdentities[0]?.email ?? me.email }); setRules(nextRules); setNotifications(nextNotifications); setIdentities(nextIdentities); setFavorites(nextFavorites); setPreferences(nextPreferences)
+    const [nextFavorites, nextPreferences] = await Promise.all([
+      getFavorites(activeToken).catch(() => []),
+      getPreferences(activeToken).catch(() => ({
+        emailNotificationsEnabled: true,
+        region: 'KR' as const,
+        currency: 'KRW' as const,
+      })),
+    ])
+    setUser({ ...me, email: nextIdentities[0]?.email ?? me.email })
+    setRules(nextRules)
+    setNotifications(nextNotifications)
+    setIdentities(nextIdentities)
+    setFavorites(nextFavorites)
+    setPreferences(nextPreferences)
   }
 
   const submitAuth = async (event: FormEvent) => {
