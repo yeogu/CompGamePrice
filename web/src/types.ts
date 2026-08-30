@@ -112,4 +112,10 @@ export interface CatalogSyncJob {
   lastAppId?: string
   error?: string
   pendingReviews?: CatalogSyncReview[]
+  priceCollection?: {
+    status: 'NOT_REQUIRED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'
+    attemptedAt?: string
+    exitCode?: number
+    error?: string
+  }
 }

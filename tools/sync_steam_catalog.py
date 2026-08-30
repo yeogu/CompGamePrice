@@ -84,6 +84,13 @@ def initialize_state(connection: sqlite3.Connection) -> None:
             created_at TEXT NOT NULL,
             PRIMARY KEY(provider, external_product_id)
         );
+        CREATE TABLE IF NOT EXISTS catalog_sync_price_collection (
+            provider TEXT PRIMARY KEY,
+            status TEXT NOT NULL,
+            attempted_at TEXT NOT NULL,
+            exit_code INTEGER,
+            error_message TEXT
+        );
         """
     )
 
@@ -246,6 +253,7 @@ def synchronization_status(database_path: Path, review_limit: int = 20) -> dict:
         "failed": row[7] if row else 0,
         "error": row[8] if row else None,
         "pendingReviews": [],
+        "priceCollection": None,
     }
     for review in reviews:
         result["pendingReviews"].append(
@@ -257,7 +265,49 @@ def synchronization_status(database_path: Path, review_limit: int = 20) -> dict:
                 "createdAt": review[4],
             }
         )
+    with sqlite3.connect(database_path) as connection:
+        price_row = connection.execute(
+            """
+            SELECT status, attempted_at, exit_code, error_message
+            FROM catalog_sync_price_collection
+            WHERE provider = ?
+            """,
+            ("Steam",),
+        ).fetchone()
+    if price_row:
+        result["priceCollection"] = {
+            "status": price_row[0],
+            "attemptedAt": price_row[1],
+            "exitCode": price_row[2],
+            "error": price_row[3],
+        }
     return result
+
+
+def record_price_collection(
+    database_path: Path,
+    status: str,
+    exit_code: int | None,
+    error_message: str | None = None,
+) -> None:
+    if status not in {"NOT_REQUIRED", "RUNNING", "SUCCEEDED", "FAILED"}:
+        raise ValueError("invalid catalog price collection status")
+    with sqlite3.connect(database_path) as connection:
+        initialize_state(connection)
+        connection.execute(
+            """
+            INSERT INTO catalog_sync_price_collection(
+                provider, status, attempted_at, exit_code, error_message
+            ) VALUES(?, ?, ?, ?, ?)
+            ON CONFLICT(provider) DO UPDATE SET
+                status = excluded.status,
+                attempted_at = excluded.attempted_at,
+                exit_code = excluded.exit_code,
+                error_message = excluded.error_message
+            """,
+            ("Steam", status, utc_now(), exit_code, error_message),
+        )
+        connection.commit()
 
 
 def resolve_review(
@@ -316,6 +366,7 @@ def synchronize(
         "failed": 0,
         "processed": 0,
         "lastAppId": None,
+        "acceptedAppIds": [],
     }
     catalog = catalog_import.load_catalog(catalog_path)
     with sqlite3.connect(database_path) as connection:
@@ -340,6 +391,7 @@ def synchronize(
                     catalog = catalog_import.updated_catalog(catalog, game)
                     record_seen(connection, app_id, "ACCEPTED", checked_at)
                     report["accepted"] += 1
+                    report["acceptedAppIds"].append(app_id)
                 except catalog_import.CatalogImportError as error:
                     reason = str(error)
                     if "Only Steam base games" in reason:

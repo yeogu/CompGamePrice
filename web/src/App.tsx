@@ -888,6 +888,7 @@ function App() {
             <strong>{catalogSyncJob.status}</strong>
             <span>자동 등록 {catalogSyncJob.accepted ?? 0} · 검토 {catalogSyncJob.review ?? 0} · 제외 {catalogSyncJob.skipped ?? 0} · 실패 {catalogSyncJob.failed ?? 0}</span>
             {catalogSyncJob.lastAppId && <small>마지막 App ID {catalogSyncJob.lastAppId}</small>}
+            {catalogSyncJob.priceCollection && <span>신규 게임 가격 수집 {catalogSyncJob.priceCollection.status}</span>}
             {catalogSyncJob.error && <p>{catalogSyncJob.error}</p>}
           </div>}
           {(catalogSyncJob?.pendingReviews?.length ?? 0) > 0 && <details className="sync-reviews"><summary>검토 대기 {catalogSyncJob?.pendingReviews?.length}개 보기</summary>{catalogSyncJob?.pendingReviews?.map((review) => <div key={review.externalProductId}><strong>{review.title || `App ${review.externalProductId}`}</strong><span>{review.reason}</span><small>App ID {review.externalProductId}</small><div className="review-actions"><button onClick={() => inspectCatalogReview(review)}>수동 검토</button><button className="danger" onClick={() => void rejectCatalogReview(review.externalProductId)}>제외</button></div></div>)}</details>}

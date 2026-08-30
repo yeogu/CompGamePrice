@@ -322,12 +322,13 @@ private:
     std::string error_;
 };
 
-Json::Value runCatalogSyncCommand(const std::string& arguments) {
+Json::Value runCatalogSyncCommand(
+    const std::filesystem::path& script,
+    const std::string& arguments) {
     const auto project = std::filesystem::path(PROJECT_SOURCE_DIR);
     const auto temporary = std::filesystem::temp_directory_path() /
         "compgameprice-catalog-sync.json";
-    std::string command = "python3 " + shellQuoted(
-        (project / "tools/sync_steam_catalog.py").string()) +
+    std::string command = "python3 " + shellQuoted(script.string()) +
         " --catalog " + shellQuoted(
             (project / "data/game_catalog.json").string()) +
         " --database " + shellQuoted(databasePath()) + arguments;
@@ -347,17 +348,27 @@ Json::Value runCatalogSyncCommand(const std::string& arguments) {
 }
 
 Json::Value runCatalogSyncTool(bool synchronize, int batchSize) {
+    const auto project = std::filesystem::path(PROJECT_SOURCE_DIR);
     if (synchronize) {
         return runCatalogSyncCommand(
+            project / "tools/run_catalog_sync_pipeline.py",
+            " --tracker " + shellQuoted(
+                (project / "build/game_price_tracker").string()) +
+            " --output-dir " + shellQuoted(
+                (project / "snapshots/latest").string()) +
             " --batch-size " + std::to_string(batchSize));
     }
-    return runCatalogSyncCommand(" --status");
+    return runCatalogSyncCommand(
+        project / "tools/sync_steam_catalog.py",
+        " --status");
 }
 
 void resolveCatalogReview(
     const std::string& appId,
     const std::string& resolution) {
+    const auto project = std::filesystem::path(PROJECT_SOURCE_DIR);
     runCatalogSyncCommand(
+        project / "tools/sync_steam_catalog.py",
         " --resolve-app-id " + appId +
         " --resolution " + resolution);
 }
