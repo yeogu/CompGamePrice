@@ -752,6 +752,8 @@ def synchronize(
     detail_fetcher=None,
     candidate_searcher=steam_search.search,
 ) -> dict:
+    if not 1 <= batch_size <= 100:
+        raise ValueError("batch size must be between 1 and 100")
     lock_path = database_path.with_suffix(database_path.suffix + ".catalog-sync.lock")
     with exclusive_sync_lock(lock_path):
         return synchronize_unlocked(
