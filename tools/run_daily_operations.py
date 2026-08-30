@@ -22,12 +22,26 @@ def run_operations(
     database: Path,
     output_directory: Path,
     outbox_file: Path | None,
+    catalog_batch_size: int = 20,
 ) -> list[dict]:
     python = sys.executable
     catalog = project / "data" / "game_catalog.json"
     environment = os.environ.copy()
     environment["GAME_PRICE_DATABASE_PATH"] = str(database)
     steps = [
+        (
+            "steam-catalog-sync",
+            [
+                python,
+                str(project / "tools" / "sync_steam_catalog.py"),
+                "--catalog",
+                str(catalog),
+                "--database",
+                str(database),
+                "--batch-size",
+                str(catalog_batch_size),
+            ],
+        ),
         (
             "steam",
             [
@@ -96,6 +110,7 @@ def main() -> int:
     parser.add_argument("--database", default=project / "build/game_prices.db", type=Path)
     parser.add_argument("--output-dir", default=project / "snapshots/latest", type=Path)
     parser.add_argument("--outbox-file", type=Path)
+    parser.add_argument("--catalog-batch-size", default=20, type=int)
     arguments = parser.parse_args()
     results = run_operations(
         project,
@@ -103,6 +118,7 @@ def main() -> int:
         arguments.database,
         arguments.output_dir,
         arguments.outbox_file,
+        arguments.catalog_batch_size,
     )
     print(json.dumps({"steps": results}, ensure_ascii=False, indent=2))
     return 0 if all(step["exitCode"] == 0 for step in results) else 1

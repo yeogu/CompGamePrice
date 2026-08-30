@@ -182,8 +182,13 @@ C++ 적재 종료 코드와 함께 저장됩니다.
 
 ### macOS daily schedule
 
-매일 오전 9시에 파이프라인을 실행하는 macOS `launchd` 설정은 다음 명령으로
+매일 오전 9시에 통합 운영 파이프라인을 실행하는 macOS `launchd` 설정은 다음 명령으로
 프로젝트 내부에 생성할 수 있습니다. 생성만 하며 시스템에 자동 등록하지 않습니다.
+
+정기 실행 순서는 Steam 카탈로그 신규 상품 20개 검사, 전체 Steam 가격 수집,
+Apple 가격 수집, 데이터 상태 점검, 알림 발송입니다. 각 단계는 독립적으로 실행되어
+한 Provider가 실패해도 나머지 작업은 계속됩니다. Steam 가격 수집은 요청별 최대
+3회까지만 재시도하며, 실패 항목은 다음 날 정기 실행에서 다시 시도됩니다.
 
 ```sh
 python3 tools/generate_macos_schedule.py
@@ -199,7 +204,7 @@ python3 tools/generate_macos_schedule.py --hour 21 --minute 30
 설정을 검토한 후 실제로 등록하려면 plist를 사용자 LaunchAgents 디렉터리로
 복사하고 `launchctl bootstrap`을 실행해야 합니다. 이 단계는 macOS 사용자 환경을
 변경하므로 자동으로 수행하지 않습니다. 표준 출력과 오류는
-`snapshots/logs/steam_pipeline.*.log`에 저장되도록 생성됩니다. 프로젝트 위치나
+`snapshots/logs/daily_operations.*.log`에 저장되도록 생성됩니다. 프로젝트 위치나
 Python 경로가 바뀌면 plist도 다시 생성해야 합니다.
 
 VS Code Terminal 또는 macOS Terminal에서는 관리 스크립트로 등록과 확인을 할 수

@@ -32,6 +32,7 @@ class MacOsScheduleTest(unittest.TestCase):
             self.assertIn(str(project.resolve() / "tools" / "run_daily_operations.py"), arguments)
             self.assertIn(str(project.resolve() / "build" / "game_price_tracker"), arguments)
             self.assertIn(str(project.resolve() / "snapshots" / "notification-outbox.jsonl"), arguments)
+            self.assertIn("--catalog-batch-size", arguments)
             self.assertNotIn("--targets", arguments)
             self.assertTrue(Path(schedule["StandardOutPath"]).is_absolute())
             self.assertTrue((project / "snapshots" / "logs").is_dir())

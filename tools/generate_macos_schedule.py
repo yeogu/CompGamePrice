@@ -31,6 +31,8 @@ def schedule_definition(project_directory: Path, hour: int, minute: int) -> dict
             str(project / "build" / "game_prices.db"),
             "--outbox-file",
             str(project / "snapshots" / "notification-outbox.jsonl"),
+            "--catalog-batch-size",
+            "20",
         ],
         "WorkingDirectory": str(project),
         "StartCalendarInterval": {"Hour": hour, "Minute": minute},
