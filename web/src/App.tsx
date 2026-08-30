@@ -58,6 +58,38 @@ const canonicalIdFromTitle = (title: string) => title
   .replace(/[^a-z0-9]+/g, '-')
   .replace(/^-|-$/g, '')
 
+const matchReasonMessage = (reason: string) => {
+  if (reason.startsWith('Title matches "')) {
+    return `게임 제목이 일치합니다: ${reason.slice('Title matches '.length)}`
+  }
+  const messages: Record<string, string> = {
+    'Developer matches the canonical game': '개발사가 canonical Game 정보와 일치합니다.',
+    'Developer differs from the canonical game': '개발사가 canonical Game 정보와 다릅니다.',
+    'Developer information is incomplete': 'Store 또는 canonical Game의 개발사 정보가 부족해 자동으로 확인할 수 없습니다.',
+    'Title does not match the canonical title or aliases': '상품명이 canonical Game 제목 또는 별칭과 일치하지 않습니다.',
+    'Store category is not a game': 'Store에서 게임 상품으로 분류되지 않았습니다.',
+    'Product does not support the target platform': '대상 플랫폼을 지원하지 않는 상품입니다.',
+    'Product is not a paid KRW purchase': 'KRW 유료 구매 상품이 아닙니다.',
+    'Title indicates guide, demo, companion, or media content': '가이드·데모·컴패니언·미디어 상품일 가능성이 있습니다.',
+  }
+  return messages[reason] ?? reason
+}
+
+const matchDecisionGuide = {
+  ApprovedCandidate: {
+    title: '자동 검증 통과',
+    summary: '제목, 개발사, 가격과 플랫폼 조건이 일치합니다. Store 페이지를 마지막으로 확인한 뒤 연결하세요.',
+  },
+  NeedsReview: {
+    title: '관리자 확인 필요',
+    summary: '자동 판정에 필요한 정보가 부족합니다. 아래 확인 항목을 직접 검토해야 등록할 수 있습니다.',
+  },
+  Rejected: {
+    title: '연결하면 안 되는 후보',
+    summary: '본편이 아니거나 canonical Game과 일치하지 않는 근거가 있습니다. 이 후보는 등록할 수 없습니다.',
+  },
+} as const
+
 type AppView = 'games' | 'favorites' | 'alerts' | 'notifications' | 'account' | 'collection' | 'admin'
 
 function App() {
@@ -101,6 +133,8 @@ function App() {
   const [adminSearching, setAdminSearching] = useState(false)
   const [adminImporting, setAdminImporting] = useState(false)
   const [adminError, setAdminError] = useState('')
+  const [adminReviewNote, setAdminReviewNote] = useState('')
+  const [reviewConfirmed, setReviewConfirmed] = useState(false)
   const [pendingCandidate, setPendingCandidate] = useState<StoreProductCandidate | null>(null)
   const [actionMessage, setActionMessage] = useState('')
   const [activeView, setActiveView] = useState<AppView>('games')
@@ -408,6 +442,9 @@ function App() {
   ) => {
     const canonicalGameId = canonicalIdFromTitle(gameId)
     setAdminError('')
+    if (!apply) {
+      setReviewConfirmed(false)
+    }
     setAdminImporting(true)
     setActionMessage('')
     try {
@@ -521,7 +558,9 @@ function App() {
       platforms: store === 'GooglePlay' ? ['Android'] : ['iOS', 'iPadOS'],
     })
     setAdminResult(null)
-    setAdminError(review.reason)
+    setAdminError('')
+    setAdminReviewNote(review.reason)
+    setReviewConfirmed(false)
   }
 
   const rejectMobileCatalogReview = async (store: MobileCatalogSyncJob['provider'], productId: string) => {
@@ -549,7 +588,13 @@ function App() {
       platforms: [],
     })
     setAdminResult(null)
-    setAdminError(suggestedGameId ? review.reason : `${review.reason}. 영문 게임명 또는 canonical Game ID를 입력해주세요.`)
+    setAdminReviewNote(
+      suggestedGameId
+        ? review.reason
+        : `${review.reason}. 영문 게임명 또는 canonical Game ID를 입력해주세요.`,
+    )
+    setAdminError('')
+    setReviewConfirmed(false)
   }
 
   const rejectCatalogReview = async (appId: string) => {
@@ -572,6 +617,8 @@ function App() {
     setAdminError('')
     setAdminResult(null)
     setPendingCandidate(null)
+    setAdminReviewNote('')
+    setReviewConfirmed(false)
     try {
       setAdminCandidates(await searchStoreCandidates(adminStore, adminQuery.trim()))
     } catch (reason) {
@@ -589,6 +636,8 @@ function App() {
     setReviewingMobileStore('')
     setAdminGameId(suggestedGameId)
     setPendingCandidate(candidate)
+    setAdminReviewNote('')
+    setReviewConfirmed(false)
     setAdminCandidates([])
     setAdminResult(null)
     setAdminError('')
@@ -1197,7 +1246,7 @@ function App() {
           <label>Store<select value={mobileSyncStore} onChange={(event) => setMobileSyncStore(event.target.value as MobileCatalogSyncJob['provider'])}><option value="GooglePlay">Google Play</option><option value="AppleAppStore">Apple App Store</option></select></label>
           <button disabled={mobileSyncJobs.some((job) => job.status === 'RUNNING')} onClick={() => void synchronizeMobileCatalog()}>{mobileSyncJobs.some((job) => job.status === 'RUNNING') ? '탐색 중…' : '후보 배치 탐색'}</button>
           <div className="sync-reviews">
-            {mobileSyncJobs.flatMap((job) => job.pendingReviews.map((review) => <div key={`${job.provider}:${review.externalProductId}`}><strong>{review.title}</strong><span>{job.provider} · {review.gameId} · {review.decision}<br />{review.reason}</span>{review.productUrl && <a href={review.productUrl} target="_blank" rel="noreferrer">Store 확인 ↗</a>}<div className="review-actions"><button onClick={() => inspectMobileCatalogReview(job.provider, review)}>수동 검토</button><button className="danger" onClick={() => void rejectMobileCatalogReview(job.provider, review.externalProductId)}>제외</button></div></div>))}
+            {mobileSyncJobs.flatMap((job) => job.pendingReviews.map((review) => <div key={`${job.provider}:${review.externalProductId}`}><strong>{review.title}</strong><span>{job.provider} 상품을 <code>{review.gameId}</code>에 연결할 후보입니다.<br />판정: {matchDecisionGuide[review.decision].title}<br />{review.reason.split('; ').map(matchReasonMessage).join(' ')}</span>{review.productUrl && <a href={review.productUrl} target="_blank" rel="noreferrer">Store 상품 확인 ↗</a>}<div className="review-actions"><button onClick={() => inspectMobileCatalogReview(job.provider, review)}>이 상품 검토하기</button><button className="danger" onClick={() => void rejectMobileCatalogReview(job.provider, review.externalProductId)}>후보 제외</button></div></div>))}
             {!mobileSyncJobs.some((job) => job.pendingReviews.length > 0) && <p>모바일 검토 대기 항목이 없습니다.</p>}
           </div>
           <div className="sync-summary">
@@ -1220,6 +1269,7 @@ function App() {
             {adminGameId.trim() && <small>저장 ID: {canonicalIdFromTitle(adminGameId) || '영문 또는 숫자를 입력해주세요.'}</small>}
           </label>
           <button disabled={!canonicalIdFromTitle(adminGameId) || adminImporting} onClick={() => void runCatalogImport(false)}>{adminImporting ? '확인 중…' : 'Preview'}</button>
+          {adminReviewNote && <div className="admin-feedback review-note" role="status"><strong>자동 탐색 결과</strong><span>{adminReviewNote.split('; ').map(matchReasonMessage).join(' ')}</span><small>아래 Preview를 눌러 Store 상품과 canonical Game을 비교하세요.</small></div>}
           {adminError && <p className="admin-feedback error" role="alert">{adminError}</p>}
         </div>}
         <details className="advanced-admin"><summary>고급 입력: 상품 ID 직접 사용</summary>
@@ -1235,10 +1285,11 @@ function App() {
           <p><strong>ID</strong> {adminResult.game.id}</p>
           <p><strong>플랫폼</strong> {adminResult.game.platforms.join(' · ')}</p>
           <p><strong>{adminStore} 상품 ID</strong> {adminResult.game.matchedProduct?.productId ?? adminAppId}</p>
+          {pendingCandidate?.productUrl && <p><a href={pendingCandidate.productUrl} target="_blank" rel="noreferrer">Store 상품 페이지에서 직접 확인 ↗</a></p>}
           {adminResult.game.matchedProduct?.developer && <p><strong>개발사</strong> {adminResult.game.matchedProduct.developer}</p>}
           {adminResult.game.matchedProduct?.priceMinor !== undefined && <p><strong>현재 가격</strong> {adminResult.game.matchedProduct.priceMinor.toLocaleString('ko-KR')} {adminResult.game.matchedProduct.currency}</p>}
-          {adminResult.game.matchDecision && <div className={`match-decision ${adminResult.game.matchDecision.status.toLowerCase()}`} role="status"><strong>{adminResult.game.matchDecision.status === 'ApprovedCandidate' ? '연결 가능' : adminResult.game.matchDecision.status === 'NeedsReview' ? '수동 확인 필요' : '연결 불가'}</strong><div className="identity-comparison"><span>Canonical: {adminResult.game.title}<small>{adminResult.game.developers.join(' · ') || '개발사 정보 없음'}</small></span><span>{adminStore}: {adminResult.game.matchedProduct?.title}<small>{adminResult.game.matchedProduct?.developer || '개발사 정보 없음'}</small></span></div><ul>{adminResult.game.matchDecision.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul></div>}
-          {!adminResult.applied && adminResult.game.matchDecision?.status !== 'Rejected' && <button onClick={() => void runCatalogImport(true)}>{adminResult.game.matchDecision?.status === 'NeedsReview' ? '위 경고를 확인하고 등록' : '이 상품을 카탈로그에 등록'}</button>}
+          {adminResult.game.matchDecision && <div className={`match-decision ${adminResult.game.matchDecision.status.toLowerCase()}`} role="status"><strong>{matchDecisionGuide[adminResult.game.matchDecision.status].title}</strong><p>{matchDecisionGuide[adminResult.game.matchDecision.status].summary}</p><div className="identity-comparison"><span>Canonical Game: {adminResult.game.title}<small>{adminResult.game.developers.join(' · ') || '개발사 정보 없음'}</small></span><span>Store 상품: {adminResult.game.matchedProduct?.title}<small>{adminResult.game.matchedProduct?.developer || '개발사 정보 없음'}</small></span></div><h3>판정 근거</h3><ul>{adminResult.game.matchDecision.reasons.map((reason) => <li key={reason}>{matchReasonMessage(reason)}</li>)}</ul>{adminResult.game.matchDecision.status === 'NeedsReview' && <div className="admin-review-checklist"><h3>관리자가 확인할 항목</h3><ol><li>Store 링크에서 실제 게임 본편인지 확인</li><li>Standard Edition이며 DLC·Bundle·Demo가 아닌지 확인</li><li>개발사 또는 퍼블리셔가 공식 상품과 일치하는지 확인</li><li>확인이 끝났다면 아래 체크박스를 선택</li></ol><label><input type="checkbox" checked={reviewConfirmed} onChange={(event) => setReviewConfirmed(event.target.checked)} /> 위 항목을 직접 확인했으며 이 상품을 연결합니다.</label></div>}{adminResult.game.matchDecision.status === 'Rejected' && <p className="decision-action">이 후보를 제외하고 다른 Store 상품을 선택하세요.</p>}</div>}
+          {!adminResult.applied && adminResult.game.matchDecision?.status !== 'Rejected' && <button disabled={adminResult.game.matchDecision?.status === 'NeedsReview' && !reviewConfirmed} onClick={() => void runCatalogImport(true)}>{adminResult.game.matchDecision?.status === 'NeedsReview' ? `확인 완료 후 ${adminResult.game.title}에 연결` : '검증된 Store 상품 연결'}</button>}
           {adminResult.applied && <button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectCatalogPrices()}>{catalogJob?.status === 'RUNNING' ? '가격 수집 중…' : `${adminStore} 가격 수집 시작`}</button>}
         </article>}
         {catalogJob && catalogJob.status !== 'IDLE' && <div className={`admin-job ${catalogJob.status.toLowerCase()}`}><strong>{catalogJob.store ?? adminStore} 수집 상태: {catalogJob.status}</strong>{catalogJob.error && <span>{catalogJob.error}</span>}</div>}

@@ -126,8 +126,10 @@ Preview의 identity 판정은 다음 정책을 사용합니다.
 - `NeedsReview`: 제목은 일치하지만 어느 한쪽의 개발사 정보가 없음
 - `Rejected`: 제목 불일치, 개발사 불일치, 비게임·무료·비KRW·제외 상품
 
-`NeedsReview`는 Admin 화면에서 경고 이유를 확인한 뒤 명시적으로 승인해야
-하며 `Rejected` 상품은 등록할 수 없습니다.
+`NeedsReview`는 실패가 아니라 자동 판정에 필요한 정보가 부족하다는 뜻입니다.
+Admin 화면은 판정 근거를 한국어로 표시하고, Store 원문에서 본편·에디션·개발사
+정보를 직접 확인할 체크리스트를 제공합니다. 관리자가 확인 완료 체크박스를
+선택해야 등록 버튼이 활성화됩니다. `Rejected` 상품은 등록할 수 없습니다.
 
 Apple App Store도 같은 Admin 흐름을 사용합니다. Store를
 `Apple App Store`로 선택하면 iTunes Search 결과에서 Track ID, 개발사,
