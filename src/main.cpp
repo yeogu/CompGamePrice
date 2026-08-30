@@ -145,6 +145,35 @@ CollectionResult collectAllAppleProducts(
     return combined;
 }
 
+CollectionResult collectAllGooglePlayProducts(
+    const GameCatalog& catalog,
+    StoreProductRepository& repository,
+    const std::string& dataDirectory) {
+    GooglePlayProvider googlePlay(dataDirectory + "/google_play_products.txt");
+    std::vector<std::reference_wrapper<const StoreProductProvider>> providers{
+        googlePlay};
+    AccountRepository accounts(repository.database());
+    AlertService alerts(accounts);
+    CollectionService service(
+        catalog,
+        repository,
+        std::move(providers),
+        2,
+        &alerts);
+    CollectionResult combined;
+    for (const auto& game : catalog.allGames()) {
+        const auto result = service.collect(game);
+        combined.runs.insert(
+            combined.runs.end(),
+            result.runs.begin(),
+            result.runs.end());
+        combined.totalProducts += result.totalProducts;
+        std::cout << "- " << game.title << ": " << result.totalProducts
+                  << " Google Play product(s) saved\n";
+    }
+    return combined;
+}
+
 bool collectionCompletedSuccessfully(const CollectionResult& result) {
     std::vector<std::pair<Store, CrawlRunStatus>> finalStatuses;
     for (const auto& run : result.runs) {
@@ -383,6 +412,19 @@ int main(int argc, char* argv[]) {
                 options.dataDirectory.value());
             std::cout << "Saved " << result.totalProducts
                       << " normalized Apple products to SQLite.\n";
+            return static_cast<int>(
+                collectionCompletedSuccessfully(result)
+                    ? AppExitCode::Success
+                    : AppExitCode::CollectionFailed);
+        }
+        if (options.command == AppCommand::CollectGooglePlayAll) {
+            std::cout << "Google Play catalog collection:\n";
+            const auto result = collectAllGooglePlayProducts(
+                catalog,
+                repository,
+                options.dataDirectory.value());
+            std::cout << "Saved " << result.totalProducts
+                      << " normalized Google Play products to SQLite.\n";
             return static_cast<int>(
                 collectionCompletedSuccessfully(result)
                     ? AppExitCode::Success

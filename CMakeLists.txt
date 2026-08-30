@@ -148,6 +148,10 @@ if(BUILD_TESTING)
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_apple_collector.py
         )
         add_test(
+            NAME google_play_collector_tests
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_google_play_collector.py
+        )
+        add_test(
             NAME daily_operations_tests
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_daily_operations.py
         )

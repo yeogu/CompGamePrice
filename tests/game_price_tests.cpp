@@ -1471,6 +1471,13 @@ void testCommandLineModes() {
             collectAppleAll.dataDirectory ==
                 std::optional<std::string>{"snapshots/latest"},
         "collect-apple-all should select Apple snapshot import mode");
+    const auto collectGooglePlayAll = parseCommandLine(
+        {"collect-google-play-all", "--data-dir", "snapshots/latest"});
+    expect(
+        collectGooglePlayAll.command == AppCommand::CollectGooglePlayAll &&
+            collectGooglePlayAll.dataDirectory ==
+                std::optional<std::string>{"snapshots/latest"},
+        "collect-google-play-all should select Google Play snapshot import mode");
     const auto runs = parseCommandLine({"runs"});
     expect(runs.command == AppCommand::CollectionRuns,
            "runs should select collection run history mode");

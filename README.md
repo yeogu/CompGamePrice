@@ -98,6 +98,24 @@ docker compose --profile maintenance run --rm backup
 `collect --data-dir`는 외부 수집기가 저장한 snapshot 디렉터리를 입력으로 받습니다.
 디렉터리에는 Provider가 담당하는 `steam_products.txt`,
 `google_play_products.txt`, `apple_app_store_products.csv`가 있어야 합니다.
+
+Google Play에 등록된 상품은 다음 한 줄 명령으로 KR 페이지를 수집하고
+정규화한 뒤 SQLite에 반영할 수 있습니다.
+
+```bash
+python3 tools/run_google_play_pipeline.py
+```
+
+각 Google Play 상품은 `data/game_catalog.json`의 안정적인 package name으로
+연결됩니다. 수집은 상품별 bounded retry를 사용하며, 한 상품의 실패가 다른
+상품의 snapshot 저장을 막지 않습니다. 일부 실패가 있으면 성공 데이터는
+반영하되 명령은 non-zero로 종료되어 운영자가 확인할 수 있습니다.
+
+현재 카탈로그 원본은 의도적으로 JSON을 유지합니다. 게임 identity와 Store
+product mapping은 관리·검토가 필요한 작은 데이터이고 Git diff로 변경을
+감사하기 쉽습니다. SQLite는 변동이 많은 가격 observation, 사용자, 알림을
+담습니다. 카탈로그가 수천 건 규모가 되어 JSON reload 또는 API filtering이
+병목으로 측정되면 그때 catalog table migration을 진행합니다.
 `seed-demo`는 Stardew Valley의 세 Store에 2026년 1월부터 6월까지 고정된
 월별 가격 6개씩을 저장합니다. 같은 명령을 다시 실행하면 기존 Demo 이력을
 교체하므로 중복되지 않으며 Web 가격 추이와 추천 규칙 확인에 사용할 수 있습니다.
