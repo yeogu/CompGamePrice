@@ -100,7 +100,9 @@ export interface UserPreferences { emailNotificationsEnabled: boolean; region: '
 export interface CatalogAdminResult { game: GameSummary & { products: Array<{ store: string; productId: string; productUrl: string }> }; applied: boolean; requiresApiRestart: boolean }
 export interface CatalogCollectionJob { id: number; status: 'IDLE' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'; error?: string }
 export interface StoreProductCandidate { store: string; externalProductId: string; title: string; productUrl: string; platforms: string[] }
-export interface CatalogSyncReview { externalProductId: string; title: string; reason: string; status: 'PENDING'; createdAt: string }
+export interface CatalogSyncReview { externalProductId: string; title: string; reason: string; status: 'PENDING' | 'APPROVED' | 'REJECTED'; createdAt: string }
+export interface CatalogGameRequest { query: string; status: string; requestCount: number; requestedAt: string; error?: string }
+export interface CatalogSyncRun { id: number; status: string; startedAt: string; finishedAt?: string; processed: number; accepted: number; review: number; skipped: number; failed: number; error?: string }
 export interface CatalogSyncJob {
   provider: string
   status: 'IDLE' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'
@@ -112,6 +114,9 @@ export interface CatalogSyncJob {
   lastAppId?: string
   error?: string
   pendingReviews?: CatalogSyncReview[]
+  reviewHistory?: CatalogSyncReview[]
+  gameRequests?: CatalogGameRequest[]
+  recentRuns?: CatalogSyncRun[]
   priceCollection?: {
     status: 'NOT_REQUIRED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'
     attemptedAt?: string

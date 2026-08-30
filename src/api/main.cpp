@@ -409,6 +409,14 @@ public:
         return result_;
     }
 
+    Json::Value refresh() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (result_["status"].asString() != "RUNNING") {
+            result_ = runCatalogSyncTool(false, 0);
+        }
+        return result_;
+    }
+
     bool resolve(const std::string& appId, const std::string& resolution) {
         std::lock_guard<std::mutex> lock(mutex_);
         if (result_["status"].asString() == "RUNNING") {
@@ -1070,7 +1078,7 @@ int main() {
                         "catalog admin is disabled"));
                     return;
                 }
-                callback(jsonResponse(catalogSyncJob.json()));
+                callback(jsonResponse(catalogSyncJob.refresh()));
             },
             {drogon::Get});
         drogon::app().registerHandler(

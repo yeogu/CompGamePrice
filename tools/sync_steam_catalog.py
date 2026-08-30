@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 from datetime import datetime, timezone
+import fcntl
 import json
 from pathlib import Path
 import re
@@ -22,6 +24,26 @@ REVIEW_TITLE_PATTERN = re.compile(
     r"\b(dlc|demo|soundtrack|bundle|deluxe|ultimate|goty|season pass|upgrade)\b",
     re.IGNORECASE,
 )
+
+
+class CatalogSyncAlreadyRunning(RuntimeError):
+    pass
+
+
+@contextmanager
+def exclusive_sync_lock(path: Path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a+", encoding="utf-8") as lock_file:
+        try:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as error:
+            raise CatalogSyncAlreadyRunning(
+                "another catalog synchronization is already running"
+            ) from error
+        try:
+            yield
+        finally:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
 
 def utc_now() -> str:
@@ -380,6 +402,48 @@ def update_state(
     connection.commit()
 
 
+def start_sync_run(connection: sqlite3.Connection, started_at: str) -> int:
+    cursor = connection.execute(
+        """
+        INSERT INTO catalog_sync_runs(provider, status, started_at)
+        VALUES('Steam', 'RUNNING', ?)
+        """,
+        (started_at,),
+    )
+    connection.commit()
+    return cursor.lastrowid
+
+
+def finish_sync_run(
+    connection: sqlite3.Connection,
+    run_id: int,
+    status: str,
+    report: dict,
+    error_message: str | None = None,
+) -> None:
+    connection.execute(
+        """
+        UPDATE catalog_sync_runs
+        SET status = ?, finished_at = ?, processed_count = ?,
+            accepted_count = ?, review_count = ?, skipped_count = ?,
+            failed_count = ?, error_message = ?
+        WHERE id = ?
+        """,
+        (
+            status,
+            utc_now(),
+            report["processed"],
+            report["accepted"],
+            report["review"],
+            report["skipped"],
+            report["failed"],
+            error_message,
+            run_id,
+        ),
+    )
+    connection.commit()
+
+
 def synchronization_status(database_path: Path, review_limit: int = 20) -> dict:
     if not 1 <= review_limit <= 100:
         raise ValueError("review limit must be between 1 and 100")
@@ -405,6 +469,36 @@ def synchronization_status(database_path: Path, review_limit: int = 20) -> dict:
             """,
             ("Steam", review_limit),
         ).fetchall()
+        review_history = connection.execute(
+            """
+            SELECT external_product_id, title, reason, status, created_at
+            FROM catalog_sync_review
+            WHERE provider = ? AND status != 'PENDING'
+            ORDER BY created_at DESC
+            LIMIT ?
+            """,
+            ("Steam", review_limit),
+        ).fetchall()
+        requests = connection.execute(
+            """
+            SELECT display_query, status, request_count, requested_at, error_message
+            FROM catalog_game_requests
+            ORDER BY requested_at DESC
+            LIMIT ?
+            """,
+            (review_limit,),
+        ).fetchall()
+        runs = connection.execute(
+            """
+            SELECT id, status, started_at, finished_at, processed_count,
+                   accepted_count, review_count, skipped_count, failed_count,
+                   error_message
+            FROM catalog_sync_runs
+            WHERE provider = 'Steam'
+            ORDER BY id DESC
+            LIMIT 10
+            """
+        ).fetchall()
     result = {
         "provider": "Steam",
         "status": row[0] if row else "IDLE",
@@ -417,6 +511,9 @@ def synchronization_status(database_path: Path, review_limit: int = 20) -> dict:
         "failed": row[7] if row else 0,
         "error": row[8] if row else None,
         "pendingReviews": [],
+        "reviewHistory": [],
+        "gameRequests": [],
+        "recentRuns": [],
         "priceCollection": None,
     }
     for review in reviews:
@@ -427,6 +524,41 @@ def synchronization_status(database_path: Path, review_limit: int = 20) -> dict:
                 "reason": review[2],
                 "status": review[3],
                 "createdAt": review[4],
+            }
+        )
+    for review in review_history:
+        result["reviewHistory"].append(
+            {
+                "externalProductId": review[0],
+                "title": review[1],
+                "reason": review[2],
+                "status": review[3],
+                "createdAt": review[4],
+            }
+        )
+    for request in requests:
+        result["gameRequests"].append(
+            {
+                "query": request[0],
+                "status": request[1],
+                "requestCount": request[2],
+                "requestedAt": request[3],
+                "error": request[4],
+            }
+        )
+    for run in runs:
+        result["recentRuns"].append(
+            {
+                "id": run[0],
+                "status": run[1],
+                "startedAt": run[2],
+                "finishedAt": run[3],
+                "processed": run[4],
+                "accepted": run[5],
+                "review": run[6],
+                "skipped": run[7],
+                "failed": run[8],
+                "error": run[9],
             }
         )
     with sqlite3.connect(database_path) as connection:
@@ -504,7 +636,7 @@ def resolve_review(
     }
 
 
-def synchronize(
+def synchronize_unlocked(
     catalog_path: Path,
     database_path: Path,
     batch_size: int,
@@ -536,6 +668,7 @@ def synchronize(
     catalog = catalog_import.load_catalog(catalog_path)
     with sqlite3.connect(database_path) as connection:
         initialize_state(connection)
+        run_id = start_sync_run(connection, started_at)
         update_state(connection, "RUNNING", started_at, report)
         try:
             priority_apps = requested_apps(connection, candidate_searcher)
@@ -600,13 +733,35 @@ def synchronize(
             if report["accepted"] > 0:
                 catalog_import.write_catalog(catalog_path, catalog)
             report["status"] = "SUCCEEDED"
+            finish_sync_run(connection, run_id, "SUCCEEDED", report)
             update_state(connection, "SUCCEEDED", started_at, report)
             return report
         except Exception as error:
             connection.rollback()
             report["status"] = "FAILED"
+            finish_sync_run(connection, run_id, "FAILED", report, str(error))
             update_state(connection, "FAILED", started_at, report, str(error))
             raise
+
+
+def synchronize(
+    catalog_path: Path,
+    database_path: Path,
+    batch_size: int,
+    app_list_fetcher=fetch_app_list,
+    detail_fetcher=None,
+    candidate_searcher=steam_search.search,
+) -> dict:
+    lock_path = database_path.with_suffix(database_path.suffix + ".catalog-sync.lock")
+    with exclusive_sync_lock(lock_path):
+        return synchronize_unlocked(
+            catalog_path,
+            database_path,
+            batch_size,
+            app_list_fetcher,
+            detail_fetcher,
+            candidate_searcher,
+        )
 
 
 def main() -> int:
@@ -639,7 +794,13 @@ def main() -> int:
                 arguments.database,
                 arguments.batch_size,
             )
-    except (ValueError, OSError, json.JSONDecodeError, sqlite3.Error) as error:
+    except (
+        ValueError,
+        OSError,
+        json.JSONDecodeError,
+        sqlite3.Error,
+        CatalogSyncAlreadyRunning,
+    ) as error:
         parser.error(str(error))
     print(json.dumps(report, ensure_ascii=False, indent=2))
     return 0

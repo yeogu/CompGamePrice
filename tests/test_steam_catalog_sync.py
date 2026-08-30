@@ -73,6 +73,9 @@ class SteamCatalogSyncTest(unittest.TestCase):
                 "SELECT status, last_app_id, accepted_count FROM catalog_sync_state"
             ).fetchone()
         self.assertEqual(state, ("SUCCEEDED", "10", 1))
+        status = sync.synchronization_status(database)
+        self.assertEqual(status["recentRuns"][0]["processed"], 1)
+        self.assertEqual(status["recentRuns"][0]["status"], "SUCCEEDED")
 
     def test_quarantines_localized_and_suspicious_titles(self):
         apps = [
@@ -97,7 +100,9 @@ class SteamCatalogSyncTest(unittest.TestCase):
         resolved = sync.resolve_review(database, "10", "APPROVED")
         self.assertEqual(resolved["status"], "APPROVED")
         sync.resolve_review(database, "20", "REJECTED")
-        self.assertEqual(sync.synchronization_status(database)["pendingReviews"], [])
+        resolved_status = sync.synchronization_status(database)
+        self.assertEqual(resolved_status["pendingReviews"], [])
+        self.assertEqual(len(resolved_status["reviewHistory"]), 2)
         with sqlite3.connect(database) as connection:
             outcomes = connection.execute(
                 "SELECT external_product_id, outcome FROM catalog_sync_seen ORDER BY external_product_id"
@@ -203,6 +208,14 @@ class SteamCatalogSyncTest(unittest.TestCase):
         raw = sync.fetch_detail_with_retry(fetch, "10")
         self.assertIn(b"Retry Game", raw)
         self.assertEqual(attempts, 3)
+
+    def test_rejects_concurrent_catalog_sync(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database = Path(directory) / "catalog.db"
+            lock = database.with_suffix(".db.catalog-sync.lock")
+            with sync.exclusive_sync_lock(lock):
+                with self.assertRaises(sync.CatalogSyncAlreadyRunning):
+                    sync.synchronize(Path("catalog.json"), database, 1)
 
 
 if __name__ == "__main__":

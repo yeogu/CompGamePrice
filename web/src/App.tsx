@@ -91,6 +91,7 @@ function App() {
   const [catalogSyncJob, setCatalogSyncJob] = useState<CatalogSyncJob | null>(null)
   const [catalogSyncBatchSize, setCatalogSyncBatchSize] = useState(20)
   const [reviewingAppId, setReviewingAppId] = useState('')
+  const [adminQueueView, setAdminQueueView] = useState<'pending' | 'history' | 'requests' | 'runs'>('pending')
   const [adminStore, setAdminStore] = useState('Steam')
   const [adminQuery, setAdminQuery] = useState('')
   const [adminCandidates, setAdminCandidates] = useState<StoreProductCandidate[]>([])
@@ -910,7 +911,13 @@ function App() {
             {catalogSyncJob.priceCollection && <span>신규 게임 가격 수집 {catalogSyncJob.priceCollection.status}</span>}
             {catalogSyncJob.error && <p>{catalogSyncJob.error}</p>}
           </div>}
-          {(catalogSyncJob?.pendingReviews?.length ?? 0) > 0 && <details className="sync-reviews"><summary>검토 대기 {catalogSyncJob?.pendingReviews?.length}개 보기</summary>{catalogSyncJob?.pendingReviews?.map((review) => <div key={review.externalProductId}><strong>{review.title || `App ${review.externalProductId}`}</strong><span>{review.reason}</span><small>App ID {review.externalProductId}</small><div className="review-actions"><button onClick={() => inspectCatalogReview(review)}>수동 검토</button><button className="danger" onClick={() => void rejectCatalogReview(review.externalProductId)}>제외</button></div></div>)}</details>}
+          {catalogSyncJob && <div className="sync-queue">
+            <div className="queue-tabs"><button className={adminQueueView === 'pending' ? 'active' : ''} onClick={() => setAdminQueueView('pending')}>검토 대기 {catalogSyncJob.pendingReviews?.length ?? 0}</button><button className={adminQueueView === 'history' ? 'active' : ''} onClick={() => setAdminQueueView('history')}>처리 이력</button><button className={adminQueueView === 'requests' ? 'active' : ''} onClick={() => setAdminQueueView('requests')}>사용자 요청</button><button className={adminQueueView === 'runs' ? 'active' : ''} onClick={() => setAdminQueueView('runs')}>실행 기록</button></div>
+            {adminQueueView === 'pending' && <div className="sync-reviews">{catalogSyncJob.pendingReviews?.length ? catalogSyncJob.pendingReviews.map((review) => <div key={review.externalProductId}><strong>{review.title || `App ${review.externalProductId}`}</strong><span>{review.reason}</span><a href={`https://store.steampowered.com/app/${review.externalProductId}`} target="_blank" rel="noreferrer">Steam 확인 ↗</a><div className="review-actions"><button onClick={() => inspectCatalogReview(review)}>수동 검토</button><button className="danger" onClick={() => void rejectCatalogReview(review.externalProductId)}>제외</button></div></div>) : <p>검토 대기 항목이 없습니다.</p>}</div>}
+            {adminQueueView === 'history' && <div className="sync-reviews">{catalogSyncJob.reviewHistory?.length ? catalogSyncJob.reviewHistory.map((review) => <div key={`${review.externalProductId}-${review.status}`}><strong>{review.title}</strong><span>{review.reason}</span><small className={review.status.toLowerCase()}>{review.status}</small><a href={`https://store.steampowered.com/app/${review.externalProductId}`} target="_blank" rel="noreferrer">Steam 확인 ↗</a></div>) : <p>처리 이력이 없습니다.</p>}</div>}
+            {adminQueueView === 'requests' && <div className="sync-reviews">{catalogSyncJob.gameRequests?.length ? catalogSyncJob.gameRequests.map((request) => <div key={`${request.query}-${request.requestedAt}`}><strong>{request.query}</strong><span>요청 {request.requestCount}회</span><small>{request.status}</small><time>{new Date(request.requestedAt).toLocaleString('ko-KR')}</time></div>) : <p>사용자 요청이 없습니다.</p>}</div>}
+            {adminQueueView === 'runs' && <div className="sync-reviews">{catalogSyncJob.recentRuns?.length ? catalogSyncJob.recentRuns.map((run) => <div key={run.id}><strong>실행 #{run.id} · {run.status}</strong><span>처리 {run.processed} · 등록 {run.accepted} · 검토 {run.review} · 제외 {run.skipped} · 실패 {run.failed}</span><small>{new Date(run.startedAt).toLocaleString('ko-KR')}</small></div>) : <p>실행 기록이 없습니다.</p>}</div>}
+          </div>}
         </article>
         <div className="admin-search">
           <select aria-label="Store" value={adminStore} onChange={(event) => setAdminStore(event.target.value)}><option value="Steam">Steam</option></select>

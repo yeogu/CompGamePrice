@@ -243,6 +243,14 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .review-actions { display: flex; gap: 6px; }
 .review-actions button { padding: 8px 10px; font-size: .78rem; }
 .review-actions .danger { color: #ffc7c7; border-color: #743b3b; }
+.sync-queue { grid-column: 1 / -1; display: grid; gap: 8px; }
+.queue-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.queue-tabs button { padding: 8px 10px; color: #91a79b; background: transparent; border: 1px solid #315141; font-size: .78rem; }
+.queue-tabs button.active { color: #b9f2d2; background: #173426; }
+.sync-reviews > p { color: #82968b; }
+.sync-reviews a { color: #79cda0; font-size: .8rem; }
+.sync-reviews .approved { color: #73d49b; }
+.sync-reviews .rejected { color: #ffb4a8; }
 .admin-form { display: grid; grid-template-columns: 1fr 1fr auto; align-items: end; gap: 12px; margin-top: 24px; }
 .admin-search { display: grid; grid-template-columns: 150px 1fr auto; gap: 10px; margin-top: 24px; }
 .admin-search input, .admin-search select { padding: 12px; color: #eef8f2; background: #0b1812; border: 1px solid #315141; border-radius: 9px; }
