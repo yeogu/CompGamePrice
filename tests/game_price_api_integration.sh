@@ -253,6 +253,11 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/admin/catalog/google-play")
 [[ "${status}" == "403" ]]
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -H 'Content-Type: application/json' \
+    -d '{"trackId":"123456789","gameId":"hades","apply":false}' \
+    "${api_base}/api/admin/catalog/apple")
+[[ "${status}" == "403" ]]
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/admin/catalog/collection")
 [[ "${status}" == "403" ]]
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \

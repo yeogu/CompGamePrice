@@ -84,23 +84,18 @@ def run_operations(
             ],
         ),
         (
-            "apple-snapshot",
+            "apple",
             [
                 python,
-                str(project / "tools" / "collect_apple_snapshot.py"),
+                str(project / "tools" / "run_apple_pipeline.py"),
+                "--tracker",
+                str(tracker),
                 "--catalog",
                 str(catalog),
-                "--output",
-                str(output_directory / "apple_app_store_products.csv"),
-            ],
-        ),
-        (
-            "apple-import",
-            [
-                str(tracker),
-                "collect-apple-all",
-                "--data-dir",
+                "--output-dir",
                 str(output_directory),
+                "--database",
+                str(database),
             ],
         ),
         (

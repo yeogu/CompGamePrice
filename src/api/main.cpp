@@ -211,6 +211,13 @@ bool validGooglePlayPackage(const std::string& value) {
     return std::regex_match(value, pattern);
 }
 
+bool validAppleTrackId(const std::string& value) {
+    return !value.empty() &&
+        std::all_of(value.begin(), value.end(), [](unsigned char character) {
+            return std::isdigit(character) != 0;
+        });
+}
+
 std::string shellQuoted(const std::string& value) {
     std::string result{"'"};
     for (const auto character : value) {
@@ -324,17 +331,48 @@ Json::Value runGooglePlayCatalogImport(
     return executeCatalogTool(std::move(command), temporary);
 }
 
+Json::Value runAppleCatalogImport(
+    const std::string& trackId,
+    const std::string& gameId,
+    bool apply,
+    bool acknowledgeReview) {
+    std::lock_guard<std::mutex> toolLock(catalogToolMutex());
+    const auto temporary = std::filesystem::temp_directory_path() /
+        "compgameprice-apple-catalog.json";
+    const auto script = std::filesystem::path(PROJECT_SOURCE_DIR) /
+        "tools/add_apple_catalog_game.py";
+    const auto catalog = std::filesystem::path(SAMPLE_DATA_DIR) /
+        "game_catalog.json";
+    std::string command = "python3 " + shellQuoted(script.string()) +
+        " --track-id " + shellQuoted(trackId) +
+        " --game-id " + shellQuoted(gameId) +
+        " --catalog " + shellQuoted(catalog.string());
+    if (apply) {
+        command += " --apply";
+    }
+    if (acknowledgeReview) {
+        command += " --acknowledge-review";
+    }
+    return executeCatalogTool(std::move(command), temporary);
+}
+
 Json::Value runStoreSearch(const std::string& store, const std::string& query) {
     std::lock_guard<std::mutex> toolLock(catalogToolMutex());
-    if (store != "Steam" && store != "Google Play") {
+    if (store != "Steam" && store != "Google Play" &&
+        store != "Apple App Store") {
         throw std::invalid_argument("store is not supported yet");
     }
     const auto temporary = std::filesystem::temp_directory_path() /
         "compgameprice-store-search.json";
-    const auto script = std::filesystem::path(PROJECT_SOURCE_DIR) /
-        (store == "Steam"
-             ? "tools/search_steam_catalog.py"
-             : "tools/search_google_play_catalog.py");
+    std::string scriptName;
+    if (store == "Steam") {
+        scriptName = "tools/search_steam_catalog.py";
+    } else if (store == "Google Play") {
+        scriptName = "tools/search_google_play_catalog.py";
+    } else {
+        scriptName = "tools/search_apple_catalog.py";
+    }
+    const auto script = std::filesystem::path(PROJECT_SOURCE_DIR) / scriptName;
     const auto command = "python3 " + shellQuoted(script.string()) +
         " --query " + shellQuoted(query) +
         " > " + shellQuoted(temporary.string()) + " 2>&1";
@@ -382,9 +420,14 @@ public:
 private:
     void run() {
         const auto project = std::filesystem::path(PROJECT_SOURCE_DIR);
-        const auto pipeline = store_ == "Google Play"
-            ? "tools/run_google_play_pipeline.py"
-            : "tools/run_steam_pipeline.py";
+        std::string pipeline;
+        if (store_ == "Google Play") {
+            pipeline = "tools/run_google_play_pipeline.py";
+        } else if (store_ == "Apple App Store") {
+            pipeline = "tools/run_apple_pipeline.py";
+        } else {
+            pipeline = "tools/run_steam_pipeline.py";
+        }
         const auto command = "python3 " + shellQuoted(
             (project / pipeline).string()) +
             " --tracker " + shellQuoted(
@@ -1219,6 +1262,61 @@ int main() {
             },
             {drogon::Post});
         drogon::app().registerHandler(
+            "/api/admin/catalog/apple",
+            [&catalog](const drogon::HttpRequestPtr& request,
+                       std::function<void(const HttpResponsePtr&)>&& callback) {
+                if (!catalogAdminEnabled() || !isLoopbackRequest(request)) {
+                    callback(jsonError(
+                        drogon::k403Forbidden,
+                        "catalog admin is disabled"));
+                    return;
+                }
+                const auto body = request->getJsonObject();
+                if (!body || !(*body)["trackId"].isString() ||
+                    !(*body)["gameId"].isString()) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "trackId and gameId are required"));
+                    return;
+                }
+                const auto trackId = (*body)["trackId"].asString();
+                const auto gameId = (*body)["gameId"].asString();
+                if (!validAppleTrackId(trackId) || gameId.empty() ||
+                    !validCanonicalGameId(gameId)) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "invalid trackId or gameId"));
+                    return;
+                }
+                const auto apply = (*body)["apply"].isBool() &&
+                    (*body)["apply"].asBool();
+                const auto acknowledgeReview =
+                    (*body)["acknowledgeReview"].isBool() &&
+                    (*body)["acknowledgeReview"].asBool();
+                try {
+                    Json::Value response;
+                    response["game"] = runAppleCatalogImport(
+                        trackId,
+                        gameId,
+                        apply,
+                        acknowledgeReview);
+                    response["applied"] = apply;
+                    if (apply) {
+                        catalog.reload(
+                            std::string(SAMPLE_DATA_DIR) + "/game_catalog.json");
+                    }
+                    response["requiresApiRestart"] = false;
+                    callback(jsonResponse(response));
+                } catch (const std::invalid_argument& error) {
+                    callback(jsonError(drogon::k400BadRequest, error.what()));
+                } catch (const std::exception& error) {
+                    callback(jsonError(
+                        drogon::k500InternalServerError,
+                        error.what()));
+                }
+            },
+            {drogon::Post});
+        drogon::app().registerHandler(
             "/api/admin/catalog/collection",
             [&catalogCollectionJob](
                 const drogon::HttpRequestPtr& request,
@@ -1247,7 +1345,8 @@ int main() {
                 const auto store = body && (*body)["store"].isString()
                     ? (*body)["store"].asString()
                     : std::string{"Steam"};
-                if (store != "Steam" && store != "Google Play") {
+                if (store != "Steam" && store != "Google Play" &&
+                    store != "Apple App Store") {
                     callback(jsonError(
                         drogon::k400BadRequest,
                         "unsupported collection store"));

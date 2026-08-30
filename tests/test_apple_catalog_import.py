@@ -34,6 +34,7 @@ class AppleCatalogImportTest(unittest.TestCase):
             metadata,
         )
         self.assertEqual(game["matchDecision"]["status"], "ApprovedCandidate")
+        self.assertTrue(game["matchDecision"]["developerMatched"])
         self.assertEqual(game["matchedProduct"]["platforms"], ["iOS", "iPadOS"])
         self.assertIn("iOS", updated["games"][0]["platforms"])
 

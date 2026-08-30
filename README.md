@@ -129,6 +129,16 @@ Preview의 identity 판정은 다음 정책을 사용합니다.
 `NeedsReview`는 Admin 화면에서 경고 이유를 확인한 뒤 명시적으로 승인해야
 하며 `Rejected` 상품은 등록할 수 없습니다.
 
+Apple App Store도 같은 Admin 흐름을 사용합니다. Store를
+`Apple App Store`로 선택하면 iTunes Search 결과에서 Track ID, 개발사,
+KRW 가격, iOS/iPadOS 지원 여부를 확인할 수 있습니다. 승인된 상품은 기존
+canonical Game에 연결되고 Apple 가격 pipeline이 즉시 실행됩니다.
+
+Apple 개발사 이름에 붙는 제한적인 법인 접미사(`LLC`, `Inc`, `Ltd` 등)는
+identity 비교 시 제거하지만 일반 단어는 제거하지 않습니다. Apple Arcade처럼
+직접 구매 가격이 없는 상품, 무료 앱, 비게임 앱, Guide/Demo/Soundtrack은
+구매 가격 비교 상품으로 등록되지 않습니다.
+
 각 Google Play 상품은 `data/game_catalog.json`의 안정적인 package name으로
 연결됩니다. 수집은 상품별 bounded retry를 사용하며, 한 상품의 실패가 다른
 상품의 snapshot 저장을 막지 않습니다. 일부 실패가 있으면 성공 데이터는

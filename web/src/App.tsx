@@ -1,5 +1,5 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react'
-import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, getAlertRules, getCatalogAdminStatus, getCatalogCollectionJob, getCatalogFilters, getCatalogSyncJob, getCollectionRuns, getExternalIdentities, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getNotifications, getOAuthUrl, getPreferences, importGooglePlayCatalogGame, importSteamCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, resolveCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, unlinkExternalIdentity, updatePreferences } from './api'
+import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, getAlertRules, getCatalogAdminStatus, getCatalogCollectionJob, getCatalogFilters, getCatalogSyncJob, getCollectionRuns, getExternalIdentities, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getNotifications, getOAuthUrl, getPreferences, importAppleCatalogGame, importGooglePlayCatalogGame, importSteamCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, resolveCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, unlinkExternalIdentity, updatePreferences } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
 import type { AlertRule, AlertRuleType, CatalogAdminResult, CatalogCollectionJob, CatalogFilterOptions, CatalogSyncJob, CollectionRun, ExternalIdentity, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSort, GameSummary, Money, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
 
@@ -400,14 +400,22 @@ function App() {
     setAdminImporting(true)
     setActionMessage('')
     try {
+      const acknowledgeReview = apply && adminResult?.game.matchDecision?.status === 'NeedsReview'
       const result = adminStore === 'Google Play'
         ? await importGooglePlayCatalogGame(
             appId,
             canonicalGameId,
             apply,
-            apply && adminResult?.game.matchDecision?.status === 'NeedsReview',
+            acknowledgeReview,
           )
-        : await importSteamCatalogGame(appId, canonicalGameId, apply)
+        : adminStore === 'Apple App Store'
+          ? await importAppleCatalogGame(
+              appId,
+              canonicalGameId,
+              apply,
+              acknowledgeReview,
+            )
+          : await importSteamCatalogGame(appId, canonicalGameId, apply)
       setAdminGameId(result.game.id)
       setAdminResult(result)
       if (apply && reviewingAppId === appId) {
@@ -1096,11 +1104,11 @@ function App() {
           </div>}
         </article>
         <div className="admin-search">
-          <select aria-label="Store" value={adminStore} onChange={(event) => { setAdminStore(event.target.value); setAdminCandidates([]); setPendingCandidate(null); setAdminResult(null) }}><option value="Steam">Steam</option><option value="Google Play">Google Play</option></select>
+          <select aria-label="Store" value={adminStore} onChange={(event) => { setAdminStore(event.target.value); setAdminCandidates([]); setPendingCandidate(null); setAdminResult(null) }}><option value="Steam">Steam</option><option value="Google Play">Google Play</option><option value="Apple App Store">Apple App Store</option></select>
           <input aria-label="Store 게임 이름" value={adminQuery} onChange={(event) => setAdminQuery(event.target.value)} placeholder="예: Sekiro" />
           <button disabled={!adminQuery.trim() || adminSearching} onClick={() => void searchCatalogCandidates()}>{adminSearching ? '검색 중…' : 'Store 검색'}</button>
         </div>
-        {adminCandidates.length > 0 && <div className="candidate-list">{adminCandidates.map((candidate) => <button key={`${candidate.store}:${candidate.externalProductId}`} onClick={() => chooseCatalogCandidate(candidate)}><strong>{candidate.title}</strong><span>{candidate.store} · {candidate.platforms.join(' · ') || '플랫폼 확인 필요'}</span><small>상품 ID {candidate.externalProductId}</small></button>)}</div>}
+        {adminCandidates.length > 0 && <div className="candidate-list">{adminCandidates.map((candidate) => <button key={`${candidate.store}:${candidate.externalProductId}`} onClick={() => chooseCatalogCandidate(candidate)}><strong>{candidate.title}</strong><span>{candidate.store} · {candidate.platforms.join(' · ') || '플랫폼 확인 필요'}{candidate.developer ? ` · ${candidate.developer}` : ''}</span><small>상품 ID {candidate.externalProductId}{candidate.priceMinor !== undefined ? ` · ${candidate.priceMinor.toLocaleString('ko-KR')} ${candidate.currency}` : ''}</small></button>)}</div>}
         {pendingCandidate && !adminResult && <div className="candidate-confirmation">
           <div><strong>{pendingCandidate.title}</strong><span>상품 ID {pendingCandidate.externalProductId}</span></div>
           <label>영문 게임명 또는 Canonical Game ID
@@ -1112,7 +1120,7 @@ function App() {
         </div>}
         <details className="advanced-admin"><summary>고급 입력: 상품 ID 직접 사용</summary>
         <div className="admin-form">
-          <label>{adminStore === 'Google Play' ? 'Google Play Package Name' : 'Steam App ID'}<input value={adminAppId} onChange={(event) => setAdminAppId(event.target.value)} placeholder={adminStore === 'Google Play' ? '예: com.example.game' : '예: 1245620'} inputMode={adminStore === 'Google Play' ? 'text' : 'numeric'} /></label>
+          <label>{adminStore === 'Google Play' ? 'Google Play Package Name' : adminStore === 'Apple App Store' ? 'Apple Track ID' : 'Steam App ID'}<input value={adminAppId} onChange={(event) => setAdminAppId(event.target.value)} placeholder={adminStore === 'Google Play' ? '예: com.example.game' : adminStore === 'Apple App Store' ? '예: 1406710800' : '예: 1245620'} inputMode={adminStore === 'Google Play' ? 'text' : 'numeric'} /></label>
           <label>Canonical Game ID (선택)<input value={adminGameId} onChange={(event) => setAdminGameId(event.target.value)} placeholder="한글 제목이면 예: dave-the-diver" /></label>
           <button disabled={!(adminStore === 'Google Play' ? /^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$/.test(adminAppId.trim()) : /^\d+$/.test(adminAppId.trim())) || adminImporting} onClick={() => void runCatalogImport(false)}>{adminImporting ? '확인 중…' : 'Preview'}</button>
         </div>
@@ -1125,7 +1133,7 @@ function App() {
           <p><strong>{adminStore} 상품 ID</strong> {adminResult.game.matchedProduct?.productId ?? adminAppId}</p>
           {adminResult.game.matchedProduct?.developer && <p><strong>개발사</strong> {adminResult.game.matchedProduct.developer}</p>}
           {adminResult.game.matchedProduct?.priceMinor !== undefined && <p><strong>현재 가격</strong> {adminResult.game.matchedProduct.priceMinor.toLocaleString('ko-KR')} {adminResult.game.matchedProduct.currency}</p>}
-          {adminResult.game.matchDecision && <div className={`match-decision ${adminResult.game.matchDecision.status.toLowerCase()}`} role="status"><strong>{adminResult.game.matchDecision.status === 'ApprovedCandidate' ? '연결 가능' : adminResult.game.matchDecision.status === 'NeedsReview' ? '수동 확인 필요' : '연결 불가'}</strong><div className="identity-comparison"><span>Canonical: {adminResult.game.title}<small>{adminResult.game.developers.join(' · ') || '개발사 정보 없음'}</small></span><span>Google Play: {adminResult.game.matchedProduct?.title}<small>{adminResult.game.matchedProduct?.developer || '개발사 정보 없음'}</small></span></div><ul>{adminResult.game.matchDecision.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul></div>}
+          {adminResult.game.matchDecision && <div className={`match-decision ${adminResult.game.matchDecision.status.toLowerCase()}`} role="status"><strong>{adminResult.game.matchDecision.status === 'ApprovedCandidate' ? '연결 가능' : adminResult.game.matchDecision.status === 'NeedsReview' ? '수동 확인 필요' : '연결 불가'}</strong><div className="identity-comparison"><span>Canonical: {adminResult.game.title}<small>{adminResult.game.developers.join(' · ') || '개발사 정보 없음'}</small></span><span>{adminStore}: {adminResult.game.matchedProduct?.title}<small>{adminResult.game.matchedProduct?.developer || '개발사 정보 없음'}</small></span></div><ul>{adminResult.game.matchDecision.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul></div>}
           {!adminResult.applied && adminResult.game.matchDecision?.status !== 'Rejected' && <button onClick={() => void runCatalogImport(true)}>{adminResult.game.matchDecision?.status === 'NeedsReview' ? '위 경고를 확인하고 등록' : '이 상품을 카탈로그에 등록'}</button>}
           {adminResult.applied && <button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectCatalogPrices()}>{catalogJob?.status === 'RUNNING' ? '가격 수집 중…' : `${adminStore} 가격 수집 시작`}</button>}
         </article>}

@@ -12,6 +12,21 @@ EXCLUDED_TITLE_WORDS = {
     "soundtrack",
     "demo",
     "companion",
+    "가이드",
+    "공략",
+    "데모",
+    "사운드트랙",
+}
+
+DEVELOPER_SUFFIXES = {
+    "co",
+    "company",
+    "corp",
+    "corporation",
+    "inc",
+    "limited",
+    "llc",
+    "ltd",
 }
 
 
@@ -21,6 +36,13 @@ def normalized_words(value: str) -> set[str]:
 
 def normalized_identity(value: str) -> str:
     return " ".join(re.findall(r"[^\W_]+", value.casefold(), flags=re.UNICODE))
+
+
+def normalized_developer(value: str) -> str:
+    words = normalized_identity(value).split()
+    while words and words[-1] in DEVELOPER_SUFFIXES:
+        words.pop()
+    return " ".join(words)
 
 
 def evaluate(game: dict, offer: dict) -> dict:
@@ -56,11 +78,11 @@ def evaluate(game: dict, offer: dict) -> dict:
         reasons.append("Title does not match the canonical title or aliases")
 
     canonical_developers = {
-        normalized_identity(value)
+        normalized_developer(value)
         for value in game.get("developers", [])
-        if normalized_identity(value)
+        if normalized_developer(value)
     }
-    product_developer = normalized_identity(offer["developer"])
+    product_developer = normalized_developer(offer["developer"])
     developer_matches = bool(
         product_developer and product_developer in canonical_developers
     )
