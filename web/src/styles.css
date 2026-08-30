@@ -49,6 +49,16 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .catalog-request p { padding: 4px; }
 .catalog-request span { padding: 8px; color: #73d49b; font-size: .8rem; }
 .search-form .catalog-request button { display: block; padding: 10px; color: #b9f2d2; background: #173426; border: 1px solid #315141; text-align: center; }
+.catalog-discovery { display: grid; gap: 12px; margin-top: 18px; }
+.quick-platforms { display: flex; flex-wrap: wrap; gap: 7px; }
+.quick-platforms button { padding: 9px 13px; color: #91a79b; background: #101f18; border: 1px solid #315141; border-radius: 999px; }
+.quick-platforms button.active { color: #07110d; background: #73e2a7; }
+.detailed-filters { color: #91a79b; font-size: .86rem; }
+.detailed-filters summary { cursor: pointer; }
+.detailed-filters form { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)) auto; align-items: end; gap: 8px; margin-top: 12px; }
+.detailed-filters label { display: grid; gap: 5px; font-size: .72rem; }
+.detailed-filters select { min-width: 0; padding: 10px; color: #eef8f2; background: #101f18; border: 1px solid #315141; border-radius: 9px; }
+.detailed-filters button { padding: 11px 13px; color: #07110d; font-weight: 800; background: #73e2a7; border: 0; border-radius: 9px; }
 
 .notice, .panel { padding: 18px 20px; background: #111f19; border: 1px solid #263c31; border-radius: 14px; }
 .account-panel { margin-bottom: 42px; padding: 24px; background: #101f18; border: 1px solid #315141; border-radius: 18px; }
@@ -94,9 +104,11 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .collection-run.succeeded .status-dot { background: #73e2a7; }
 .collection-run.failed .status-dot { background: #ff7b6b; }
 .error-text { color: #ffb4a8; }
-.game-list { display: flex; flex-wrap: wrap; gap: 10px; }
-.game-list button { display: grid; gap: 3px; justify-items: start; padding: 10px 16px; }
+.game-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.game-list button { display: grid; gap: 6px; justify-items: start; padding: 16px; color: #eaf5ee; background: #0b1812; border: 1px solid #315141; text-align: left; }
 .game-list button small { font-size: 0.68rem; font-weight: 600; opacity: 0.7; }
+.game-list button span { color: #91a79b; font-size: .72rem; }
+.game-list button em { color: #73e2a7; font-size: .8rem; font-style: normal; }
 .game-list button.selected { box-shadow: 0 0 0 3px rgba(115, 226, 167, 0.25); }
 .game-list button:disabled { cursor: wait; opacity: 0.72; }
 
@@ -299,6 +311,7 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
   .game-summary { grid-template-columns: repeat(2, 1fr); }
   .preference-card { grid-template-columns: 1fr; }
   .catalog-sync-panel { grid-template-columns: 1fr; }
+  .detailed-filters form { grid-template-columns: 1fr; }
   .sync-reviews > div { grid-template-columns: 1fr; }
   .admin-form { grid-template-columns: 1fr; }
   .admin-search { grid-template-columns: 1fr; }

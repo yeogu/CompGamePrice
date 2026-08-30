@@ -1282,7 +1282,18 @@ int main() {
                 response["games"] = Json::arrayValue;
                 const auto games = queryService.filterGames(filter);
                 for (const auto& game : games) {
-                    response["games"].append(gameJson(game));
+                    auto item = gameJson(game);
+                    const auto report = queryService.getGamePriceReportById(game.id);
+                    if (!report || report->productReports.empty()) {
+                        item["priceStatus"] = "Collecting";
+                    } else if (report->comparison.cheapestProduct) {
+                        item["priceStatus"] = "Available";
+                        item["lowestPrice"] = moneyJson(
+                            report->comparison.cheapestProduct->currentPrice);
+                    } else {
+                        item["priceStatus"] = "Stale";
+                    }
+                    response["games"].append(std::move(item));
                 }
                 callback(jsonResponse(response));
             },

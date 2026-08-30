@@ -22,6 +22,30 @@ test('game autocomplete reports an empty catalog match', async ({ page }) => {
   await expect(page.getByRole('listbox')).toHaveCount(0)
 })
 
+test('user browses games by combined store, platform, and genre filters', async ({ page }) => {
+  await page.goto('/')
+  await page.getByText('구매처·플랫폼·장르로 자세히 찾기').click()
+  await page.getByLabel('구매처 필터').selectOption('Google Play')
+  await page.getByLabel('플랫폼 탐색 필터').selectOption('Android')
+  await page.getByLabel('장르 필터').selectOption('Simulation')
+  await page.getByLabel('태그 필터').selectOption('Farming')
+  await page.getByRole('button', { name: '조건으로 찾기' }).click()
+
+  await expect(page.getByRole('heading', { name: '카테고리 탐색 결과' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Stardew Valley/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Hades/ })).toHaveCount(0)
+  await expect(page.getByText('Simulation · RPG')).toBeVisible()
+})
+
+test('quick platform discovery distinguishes Nintendo Switch 2', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('빠른 플랫폼 탐색').getByRole('button', { name: 'Switch 2' }).click()
+
+  await expect(page.getByRole('heading', { name: '카테고리 탐색 결과' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Hades/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Stardew Valley/ })).toHaveCount(0)
+})
+
 test('platform filtering preserves the current scroll position', async ({ page }) => {
   await page.goto('/?game=stardew-valley')
   const platformFilter = page.getByLabel('플랫폼 필터')

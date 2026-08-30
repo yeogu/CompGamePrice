@@ -1,4 +1,4 @@
-import type { AlertRule, AlertRuleType, AuthResult, CatalogAdminResult, CatalogCollectionJob, CatalogSyncJob, CollectionRun, ExternalIdentity, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
+import type { AlertRule, AlertRuleType, AuthResult, CatalogAdminResult, CatalogCollectionJob, CatalogFilterOptions, CatalogSyncJob, CollectionRun, ExternalIdentity, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
 
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8080'
 
@@ -16,13 +16,31 @@ async function requestJson<T>(path: string, init: RequestInit = {}, token = ''):
 }
 const getJson = <T,>(path: string) => requestJson<T>(path)
 
-export async function getGames(query = ''): Promise<GameSummary[]> {
-  const search = query ? `?query=${encodeURIComponent(query)}` : ''
+export async function getGames(query = '', filters: GameCatalogFilters = {}): Promise<GameSummary[]> {
+  const parameters = new URLSearchParams()
+  if (query) {
+    parameters.set('query', query)
+  }
+  if (filters.store) {
+    parameters.set('store', filters.store)
+  }
+  if (filters.platform) {
+    parameters.set('platform', filters.platform)
+  }
+  if (filters.genre) {
+    parameters.set('genre', filters.genre)
+  }
+  if (filters.tag) {
+    parameters.set('tag', filters.tag)
+  }
+  const search = parameters.size > 0 ? `?${parameters}` : ''
   const result = await getJson<{ games: GameSummary[] }>(
     `/api/games${search}`,
   )
   return result.games
 }
+
+export const getCatalogFilters = () => getJson<CatalogFilterOptions>('/api/catalog/filters')
 
 export function getGamePrices(
   gameId: string,

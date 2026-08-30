@@ -1,7 +1,7 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react'
-import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, getAlertRules, getCatalogAdminStatus, getCatalogCollectionJob, getCatalogSyncJob, getCollectionRuns, getExternalIdentities, getFavorites, getGamePriceHistory, getGamePrices, getGames, getMe, getNotifications, getOAuthUrl, getPreferences, importSteamCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, resolveCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, unlinkExternalIdentity, updatePreferences } from './api'
+import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, getAlertRules, getCatalogAdminStatus, getCatalogCollectionJob, getCatalogFilters, getCatalogSyncJob, getCollectionRuns, getExternalIdentities, getFavorites, getGamePriceHistory, getGamePrices, getGames, getMe, getNotifications, getOAuthUrl, getPreferences, importSteamCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, resolveCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, unlinkExternalIdentity, updatePreferences } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
-import type { AlertRule, AlertRuleType, CatalogAdminResult, CatalogCollectionJob, CatalogSyncJob, CollectionRun, ExternalIdentity, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Money, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
+import type { AlertRule, AlertRuleType, CatalogAdminResult, CatalogCollectionJob, CatalogFilterOptions, CatalogSyncJob, CollectionRun, ExternalIdentity, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Money, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
 
 const formatMoney = (money: Money) =>
   new Intl.NumberFormat('ko-KR', {
@@ -111,6 +111,12 @@ function App() {
   const [activeSuggestion, setActiveSuggestion] = useState(-1)
   const [catalogRequestSubmitting, setCatalogRequestSubmitting] = useState(false)
   const [catalogRequestMessage, setCatalogRequestMessage] = useState('')
+  const [catalogFilters, setCatalogFilters] = useState<CatalogFilterOptions>({ stores: [], platforms: [], genres: [], tags: [] })
+  const [selectedStore, setSelectedStore] = useState('')
+  const [browsePlatform, setBrowsePlatform] = useState('')
+  const [selectedGenre, setSelectedGenre] = useState('')
+  const [selectedTag, setSelectedTag] = useState('')
+  const [browseMode, setBrowseMode] = useState(false)
   const autocompleteRef = useRef<HTMLDivElement>(null)
   const suggestionSequence = useRef(0)
 
@@ -178,6 +184,11 @@ function App() {
     setShowGameResults(false)
     setSuggestions([])
     setSuggestionsOpen(false)
+    setSelectedStore('')
+    setBrowsePlatform('')
+    setSelectedGenre('')
+    setSelectedTag('')
+    setBrowseMode(false)
     const address = new URL(window.location.href)
     address.searchParams.delete('game')
     address.searchParams.delete('platform')
@@ -185,6 +196,7 @@ function App() {
   }
 
   const chooseSuggestion = (game: GameSummary) => {
+    setBrowseMode(false)
     setQuery(game.title)
     setGames([game])
     setSuggestionsOpen(false)
@@ -230,6 +242,50 @@ function App() {
     } finally {
       setCatalogRequestSubmitting(false)
     }
+  }
+
+  const browseCatalog = async (filters: GameCatalogFilters) => {
+    const requestId = ++requestSequence.current
+    setLoading(true)
+    setError('')
+    setSelectedGameId('')
+    setSelectedPlatform('')
+    setReport(null)
+    setHistory(null)
+    setShowGameResults(true)
+    setBrowseMode(true)
+    try {
+      const matches = await getGames('', filters)
+      if (requestId === requestSequence.current) {
+        setGames(matches)
+      }
+    } catch (reason) {
+      if (requestId === requestSequence.current) {
+        setError(reason instanceof Error ? reason.message : '게임 카탈로그를 탐색하지 못했습니다.')
+      }
+    } finally {
+      if (requestId === requestSequence.current) {
+        setLoading(false)
+      }
+    }
+  }
+
+  const applyDetailedFilters = (event: FormEvent) => {
+    event.preventDefault()
+    void browseCatalog({
+      store: selectedStore || undefined,
+      platform: browsePlatform || undefined,
+      genre: selectedGenre || undefined,
+      tag: selectedTag || undefined,
+    })
+  }
+
+  const applyQuickPlatform = (platform: string) => {
+    setSelectedStore('')
+    setBrowsePlatform(platform)
+    setSelectedGenre('')
+    setSelectedTag('')
+    void browseCatalog({ platform })
   }
 
   const signOut = async () => {
@@ -456,6 +512,7 @@ function App() {
     setReport(null)
     setHistory(null)
     setShowGameResults(true)
+    setBrowseMode(false)
     setSuggestionsOpen(false)
     try {
       const matches = await getGames(query.trim())
@@ -502,6 +559,9 @@ function App() {
     void getCollectionRuns()
       .then(setCollectionRuns)
       .catch(() => setCollectionStatusError('수집 상태를 불러오지 못했습니다.'))
+    void getCatalogFilters()
+      .then(setCatalogFilters)
+      .catch(() => setCatalogFilters({ stores: [], platforms: [], genres: [], tags: [] }))
     void getCatalogAdminStatus()
       .then((status) => {
         setCatalogAdminEnabled(status.enabled)
@@ -674,6 +734,26 @@ function App() {
             {loading ? '조회 중…' : '가격 찾기'}
           </button>
         </form>
+        <section className="catalog-discovery" aria-label="게임 카테고리 탐색">
+          <div className="quick-platforms" aria-label="빠른 플랫폼 탐색">
+            {[
+              ['Windows', 'PC'],
+              ['Nintendo Switch', 'Switch'],
+              ['Nintendo Switch 2', 'Switch 2'],
+              ['Android', 'Android'],
+              ['iOS', 'iPhone'],
+            ].filter(([platform]) => catalogFilters.platforms.includes(platform)).map(([platform, label]) => <button className={browseMode && browsePlatform === platform && !selectedStore && !selectedGenre && !selectedTag ? 'active' : ''} key={platform} type="button" onClick={() => applyQuickPlatform(platform)}>{label}</button>)}
+          </div>
+          <details className="detailed-filters"><summary>구매처·플랫폼·장르로 자세히 찾기</summary>
+            <form onSubmit={applyDetailedFilters}>
+              <label>구매처<select aria-label="구매처 필터" value={selectedStore} onChange={(event) => setSelectedStore(event.target.value)}><option value="">전체</option>{catalogFilters.stores.map((store) => <option key={store}>{store}</option>)}</select></label>
+              <label>플레이 환경<select aria-label="플랫폼 탐색 필터" value={browsePlatform} onChange={(event) => setBrowsePlatform(event.target.value)}><option value="">전체</option>{catalogFilters.platforms.map((platform) => <option key={platform}>{platform}</option>)}</select></label>
+              <label>장르<select aria-label="장르 필터" value={selectedGenre} onChange={(event) => setSelectedGenre(event.target.value)}><option value="">전체</option>{catalogFilters.genres.map((genre) => <option key={genre}>{genre}</option>)}</select></label>
+              <label>태그<select aria-label="태그 필터" value={selectedTag} onChange={(event) => setSelectedTag(event.target.value)}><option value="">전체</option>{catalogFilters.tags.map((tag) => <option key={tag}>{tag}</option>)}</select></label>
+              <button disabled={loading} type="submit">조건으로 찾기</button>
+            </form>
+          </details>
+        </section>
       </header>
 
       {showGameResults && selectedGameId && <section className="inline-alert-card">
@@ -685,7 +765,7 @@ function App() {
       {showGameResults && games.length > 0 && (
         <section className="panel">
           <div className="catalog-heading">
-            <h2>{query.trim() ? '검색 결과' : '게임 카탈로그'}</h2>
+            <h2>{browseMode ? '카테고리 탐색 결과' : query.trim() ? '검색 결과' : '게임 카탈로그'}</h2>
             <span>{games.length}개 게임</span>
           </div>
           <div className="game-list">
@@ -699,11 +779,14 @@ function App() {
               >
                 <strong>{game.title}</strong>
                 <small>{game.platforms.join(' · ')}</small>
+                <span>{game.genres.join(' · ') || '장르 정보 수집 중'}</span>
+                <em>{game.priceStatus === 'Available' && game.lowestPrice ? `최저 ${formatMoney(game.lowestPrice)}` : game.priceStatus === 'Stale' ? '가격 갱신 필요' : '가격 수집 중'}</em>
               </button>
             ))}
           </div>
         </section>
       )}
+      {showGameResults && games.length === 0 && browseMode && <section className="panel empty-catalog-result"><h2>조건에 맞는 게임이 없습니다.</h2><p>필터를 줄이거나 이름으로 검색해보세요.</p></section>}
 
       {showGameResults && report && (
         <>

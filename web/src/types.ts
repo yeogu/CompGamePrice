@@ -2,7 +2,14 @@ export interface GameSummary {
   id: string
   title: string
   platforms: string[]
+  genres: string[]
+  tags: string[]
+  priceStatus?: 'Available' | 'Collecting' | 'Stale'
+  lowestPrice?: Money
 }
+
+export interface CatalogFilterOptions { stores: string[]; platforms: string[]; genres: string[]; tags: string[] }
+export interface GameCatalogFilters { store?: string; platform?: string; genre?: string; tag?: string }
 
 export interface Money {
   minorAmount: number
