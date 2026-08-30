@@ -282,6 +282,9 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .catalog-heading select { padding: 8px 10px; color: #eef8f2; background: #101f18; border: 1px solid #315141; border-radius: 8px; }
 .candidate-confirmation .admin-feedback { grid-column: 1 / -1; margin: 0; }
 .admin-feedback.error { padding: 10px 12px; color: #ffc7c7; background: #351919; border: 1px solid #743b3b; border-radius: 9px; }
+.admin-feedback.progress, .admin-feedback.success, .admin-feedback.error { display: grid; gap: 5px; }
+.admin-feedback.progress { padding: 10px 12px; color: #b8d8ff; background: #15283a; border: 1px solid #365f82; border-radius: 9px; }
+.admin-feedback.success { padding: 10px 12px; color: #b9f2d2; background: #173426; border: 1px solid #39835a; border-radius: 9px; }
 .admin-feedback.review-note { display: grid; gap: 5px; padding: 12px 14px; color: #f2d99b; background: #2b2414; border: 1px solid #8a6b2f; border-radius: 9px; }
 .admin-feedback.review-note small { color: #c6ad70; }
 .advanced-admin { margin-top: 18px; color: #a9bdb2; }
