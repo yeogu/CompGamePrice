@@ -36,6 +36,8 @@ def catalog_game(raw: bytes, app_id: str, game_id: str | None = None) -> dict:
         raise CatalogImportError("Steam response contains an unexpected app id")
     if data.get("type") != "game":
         raise CatalogImportError("Only Steam base games can be imported")
+    if data.get("is_free") is True:
+        raise CatalogImportError("Free Steam games are not price-comparison candidates")
     title = data.get("name")
     if not isinstance(title, str) or not title.strip():
         raise CatalogImportError("Steam game has no title")

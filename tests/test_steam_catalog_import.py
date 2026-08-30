@@ -50,6 +50,11 @@ class SteamCatalogImportTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "base games"):
             steam_catalog_import.catalog_game(json.dumps(payload).encode(), "413150")
 
+        payload = json.loads(self.raw)
+        payload["413150"]["data"]["is_free"] = True
+        with self.assertRaisesRegex(ValueError, "Free Steam games"):
+            steam_catalog_import.catalog_game(json.dumps(payload).encode(), "413150")
+
         game = steam_catalog_import.catalog_game(self.raw, "413150")
         catalog = self.catalog()
         catalog["games"].append(copy.deepcopy(game))

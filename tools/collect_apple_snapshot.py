@@ -9,6 +9,8 @@ from pathlib import Path
 import tempfile
 from urllib.request import urlopen
 
+import collect_steam_snapshot as network_support
+
 
 def apple_targets(catalog: Path) -> list[tuple[str, str]]:
     document = json.loads(catalog.read_text(encoding="utf-8"))
@@ -47,7 +49,11 @@ def collect(catalog: Path, output: Path) -> int:
     rows = []
     for track_id, game_id in apple_targets(catalog):
         url = f"https://itunes.apple.com/lookup?id={track_id}&country=kr&entity=software"
-        with urlopen(url, timeout=10) as response:
+        with urlopen(
+            url,
+            timeout=10,
+            context=network_support.tls_context(),
+        ) as response:
             rows.append(normalized_row(response.read(), track_id, game_id))
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(

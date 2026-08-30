@@ -715,7 +715,10 @@ def synchronize_unlocked(
                     consecutive_failures = 0
                 except catalog_import.CatalogImportError as error:
                     reason = str(error)
-                    if "Only Steam base games" in reason:
+                    if (
+                        "Only Steam base games" in reason
+                        or "Free Steam games" in reason
+                    ):
                         record_seen(connection, app_id, "SKIPPED", checked_at)
                         report["skipped"] += 1
                     else:
