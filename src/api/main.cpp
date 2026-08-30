@@ -32,6 +32,26 @@ using namespace game_price;
 using drogon::HttpResponse;
 using drogon::HttpResponsePtr;
 
+std::size_t unsignedParameter(
+    const std::string& value,
+    std::size_t defaultValue,
+    std::size_t maximum,
+    const std::string& name) {
+    if (value.empty()) {
+        return defaultValue;
+    }
+    if (!std::all_of(value.begin(), value.end(), [](unsigned char character) {
+            return std::isdigit(character) != 0;
+        })) {
+        throw std::invalid_argument(name + " must be a positive integer");
+    }
+    const auto parsed = std::stoull(value);
+    if (parsed == 0 || parsed > maximum) {
+        throw std::invalid_argument(name + " is outside the supported range");
+    }
+    return static_cast<std::size_t>(parsed);
+}
+
 Json::Value moneyJson(const Money& money) {
     Json::Value json;
     json["minorAmount"] = Json::Int64(money.minorAmount);
@@ -1261,6 +1281,7 @@ int main() {
                 const auto platform = request->getParameter("platform");
                 const auto genre = request->getParameter("genre");
                 const auto tag = request->getParameter("tag");
+                const auto sort = request->getParameter("sort");
                 if (query.size() > 100 || genre.size() > 50 || tag.size() > 50) {
                     callback(jsonError(
                         drogon::k400BadRequest,
@@ -1268,30 +1289,89 @@ int main() {
                     return;
                 }
                 GameCatalogFilter filter;
+                std::size_t page = 1;
+                std::size_t pageSize = 20;
                 try {
                     filter.query = query;
                     filter.store = storeFromParameter(store);
                     filter.platform = platformFromParameter(platform);
                     filter.genre = genre;
                     filter.tag = tag;
+                    page = unsignedParameter(
+                        request->getParameter("page"), 1, 100000, "page");
+                    pageSize = unsignedParameter(
+                        request->getParameter("pageSize"), 20, 100, "pageSize");
+                    if (!sort.empty() && sort != "title" && sort != "lowestPrice" &&
+                        sort != "recentlyUpdated") {
+                        throw std::invalid_argument("unsupported game sort");
+                    }
                 } catch (const std::invalid_argument& error) {
                     callback(jsonError(drogon::k400BadRequest, error.what()));
                     return;
                 }
-                Json::Value response;
-                response["games"] = Json::arrayValue;
+                struct Summary {
+                    Game game;
+                    std::optional<Money> lowestPrice;
+                    std::string lastUpdatedAt;
+                    std::string priceStatus;
+                };
+                std::vector<Summary> summaries;
                 const auto games = queryService.filterGames(filter);
                 for (const auto& game : games) {
-                    auto item = gameJson(game);
                     const auto report = queryService.getGamePriceReportById(game.id);
                     if (!report || report->productReports.empty()) {
-                        item["priceStatus"] = "Collecting";
+                        summaries.push_back(
+                            Summary{game, std::nullopt, {}, "Collecting"});
                     } else if (report->comparison.cheapestProduct) {
-                        item["priceStatus"] = "Available";
-                        item["lowestPrice"] = moneyJson(
-                            report->comparison.cheapestProduct->currentPrice);
+                        std::string lastUpdatedAt;
+                        for (const auto& product : report->comparison.products) {
+                            if (product.lastSuccessfulCheckAt &&
+                                *product.lastSuccessfulCheckAt > lastUpdatedAt) {
+                                lastUpdatedAt = *product.lastSuccessfulCheckAt;
+                            }
+                        }
+                        summaries.push_back(Summary{
+                            game,
+                            report->comparison.cheapestProduct->currentPrice,
+                            std::move(lastUpdatedAt),
+                            "Available"});
                     } else {
-                        item["priceStatus"] = "Stale";
+                        summaries.push_back(Summary{game, std::nullopt, {}, "Stale"});
+                    }
+                }
+                const auto selectedSort = sort.empty() ? "title" : sort;
+                std::sort(summaries.begin(), summaries.end(), [&](const auto& left, const auto& right) {
+                    if (selectedSort == "lowestPrice") {
+                        if (left.lowestPrice && right.lowestPrice &&
+                            left.lowestPrice->minorAmount != right.lowestPrice->minorAmount) {
+                            return left.lowestPrice->minorAmount < right.lowestPrice->minorAmount;
+                        }
+                        if (left.lowestPrice.has_value() != right.lowestPrice.has_value()) {
+                            return left.lowestPrice.has_value();
+                        }
+                    }
+                    if (selectedSort == "recentlyUpdated" &&
+                        left.lastUpdatedAt != right.lastUpdatedAt) {
+                        return left.lastUpdatedAt > right.lastUpdatedAt;
+                    }
+                    return left.game.title < right.game.title;
+                });
+                Json::Value response;
+                response["games"] = Json::arrayValue;
+                response["page"] = Json::UInt64(page);
+                response["pageSize"] = Json::UInt64(pageSize);
+                response["total"] = Json::UInt64(summaries.size());
+                const auto begin = std::min((page - 1) * pageSize, summaries.size());
+                const auto end = std::min(begin + pageSize, summaries.size());
+                for (auto index = begin; index < end; ++index) {
+                    const auto& summary = summaries[index];
+                    auto item = gameJson(summary.game);
+                    item["priceStatus"] = summary.priceStatus;
+                    if (summary.lowestPrice) {
+                        item["lowestPrice"] = moneyJson(*summary.lowestPrice);
+                    }
+                    if (!summary.lastUpdatedAt.empty()) {
+                        item["lastUpdatedAt"] = summary.lastUpdatedAt;
                     }
                     response["games"].append(std::move(item));
                 }

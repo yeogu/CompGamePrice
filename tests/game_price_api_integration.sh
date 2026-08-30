@@ -176,6 +176,24 @@ grep -q '"id":"hollow-knight"' "${response_body}"
 grep -q '"id":"hades"' "${response_body}"
 grep -q '"platforms":\["Windows","macOS","Linux"\]' "${response_body}"
 grep -q '"genres":\["Simulation","RPG"\]' "${response_body}"
+grep -q '"page":1' "${response_body}"
+grep -q '"pageSize":20' "${response_body}"
+grep -q '"total":' "${response_body}"
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/games?page=2&pageSize=2&sort=title")
+[[ "${status}" == "200" ]]
+grep -q '"page":2' "${response_body}"
+grep -q '"pageSize":2' "${response_body}"
+[[ $(grep -o '"id"' "${response_body}" | wc -l | tr -d ' ') == "2" ]]
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/games?page=0")
+[[ "${status}" == "400" ]]
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/games?sort=unknown")
+[[ "${status}" == "400" ]]
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/catalog/filters")
