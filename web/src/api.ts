@@ -1,4 +1,4 @@
-import type { AlertRule, AlertRuleType, AuthResult, CatalogAdminResult, CatalogCollectionJob, CatalogFilterOptions, CatalogSyncJob, CollectionRun, ExternalIdentity, GameCatalogFilters, GameCatalogPage, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
+import type { AlertRule, AlertRuleType, AuthResult, CatalogAdminResult, CatalogCollectionJob, CatalogFilterOptions, CatalogSyncJob, CollectionRun, ExternalIdentity, GameCatalogFilters, GameCatalogPage, GamePriceHistoryResponse, GamePriceResponse, GameSummary, MobileCatalogSyncJob, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
 
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8080'
 
@@ -112,4 +112,7 @@ export const searchStoreCandidates = async (store: string, query: string) => (aw
 export const getCatalogSyncJob = () => requestJson<CatalogSyncJob>('/api/admin/catalog/sync')
 export const startCatalogSync = (batchSize: number) => requestJson<CatalogSyncJob>('/api/admin/catalog/sync', { method: 'POST', body: JSON.stringify({ batchSize }) })
 export const resolveCatalogSyncReview = (appId: string, resolution: 'APPROVED' | 'REJECTED') => requestJson<CatalogSyncJob>(`/api/admin/catalog/sync/reviews/${encodeURIComponent(appId)}`, { method: 'PATCH', body: JSON.stringify({ resolution }) })
+export const getMobileCatalogSyncJob = (store: MobileCatalogSyncJob['provider']) => requestJson<MobileCatalogSyncJob>(`/api/admin/catalog/mobile-sync?store=${encodeURIComponent(store)}`)
+export const startMobileCatalogSync = (store: MobileCatalogSyncJob['provider'], batchSize: number) => requestJson<MobileCatalogSyncJob>('/api/admin/catalog/mobile-sync', { method: 'POST', body: JSON.stringify({ store, batchSize }) })
+export const resolveMobileCatalogSyncReview = (store: MobileCatalogSyncJob['provider'], productId: string, resolution: 'APPROVED' | 'REJECTED') => requestJson<MobileCatalogSyncJob>(`/api/admin/catalog/mobile-sync/reviews/${encodeURIComponent(productId)}`, { method: 'PATCH', body: JSON.stringify({ store, resolution }) })
 export const requestCatalogGame = (query: string) => requestJson<{ query: string; status: string; requestCount: number }>('/api/catalog-requests', { method: 'POST', body: JSON.stringify({ query }) })

@@ -472,7 +472,7 @@ Json::Value runCatalogSyncCommand(
     std::error_code ignored;
     std::filesystem::remove(temporary, ignored);
     if (exitCode != 0 || !parsed) {
-        throw std::runtime_error("Steam catalog synchronization failed");
+        throw std::runtime_error("catalog synchronization command failed");
     }
     return result;
 }
@@ -509,6 +509,79 @@ Json::Value requestCatalogGame(const std::string& query) {
         project / "tools/sync_steam_catalog.py",
         " --request-game " + shellQuoted(query));
 }
+
+Json::Value runMobileCatalogSyncTool(
+    const std::string& store,
+    bool synchronize,
+    int batchSize) {
+    const auto project = std::filesystem::path(PROJECT_SOURCE_DIR);
+    std::string arguments = " --store " + shellQuoted(store);
+    if (synchronize) {
+        arguments += " --batch-size " + std::to_string(batchSize);
+    } else {
+        arguments += " --status";
+    }
+    return runCatalogSyncCommand(
+        project / "tools/sync_mobile_catalog.py",
+        arguments);
+}
+
+Json::Value resolveMobileCatalogReview(
+    const std::string& store,
+    const std::string& productId,
+    const std::string& resolution) {
+    const auto project = std::filesystem::path(PROJECT_SOURCE_DIR);
+    return runCatalogSyncCommand(
+        project / "tools/sync_mobile_catalog.py",
+        " --store " + shellQuoted(store) +
+        " --resolve-product-id " + shellQuoted(productId) +
+        " --resolution " + shellQuoted(resolution));
+}
+
+class MobileCatalogSyncJob {
+public:
+    bool start(const std::string& store, int batchSize) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (running_) {
+            return false;
+        }
+        running_ = true;
+        activeStore_ = store;
+        std::thread([this, store, batchSize]() {
+            run(store, batchSize);
+        }).detach();
+        return true;
+    }
+
+    Json::Value status(const std::string& store) const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (running_ && activeStore_ == store) {
+            Json::Value result;
+            result["provider"] = store;
+            result["status"] = "RUNNING";
+            result["pendingReviews"] = Json::arrayValue;
+            result["reviewHistory"] = Json::arrayValue;
+            result["recentRuns"] = Json::arrayValue;
+            return result;
+        }
+        return runMobileCatalogSyncTool(store, false, 0);
+    }
+
+private:
+    void run(const std::string& store, int batchSize) {
+        try {
+            runMobileCatalogSyncTool(store, true, batchSize);
+        } catch (const std::exception&) {
+        }
+        std::lock_guard<std::mutex> lock(mutex_);
+        running_ = false;
+        activeStore_.clear();
+    }
+
+    mutable std::mutex mutex_;
+    bool running_{};
+    std::string activeStore_;
+};
 
 class CatalogSyncJob {
 public:
@@ -765,6 +838,7 @@ int main() {
         OAuthService oauthService(accountRepository);
         CatalogCollectionJob catalogCollectionJob;
         CatalogSyncJob catalogSyncJob(catalog);
+        MobileCatalogSyncJob mobileCatalogSyncJob;
 
         drogon::app().registerPreRoutingAdvice(
             [](const drogon::HttpRequestPtr& request,
@@ -1363,6 +1437,106 @@ int main() {
                     drogon::k202Accepted));
             },
             {drogon::Post});
+        drogon::app().registerHandler(
+            "/api/admin/catalog/mobile-sync",
+            [&mobileCatalogSyncJob](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                if (!catalogAdminEnabled() || !isLoopbackRequest(request)) {
+                    callback(jsonError(
+                        drogon::k403Forbidden,
+                        "catalog admin is disabled"));
+                    return;
+                }
+                const auto store = request->getParameter("store");
+                if (store != "GooglePlay" && store != "AppleAppStore") {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "store must be GooglePlay or AppleAppStore"));
+                    return;
+                }
+                try {
+                    callback(jsonResponse(mobileCatalogSyncJob.status(store)));
+                } catch (const std::exception& error) {
+                    callback(jsonError(
+                        drogon::k500InternalServerError,
+                        error.what()));
+                }
+            },
+            {drogon::Get});
+        drogon::app().registerHandler(
+            "/api/admin/catalog/mobile-sync",
+            [&mobileCatalogSyncJob](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                if (!catalogAdminEnabled() || !isLoopbackRequest(request)) {
+                    callback(jsonError(
+                        drogon::k403Forbidden,
+                        "catalog admin is disabled"));
+                    return;
+                }
+                const auto body = request->getJsonObject();
+                const auto store = body && (*body)["store"].isString()
+                    ? (*body)["store"].asString()
+                    : std::string{};
+                const auto batchSize = body && (*body)["batchSize"].isInt()
+                    ? (*body)["batchSize"].asInt()
+                    : 10;
+                if ((store != "GooglePlay" && store != "AppleAppStore") ||
+                    batchSize < 1 || batchSize > 100) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "valid store and batchSize are required"));
+                    return;
+                }
+                if (!mobileCatalogSyncJob.start(store, batchSize)) {
+                    callback(jsonError(
+                        drogon::k409Conflict,
+                        "mobile catalog synchronization is already running"));
+                    return;
+                }
+                callback(jsonResponse(
+                    mobileCatalogSyncJob.status(store),
+                    drogon::k202Accepted));
+            },
+            {drogon::Post});
+        drogon::app().registerHandler(
+            "/api/admin/catalog/mobile-sync/reviews/{1}",
+            [](const drogon::HttpRequestPtr& request,
+               std::function<void(const HttpResponsePtr&)>&& callback,
+               const std::string& productId) {
+                if (!catalogAdminEnabled() || !isLoopbackRequest(request)) {
+                    callback(jsonError(
+                        drogon::k403Forbidden,
+                        "catalog admin is disabled"));
+                    return;
+                }
+                const auto body = request->getJsonObject();
+                const auto store = body && (*body)["store"].isString()
+                    ? (*body)["store"].asString()
+                    : std::string{};
+                const auto resolution = body && (*body)["resolution"].isString()
+                    ? (*body)["resolution"].asString()
+                    : std::string{};
+                if ((store != "GooglePlay" && store != "AppleAppStore") ||
+                    (resolution != "APPROVED" && resolution != "REJECTED")) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "valid store and resolution are required"));
+                    return;
+                }
+                try {
+                    callback(jsonResponse(resolveMobileCatalogReview(
+                        store,
+                        productId,
+                        resolution)));
+                } catch (const std::exception& error) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        error.what()));
+                }
+            },
+            {drogon::Patch});
         drogon::app().registerHandler(
             "/api/admin/catalog/sync",
             [&catalogSyncJob](

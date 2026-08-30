@@ -1,7 +1,7 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react'
-import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, getAlertRules, getCatalogAdminStatus, getCatalogCollectionJob, getCatalogFilters, getCatalogSyncJob, getCollectionRuns, getExternalIdentities, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getNotifications, getOAuthUrl, getPreferences, importAppleCatalogGame, importGooglePlayCatalogGame, importSteamCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, resolveCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, unlinkExternalIdentity, updatePreferences } from './api'
+import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, getAlertRules, getCatalogAdminStatus, getCatalogCollectionJob, getCatalogFilters, getCatalogSyncJob, getCollectionRuns, getExternalIdentities, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getMobileCatalogSyncJob, getNotifications, getOAuthUrl, getPreferences, importAppleCatalogGame, importGooglePlayCatalogGame, importSteamCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, resolveCatalogSyncReview, resolveMobileCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, startMobileCatalogSync, unlinkExternalIdentity, updatePreferences } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
-import type { AlertRule, AlertRuleType, CatalogAdminResult, CatalogCollectionJob, CatalogFilterOptions, CatalogSyncJob, CollectionRun, ExternalIdentity, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSort, GameSummary, Money, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
+import type { AlertRule, AlertRuleType, CatalogAdminResult, CatalogCollectionJob, CatalogFilterOptions, CatalogSyncJob, CollectionRun, ExternalIdentity, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSort, GameSummary, MobileCatalogSyncJob, MobileCatalogSyncReview, Money, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
 
 const formatMoney = (money: Money) =>
   new Intl.NumberFormat('ko-KR', {
@@ -90,6 +90,8 @@ function App() {
   const [catalogJob, setCatalogJob] = useState<CatalogCollectionJob | null>(null)
   const [catalogSyncJob, setCatalogSyncJob] = useState<CatalogSyncJob | null>(null)
   const [catalogSyncBatchSize, setCatalogSyncBatchSize] = useState(20)
+  const [mobileSyncJobs, setMobileSyncJobs] = useState<MobileCatalogSyncJob[]>([])
+  const [mobileSyncStore, setMobileSyncStore] = useState<MobileCatalogSyncJob['provider']>('GooglePlay')
   const [reviewingAppId, setReviewingAppId] = useState('')
   const [adminQueueView, setAdminQueueView] = useState<'pending' | 'history' | 'requests' | 'runs'>('pending')
   const [adminStore, setAdminStore] = useState('Steam')
@@ -461,6 +463,51 @@ function App() {
     }
   }
 
+  const refreshMobileSyncJobs = async () => {
+    const jobs = await Promise.all([
+      getMobileCatalogSyncJob('GooglePlay'),
+      getMobileCatalogSyncJob('AppleAppStore'),
+    ])
+    setMobileSyncJobs(jobs)
+  }
+
+  const synchronizeMobileCatalog = async () => {
+    setAdminError('')
+    try {
+      const job = await startMobileCatalogSync(mobileSyncStore, catalogSyncBatchSize)
+      setMobileSyncJobs((current) => [...current.filter((item) => item.provider !== mobileSyncStore), job])
+    } catch (reason) {
+      setAdminError(reason instanceof Error ? reason.message : '모바일 후보 탐색을 시작하지 못했습니다.')
+    }
+  }
+
+  const inspectMobileCatalogReview = (store: MobileCatalogSyncJob['provider'], review: MobileCatalogSyncReview) => {
+    const displayStore = store === 'GooglePlay' ? 'Google Play' : 'Apple App Store'
+    setAdminStore(displayStore)
+    setAdminAppId(review.externalProductId)
+    setAdminGameId(review.gameId)
+    setPendingCandidate({
+      store: displayStore,
+      externalProductId: review.externalProductId,
+      title: review.title,
+      productUrl: review.productUrl ?? '',
+      platforms: store === 'GooglePlay' ? ['Android'] : ['iOS', 'iPadOS'],
+    })
+    setAdminResult(null)
+    setAdminError(review.reason)
+  }
+
+  const rejectMobileCatalogReview = async (store: MobileCatalogSyncJob['provider'], productId: string) => {
+    setAdminError('')
+    try {
+      const job = await resolveMobileCatalogSyncReview(store, productId, 'REJECTED')
+      setMobileSyncJobs((current) => [...current.filter((item) => item.provider !== store), job])
+      setActionMessage(`${store} 상품 ${productId}를 등록 대상에서 제외했습니다.`)
+    } catch (reason) {
+      setAdminError(reason instanceof Error ? reason.message : '모바일 검토 항목을 제외하지 못했습니다.')
+    }
+  }
+
   const inspectCatalogReview = (review: NonNullable<CatalogSyncJob['pendingReviews']>[number]) => {
     const suggestedGameId = canonicalIdFromTitle(review.title)
     setReviewingAppId(review.externalProductId)
@@ -653,6 +700,7 @@ function App() {
         if (status.enabled) {
           void getCatalogCollectionJob().then(setCatalogJob)
           void getCatalogSyncJob().then(setCatalogSyncJob)
+          void refreshMobileSyncJobs()
         }
       })
       .catch(() => setCatalogAdminEnabled(false))
@@ -691,6 +739,16 @@ function App() {
     }, 1000)
     return () => window.clearInterval(timer)
   }, [catalogSyncJob?.status])
+
+  useEffect(() => {
+    if (!mobileSyncJobs.some((job) => job.status === 'RUNNING')) {
+      return
+    }
+    const timer = window.setInterval(() => {
+      void refreshMobileSyncJobs()
+    }, 1000)
+    return () => window.clearInterval(timer)
+  }, [mobileSyncJobs])
 
   useEffect(() => {
     const value = query.trim()
@@ -1102,6 +1160,24 @@ function App() {
             {adminQueueView === 'requests' && <div className="sync-reviews">{catalogSyncJob.gameRequests?.length ? catalogSyncJob.gameRequests.map((request) => <div key={`${request.query}-${request.requestedAt}`}><strong>{request.query}</strong><span>요청 {request.requestCount}회</span><small>{request.status}</small><time>{new Date(request.requestedAt).toLocaleString('ko-KR')}</time></div>) : <p>사용자 요청이 없습니다.</p>}</div>}
             {adminQueueView === 'runs' && <div className="sync-reviews">{catalogSyncJob.recentRuns?.length ? catalogSyncJob.recentRuns.map((run) => <div key={run.id}><strong>실행 #{run.id} · {run.status}</strong><span>처리 {run.processed} · 등록 {run.accepted} · 검토 {run.review} · 제외 {run.skipped} · 실패 {run.failed}</span><small>{new Date(run.startedAt).toLocaleString('ko-KR')}</small></div>) : <p>실행 기록이 없습니다.</p>}</div>}
           </div>}
+        </article>
+        <article className="catalog-sync-panel">
+          <div>
+            <h2>모바일 Store 후보 자동 탐색</h2>
+            <p>카탈로그 게임을 Store에서 찾아 매칭 신뢰도를 판정합니다. 후보는 자동 등록하지 않고 검토 큐에 저장됩니다.</p>
+          </div>
+          <label>Store<select value={mobileSyncStore} onChange={(event) => setMobileSyncStore(event.target.value as MobileCatalogSyncJob['provider'])}><option value="GooglePlay">Google Play</option><option value="AppleAppStore">Apple App Store</option></select></label>
+          <button disabled={mobileSyncJobs.some((job) => job.status === 'RUNNING')} onClick={() => void synchronizeMobileCatalog()}>{mobileSyncJobs.some((job) => job.status === 'RUNNING') ? '탐색 중…' : '후보 배치 탐색'}</button>
+          <div className="sync-reviews">
+            {mobileSyncJobs.flatMap((job) => job.pendingReviews.map((review) => <div key={`${job.provider}:${review.externalProductId}`}><strong>{review.title}</strong><span>{job.provider} · {review.gameId} · {review.decision}<br />{review.reason}</span>{review.productUrl && <a href={review.productUrl} target="_blank" rel="noreferrer">Store 확인 ↗</a>}<div className="review-actions"><button onClick={() => inspectMobileCatalogReview(job.provider, review)}>수동 검토</button><button className="danger" onClick={() => void rejectMobileCatalogReview(job.provider, review.externalProductId)}>제외</button></div></div>))}
+            {!mobileSyncJobs.some((job) => job.pendingReviews.length > 0) && <p>모바일 검토 대기 항목이 없습니다.</p>}
+          </div>
+          <div className="sync-summary">
+            {mobileSyncJobs.map((job) => {
+              const run = job.recentRuns[0]
+              return <span key={job.provider}>{job.provider}: {job.status ?? run?.status ?? 'IDLE'}{run ? ` · 처리 ${run.processed} · 후보 ${run.approvedCandidates} · 검토 ${run.needsReview} · 제외 ${run.rejected} · 실패 ${run.failed} · 재시도 ${run.retries}` : ''}</span>
+            })}
+          </div>
         </article>
         <div className="admin-search">
           <select aria-label="Store" value={adminStore} onChange={(event) => { setAdminStore(event.target.value); setAdminCandidates([]); setPendingCandidate(null); setAdminResult(null) }}><option value="Steam">Steam</option><option value="Google Play">Google Play</option><option value="Apple App Store">Apple App Store</option></select>
