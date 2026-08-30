@@ -54,6 +54,36 @@ def run_operations(
             ],
         ),
         (
+            "google-play-catalog-discovery",
+            [
+                python,
+                str(project / "tools" / "sync_mobile_catalog.py"),
+                "--store",
+                "GooglePlay",
+                "--catalog",
+                str(catalog),
+                "--database",
+                str(database),
+                "--batch-size",
+                str(catalog_batch_size),
+            ],
+        ),
+        (
+            "apple-catalog-discovery",
+            [
+                python,
+                str(project / "tools" / "sync_mobile_catalog.py"),
+                "--store",
+                "AppleAppStore",
+                "--catalog",
+                str(catalog),
+                "--database",
+                str(database),
+                "--batch-size",
+                str(catalog_batch_size),
+            ],
+        ),
+        (
             "steam",
             [
                 python,

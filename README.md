@@ -204,6 +204,17 @@ python3 tools/sync_steam_catalog.py --batch-size 20
 python3 tools/sync_steam_catalog.py --status
 ```
 
+Google Play과 Apple App Store의 canonical Game 후보도 제한된 배치로 자동
+탐색할 수 있습니다. 매칭 결과는 자동 등록되지 않고 Admin 검토 큐에 저장됩니다.
+동일 game/store 조합은 다시 탐색하지 않으며, 일시적인 네트워크 실패는 최대 3회만
+시도합니다.
+
+```bash
+python3 tools/sync_mobile_catalog.py --store GooglePlay --batch-size 10
+python3 tools/sync_mobile_catalog.py --store AppleAppStore --batch-size 10
+python3 tools/sync_mobile_catalog.py --store GooglePlay --status
+```
+
 동기화는 카탈로그 발견 단계입니다. 새로 등록된 게임의 실제 현재 가격은 이후
 `python3 tools/run_steam_pipeline.py` 또는 관리자 화면의 가격 수집 버튼으로
 수집합니다. 자동 테스트는 Steam live API를 호출하지 않고 repository fixture를
