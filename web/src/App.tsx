@@ -93,6 +93,7 @@ function App() {
   const [mobileSyncJobs, setMobileSyncJobs] = useState<MobileCatalogSyncJob[]>([])
   const [mobileSyncStore, setMobileSyncStore] = useState<MobileCatalogSyncJob['provider']>('GooglePlay')
   const [reviewingAppId, setReviewingAppId] = useState('')
+  const [reviewingMobileStore, setReviewingMobileStore] = useState<MobileCatalogSyncJob['provider'] | ''>('')
   const [adminQueueView, setAdminQueueView] = useState<'pending' | 'history' | 'requests' | 'runs'>('pending')
   const [adminStore, setAdminStore] = useState('Steam')
   const [adminQuery, setAdminQuery] = useState('')
@@ -428,6 +429,22 @@ function App() {
           setAdminError(reason instanceof Error ? `게임은 등록됐지만 검토 상태를 갱신하지 못했습니다: ${reason.message}` : '게임은 등록됐지만 검토 상태를 갱신하지 못했습니다.')
         }
       }
+      if (apply && reviewingMobileStore) {
+        try {
+          const job = await resolveMobileCatalogSyncReview(
+            reviewingMobileStore,
+            appId,
+            'APPROVED',
+          )
+          setMobileSyncJobs((current) => [
+            ...current.filter((item) => item.provider !== reviewingMobileStore),
+            job,
+          ])
+          setReviewingMobileStore('')
+        } catch (reason) {
+          setAdminError(reason instanceof Error ? `게임은 등록됐지만 모바일 검토 상태를 갱신하지 못했습니다: ${reason.message}` : '게임은 등록됐지만 모바일 검토 상태를 갱신하지 못했습니다.')
+        }
+      }
       if (apply) {
         try {
           setCatalogJob(await startCatalogCollection(adminStore))
@@ -484,6 +501,8 @@ function App() {
   const inspectMobileCatalogReview = (store: MobileCatalogSyncJob['provider'], review: MobileCatalogSyncReview) => {
     const displayStore = store === 'GooglePlay' ? 'Google Play' : 'Apple App Store'
     setAdminStore(displayStore)
+    setReviewingAppId('')
+    setReviewingMobileStore(store)
     setAdminAppId(review.externalProductId)
     setAdminGameId(review.gameId)
     setPendingCandidate({
@@ -511,6 +530,7 @@ function App() {
   const inspectCatalogReview = (review: NonNullable<CatalogSyncJob['pendingReviews']>[number]) => {
     const suggestedGameId = canonicalIdFromTitle(review.title)
     setReviewingAppId(review.externalProductId)
+    setReviewingMobileStore('')
     setAdminAppId(review.externalProductId)
     setAdminGameId(suggestedGameId)
     setPendingCandidate({
@@ -557,6 +577,8 @@ function App() {
     const suggestedGameId = canonicalIdFromTitle(candidate.title)
     setReviewingAppId('')
     setAdminAppId(candidate.externalProductId)
+    setReviewingAppId('')
+    setReviewingMobileStore('')
     setAdminGameId(suggestedGameId)
     setPendingCandidate(candidate)
     setAdminCandidates([])
