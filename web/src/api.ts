@@ -104,7 +104,7 @@ export const getPreferences = (token: string) => requestJson<UserPreferences>('/
 export const updatePreferences = (token: string, preferences: UserPreferences) => requestJson<UserPreferences>('/api/account/preferences', { method: 'PATCH', body: JSON.stringify(preferences) }, token)
 export const getCatalogAdminStatus = () => requestJson<{ enabled: boolean }>('/api/admin/catalog/status')
 export const importSteamCatalogGame = (appId: string, gameId: string, apply: boolean) => requestJson<CatalogAdminResult>('/api/admin/catalog/steam', { method: 'POST', body: JSON.stringify({ appId, ...(gameId ? { gameId } : {}), apply }) })
-export const importGooglePlayCatalogGame = (packageName: string, gameId: string, apply: boolean) => requestJson<CatalogAdminResult>('/api/admin/catalog/google-play', { method: 'POST', body: JSON.stringify({ packageName, gameId, apply }) })
+export const importGooglePlayCatalogGame = (packageName: string, gameId: string, apply: boolean, acknowledgeReview = false) => requestJson<CatalogAdminResult>('/api/admin/catalog/google-play', { method: 'POST', body: JSON.stringify({ packageName, gameId, apply, acknowledgeReview }) })
 export const getCatalogCollectionJob = () => requestJson<CatalogCollectionJob>('/api/admin/catalog/collection')
 export const startCatalogCollection = (store = 'Steam') => requestJson<CatalogCollectionJob>('/api/admin/catalog/collection', { method: 'POST', body: JSON.stringify({ store }) })
 export const searchStoreCandidates = async (store: string, query: string) => (await requestJson<{ candidates: StoreProductCandidate[] }>(`/api/admin/catalog/candidates?store=${encodeURIComponent(store)}&query=${encodeURIComponent(query)}`)).candidates

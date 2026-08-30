@@ -401,7 +401,12 @@ function App() {
     setActionMessage('')
     try {
       const result = adminStore === 'Google Play'
-        ? await importGooglePlayCatalogGame(appId, canonicalGameId, apply)
+        ? await importGooglePlayCatalogGame(
+            appId,
+            canonicalGameId,
+            apply,
+            apply && adminResult?.game.matchDecision?.status === 'NeedsReview',
+          )
         : await importSteamCatalogGame(appId, canonicalGameId, apply)
       setAdminGameId(result.game.id)
       setAdminResult(result)
@@ -1120,7 +1125,8 @@ function App() {
           <p><strong>{adminStore} 상품 ID</strong> {adminResult.game.matchedProduct?.productId ?? adminAppId}</p>
           {adminResult.game.matchedProduct?.developer && <p><strong>개발사</strong> {adminResult.game.matchedProduct.developer}</p>}
           {adminResult.game.matchedProduct?.priceMinor !== undefined && <p><strong>현재 가격</strong> {adminResult.game.matchedProduct.priceMinor.toLocaleString('ko-KR')} {adminResult.game.matchedProduct.currency}</p>}
-          {!adminResult.applied && <button onClick={() => void runCatalogImport(true)}>이 상품을 카탈로그에 등록</button>}
+          {adminResult.game.matchDecision && <div className={`match-decision ${adminResult.game.matchDecision.status.toLowerCase()}`} role="status"><strong>{adminResult.game.matchDecision.status === 'ApprovedCandidate' ? '연결 가능' : adminResult.game.matchDecision.status === 'NeedsReview' ? '수동 확인 필요' : '연결 불가'}</strong><div className="identity-comparison"><span>Canonical: {adminResult.game.title}<small>{adminResult.game.developers.join(' · ') || '개발사 정보 없음'}</small></span><span>Google Play: {adminResult.game.matchedProduct?.title}<small>{adminResult.game.matchedProduct?.developer || '개발사 정보 없음'}</small></span></div><ul>{adminResult.game.matchDecision.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul></div>}
+          {!adminResult.applied && adminResult.game.matchDecision?.status !== 'Rejected' && <button onClick={() => void runCatalogImport(true)}>{adminResult.game.matchDecision?.status === 'NeedsReview' ? '위 경고를 확인하고 등록' : '이 상품을 카탈로그에 등록'}</button>}
           {adminResult.applied && <button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectCatalogPrices()}>{catalogJob?.status === 'RUNNING' ? '가격 수집 중…' : `${adminStore} 가격 수집 시작`}</button>}
         </article>}
         {catalogJob && catalogJob.status !== 'IDLE' && <div className={`admin-job ${catalogJob.status.toLowerCase()}`}><strong>{catalogJob.store ?? adminStore} 수집 상태: {catalogJob.status}</strong>{catalogJob.error && <span>{catalogJob.error}</span>}</div>}

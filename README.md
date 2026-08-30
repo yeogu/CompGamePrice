@@ -120,6 +120,15 @@ python3 tools/run_google_play_pipeline.py
 Google Play 가격 수집이 시작됩니다. 신규 canonical Game을 자동 생성하지
 않는 것은 잘못된 게임 identity 생성을 방지하기 위한 현재 MVP 정책입니다.
 
+Preview의 identity 판정은 다음 정책을 사용합니다.
+
+- `ApprovedCandidate`: 정식 제목 또는 alias와 개발사가 모두 일치
+- `NeedsReview`: 제목은 일치하지만 어느 한쪽의 개발사 정보가 없음
+- `Rejected`: 제목 불일치, 개발사 불일치, 비게임·무료·비KRW·제외 상품
+
+`NeedsReview`는 Admin 화면에서 경고 이유를 확인한 뒤 명시적으로 승인해야
+하며 `Rejected` 상품은 등록할 수 없습니다.
+
 각 Google Play 상품은 `data/game_catalog.json`의 안정적인 package name으로
 연결됩니다. 수집은 상품별 bounded retry를 사용하며, 한 상품의 실패가 다른
 상품의 snapshot 저장을 막지 않습니다. 일부 실패가 있으면 성공 데이터는

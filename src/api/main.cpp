@@ -302,7 +302,8 @@ Json::Value runCatalogImport(
 Json::Value runGooglePlayCatalogImport(
     const std::string& packageName,
     const std::string& gameId,
-    bool apply) {
+    bool apply,
+    bool acknowledgeReview) {
     std::lock_guard<std::mutex> toolLock(catalogToolMutex());
     const auto temporary = std::filesystem::temp_directory_path() /
         "compgameprice-google-play-catalog.json";
@@ -316,6 +317,9 @@ Json::Value runGooglePlayCatalogImport(
         " --catalog " + shellQuoted(catalog.string());
     if (apply) {
         command += " --apply";
+    }
+    if (acknowledgeReview) {
+        command += " --acknowledge-review";
     }
     return executeCatalogTool(std::move(command), temporary);
 }
@@ -1188,12 +1192,16 @@ int main() {
                 }
                 const auto apply = (*body)["apply"].isBool() &&
                     (*body)["apply"].asBool();
+                const auto acknowledgeReview =
+                    (*body)["acknowledgeReview"].isBool() &&
+                    (*body)["acknowledgeReview"].asBool();
                 try {
                     Json::Value response;
                     response["game"] = runGooglePlayCatalogImport(
                         packageName,
                         gameId,
-                        apply);
+                        apply,
+                        acknowledgeReview);
                     response["applied"] = apply;
                     if (apply) {
                         catalog.reload(

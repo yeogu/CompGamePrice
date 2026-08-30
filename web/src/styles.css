@@ -289,6 +289,14 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .admin-preview { margin-top: 20px; padding: 20px; background: #0b1812; border: 1px solid #315141; border-radius: 14px; }
 .admin-preview h2 { margin-top: 0; }
 .admin-preview p { color: #a9bdb2; }
+.match-decision { display: grid; gap: 10px; margin: 16px 0; padding: 14px; border: 1px solid #315141; border-radius: 10px; }
+.match-decision.approvedcandidate { border-color: #39835a; }
+.match-decision.needsreview { border-color: #8a6b2f; }
+.match-decision.rejected { color: #ffb4a8; border-color: #743b3b; }
+.match-decision ul { margin: 0; padding-left: 20px; color: #a9bdb2; }
+.identity-comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.identity-comparison span { display: grid; gap: 4px; padding: 10px; background: #101f18; border-radius: 8px; }
+.identity-comparison small { color: #82968b; }
 .admin-job { display: grid; gap: 4px; margin-top: 14px; padding: 14px; background: #0b1812; border: 1px solid #315141; border-radius: 10px; }
 .admin-job.succeeded { border-color: #39835a; }
 .admin-job.failed { color: #ffb4a8; border-color: #633a34; }
