@@ -884,6 +884,8 @@ function App() {
               <p className="game-platforms">
                 플레이 가능: {report.game.platforms.join(' · ')}
               </p>
+              {report.game.developers.length > 0 && <p className="game-platforms">개발: {report.game.developers.join(' · ')}</p>}
+              {report.game.publishers.length > 0 && <p className="game-platforms">배급: {report.game.publishers.join(' · ')}</p>}
             </div>
             {report.cheapest && (
               <div className="best-summary">

@@ -176,6 +176,14 @@ grep -q '"id":"hollow-knight"' "${response_body}"
 grep -q '"id":"hades"' "${response_body}"
 grep -q '"platforms":\["Windows","macOS","Linux"\]' "${response_body}"
 grep -q '"genres":\["Simulation","RPG"\]' "${response_body}"
+grep -q '"aliases":\[' "${response_body}"
+grep -q '"developers":\["ConcernedApe"\]' "${response_body}"
+grep -q '"publishers":\["ConcernedApe"\]' "${response_body}"
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/games?query=DAVE%20THE%20DIVER")
+[[ "${status}" == "200" ]]
+grep -q '"id":"dave-the-diver"' "${response_body}"
 grep -q '"page":1' "${response_body}"
 grep -q '"pageSize":20' "${response_body}"
 grep -q '"total":' "${response_body}"

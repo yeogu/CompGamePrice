@@ -75,6 +75,18 @@ Json::Value gameJson(const Game& game) {
     for (const auto& tag : game.tags) {
         json["tags"].append(tag);
     }
+    json["aliases"] = Json::arrayValue;
+    for (const auto& alias : game.aliases) {
+        json["aliases"].append(alias);
+    }
+    json["developers"] = Json::arrayValue;
+    for (const auto& developer : game.developers) {
+        json["developers"].append(developer);
+    }
+    json["publishers"] = Json::arrayValue;
+    for (const auto& publisher : game.publishers) {
+        json["publishers"].append(publisher);
+    }
     return json;
 }
 

@@ -237,7 +237,10 @@ GameCatalog::GameCatalog(const std::string& dataPath) {
                json_extract(value, '$.platforms'), json_type(value, '$.platforms'),
                json_extract(value, '$.products'), json_type(value, '$.products'),
                json_extract(value, '$.genres'), json_type(value, '$.genres'),
-               json_extract(value, '$.tags'), json_type(value, '$.tags')
+               json_extract(value, '$.tags'), json_type(value, '$.tags'),
+               json_extract(value, '$.aliases'), json_type(value, '$.aliases'),
+               json_extract(value, '$.developers'), json_type(value, '$.developers'),
+               json_extract(value, '$.publishers'), json_type(value, '$.publishers')
         FROM json_each(?1, '$.games');
     )sql");
     rows.bindJson(json);
@@ -250,24 +253,69 @@ GameCatalog::GameCatalog(const std::string& dataPath) {
         if (normalizedTitle.empty()) {
             throw std::runtime_error("Game Catalog title cannot normalize to empty");
         }
-        if (std::any_of(games_.begin(), games_.end(), [&](const Game& game) {
-                return game.id == *id || game.normalizedTitle == normalizedTitle;
-            })) {
-            throw std::runtime_error("Duplicate Game Catalog id or title: " + *id);
-        }
         auto platforms = parsePlatforms(
             parser.handle(), rows.optionalText(4), rows.optionalText(5));
         auto genres = parseOptionalStringArray(
             parser.handle(), rows.optionalText(8), rows.optionalText(9), "games[].genres");
         auto tags = parseOptionalStringArray(
             parser.handle(), rows.optionalText(10), rows.optionalText(11), "games[].tags");
+        auto aliases = parseOptionalStringArray(
+            parser.handle(), rows.optionalText(12), rows.optionalText(13), "games[].aliases");
+        auto developers = parseOptionalStringArray(
+            parser.handle(), rows.optionalText(14), rows.optionalText(15), "games[].developers");
+        auto publishers = parseOptionalStringArray(
+            parser.handle(), rows.optionalText(16), rows.optionalText(17), "games[].publishers");
+        std::vector<std::string> normalizedAliases;
+        normalizedAliases.reserve(aliases.size());
+        for (const auto& alias : aliases) {
+            const auto normalizedAlias = normalizeName(alias);
+            if (normalizedAlias.empty() || normalizedAlias == normalizedTitle ||
+                std::find(
+                    normalizedAliases.begin(),
+                    normalizedAliases.end(),
+                    normalizedAlias) != normalizedAliases.end()) {
+                throw std::runtime_error("Invalid or duplicate Game Catalog alias: " + alias);
+            }
+            normalizedAliases.push_back(normalizedAlias);
+        }
+        const auto identityCollides = std::any_of(
+            games_.begin(),
+            games_.end(),
+            [&](const Game& game) {
+                if (game.id == *id || game.normalizedTitle == normalizedTitle) {
+                    return true;
+                }
+                if (std::find(
+                        game.normalizedAliases.begin(),
+                        game.normalizedAliases.end(),
+                        normalizedTitle) != game.normalizedAliases.end()) {
+                    return true;
+                }
+                return std::any_of(
+                    normalizedAliases.begin(),
+                    normalizedAliases.end(),
+                    [&](const auto& alias) {
+                        return alias == game.normalizedTitle ||
+                            std::find(
+                                game.normalizedAliases.begin(),
+                                game.normalizedAliases.end(),
+                                alias) != game.normalizedAliases.end();
+                    });
+            });
+        if (identityCollides) {
+            throw std::runtime_error("Duplicate Game Catalog identity: " + *id);
+        }
         games_.push_back(Game{
             *id,
             *title,
             normalizedTitle,
             std::move(platforms),
             std::move(genres),
-            std::move(tags)});
+            std::move(tags),
+            std::move(aliases),
+            std::move(normalizedAliases),
+            std::move(developers),
+            std::move(publishers)});
 
         const auto productsJson = rows.optionalText(6);
         if (!productsJson || rows.optionalText(7) != std::optional<std::string>{"array"}) {
@@ -358,7 +406,11 @@ std::optional<Game> GameCatalog::findByName(const std::string& name) const {
     std::shared_lock<std::shared_mutex> lock(mutex_);
     const auto normalized = normalizeName(name);
     const auto found = std::find_if(games_.begin(), games_.end(), [&](const Game& game) {
-        return game.normalizedTitle == normalized;
+        return game.normalizedTitle == normalized ||
+            std::find(
+                game.normalizedAliases.begin(),
+                game.normalizedAliases.end(),
+                normalized) != game.normalizedAliases.end();
     });
     return found == games_.end() ? std::nullopt : std::optional<Game>{*found};
 }
@@ -378,7 +430,14 @@ std::vector<Game> GameCatalog::searchByName(const std::string& query) const {
 
     std::vector<Game> matches;
     for (const auto& game : games_) {
-        if (game.normalizedTitle.find(normalized) != std::string::npos) {
+        const auto aliasMatches = std::any_of(
+            game.normalizedAliases.begin(),
+            game.normalizedAliases.end(),
+            [&](const auto& alias) {
+                return alias.find(normalized) != std::string::npos;
+            });
+        if (game.normalizedTitle.find(normalized) != std::string::npos ||
+            aliasMatches) {
             matches.push_back(game);
         }
     }
@@ -393,8 +452,15 @@ std::vector<Game> GameCatalog::filterGames(
     const auto normalizedTag = normalizeName(filter.tag);
     std::vector<Game> result;
     for (const auto& game : games_) {
+        const auto aliasMatches = std::any_of(
+            game.normalizedAliases.begin(),
+            game.normalizedAliases.end(),
+            [&](const auto& alias) {
+                return alias.find(normalizedQuery) != std::string::npos;
+            });
         if (!normalizedQuery.empty() &&
-            game.normalizedTitle.find(normalizedQuery) == std::string::npos) {
+            game.normalizedTitle.find(normalizedQuery) == std::string::npos &&
+            !aliasMatches) {
             continue;
         }
         if (filter.platform &&

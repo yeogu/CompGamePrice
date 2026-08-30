@@ -4,6 +4,15 @@
     {
       "id": "stardew-valley",
       "title": "Stardew Valley",
+      "aliases": [
+        "스타듀 밸리"
+      ],
+      "developers": [
+        "ConcernedApe"
+      ],
+      "publishers": [
+        "ConcernedApe"
+      ],
       "genres": [
         "Simulation",
         "RPG"
@@ -256,6 +265,15 @@
     {
       "id": "dave-the-diver",
       "title": "데이브 더 다이버",
+      "aliases": [
+        "DAVE THE DIVER"
+      ],
+      "developers": [
+        "MINTROCKET"
+      ],
+      "publishers": [
+        "MINTROCKET"
+      ],
       "platforms": [
         "Windows",
         "macOS"
@@ -278,6 +296,16 @@
     {
       "id": "palworld",
       "title": "Palworld / 팰월드",
+      "aliases": [
+        "Palworld",
+        "팰월드"
+      ],
+      "developers": [
+        "Pocketpair"
+      ],
+      "publishers": [
+        "Pocketpair"
+      ],
       "platforms": [
         "Windows"
       ],
@@ -298,6 +326,9 @@
     {
       "id": "ogu-and-the-secret-forest",
       "title": "오구와 비밀의 숲",
+      "aliases": [
+        "Ogu and the Secret Forest"
+      ],
       "platforms": [
         "Windows",
         "macOS"

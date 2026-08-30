@@ -4,6 +4,9 @@ export interface GameSummary {
   platforms: string[]
   genres: string[]
   tags: string[]
+  aliases: string[]
+  developers: string[]
+  publishers: string[]
   priceStatus?: 'Available' | 'Collecting' | 'Stale'
   lowestPrice?: Money
   lastUpdatedAt?: string

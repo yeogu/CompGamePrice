@@ -833,6 +833,17 @@ void testGameCatalogSearch() {
     expect(catalog.findByName("Stardew Valley")->tags ==
                std::vector<std::string>{"Farming", "Life Sim", "Multiplayer"},
            "Catalog should expose discovery tags");
+    expect(catalog.findByName("스타듀 밸리")->id == "stardew-valley",
+           "Catalog should resolve an exact localized alias");
+    expect(catalog.searchByName("DAVE THE DIVER").front().id ==
+               "dave-the-diver",
+           "Catalog search should match an alternate title");
+    expect(catalog.findByName("Stardew Valley")->developers ==
+               std::vector<std::string>{"ConcernedApe"},
+           "Catalog should expose canonical developers");
+    expect(catalog.findByName("Stardew Valley")->publishers ==
+               std::vector<std::string>{"ConcernedApe"},
+           "Catalog should expose canonical publishers");
     expect(catalog.findByName("Hollow Knight").has_value(),
            "Catalog should contain the newly added game");
     expect(catalog.findByName("Hollow Knight")->supportedPlatforms ==

@@ -15,13 +15,21 @@ struct Game {
         std::string normalizedGameTitle,
         std::vector<Platform> platforms,
         std::vector<std::string> gameGenres = {},
-        std::vector<std::string> gameTags = {})
+        std::vector<std::string> gameTags = {},
+        std::vector<std::string> gameAliases = {},
+        std::vector<std::string> normalizedGameAliases = {},
+        std::vector<std::string> gameDevelopers = {},
+        std::vector<std::string> gamePublishers = {})
         : id(std::move(gameId)),
           title(std::move(gameTitle)),
           normalizedTitle(std::move(normalizedGameTitle)),
           supportedPlatforms(std::move(platforms)),
           genres(std::move(gameGenres)),
-          tags(std::move(gameTags)) {}
+          tags(std::move(gameTags)),
+          aliases(std::move(gameAliases)),
+          normalizedAliases(std::move(normalizedGameAliases)),
+          developers(std::move(gameDevelopers)),
+          publishers(std::move(gamePublishers)) {}
 
     std::string id;
     std::string title;
@@ -29,6 +37,10 @@ struct Game {
     std::vector<Platform> supportedPlatforms;
     std::vector<std::string> genres;
     std::vector<std::string> tags;
+    std::vector<std::string> aliases;
+    std::vector<std::string> normalizedAliases;
+    std::vector<std::string> developers;
+    std::vector<std::string> publishers;
 };
 
 }  // namespace game_price

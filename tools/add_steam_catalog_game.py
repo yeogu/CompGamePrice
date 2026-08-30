@@ -109,6 +109,17 @@ def catalog_game(raw: bytes, app_id: str, game_id: str | None = None) -> dict:
     return {
         "id": resolved_game_id,
         "title": title.strip(),
+        "aliases": [],
+        "developers": [
+            value.strip()
+            for value in data.get("developers", [])
+            if isinstance(value, str) and value.strip()
+        ],
+        "publishers": [
+            value.strip()
+            for value in data.get("publishers", [])
+            if isinstance(value, str) and value.strip()
+        ],
         "platforms": platforms,
         "genres": mapped_descriptions(data.get("genres"), GENRE_MAPPING),
         "tags": mapped_descriptions(data.get("categories"), CATEGORY_TAG_MAPPING),
