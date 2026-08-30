@@ -447,7 +447,7 @@ void testDatabaseSchemaVersion() {
     )sql");
     StoreProductRepository versionOneRepository(versionOneDatabase);
     versionOneRepository.initializeSchema();
-    expect(versionOneDatabase.userVersion() == 12,
+    expect(versionOneDatabase.userVersion() == StoreProductRepository::CurrentSchemaVersion,
            "Schema version 1 should migrate to version 12");
     const auto migratedProducts =
         versionOneRepository.findProductsByGameId("stardew-valley");
@@ -503,7 +503,7 @@ void testDatabaseSchemaVersion() {
     )sql");
     StoreProductRepository versionTwoRepository(versionTwoDatabase);
     versionTwoRepository.initializeSchema();
-    expect(versionTwoDatabase.userVersion() == 12,
+    expect(versionTwoDatabase.userVersion() == StoreProductRepository::CurrentSchemaVersion,
            "Schema version 2 should migrate to version 12");
     const auto versionTwoProducts = versionTwoRepository.findProductsByGameId("hades");
     expect(versionTwoProducts.size() == 1 &&
@@ -532,7 +532,7 @@ void testDatabaseSchemaVersion() {
     StoreProductRepository versionEightRepository(versionEightDatabase);
     versionEightRepository.initializeSchema();
     const auto migratedRuns = versionEightRepository.findCrawlRuns();
-    expect(versionEightDatabase.userVersion() == 12 && migratedRuns.size() == 1 &&
+    expect(versionEightDatabase.userVersion() == StoreProductRepository::CurrentSchemaVersion && migratedRuns.size() == 1 &&
                migratedRuns.front().productsFound == 3 &&
                migratedRuns.front().productsRejected == 0 &&
                migratedRuns.front().productsFailed == 0 &&
@@ -584,7 +584,7 @@ void testDatabaseSchemaVersion() {
     sqlite3_step(conflictCountStatement);
     const int conflictCount = sqlite3_column_int(conflictCountStatement, 0);
     sqlite3_finalize(conflictCountStatement);
-    expect(versionNineDatabase.userVersion() == 12 &&
+    expect(versionNineDatabase.userVersion() == StoreProductRepository::CurrentSchemaVersion &&
                deduplicated.size() == 1 &&
                deduplicated.front().price.minorAmount == 12000 &&
                conflictCount == 1,
@@ -960,6 +960,8 @@ void testAuthenticationAndPriceAlerts() {
     const auto registration = auth.registerUser("Buyer@Example.com", "safe-password-123");
     expect(registration.user.email == "buyer@example.com" && !registration.token.empty(),
            "Registration should normalize email and issue a session");
+    expect(registration.user.role == UserRole::User,
+           "New accounts should have the USER role");
     sqlite3_stmt* storedSession=nullptr;
     expect(sqlite3_prepare_v2(database.handle(),"SELECT token FROM user_sessions LIMIT 1;",-1,&storedSession,nullptr)==SQLITE_OK &&
                sqlite3_step(storedSession)==SQLITE_ROW &&
@@ -967,6 +969,10 @@ void testAuthenticationAndPriceAlerts() {
            "Database must store only a hash of the bearer token");
     sqlite3_finalize(storedSession);
     expect(auth.authenticate(registration.token).has_value(), "Session should authenticate");
+    database.execute("UPDATE users SET role='ADMIN' WHERE email='buyer@example.com';");
+    const auto administrator = auth.authenticate(registration.token);
+    expect(administrator && administrator->role == UserRole::Admin,
+           "Existing sessions should observe an administrator role assignment");
     expect(!auth.login("buyer@example.com", "wrong-password").has_value(),
            "Wrong password should be rejected");
     expect(auth.login("buyer@example.com", "safe-password-123").has_value(),

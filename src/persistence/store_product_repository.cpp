@@ -235,6 +235,28 @@ CrawlRunStatus parseCrawlRunStatus(const std::string& value) {
     throw std::runtime_error("Unknown crawl run status in database: " + value);
 }
 
+bool tableExists(sqlite3* database, const std::string& table) {
+    Statement statement(
+        database,
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?;");
+    bindText(statement.get(), 1, table);
+    return statement.next();
+}
+
+bool tableHasColumn(
+    sqlite3* database,
+    const std::string& table,
+    const std::string& column) {
+    const auto query = "PRAGMA table_info(" + table + ");";
+    Statement statement(database, query.c_str());
+    while (statement.next()) {
+        if (columnText(statement.get(), 1) == column) {
+            return true;
+        }
+    }
+    return false;
+}
+
 }  // namespace
 
 StoreProductRepository::StoreProductRepository(Database& database) : database_(database) {}
@@ -249,6 +271,9 @@ void StoreProductRepository::initializeSchema() const {
             std::to_string(CurrentSchemaVersion));
     }
     if (existingVersion == CurrentSchemaVersion) return;
+    const auto usersExisted = tableExists(database_.handle(), "users");
+    const auto usersHadRole = usersExisted &&
+        tableHasColumn(database_.handle(), "users", "role");
 
     database_.execute("BEGIN IMMEDIATE TRANSACTION;");
     try {
@@ -361,6 +386,7 @@ void StoreProductRepository::initializeSchema() const {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT NOT NULL UNIQUE COLLATE NOCASE,
             password_hash TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'USER' CHECK(role IN ('USER','ADMIN')),
             created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
         );
         CREATE TABLE IF NOT EXISTS user_sessions (
@@ -570,7 +596,14 @@ void StoreProductRepository::initializeSchema() const {
                 END;
             )sql");
         }
-        database_.execute("PRAGMA user_version = 12;");
+        if (usersExisted && !usersHadRole) {
+            database_.execute(R"sql(
+                ALTER TABLE users
+                    ADD COLUMN role TEXT NOT NULL DEFAULT 'USER'
+                    CHECK(role IN ('USER','ADMIN'));
+            )sql");
+        }
+        database_.execute("PRAGMA user_version = 13;");
         database_.execute("COMMIT;");
     } catch (...) {
         try {

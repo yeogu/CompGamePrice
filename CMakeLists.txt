@@ -176,6 +176,10 @@ if(BUILD_TESTING)
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_mobile_catalog_sync.py
         )
         add_test(
+            NAME set_user_role_tests
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_set_user_role.py
+        )
+        add_test(
             NAME daily_operations_tests
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_daily_operations.py
         )

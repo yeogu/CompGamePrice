@@ -33,4 +33,22 @@ OAuthProvider oauthProviderFromString(const std::string& value) {
     if (value == "Naver" || value == "naver") return OAuthProvider::Naver;
     throw std::invalid_argument("unsupported OAuth provider");
 }
+std::string toString(UserRole role) {
+    switch (role) {
+        case UserRole::User:
+            return "USER";
+        case UserRole::Admin:
+            return "ADMIN";
+    }
+    throw std::invalid_argument("unsupported user role");
+}
+UserRole userRoleFromString(const std::string& value) {
+    if (value == "USER") {
+        return UserRole::User;
+    }
+    if (value == "ADMIN") {
+        return UserRole::Admin;
+    }
+    throw std::invalid_argument("unsupported user role");
+}
 }  // namespace game_price

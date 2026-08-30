@@ -9,8 +9,13 @@ namespace game_price {
 
 enum class AlertRuleType { PriceDrop, BelowTargetPrice, NewHistoricalLow, BelowAverage };
 enum class OAuthProvider { Google, Kakao, Naver };
+enum class UserRole { User, Admin };
 
-struct UserAccount { std::int64_t id{}; std::string email; };
+struct UserAccount {
+    std::int64_t id{};
+    std::string email;
+    UserRole role{UserRole::User};
+};
 struct UserPreferences {
     bool emailNotificationsEnabled{true};
     std::string region{"KR"};
@@ -55,5 +60,7 @@ std::string toString(AlertRuleType type);
 AlertRuleType alertRuleTypeFromString(const std::string& value);
 std::string toString(OAuthProvider provider);
 OAuthProvider oauthProviderFromString(const std::string& value);
+std::string toString(UserRole role);
+UserRole userRoleFromString(const std::string& value);
 
 }  // namespace game_price

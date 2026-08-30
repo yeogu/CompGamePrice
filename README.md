@@ -165,8 +165,17 @@ snapshot을 공통 `StoreProduct`로 변환합니다.
 python3 tools/run_steam_pipeline.py
 ```
 
-로컬 Catalog Admin UI를 사용할 때만 API를 다음처럼 실행합니다. 관리 API는
-기본적으로 비활성화되어 있고 loopback 요청만 허용합니다.
+Catalog Admin API는 기본적으로 비활성화되어 있으며, 기능을 활성화하더라도
+`ADMIN` 역할로 로그인한 사용자만 접근할 수 있습니다. 먼저 일반 회원가입을 한 뒤
+API를 한 번 실행해 schema를 최신 상태로 만들고 해당 계정을 승격합니다.
+
+```sh
+python3 tools/set_user_role.py \
+  --email admin@example.com \
+  --role ADMIN
+```
+
+관리 기능을 활성화한 API는 다음처럼 실행합니다.
 
 ```sh
 CATALOG_ADMIN_ENABLED=true \
@@ -175,7 +184,9 @@ WEB_APP_URL=http://127.0.0.1:5173 \
 ```
 
 웹 사이드바의 `카탈로그 관리`에서 Steam App ID를 preview한 후 등록할 수
-있습니다. 등록된 게임은 API 재시작 없이 검색에 반영됩니다. `Steam 가격 수집
+있습니다. 이 메뉴는 `ADMIN` 계정으로 로그인한 경우에만 표시되며, 일반 사용자가
+관리 API URL을 직접 호출해도 서버가 `403 Forbidden`으로 거부합니다. 등록된
+게임은 API 재시작 없이 검색에 반영됩니다. `Steam 가격 수집
 시작`을 누르면 background 작업으로 전체 Steam 가격을 갱신하며 화면에서
 `RUNNING`, `SUCCEEDED`, `FAILED` 상태를 확인할 수 있습니다.
 

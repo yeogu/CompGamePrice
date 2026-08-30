@@ -143,6 +143,8 @@ function App() {
       })),
     ])
     setUser({ ...me, email: nextIdentities[0]?.email ?? me.email })
+    const adminStatus = await getCatalogAdminStatus().catch(() => ({ enabled: false }))
+    setCatalogAdminEnabled(adminStatus.enabled && me.role === 'ADMIN')
     setRules(nextRules)
     setNotifications(nextNotifications)
     setIdentities(nextIdentities)
@@ -349,6 +351,7 @@ function App() {
     setNotifications([])
     setIdentities([])
     setFavorites([])
+    setCatalogAdminEnabled(false)
     navigate('games')
   }
 
@@ -839,7 +842,7 @@ function App() {
             알림함 {notifications.filter((item) => !item.read).length > 0 && <span className="nav-count">{notifications.filter((item) => !item.read).length}</span>}
           </button>
           <button className={activeView === 'collection' ? 'active' : ''} onClick={() => navigate('collection')}>수집 상태</button>
-          {catalogAdminEnabled && <button className={activeView === 'admin' ? 'active' : ''} onClick={() => navigate('admin')}>카탈로그 관리</button>}
+          {catalogAdminEnabled && user?.role === 'ADMIN' && <button className={activeView === 'admin' ? 'active' : ''} onClick={() => navigate('admin')}>카탈로그 관리</button>}
         </nav>
         <div className="sidebar-user">
           {user ? (
@@ -1157,7 +1160,7 @@ function App() {
         </article>)}</div>
       </section>}
 
-      {activeView === 'admin' && catalogAdminEnabled && <section className="view-panel">
+      {activeView === 'admin' && catalogAdminEnabled && user?.role === 'ADMIN' && <section className="view-panel">
         <p className="eyebrow">LOCAL ADMIN</p>
         <h1 className="view-title">Store 상품 연결</h1>
         <p className="view-description">게임 이름으로 Store를 검색하고 본편 상품이 맞는지 확인한 뒤 등록하세요.</p>

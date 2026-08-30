@@ -71,16 +71,24 @@ UserAccount AccountRepository::createUser(const std::string& email, const std::s
         "INSERT INTO users(email,password_hash) VALUES(?,?);");
     bindText(statement.get(), 1, email); bindText(statement.get(), 2, hash);
     statement.execute();
-    return UserAccount{sqlite3_last_insert_rowid(database_.handle()), email};
+    return UserAccount{
+        sqlite3_last_insert_rowid(database_.handle()),
+        email,
+        UserRole::User,
+    };
 }
 std::optional<std::pair<UserAccount, std::string>> AccountRepository::findUserByEmail(
     const std::string& email) const {
     Statement statement(database_.handle(),
-        "SELECT id,email,password_hash FROM users WHERE email=?;");
+        "SELECT id,email,password_hash,role FROM users WHERE email=?;");
     bindText(statement.get(), 1, email);
     if (!statement.next()) return std::nullopt;
     return std::pair<UserAccount, std::string>{
-        UserAccount{sqlite3_column_int64(statement.get(), 0), text(statement.get(), 1)},
+        UserAccount{
+            sqlite3_column_int64(statement.get(), 0),
+            text(statement.get(), 1),
+            userRoleFromString(text(statement.get(), 3)),
+        },
         text(statement.get(), 2)};
 }
 std::string AccountRepository::createSession(std::int64_t userId) {
@@ -95,12 +103,16 @@ std::string AccountRepository::createSession(std::int64_t userId) {
 }
 std::optional<UserAccount> AccountRepository::findUserBySession(const std::string& token) const {
     Statement statement(database_.handle(), R"sql(
-        SELECT u.id,u.email FROM user_sessions s JOIN users u ON u.id=s.user_id
+        SELECT u.id,u.email,u.role FROM user_sessions s JOIN users u ON u.id=s.user_id
         WHERE s.token=? AND s.expires_at > strftime('%Y-%m-%dT%H:%M:%fZ','now');
     )sql");
     bindText(statement.get(), 1, sessionTokenHash(token));
     if (!statement.next()) return std::nullopt;
-    return UserAccount{sqlite3_column_int64(statement.get(), 0), text(statement.get(), 1)};
+    return UserAccount{
+        sqlite3_column_int64(statement.get(), 0),
+        text(statement.get(), 1),
+        userRoleFromString(text(statement.get(), 2)),
+    };
 }
 void AccountRepository::deleteSession(const std::string& token) {
     Statement statement(database_.handle(), "DELETE FROM user_sessions WHERE token=?;");
@@ -152,12 +164,16 @@ std::optional<std::int64_t> AccountRepository::consumeOAuthState(
 std::optional<UserAccount> AccountRepository::findUserByExternalIdentity(
     OAuthProvider provider, const std::string& providerUserId) const {
     Statement statement(database_.handle(), R"sql(
-        SELECT u.id,u.email FROM external_identities e JOIN users u ON u.id=e.user_id
+        SELECT u.id,u.email,u.role FROM external_identities e JOIN users u ON u.id=e.user_id
         WHERE e.provider=? AND e.provider_user_id=?;
     )sql");
     bindText(statement.get(),1,toString(provider)); bindText(statement.get(),2,providerUserId);
     if(!statement.next()) return std::nullopt;
-    return UserAccount{sqlite3_column_int64(statement.get(),0),text(statement.get(),1)};
+    return UserAccount{
+        sqlite3_column_int64(statement.get(), 0),
+        text(statement.get(), 1),
+        userRoleFromString(text(statement.get(), 2)),
+    };
 }
 ExternalIdentity AccountRepository::addExternalIdentity(
     std::int64_t userId, const OAuthProfile& profile) {

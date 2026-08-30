@@ -102,7 +102,7 @@ export interface CollectionRun {
   errorMessage?: string
 }
 
-export interface User { id: number; email: string }
+export interface User { id: number; email: string; role: 'USER' | 'ADMIN' }
 export interface AuthResult { user: User; token: string }
 export type AlertRuleType = 'PriceDrop' | 'BelowTargetPrice' | 'NewHistoricalLow' | 'BelowAverage'
 export interface AlertRule { id: number; gameId: string; gameTitle?: string; type: AlertRuleType; targetPriceMinor?: number; platform?: string; active: boolean }

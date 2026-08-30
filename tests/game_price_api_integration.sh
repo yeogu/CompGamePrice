@@ -21,6 +21,7 @@ GAME_PRICE_DATABASE_PATH="${test_database}" "${tracker_binary}" seed-demo >/dev/
 GAME_PRICE_DATABASE_PATH="${test_database}" "${tracker_binary}" collect \
     --data-dir "${project_directory}/data" Hades >/dev/null
 GAME_PRICE_DATABASE_PATH="${test_database}" GAME_PRICE_API_PORT="${api_port}" \
+    CATALOG_ADMIN_ENABLED=true \
     GOOGLE_OAUTH_CLIENT_ID="google-test-id" GOOGLE_OAUTH_CLIENT_SECRET="google-test-secret" \
     KAKAO_OAUTH_CLIENT_ID="kakao-test-id" KAKAO_OAUTH_CLIENT_SECRET="kakao-test-secret" \
     NAVER_OAUTH_CLIENT_ID="naver-test-id" NAVER_OAUTH_CLIENT_SECRET="naver-test-secret" \
@@ -246,35 +247,56 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     -H 'Content-Type: application/json' \
     -d '{"appId":"1245620","apply":false}' \
     "${api_base}/api/admin/catalog/steam")
-[[ "${status}" == "403" ]]
+[[ "${status}" == "401" ]]
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     -H 'Content-Type: application/json' \
     -d '{"packageName":"com.example.game","gameId":"hades","apply":false}' \
     "${api_base}/api/admin/catalog/google-play")
-[[ "${status}" == "403" ]]
+[[ "${status}" == "401" ]]
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     -H 'Content-Type: application/json' \
     -d '{"trackId":"123456789","gameId":"hades","apply":false}' \
     "${api_base}/api/admin/catalog/apple")
-[[ "${status}" == "403" ]]
+[[ "${status}" == "401" ]]
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/admin/catalog/collection")
-[[ "${status}" == "403" ]]
+[[ "${status}" == "401" ]]
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     -X POST "${api_base}/api/admin/catalog/collection")
-[[ "${status}" == "403" ]]
+[[ "${status}" == "401" ]]
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/admin/catalog/sync")
-[[ "${status}" == "403" ]]
+[[ "${status}" == "401" ]]
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     -H 'Content-Type: application/json' -d '{"batchSize":20}' \
     "${api_base}/api/admin/catalog/sync")
-[[ "${status}" == "403" ]]
+[[ "${status}" == "401" ]]
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     -X PATCH -H 'Content-Type: application/json' \
     -d '{"resolution":"REJECTED"}' \
     "${api_base}/api/admin/catalog/sync/reviews/413150")
+[[ "${status}" == "401" ]]
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -b "${cookie_jar}" "${api_base}/api/admin/catalog/collection")
 [[ "${status}" == "403" ]]
+
+python3 "${project_directory}/tools/set_user_role.py" \
+    --database "${test_database}" \
+    --email test@example.com \
+    --role ADMIN >/dev/null
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -b "${cookie_jar}" "${api_base}/api/auth/me")
+[[ "${status}" == "200" ]]
+grep -q '"role":"ADMIN"' "${response_body}"
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -b "${cookie_jar}" "${api_base}/api/admin/catalog/status")
+[[ "${status}" == "200" ]]
+grep -q '"enabled":true' "${response_body}"
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -b "${cookie_jar}" "${api_base}/api/admin/catalog/collection")
+[[ "${status}" == "200" ]]
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/games?query=terraria")

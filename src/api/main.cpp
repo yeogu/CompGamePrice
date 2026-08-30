@@ -188,11 +188,6 @@ bool catalogAdminEnabled() {
     return value && std::string(value) == "true";
 }
 
-bool isLoopbackRequest(const drogon::HttpRequestPtr& request) {
-    const auto address = request->peerAddr().toIp();
-    return address == "127.0.0.1" || address == "::1";
-}
-
 bool validSteamAppId(const std::string& value) {
     return !value.empty() &&
         std::all_of(value.begin(), value.end(), [](unsigned char character) {
@@ -806,10 +801,33 @@ std::optional<UserAccount> authenticatedUser(
     return token.empty() ? std::nullopt : auth.authenticate(token);
 }
 
+HttpResponsePtr adminAccessError(
+    const drogon::HttpRequestPtr& request,
+    const AuthService& auth) {
+    if (!catalogAdminEnabled()) {
+        return jsonError(
+            drogon::k403Forbidden,
+            "catalog admin is disabled");
+    }
+    const auto user = authenticatedUser(request, auth);
+    if (!user) {
+        return jsonError(
+            drogon::k401Unauthorized,
+            "administrator authentication required");
+    }
+    if (user->role != UserRole::Admin) {
+        return jsonError(
+            drogon::k403Forbidden,
+            "administrator role required");
+    }
+    return nullptr;
+}
+
 Json::Value authJson(const AuthResult& result) {
     Json::Value json;
     json["user"]["id"] = Json::Int64(result.user.id);
     json["user"]["email"] = result.user.email;
+    json["user"]["role"] = toString(result.user.role);
     json["token"] = result.token;
     return json;
 }
@@ -962,8 +980,16 @@ int main() {
             [&authService](const drogon::HttpRequestPtr& request,
                 std::function<void(const HttpResponsePtr&)>&& callback) {
                 const auto user = authenticatedUser(request, authService);
-                if (!user) { callback(jsonError(drogon::k401Unauthorized, "authentication required")); return; }
-                Json::Value json; json["id"] = Json::Int64(user->id); json["email"] = user->email;
+                if (!user) {
+                    callback(jsonError(
+                        drogon::k401Unauthorized,
+                        "authentication required"));
+                    return;
+                }
+                Json::Value json;
+                json["id"] = Json::Int64(user->id);
+                json["email"] = user->email;
+                json["role"] = toString(user->role);
                 callback(jsonResponse(json));
             }, {drogon::Get});
         drogon::app().registerHandler(
@@ -1195,21 +1221,22 @@ int main() {
 
         drogon::app().registerHandler(
             "/api/admin/catalog/status",
-            [](const drogon::HttpRequestPtr&,
+            [&authService](const drogon::HttpRequestPtr& request,
                std::function<void(const HttpResponsePtr&)>&& callback) {
                 Json::Value response;
-                response["enabled"] = catalogAdminEnabled();
+                const auto user = authenticatedUser(request, authService);
+                response["enabled"] = catalogAdminEnabled() &&
+                    user &&
+                    user->role == UserRole::Admin;
                 callback(jsonResponse(response));
             },
             {drogon::Get});
         drogon::app().registerHandler(
             "/api/admin/catalog/steam",
-            [&catalog](const drogon::HttpRequestPtr& request,
+            [&catalog, &authService](const drogon::HttpRequestPtr& request,
                std::function<void(const HttpResponsePtr&)>&& callback) {
-                if (!catalogAdminEnabled() || !isLoopbackRequest(request)) {
-                    callback(jsonError(
-                        drogon::k403Forbidden,
-                        "catalog admin is disabled"));
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
                     return;
                 }
                 const auto body = request->getJsonObject();
@@ -1253,12 +1280,10 @@ int main() {
             {drogon::Post});
         drogon::app().registerHandler(
             "/api/admin/catalog/candidates",
-            [](const drogon::HttpRequestPtr& request,
+            [&authService](const drogon::HttpRequestPtr& request,
                std::function<void(const HttpResponsePtr&)>&& callback) {
-                if (!catalogAdminEnabled() || !isLoopbackRequest(request)) {
-                    callback(jsonError(
-                        drogon::k403Forbidden,
-                        "catalog admin is disabled"));
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
                     return;
                 }
                 const auto store = request->getParameter("store");
@@ -1282,12 +1307,10 @@ int main() {
             {drogon::Get});
         drogon::app().registerHandler(
             "/api/admin/catalog/google-play",
-            [&catalog](const drogon::HttpRequestPtr& request,
+            [&catalog, &authService](const drogon::HttpRequestPtr& request,
                        std::function<void(const HttpResponsePtr&)>&& callback) {
-                if (!catalogAdminEnabled() || !isLoopbackRequest(request)) {
-                    callback(jsonError(
-                        drogon::k403Forbidden,
-                        "catalog admin is disabled"));
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
                     return;
                 }
                 const auto body = request->getJsonObject();
@@ -1337,12 +1360,10 @@ int main() {
             {drogon::Post});
         drogon::app().registerHandler(
             "/api/admin/catalog/apple",
-            [&catalog](const drogon::HttpRequestPtr& request,
+            [&catalog, &authService](const drogon::HttpRequestPtr& request,
                        std::function<void(const HttpResponsePtr&)>&& callback) {
-                if (!catalogAdminEnabled() || !isLoopbackRequest(request)) {
-                    callback(jsonError(
-                        drogon::k403Forbidden,
-                        "catalog admin is disabled"));
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
                     return;
                 }
                 const auto body = request->getJsonObject();
@@ -1392,13 +1413,11 @@ int main() {
             {drogon::Post});
         drogon::app().registerHandler(
             "/api/admin/catalog/collection",
-            [&catalogCollectionJob](
+            [&catalogCollectionJob, &authService](
                 const drogon::HttpRequestPtr& request,
                 std::function<void(const HttpResponsePtr&)>&& callback) {
-                if (!catalogAdminEnabled() || !isLoopbackRequest(request)) {
-                    callback(jsonError(
-                        drogon::k403Forbidden,
-                        "catalog admin is disabled"));
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
                     return;
                 }
                 callback(jsonResponse(catalogCollectionJob.json()));
@@ -1406,13 +1425,11 @@ int main() {
             {drogon::Get});
         drogon::app().registerHandler(
             "/api/admin/catalog/collection",
-            [&catalogCollectionJob](
+            [&catalogCollectionJob, &authService](
                 const drogon::HttpRequestPtr& request,
                 std::function<void(const HttpResponsePtr&)>&& callback) {
-                if (!catalogAdminEnabled() || !isLoopbackRequest(request)) {
-                    callback(jsonError(
-                        drogon::k403Forbidden,
-                        "catalog admin is disabled"));
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
                     return;
                 }
                 const auto body = request->getJsonObject();
@@ -1439,13 +1456,11 @@ int main() {
             {drogon::Post});
         drogon::app().registerHandler(
             "/api/admin/catalog/mobile-sync",
-            [&mobileCatalogSyncJob](
+            [&mobileCatalogSyncJob, &authService](
                 const drogon::HttpRequestPtr& request,
                 std::function<void(const HttpResponsePtr&)>&& callback) {
-                if (!catalogAdminEnabled() || !isLoopbackRequest(request)) {
-                    callback(jsonError(
-                        drogon::k403Forbidden,
-                        "catalog admin is disabled"));
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
                     return;
                 }
                 const auto store = request->getParameter("store");
@@ -1466,13 +1481,11 @@ int main() {
             {drogon::Get});
         drogon::app().registerHandler(
             "/api/admin/catalog/mobile-sync",
-            [&mobileCatalogSyncJob](
+            [&mobileCatalogSyncJob, &authService](
                 const drogon::HttpRequestPtr& request,
                 std::function<void(const HttpResponsePtr&)>&& callback) {
-                if (!catalogAdminEnabled() || !isLoopbackRequest(request)) {
-                    callback(jsonError(
-                        drogon::k403Forbidden,
-                        "catalog admin is disabled"));
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
                     return;
                 }
                 const auto body = request->getJsonObject();
@@ -1502,13 +1515,11 @@ int main() {
             {drogon::Post});
         drogon::app().registerHandler(
             "/api/admin/catalog/mobile-sync/reviews/{1}",
-            [](const drogon::HttpRequestPtr& request,
+            [&authService](const drogon::HttpRequestPtr& request,
                std::function<void(const HttpResponsePtr&)>&& callback,
                const std::string& productId) {
-                if (!catalogAdminEnabled() || !isLoopbackRequest(request)) {
-                    callback(jsonError(
-                        drogon::k403Forbidden,
-                        "catalog admin is disabled"));
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
                     return;
                 }
                 const auto body = request->getJsonObject();
@@ -1539,13 +1550,11 @@ int main() {
             {drogon::Patch});
         drogon::app().registerHandler(
             "/api/admin/catalog/sync",
-            [&catalogSyncJob](
+            [&catalogSyncJob, &authService](
                 const drogon::HttpRequestPtr& request,
                 std::function<void(const HttpResponsePtr&)>&& callback) {
-                if (!catalogAdminEnabled() || !isLoopbackRequest(request)) {
-                    callback(jsonError(
-                        drogon::k403Forbidden,
-                        "catalog admin is disabled"));
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
                     return;
                 }
                 callback(jsonResponse(catalogSyncJob.refresh()));
@@ -1553,13 +1562,11 @@ int main() {
             {drogon::Get});
         drogon::app().registerHandler(
             "/api/admin/catalog/sync",
-            [&catalogSyncJob](
+            [&catalogSyncJob, &authService](
                 const drogon::HttpRequestPtr& request,
                 std::function<void(const HttpResponsePtr&)>&& callback) {
-                if (!catalogAdminEnabled() || !isLoopbackRequest(request)) {
-                    callback(jsonError(
-                        drogon::k403Forbidden,
-                        "catalog admin is disabled"));
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
                     return;
                 }
                 const auto body = request->getJsonObject();
@@ -1585,14 +1592,12 @@ int main() {
             {drogon::Post});
         drogon::app().registerHandler(
             "/api/admin/catalog/sync/reviews/{1}",
-            [&catalogSyncJob](
+            [&catalogSyncJob, &authService](
                 const drogon::HttpRequestPtr& request,
                 std::function<void(const HttpResponsePtr&)>&& callback,
                 const std::string& appId) {
-                if (!catalogAdminEnabled() || !isLoopbackRequest(request)) {
-                    callback(jsonError(
-                        drogon::k403Forbidden,
-                        "catalog admin is disabled"));
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
                     return;
                 }
                 const auto body = request->getJsonObject();
