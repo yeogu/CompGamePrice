@@ -30,6 +30,17 @@ def run_operations(
     environment["GAME_PRICE_DATABASE_PATH"] = str(database)
     steps = [
         (
+            "steam-discovery",
+            [
+                python,
+                str(project / "tools" / "discover_steam_catalog.py"),
+                "--database",
+                str(database),
+                "--per-source-limit",
+                "50",
+            ],
+        ),
+        (
             "steam-catalog-sync",
             [
                 python,

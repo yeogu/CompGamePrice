@@ -115,6 +115,17 @@ def initialize_state(connection: sqlite3.Connection) -> None:
             failed_count INTEGER NOT NULL DEFAULT 0,
             error_message TEXT
         );
+        CREATE TABLE IF NOT EXISTS catalog_discovery_candidates (
+            provider TEXT NOT NULL,
+            external_product_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            source TEXT NOT NULL,
+            priority INTEGER NOT NULL,
+            status TEXT NOT NULL DEFAULT 'PENDING',
+            discovered_at TEXT NOT NULL,
+            processed_at TEXT,
+            PRIMARY KEY(provider, external_product_id)
+        );
         """
     )
 
@@ -226,6 +237,37 @@ def requested_apps(
             (status, utc_now(), error_message, normalized_query),
         )
     return candidates
+
+
+def queued_discovery_apps(
+    connection: sqlite3.Connection,
+    limit: int,
+) -> list[dict]:
+    rows = connection.execute(
+        """
+        SELECT external_product_id, title
+        FROM catalog_discovery_candidates
+        WHERE provider = 'Steam' AND status = 'PENDING'
+        ORDER BY priority DESC, discovered_at ASC
+        LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+    return [{"appId": row[0], "name": row[1]} for row in rows]
+
+
+def mark_discovery_processed(
+    connection: sqlite3.Connection,
+    app_id: str,
+) -> None:
+    connection.execute(
+        """
+        UPDATE catalog_discovery_candidates
+        SET status = 'PROCESSED', processed_at = ?
+        WHERE provider = 'Steam' AND external_product_id = ?
+        """,
+        (utc_now(), app_id),
+    )
 
 
 def fetch_detail_with_retry(fetcher, app_id: str, max_attempts: int = 3) -> bytes:
@@ -497,6 +539,12 @@ def synchronize(
         update_state(connection, "RUNNING", started_at, report)
         try:
             priority_apps = requested_apps(connection, candidate_searcher)
+            priority_ids = {app["appId"] for app in priority_apps}
+            priority_apps.extend(
+                app
+                for app in queued_discovery_apps(connection, batch_size)
+                if app["appId"] not in priority_ids
+            )
             selected = pending_apps(connection, priority_apps, catalog, batch_size)
             if len(selected) < batch_size:
                 apps = parse_app_list(app_list_fetcher())
@@ -525,6 +573,7 @@ def synchronize(
                         record_review(connection, app, reason, game, checked_at)
                         record_seen(connection, app_id, "REVIEW", checked_at)
                         report["review"] += 1
+                        mark_discovery_processed(connection, app_id)
                         continue
                     catalog = catalog_import.updated_catalog(catalog, game)
                     record_seen(connection, app_id, "ACCEPTED", checked_at)
@@ -540,11 +589,14 @@ def synchronize(
                         record_review(connection, app, reason, None, checked_at)
                         record_seen(connection, app_id, "REVIEW", checked_at)
                         report["review"] += 1
+                    mark_discovery_processed(connection, app_id)
                 except Exception:
                     report["failed"] += 1
                     consecutive_failures += 1
                     if consecutive_failures >= 5:
                         break
+                else:
+                    mark_discovery_processed(connection, app_id)
             if report["accepted"] > 0:
                 catalog_import.write_catalog(catalog_path, catalog)
             report["status"] = "SUCCEEDED"
