@@ -10,6 +10,7 @@ test_root="$(mktemp -d)"
 test_database="${test_root}/data-reliability.db"
 test_data="${test_root}/data"
 response_body="${test_root}/response.json"
+cookie_jar="${test_root}/cookies.txt"
 project_directory="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 api_pid=""
 
@@ -33,6 +34,7 @@ GAME_PRICE_DATABASE_PATH="${test_database}" \
 
 GAME_PRICE_DATABASE_PATH="${test_database}" \
 GAME_PRICE_API_PORT="${api_port}" \
+CATALOG_ADMIN_ENABLED=true \
     "${api_binary}" >"${test_root}/api.log" 2>&1 &
 api_pid=$!
 
@@ -42,6 +44,17 @@ for _ in {1..30}; do
     fi
     sleep 0.1
 done
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -c "${cookie_jar}" \
+    -H 'Content-Type: application/json' \
+    -d '{"email":"reliability-admin@example.com","password":"test-password-123"}' \
+    "${api_base}/api/auth/register")
+[[ "${status}" == "201" ]]
+python3 "${project_directory}/tools/set_user_role.py" \
+    --database "${test_database}" \
+    --email reliability-admin@example.com \
+    --role ADMIN >/dev/null
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/games/hades/prices")
@@ -61,6 +74,7 @@ observation_count=$(grep -o '"observedAt"' "${response_body}" | wc -l | tr -d ' 
 [[ "${observation_count}" == "3" ]]
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -b "${cookie_jar}" \
     "${api_base}/api/collection-runs?limit=10")
 [[ "${status}" == "200" ]]
 grep -q '"productsRejected":1' "${response_body}"

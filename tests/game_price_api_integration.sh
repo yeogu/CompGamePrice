@@ -280,6 +280,12 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     -b "${cookie_jar}" "${api_base}/api/admin/catalog/collection")
 [[ "${status}" == "403" ]]
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/collection-runs?limit=5")
+[[ "${status}" == "401" ]]
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -b "${cookie_jar}" "${api_base}/api/collection-runs?limit=5")
+[[ "${status}" == "403" ]]
 
 python3 "${project_directory}/tools/set_user_role.py" \
     --database "${test_database}" \
@@ -353,6 +359,7 @@ for invalid_query in \
 done
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -b "${cookie_jar}" \
     "${api_base}/api/collection-runs?limit=5")
 [[ "${status}" == "200" ]]
 grep -q '"store":"Epic Games Store"' "${response_body}"
@@ -361,5 +368,6 @@ grep -q '"productsFailed":0' "${response_body}"
 grep -q '"retryCount":0' "${response_body}"
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -b "${cookie_jar}" \
     "${api_base}/api/collection-runs?limit=invalid")
 [[ "${status}" == "400" ]]

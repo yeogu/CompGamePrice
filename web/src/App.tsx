@@ -145,6 +145,11 @@ function App() {
     setUser({ ...me, email: nextIdentities[0]?.email ?? me.email })
     const adminStatus = await getCatalogAdminStatus().catch(() => ({ enabled: false }))
     setCatalogAdminEnabled(adminStatus.enabled && me.role === 'ADMIN')
+    if (adminStatus.enabled && me.role === 'ADMIN') {
+      const runs = await getCollectionRuns().catch(() => [])
+      setCollectionRuns(runs)
+      setCollectionStatusError('')
+    }
     setRules(nextRules)
     setNotifications(nextNotifications)
     setIdentities(nextIdentities)
@@ -701,9 +706,6 @@ function App() {
       .catch((reason) => {
         setError(reason instanceof Error ? reason.message : '게임 목록을 불러오지 못했습니다.')
       })
-    void getCollectionRuns()
-      .then(setCollectionRuns)
-      .catch(() => setCollectionStatusError('수집 상태를 불러오지 못했습니다.'))
     void getCatalogFilters()
       .then((filters) => {
         setCatalogFilters(filters)
@@ -723,6 +725,7 @@ function App() {
       .then((status) => {
         setCatalogAdminEnabled(status.enabled)
         if (status.enabled) {
+          void getCollectionRuns().then(setCollectionRuns)
           void getCatalogCollectionJob().then(setCatalogJob)
           void getCatalogSyncJob().then(setCatalogSyncJob)
           void refreshMobileSyncJobs()
@@ -841,7 +844,7 @@ function App() {
           <button className={activeView === 'notifications' ? 'active' : ''} onClick={() => user ? navigate('notifications') : openAuth('login')}>
             알림함 {notifications.filter((item) => !item.read).length > 0 && <span className="nav-count">{notifications.filter((item) => !item.read).length}</span>}
           </button>
-          <button className={activeView === 'collection' ? 'active' : ''} onClick={() => navigate('collection')}>수집 상태</button>
+          {catalogAdminEnabled && user?.role === 'ADMIN' && <button className={activeView === 'collection' ? 'active' : ''} onClick={() => navigate('collection')}>수집 상태</button>}
           {catalogAdminEnabled && user?.role === 'ADMIN' && <button className={activeView === 'admin' ? 'active' : ''} onClick={() => navigate('admin')}>카탈로그 관리</button>}
         </nav>
         <div className="sidebar-user">
@@ -1148,7 +1151,7 @@ function App() {
         </div>
       </section>}
 
-      {activeView === 'collection' && <section className="view-panel collection-panel" aria-label="최근 가격 수집 상태">
+      {activeView === 'collection' && catalogAdminEnabled && user?.role === 'ADMIN' && <section className="view-panel collection-panel" aria-label="최근 가격 수집 상태">
         <p className="eyebrow">COLLECTION STATUS</p>
         <h1 className="view-title">최근 수집 실행</h1>
         {collectionStatusError && <p className="status-message error-text">{collectionStatusError}</p>}

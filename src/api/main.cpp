@@ -1907,8 +1907,12 @@ int main() {
 
         drogon::app().registerHandler(
             "/api/collection-runs",
-            [&queryService](const drogon::HttpRequestPtr& request,
+            [&queryService, &authService](const drogon::HttpRequestPtr& request,
                             std::function<void(const HttpResponsePtr&)>&& callback) {
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
+                    return;
+                }
                 std::size_t limit = 20;
                 const auto requestedLimit = request->getParameter("limit");
                 if (!requestedLimit.empty()) {
