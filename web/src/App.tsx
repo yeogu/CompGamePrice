@@ -1,7 +1,7 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react'
-import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, getAlertRules, getCatalogAdminStatus, getCatalogCollectionJob, getCatalogFilters, getCatalogSyncJob, getCollectionRuns, getExternalIdentities, getFavorites, getGamePriceHistory, getGamePrices, getGames, getMe, getNotifications, getOAuthUrl, getPreferences, importSteamCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, resolveCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, unlinkExternalIdentity, updatePreferences } from './api'
+import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, getAlertRules, getCatalogAdminStatus, getCatalogCollectionJob, getCatalogFilters, getCatalogSyncJob, getCollectionRuns, getExternalIdentities, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getNotifications, getOAuthUrl, getPreferences, importSteamCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, resolveCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, unlinkExternalIdentity, updatePreferences } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
-import type { AlertRule, AlertRuleType, CatalogAdminResult, CatalogCollectionJob, CatalogFilterOptions, CatalogSyncJob, CollectionRun, ExternalIdentity, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Money, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
+import type { AlertRule, AlertRuleType, CatalogAdminResult, CatalogCollectionJob, CatalogFilterOptions, CatalogSyncJob, CollectionRun, ExternalIdentity, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSort, GameSummary, Money, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
 
 const formatMoney = (money: Money) =>
   new Intl.NumberFormat('ko-KR', {
@@ -112,10 +112,14 @@ function App() {
   const [catalogRequestSubmitting, setCatalogRequestSubmitting] = useState(false)
   const [catalogRequestMessage, setCatalogRequestMessage] = useState('')
   const [catalogFilters, setCatalogFilters] = useState<CatalogFilterOptions>({ stores: [], platforms: [], genres: [], tags: [] })
-  const [selectedStore, setSelectedStore] = useState('')
-  const [browsePlatform, setBrowsePlatform] = useState('')
-  const [selectedGenre, setSelectedGenre] = useState('')
-  const [selectedTag, setSelectedTag] = useState('')
+  const initialParameters = new URLSearchParams(window.location.search)
+  const [selectedStore, setSelectedStore] = useState(initialParameters.get('store') ?? '')
+  const [browsePlatform, setBrowsePlatform] = useState(initialParameters.get('browsePlatform') ?? '')
+  const [selectedGenre, setSelectedGenre] = useState(initialParameters.get('genre') ?? '')
+  const [selectedTag, setSelectedTag] = useState(initialParameters.get('tag') ?? '')
+  const [gameSort, setGameSort] = useState<GameSort>((initialParameters.get('sort') as GameSort) || 'title')
+  const [catalogPage, setCatalogPage] = useState(1)
+  const [catalogTotal, setCatalogTotal] = useState(0)
   const [browseMode, setBrowseMode] = useState(false)
   const autocompleteRef = useRef<HTMLDivElement>(null)
   const suggestionSequence = useRef(0)
@@ -255,9 +259,29 @@ function App() {
     setShowGameResults(true)
     setBrowseMode(true)
     try {
-      const matches = await getGames('', filters)
+      const result = await getGamePage('', { pageSize: 12, ...filters })
       if (requestId === requestSequence.current) {
-        setGames(matches)
+        setGames(result.games)
+        setCatalogPage(result.page)
+        setCatalogTotal(result.total)
+        const address = new URL(window.location.href)
+        const urlValues = {
+          store: filters.store,
+          browsePlatform: filters.platform,
+          genre: filters.genre,
+          tag: filters.tag,
+          sort: filters.sort === 'title' ? undefined : filters.sort,
+        }
+        Object.entries(urlValues).forEach(([name, value]) => {
+          if (value) {
+            address.searchParams.set(name, value)
+          } else {
+            address.searchParams.delete(name)
+          }
+        })
+        address.searchParams.delete('game')
+        address.searchParams.delete('platform')
+        window.history.replaceState(null, '', address)
       }
     } catch (reason) {
       if (requestId === requestSequence.current) {
@@ -277,6 +301,8 @@ function App() {
       platform: browsePlatform || undefined,
       genre: selectedGenre || undefined,
       tag: selectedTag || undefined,
+      sort: gameSort,
+      page: 1,
     })
   }
 
@@ -285,7 +311,30 @@ function App() {
     setBrowsePlatform(platform)
     setSelectedGenre('')
     setSelectedTag('')
-    void browseCatalog({ platform })
+    void browseCatalog({ platform, sort: gameSort, page: 1 })
+  }
+
+  const activeBrowseFilters = {
+    store: selectedStore,
+    platform: browsePlatform,
+    genre: selectedGenre,
+    tag: selectedTag,
+  }
+
+  const clearBrowseFilter = (name: keyof typeof activeBrowseFilters) => {
+    const next = { ...activeBrowseFilters, [name]: '' }
+    setSelectedStore(next.store)
+    setBrowsePlatform(next.platform)
+    setSelectedGenre(next.genre)
+    setSelectedTag(next.tag)
+    void browseCatalog({
+      store: next.store || undefined,
+      platform: next.platform || undefined,
+      genre: next.genre || undefined,
+      tag: next.tag || undefined,
+      sort: gameSort,
+      page: 1,
+    })
   }
 
   const signOut = async () => {
@@ -560,7 +609,19 @@ function App() {
       .then(setCollectionRuns)
       .catch(() => setCollectionStatusError('수집 상태를 불러오지 못했습니다.'))
     void getCatalogFilters()
-      .then(setCatalogFilters)
+      .then((filters) => {
+        setCatalogFilters(filters)
+        if (selectedStore || browsePlatform || selectedGenre || selectedTag) {
+          void browseCatalog({
+            store: selectedStore || undefined,
+            platform: browsePlatform || undefined,
+            genre: selectedGenre || undefined,
+            tag: selectedTag || undefined,
+            sort: gameSort,
+            page: 1,
+          })
+        }
+      })
       .catch(() => setCatalogFilters({ stores: [], platforms: [], genres: [], tags: [] }))
     void getCatalogAdminStatus()
       .then((status) => {
@@ -766,8 +827,21 @@ function App() {
         <section className="panel">
           <div className="catalog-heading">
             <h2>{browseMode ? '카테고리 탐색 결과' : query.trim() ? '검색 결과' : '게임 카탈로그'}</h2>
-            <span>{games.length}개 게임</span>
+            <span>{browseMode ? `${catalogTotal}개 중 ${games.length}개` : `${games.length}개 게임`}</span>
+            {browseMode && <select aria-label="게임 정렬" value={gameSort} onChange={(event) => {
+              const sort = event.target.value as GameSort
+              setGameSort(sort)
+              void browseCatalog({
+                store: selectedStore || undefined,
+                platform: browsePlatform || undefined,
+                genre: selectedGenre || undefined,
+                tag: selectedTag || undefined,
+                sort,
+                page: 1,
+              })
+            }}><option value="title">이름순</option><option value="lowestPrice">최저가순</option><option value="recentlyUpdated">최근 갱신순</option></select>}
           </div>
+          {browseMode && Object.entries(activeBrowseFilters).some(([, value]) => value) && <div className="filter-chips" aria-label="적용된 필터">{Object.entries(activeBrowseFilters).filter(([, value]) => value).map(([name, value]) => <button key={name} type="button" onClick={() => clearBrowseFilter(name as keyof typeof activeBrowseFilters)}>{value} ×</button>)}</div>}
           <div className="game-list">
             {games.map((game) => (
               <button
@@ -784,6 +858,7 @@ function App() {
               </button>
             ))}
           </div>
+          {browseMode && catalogTotal > 12 && <nav className="catalog-pagination" aria-label="게임 목록 페이지"><button type="button" disabled={catalogPage <= 1 || loading} onClick={() => void browseCatalog({ store: selectedStore || undefined, platform: browsePlatform || undefined, genre: selectedGenre || undefined, tag: selectedTag || undefined, sort: gameSort, page: catalogPage - 1 })}>이전</button><span>{catalogPage} / {Math.ceil(catalogTotal / 12)}</span><button type="button" disabled={catalogPage * 12 >= catalogTotal || loading} onClick={() => void browseCatalog({ store: selectedStore || undefined, platform: browsePlatform || undefined, genre: selectedGenre || undefined, tag: selectedTag || undefined, sort: gameSort, page: catalogPage + 1 })}>다음</button></nav>}
         </section>
       )}
       {showGameResults && games.length === 0 && browseMode && <section className="panel empty-catalog-result"><h2>조건에 맞는 게임이 없습니다.</h2><p>필터를 줄이거나 이름으로 검색해보세요.</p></section>}

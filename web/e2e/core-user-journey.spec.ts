@@ -35,6 +35,9 @@ test('user browses games by combined store, platform, and genre filters', async 
   await expect(page.getByRole('button', { name: /Stardew Valley/ })).toBeVisible()
   await expect(page.getByRole('button', { name: /Hades/ })).toHaveCount(0)
   await expect(page.getByText('Simulation · RPG')).toBeVisible()
+  await expect(page).toHaveURL(/store=Google\+Play/)
+  await expect(page).toHaveURL(/browsePlatform=Android/)
+  await expect(page.getByLabel('적용된 필터').getByRole('button', { name: 'Farming ×' })).toBeVisible()
 })
 
 test('quick platform discovery distinguishes Nintendo Switch 2', async ({ page }) => {

@@ -6,10 +6,13 @@ export interface GameSummary {
   tags: string[]
   priceStatus?: 'Available' | 'Collecting' | 'Stale'
   lowestPrice?: Money
+  lastUpdatedAt?: string
 }
 
 export interface CatalogFilterOptions { stores: string[]; platforms: string[]; genres: string[]; tags: string[] }
-export interface GameCatalogFilters { store?: string; platform?: string; genre?: string; tag?: string }
+export type GameSort = 'title' | 'lowestPrice' | 'recentlyUpdated'
+export interface GameCatalogFilters { store?: string; platform?: string; genre?: string; tag?: string; page?: number; pageSize?: number; sort?: GameSort }
+export interface GameCatalogPage { games: GameSummary[]; page: number; pageSize: number; total: number }
 
 export interface Money {
   minorAmount: number

@@ -1,4 +1,4 @@
-import type { AlertRule, AlertRuleType, AuthResult, CatalogAdminResult, CatalogCollectionJob, CatalogFilterOptions, CatalogSyncJob, CollectionRun, ExternalIdentity, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
+import type { AlertRule, AlertRuleType, AuthResult, CatalogAdminResult, CatalogCollectionJob, CatalogFilterOptions, CatalogSyncJob, CollectionRun, ExternalIdentity, GameCatalogFilters, GameCatalogPage, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
 
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8080'
 
@@ -16,7 +16,7 @@ async function requestJson<T>(path: string, init: RequestInit = {}, token = ''):
 }
 const getJson = <T,>(path: string) => requestJson<T>(path)
 
-export async function getGames(query = '', filters: GameCatalogFilters = {}): Promise<GameSummary[]> {
+export async function getGamePage(query = '', filters: GameCatalogFilters = {}): Promise<GameCatalogPage> {
   const parameters = new URLSearchParams()
   if (query) {
     parameters.set('query', query)
@@ -33,11 +33,23 @@ export async function getGames(query = '', filters: GameCatalogFilters = {}): Pr
   if (filters.tag) {
     parameters.set('tag', filters.tag)
   }
+  if (filters.page) {
+    parameters.set('page', String(filters.page))
+  }
+  if (filters.pageSize) {
+    parameters.set('pageSize', String(filters.pageSize))
+  }
+  if (filters.sort) {
+    parameters.set('sort', filters.sort)
+  }
   const search = parameters.size > 0 ? `?${parameters}` : ''
-  const result = await getJson<{ games: GameSummary[] }>(
+  return getJson<GameCatalogPage>(
     `/api/games${search}`,
   )
-  return result.games
+}
+
+export async function getGames(query = '', filters: GameCatalogFilters = {}): Promise<GameSummary[]> {
+  return (await getGamePage(query, filters)).games
 }
 
 export const getCatalogFilters = () => getJson<CatalogFilterOptions>('/api/catalog/filters')
