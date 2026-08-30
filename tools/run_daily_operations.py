@@ -69,6 +69,21 @@ def run_operations(
             ],
         ),
         (
+            "google-play",
+            [
+                python,
+                str(project / "tools" / "run_google_play_pipeline.py"),
+                "--tracker",
+                str(tracker),
+                "--catalog",
+                str(catalog),
+                "--output-dir",
+                str(output_directory),
+                "--database",
+                str(database),
+            ],
+        ),
+        (
             "apple-snapshot",
             [
                 python,

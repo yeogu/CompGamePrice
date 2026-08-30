@@ -107,8 +107,8 @@ export interface Notification { id: number; gameId: string; store: string; produ
 export type OAuthProvider = 'google' | 'kakao' | 'naver'
 export interface ExternalIdentity { id: number; provider: 'Google' | 'Kakao' | 'Naver'; email?: string }
 export interface UserPreferences { emailNotificationsEnabled: boolean; region: 'KR'; currency: 'KRW' }
-export interface CatalogAdminResult { game: GameSummary & { products: Array<{ store: string; productId: string; productUrl: string }> }; applied: boolean; requiresApiRestart: boolean }
-export interface CatalogCollectionJob { id: number; status: 'IDLE' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'; error?: string }
+export interface CatalogAdminResult { game: GameSummary & { products: Array<{ store: string; productId: string; productUrl: string }>; matchedProduct?: { store: string; productId: string; developer?: string; priceMinor?: number; currency?: string } }; applied: boolean; requiresApiRestart: boolean }
+export interface CatalogCollectionJob { id: number; store?: string; status: 'IDLE' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'; error?: string }
 export interface StoreProductCandidate { store: string; externalProductId: string; title: string; productUrl: string; platforms: string[] }
 export interface CatalogSyncReview { externalProductId: string; title: string; reason: string; status: 'PENDING' | 'APPROVED' | 'REJECTED'; createdAt: string }
 export interface CatalogGameRequest { query: string; status: string; requestCount: number; requestedAt: string; error?: string }

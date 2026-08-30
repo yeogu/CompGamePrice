@@ -106,6 +106,20 @@ Google Play에 등록된 상품은 다음 한 줄 명령으로 KR 페이지를 �
 python3 tools/run_google_play_pipeline.py
 ```
 
+로컬 Admin 화면에서는 Store를 `Google Play`로 선택하고 게임 이름을 검색할
+수 있습니다. 검색 결과는 즉시 등록되지 않으며 Preview 단계에서 다음을
+검증합니다.
+
+- Android 게임 상품인지
+- KRW 유료 구매 상품인지
+- Guide, Demo, Companion, Wallpaper, Soundtrack 앱이 아닌지
+- 선택한 canonical Game의 제목과 일치하는지
+- package name이 다른 게임에 이미 연결되지 않았는지
+
+승인된 상품은 기존 canonical Game에 Android StoreProduct로 추가되고 즉시
+Google Play 가격 수집이 시작됩니다. 신규 canonical Game을 자동 생성하지
+않는 것은 잘못된 게임 identity 생성을 방지하기 위한 현재 MVP 정책입니다.
+
 각 Google Play 상품은 `data/game_catalog.json`의 안정적인 package name으로
 연결됩니다. 수집은 상품별 bounded retry를 사용하며, 한 상품의 실패가 다른
 상품의 snapshot 저장을 막지 않습니다. 일부 실패가 있으면 성공 데이터는
