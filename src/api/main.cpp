@@ -325,6 +325,7 @@ private:
 Json::Value runCatalogSyncCommand(
     const std::filesystem::path& script,
     const std::string& arguments) {
+    std::lock_guard<std::mutex> toolLock(catalogToolMutex());
     const auto project = std::filesystem::path(PROJECT_SOURCE_DIR);
     const auto temporary = std::filesystem::temp_directory_path() /
         "compgameprice-catalog-sync.json";
@@ -371,6 +372,13 @@ void resolveCatalogReview(
         project / "tools/sync_steam_catalog.py",
         " --resolve-app-id " + appId +
         " --resolution " + resolution);
+}
+
+Json::Value requestCatalogGame(const std::string& query) {
+    const auto project = std::filesystem::path(PROJECT_SOURCE_DIR);
+    return runCatalogSyncCommand(
+        project / "tools/sync_steam_catalog.py",
+        " --request-game " + shellQuoted(query));
 }
 
 class CatalogSyncJob {
@@ -1150,6 +1158,36 @@ int main() {
                 callback(jsonResponse(json));
             },
             {drogon::Get});
+
+        drogon::app().registerHandler(
+            "/api/catalog-requests",
+            [](const drogon::HttpRequestPtr& request,
+               std::function<void(const HttpResponsePtr&)>&& callback) {
+                const auto body = request->getJsonObject();
+                if (!body || !(*body)["query"].isString()) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "query is required"));
+                    return;
+                }
+                const auto query = (*body)["query"].asString();
+                if (query.size() < 2 || query.size() > 100) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "query must contain between 2 and 100 characters"));
+                    return;
+                }
+                try {
+                    callback(jsonResponse(
+                        requestCatalogGame(query),
+                        drogon::k202Accepted));
+                } catch (const std::exception& error) {
+                    callback(jsonError(
+                        drogon::k500InternalServerError,
+                        error.what()));
+                }
+            },
+            {drogon::Post});
 
         drogon::app().registerHandler(
             "/api/games",

@@ -1,5 +1,5 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react'
-import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, getAlertRules, getCatalogAdminStatus, getCatalogCollectionJob, getCatalogSyncJob, getCollectionRuns, getExternalIdentities, getFavorites, getGamePriceHistory, getGamePrices, getGames, getMe, getNotifications, getOAuthUrl, getPreferences, importSteamCatalogGame, login, logout, markNotificationRead, register, resolveCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, unlinkExternalIdentity, updatePreferences } from './api'
+import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, getAlertRules, getCatalogAdminStatus, getCatalogCollectionJob, getCatalogSyncJob, getCollectionRuns, getExternalIdentities, getFavorites, getGamePriceHistory, getGamePrices, getGames, getMe, getNotifications, getOAuthUrl, getPreferences, importSteamCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, resolveCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, unlinkExternalIdentity, updatePreferences } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
 import type { AlertRule, AlertRuleType, CatalogAdminResult, CatalogCollectionJob, CatalogSyncJob, CollectionRun, ExternalIdentity, GamePriceHistoryResponse, GamePriceResponse, GameSummary, Money, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
 
@@ -108,6 +108,8 @@ function App() {
   const [suggestions, setSuggestions] = useState<GameSummary[]>([])
   const [suggestionsOpen, setSuggestionsOpen] = useState(false)
   const [activeSuggestion, setActiveSuggestion] = useState(-1)
+  const [catalogRequestSubmitting, setCatalogRequestSubmitting] = useState(false)
+  const [catalogRequestMessage, setCatalogRequestMessage] = useState('')
   const autocompleteRef = useRef<HTMLDivElement>(null)
   const suggestionSequence = useRef(0)
 
@@ -209,6 +211,23 @@ function App() {
     } else if (event.key === 'Escape') {
       setSuggestionsOpen(false)
       setActiveSuggestion(-1)
+    }
+  }
+
+  const submitCatalogRequest = async () => {
+    const requestedQuery = query.trim()
+    if (requestedQuery.length < 2) {
+      return
+    }
+    setCatalogRequestSubmitting(true)
+    setCatalogRequestMessage('')
+    try {
+      const request = await requestCatalogGame(requestedQuery)
+      setCatalogRequestMessage(`등록 요청이 접수됐습니다. 요청 횟수 ${request.requestCount}회`)
+    } catch (reason) {
+      setCatalogRequestMessage(reason instanceof Error ? reason.message : '게임 등록을 요청하지 못했습니다.')
+    } finally {
+      setCatalogRequestSubmitting(false)
     }
   }
 
@@ -628,7 +647,7 @@ function App() {
               aria-controls="game-suggestions"
               aria-expanded={suggestionsOpen}
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => { setQuery(event.target.value); setCatalogRequestMessage('') }}
               onFocus={() => query.trim() && setSuggestionsOpen(true)}
               onKeyDown={handleAutocompleteKeyDown}
               placeholder="게임 이름을 입력하세요"
@@ -647,7 +666,7 @@ function App() {
                 <strong>{game.title}</strong>
                 <span>{game.platforms.join(' · ')}</span>
               </button>)}
-              {suggestions.length === 0 && <p>등록된 게임이 없습니다.</p>}
+              {suggestions.length === 0 && <div className="catalog-request"><p>등록된 게임이 없습니다.</p>{catalogRequestMessage ? <span>{catalogRequestMessage}</span> : <button type="button" disabled={catalogRequestSubmitting || query.trim().length < 2} onMouseDown={(event) => event.preventDefault()} onClick={() => void submitCatalogRequest()}>{catalogRequestSubmitting ? '요청 중…' : `“${query.trim()}” 등록 요청`}</button>}</div>}
             </div>}
           </div>
           <button disabled={loading} type="submit">

@@ -156,6 +156,54 @@ class SteamCatalogSyncTest(unittest.TestCase):
             self.assertEqual(seen_count, 0)
             self.assertEqual(sync.synchronization_status(database)["status"], "FAILED")
 
+    def test_user_request_is_deduplicated_and_prioritized(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            catalog = root / "catalog.json"
+            database = root / "catalog.db"
+            catalog.write_text(
+                json.dumps({"schemaVersion": 4, "games": []}),
+                encoding="utf-8",
+            )
+            first = sync.create_game_request(database, "  Wanted   Game ")
+            second = sync.create_game_request(database, "wanted game")
+            self.assertEqual(first["status"], "PENDING")
+            self.assertEqual(second["requestCount"], 2)
+
+            report = sync.synchronize(
+                catalog,
+                database,
+                1,
+                app_list_fetcher=lambda: self.fail("fallback app list must not run"),
+                detail_fetcher=lambda app_id: self.detail_for(app_id, "Wanted Game"),
+                candidate_searcher=lambda query, limit: [
+                    {
+                        "externalProductId": "99",
+                        "title": "Wanted Game",
+                    }
+                ],
+            )
+            self.assertEqual(report["acceptedAppIds"], ["99"])
+            with sqlite3.connect(database) as connection:
+                request = connection.execute(
+                    "SELECT status, request_count FROM catalog_game_requests"
+                ).fetchone()
+            self.assertEqual(request, ("MATCHED", 2))
+
+    def test_retries_transient_detail_failure_with_a_bound(self):
+        attempts = 0
+
+        def fetch(app_id):
+            nonlocal attempts
+            attempts += 1
+            if attempts < 3:
+                raise sync.steam.TransientCollectionError("temporary", retry_after=0)
+            return self.detail_for(app_id, "Retry Game")
+
+        raw = sync.fetch_detail_with_retry(fetch, "10")
+        self.assertIn(b"Retry Game", raw)
+        self.assertEqual(attempts, 3)
+
 
 if __name__ == "__main__":
     unittest.main()

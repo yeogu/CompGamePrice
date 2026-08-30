@@ -9,10 +9,12 @@ import json
 from pathlib import Path
 import re
 import sqlite3
+import time
 from urllib.request import Request, urlopen
 
 import add_steam_catalog_game as catalog_import
 import collect_steam_snapshot as steam
+import search_steam_catalog as steam_search
 
 
 APP_LIST_URL = "https://api.steampowered.com/ISteamApps/GetAppList/v2/"
@@ -91,6 +93,28 @@ def initialize_state(connection: sqlite3.Connection) -> None:
             exit_code INTEGER,
             error_message TEXT
         );
+        CREATE TABLE IF NOT EXISTS catalog_game_requests (
+            normalized_query TEXT PRIMARY KEY,
+            display_query TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'PENDING',
+            request_count INTEGER NOT NULL DEFAULT 1,
+            requested_at TEXT NOT NULL,
+            processed_at TEXT,
+            error_message TEXT
+        );
+        CREATE TABLE IF NOT EXISTS catalog_sync_runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            provider TEXT NOT NULL,
+            status TEXT NOT NULL,
+            started_at TEXT NOT NULL,
+            finished_at TEXT,
+            processed_count INTEGER NOT NULL DEFAULT 0,
+            accepted_count INTEGER NOT NULL DEFAULT 0,
+            review_count INTEGER NOT NULL DEFAULT 0,
+            skipped_count INTEGER NOT NULL DEFAULT 0,
+            failed_count INTEGER NOT NULL DEFAULT 0,
+            error_message TEXT
+        );
         """
     )
 
@@ -119,6 +143,104 @@ def pending_apps(
     }
     excluded = seen | existing_steam_ids(catalog)
     return [app for app in apps if app["appId"] not in excluded][:batch_size]
+
+
+def normalize_request_query(query: str) -> str:
+    return " ".join(query.casefold().split())
+
+
+def create_game_request(database_path: Path, query: str) -> dict:
+    display_query = " ".join(query.split())
+    normalized_query = normalize_request_query(query)
+    if not 2 <= len(display_query) <= 100:
+        raise ValueError("game request query must contain between 2 and 100 characters")
+    requested_at = utc_now()
+    with sqlite3.connect(database_path) as connection:
+        initialize_state(connection)
+        connection.execute(
+            """
+            INSERT INTO catalog_game_requests(
+                normalized_query, display_query, status, request_count, requested_at
+            ) VALUES(?, ?, 'PENDING', 1, ?)
+            ON CONFLICT(normalized_query) DO UPDATE SET
+                display_query = excluded.display_query,
+                status = 'PENDING',
+                request_count = catalog_game_requests.request_count + 1,
+                requested_at = excluded.requested_at,
+                error_message = NULL
+            """,
+            (normalized_query, display_query, requested_at),
+        )
+        row = connection.execute(
+            """
+            SELECT display_query, status, request_count, requested_at
+            FROM catalog_game_requests WHERE normalized_query = ?
+            """,
+            (normalized_query,),
+        ).fetchone()
+        connection.commit()
+    return {
+        "query": row[0],
+        "status": row[1],
+        "requestCount": row[2],
+        "requestedAt": row[3],
+    }
+
+
+def requested_apps(
+    connection: sqlite3.Connection,
+    candidate_searcher,
+    request_limit: int = 10,
+) -> list[dict]:
+    requests = connection.execute(
+        """
+        SELECT normalized_query, display_query
+        FROM catalog_game_requests
+        WHERE status = 'PENDING'
+        ORDER BY requested_at ASC
+        LIMIT ?
+        """,
+        (request_limit,),
+    ).fetchall()
+    candidates = []
+    seen = set()
+    for normalized_query, display_query in requests:
+        try:
+            results = candidate_searcher(display_query, 5)
+            status = "MATCHED" if results else "NO_MATCH"
+            error_message = None
+            for candidate in results:
+                app_id = candidate.get("externalProductId")
+                if isinstance(app_id, str) and app_id.isdigit() and app_id not in seen:
+                    candidates.append({"appId": app_id, "name": candidate.get("title", "")})
+                    seen.add(app_id)
+        except Exception as error:
+            status = "PENDING"
+            error_message = str(error)
+        connection.execute(
+            """
+            UPDATE catalog_game_requests
+            SET status = ?, processed_at = ?, error_message = ?
+            WHERE normalized_query = ?
+            """,
+            (status, utc_now(), error_message, normalized_query),
+        )
+    return candidates
+
+
+def fetch_detail_with_retry(fetcher, app_id: str, max_attempts: int = 3) -> bytes:
+    last_error = None
+    for attempt in range(max_attempts):
+        try:
+            return fetcher(app_id)
+        except steam.TransientCollectionError as error:
+            last_error = error
+            if attempt + 1 < max_attempts:
+                delay = error.retry_after if error.retry_after is not None else 2 ** attempt
+                time.sleep(delay)
+    if last_error is not None:
+        raise last_error
+    raise RuntimeError("Steam detail collection failed")
 
 
 def review_reason(game: dict) -> str | None:
@@ -346,6 +468,7 @@ def synchronize(
     batch_size: int,
     app_list_fetcher=fetch_app_list,
     detail_fetcher=None,
+    candidate_searcher=steam_search.search,
 ) -> dict:
     if not 1 <= batch_size <= 100:
         raise ValueError("batch size must be between 1 and 100")
@@ -373,15 +496,30 @@ def synchronize(
         initialize_state(connection)
         update_state(connection, "RUNNING", started_at, report)
         try:
-            apps = parse_app_list(app_list_fetcher())
-            selected = pending_apps(connection, apps, catalog, batch_size)
+            priority_apps = requested_apps(connection, candidate_searcher)
+            selected = pending_apps(connection, priority_apps, catalog, batch_size)
+            if len(selected) < batch_size:
+                apps = parse_app_list(app_list_fetcher())
+                fallback = pending_apps(
+                    connection,
+                    apps,
+                    catalog,
+                    batch_size - len(selected),
+                )
+                selected_ids = {app["appId"] for app in selected}
+                selected.extend(
+                    app for app in fallback if app["appId"] not in selected_ids
+                )
+                selected = selected[:batch_size]
+            consecutive_failures = 0
             for app in selected:
                 app_id = app["appId"]
                 report["lastAppId"] = app_id
                 report["processed"] += 1
                 checked_at = utc_now()
                 try:
-                    game = catalog_import.catalog_game(detail_fetcher(app_id), app_id)
+                    raw_detail = fetch_detail_with_retry(detail_fetcher, app_id)
+                    game = catalog_import.catalog_game(raw_detail, app_id)
                     reason = review_reason(game)
                     if reason:
                         record_review(connection, app, reason, game, checked_at)
@@ -392,6 +530,7 @@ def synchronize(
                     record_seen(connection, app_id, "ACCEPTED", checked_at)
                     report["accepted"] += 1
                     report["acceptedAppIds"].append(app_id)
+                    consecutive_failures = 0
                 except catalog_import.CatalogImportError as error:
                     reason = str(error)
                     if "Only Steam base games" in reason:
@@ -403,6 +542,9 @@ def synchronize(
                         report["review"] += 1
                 except Exception:
                     report["failed"] += 1
+                    consecutive_failures += 1
+                    if consecutive_failures >= 5:
+                        break
             if report["accepted"] > 0:
                 catalog_import.write_catalog(catalog_path, catalog)
             report["status"] = "SUCCEEDED"
@@ -424,9 +566,12 @@ def main() -> int:
     parser.add_argument("--status", action="store_true")
     parser.add_argument("--resolve-app-id")
     parser.add_argument("--resolution", choices=("APPROVED", "REJECTED"))
+    parser.add_argument("--request-game")
     arguments = parser.parse_args()
     try:
-        if arguments.resolve_app_id:
+        if arguments.request_game:
+            report = create_game_request(arguments.database, arguments.request_game)
+        elif arguments.resolve_app_id:
             if not arguments.resolution:
                 raise ValueError("--resolution is required with --resolve-app-id")
             report = resolve_review(

@@ -45,6 +45,10 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .search-form .suggestions button strong { font-size: .92rem; }
 .search-form .suggestions button span { overflow: hidden; color: #82968b; font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }
 .suggestions p { margin: 0; padding: 12px; color: #82968b; text-align: center; }
+.catalog-request { display: grid; gap: 6px; padding: 8px; text-align: center; }
+.catalog-request p { padding: 4px; }
+.catalog-request span { padding: 8px; color: #73d49b; font-size: .8rem; }
+.search-form .catalog-request button { display: block; padding: 10px; color: #b9f2d2; background: #173426; border: 1px solid #315141; text-align: center; }
 
 .notice, .panel { padding: 18px 20px; background: #111f19; border: 1px solid #263c31; border-radius: 14px; }
 .account-panel { margin-bottom: 42px; padding: 24px; background: #101f18; border: 1px solid #315141; border-radius: 18px; }

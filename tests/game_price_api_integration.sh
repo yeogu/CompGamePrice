@@ -182,6 +182,23 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
 grep -q '"enabled":false' "${response_body}"
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     -H 'Content-Type: application/json' \
+    -d '{"query":"Wanted Game"}' \
+    "${api_base}/api/catalog-requests")
+[[ "${status}" == "202" ]]
+grep -q '"status":"PENDING"' "${response_body}"
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -H 'Content-Type: application/json' \
+    -d '{"query":"wanted game"}' \
+    "${api_base}/api/catalog-requests")
+[[ "${status}" == "202" ]]
+grep -q '"requestCount":2' "${response_body}"
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -H 'Content-Type: application/json' \
+    -d '{"query":"x"}' \
+    "${api_base}/api/catalog-requests")
+[[ "${status}" == "400" ]]
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -H 'Content-Type: application/json' \
     -d '{"appId":"1245620","apply":false}' \
     "${api_base}/api/admin/catalog/steam")
 [[ "${status}" == "403" ]]

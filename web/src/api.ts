@@ -80,3 +80,4 @@ export const searchStoreCandidates = async (store: string, query: string) => (aw
 export const getCatalogSyncJob = () => requestJson<CatalogSyncJob>('/api/admin/catalog/sync')
 export const startCatalogSync = (batchSize: number) => requestJson<CatalogSyncJob>('/api/admin/catalog/sync', { method: 'POST', body: JSON.stringify({ batchSize }) })
 export const resolveCatalogSyncReview = (appId: string, resolution: 'APPROVED' | 'REJECTED') => requestJson<CatalogSyncJob>(`/api/admin/catalog/sync/reviews/${encodeURIComponent(appId)}`, { method: 'PATCH', body: JSON.stringify({ resolution }) })
+export const requestCatalogGame = (query: string) => requestJson<{ query: string; status: string; requestCount: number }>('/api/catalog-requests', { method: 'POST', body: JSON.stringify({ query }) })
