@@ -89,6 +89,10 @@ if(BUILD_TESTING)
     )
     enable_project_warnings(game_price_tests)
     add_test(NAME game_price_tests COMMAND game_price_tests)
+    add_test(
+        NAME production_catalog_smoke_test
+        COMMAND game_price_tracker search Terraria
+    )
     find_package(Python3 COMPONENTS Interpreter QUIET)
     if(Python3_Interpreter_FOUND)
         add_test(
