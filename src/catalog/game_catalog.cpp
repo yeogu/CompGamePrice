@@ -143,6 +143,32 @@ std::vector<Platform> parsePlatforms(
     return result;
 }
 
+std::vector<std::string> parseOptionalStringArray(
+    sqlite3* database,
+    const std::optional<std::string>& valuesJson,
+    const std::optional<std::string>& valuesType,
+    const std::string& field) {
+    if (!valuesJson && !valuesType) {
+        return {};
+    }
+    if (!valuesJson || valuesType != std::optional<std::string>{"array"}) {
+        throw std::runtime_error("Game Catalog " + field + " must be an array");
+    }
+    Statement values(database, "SELECT value, type FROM json_each(?1);");
+    values.bindJson(*valuesJson);
+    std::vector<std::string> result;
+    while (values.next()) {
+        const auto value = values.optionalText(0);
+        requireJsonString(value, values.optionalText(1), field + "[]");
+        if (std::find(result.begin(), result.end(), *value) != result.end()) {
+            throw std::runtime_error(
+                "Duplicate Game Catalog " + field + " value: " + *value);
+        }
+        result.push_back(*value);
+    }
+    return result;
+}
+
 CompatibilityStatus compatibilityStatusFromString(const std::string& value) {
     if (value == "Native") return CompatibilityStatus::Native;
     if (value == "Compatible") return CompatibilityStatus::Compatible;
@@ -209,7 +235,9 @@ GameCatalog::GameCatalog(const std::string& dataPath) {
         SELECT json_extract(value, '$.id'), json_type(value, '$.id'),
                json_extract(value, '$.title'), json_type(value, '$.title'),
                json_extract(value, '$.platforms'), json_type(value, '$.platforms'),
-               json_extract(value, '$.products'), json_type(value, '$.products')
+               json_extract(value, '$.products'), json_type(value, '$.products'),
+               json_extract(value, '$.genres'), json_type(value, '$.genres'),
+               json_extract(value, '$.tags'), json_type(value, '$.tags')
         FROM json_each(?1, '$.games');
     )sql");
     rows.bindJson(json);
@@ -229,7 +257,17 @@ GameCatalog::GameCatalog(const std::string& dataPath) {
         }
         auto platforms = parsePlatforms(
             parser.handle(), rows.optionalText(4), rows.optionalText(5));
-        games_.push_back(Game{*id, *title, normalizedTitle, std::move(platforms)});
+        auto genres = parseOptionalStringArray(
+            parser.handle(), rows.optionalText(8), rows.optionalText(9), "games[].genres");
+        auto tags = parseOptionalStringArray(
+            parser.handle(), rows.optionalText(10), rows.optionalText(11), "games[].tags");
+        games_.push_back(Game{
+            *id,
+            *title,
+            normalizedTitle,
+            std::move(platforms),
+            std::move(genres),
+            std::move(tags)});
 
         const auto productsJson = rows.optionalText(6);
         if (!productsJson || rows.optionalText(7) != std::optional<std::string>{"array"}) {
@@ -345,6 +383,51 @@ std::vector<Game> GameCatalog::searchByName(const std::string& query) const {
         }
     }
     return matches;
+}
+
+std::vector<Game> GameCatalog::filterGames(
+    const GameCatalogFilter& filter) const {
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    const auto normalizedQuery = normalizeName(filter.query);
+    const auto normalizedGenre = normalizeName(filter.genre);
+    const auto normalizedTag = normalizeName(filter.tag);
+    std::vector<Game> result;
+    for (const auto& game : games_) {
+        if (!normalizedQuery.empty() &&
+            game.normalizedTitle.find(normalizedQuery) == std::string::npos) {
+            continue;
+        }
+        if (filter.platform &&
+            std::find(
+                game.supportedPlatforms.begin(),
+                game.supportedPlatforms.end(),
+                *filter.platform) == game.supportedPlatforms.end()) {
+            continue;
+        }
+        if (!normalizedGenre.empty() &&
+            std::none_of(game.genres.begin(), game.genres.end(), [&](const auto& genre) {
+                return normalizeName(genre) == normalizedGenre;
+            })) {
+            continue;
+        }
+        if (!normalizedTag.empty() &&
+            std::none_of(game.tags.begin(), game.tags.end(), [&](const auto& tag) {
+                return normalizeName(tag) == normalizedTag;
+            })) {
+            continue;
+        }
+        if (filter.store &&
+            std::none_of(
+                storeProducts_.begin(),
+                storeProducts_.end(),
+                [&](const auto& product) {
+                    return product.gameId == game.id && product.store == *filter.store;
+                })) {
+            continue;
+        }
+        result.push_back(game);
+    }
+    return result;
 }
 
 std::vector<Game> GameCatalog::allGames() const {

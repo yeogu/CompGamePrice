@@ -175,6 +175,25 @@ grep -q '"id":"terraria"' "${response_body}"
 grep -q '"id":"hollow-knight"' "${response_body}"
 grep -q '"id":"hades"' "${response_body}"
 grep -q '"platforms":\["Windows","macOS","Linux"\]' "${response_body}"
+grep -q '"genres":\["Simulation","RPG"\]' "${response_body}"
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/catalog/filters")
+[[ "${status}" == "200" ]]
+grep -q '"stores":.*"Steam"' "${response_body}"
+grep -q '"platforms":.*"Nintendo Switch 2"' "${response_body}"
+grep -q '"genres":.*"Simulation"' "${response_body}"
+grep -q '"tags":.*"Farming"' "${response_body}"
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/games?store=Google%20Play&platform=Android&genre=Simulation&tag=Farming")
+[[ "${status}" == "200" ]]
+grep -q '"id":"stardew-valley"' "${response_body}"
+! grep -q '"id":"hades"' "${response_body}"
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/games?store=Unknown")
+[[ "${status}" == "400" ]]
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/admin/catalog/status")

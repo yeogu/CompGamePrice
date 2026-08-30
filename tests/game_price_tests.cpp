@@ -827,6 +827,12 @@ void testGameCatalogSearch() {
            "Batch catalog should preserve canonical game ids");
     expect(catalog.findByName("Terraria").has_value(),
            "Catalog should contain the second Steam collection target");
+    expect(catalog.findByName("Stardew Valley")->genres ==
+               std::vector<std::string>{"Simulation", "RPG"},
+           "Catalog should expose canonical genres");
+    expect(catalog.findByName("Stardew Valley")->tags ==
+               std::vector<std::string>{"Farming", "Life Sim", "Multiplayer"},
+           "Catalog should expose discovery tags");
     expect(catalog.findByName("Hollow Knight").has_value(),
            "Catalog should contain the newly added game");
     expect(catalog.findByName("Hollow Knight")->supportedPlatforms ==
@@ -852,6 +858,23 @@ void testGameCatalogSearch() {
                catalog.storeProducts(Store::EpicGamesStore).front().offerType ==
                    OfferType::BaseGame,
            "Catalog should preserve the product comparison identity");
+    GameCatalogFilter simulation;
+    simulation.genre = "simulation";
+    expect(catalog.filterGames(simulation).size() == 1 &&
+               catalog.filterGames(simulation).front().id == "stardew-valley",
+           "Catalog should filter genres without case sensitivity");
+    GameCatalogFilter farmingOnAndroid;
+    farmingOnAndroid.platform = Platform::Android;
+    farmingOnAndroid.tag = "Farming";
+    farmingOnAndroid.store = Store::GooglePlay;
+    expect(catalog.filterGames(farmingOnAndroid).size() == 1,
+           "Catalog should combine Store, platform, and tag filters");
+    GameCatalogFilter switchTwo;
+    switchTwo.platform = Platform::NintendoSwitch2;
+    switchTwo.store = Store::NintendoEShop;
+    expect(catalog.filterGames(switchTwo).size() == 1 &&
+               catalog.filterGames(switchTwo).front().id == "hades",
+           "Catalog should distinguish Switch 2 platform availability");
 }
 
 void testGameCatalogValidation() {

@@ -4,6 +4,15 @@
     {
       "id": "stardew-valley",
       "title": "Stardew Valley",
+      "genres": [
+        "Simulation",
+        "RPG"
+      ],
+      "tags": [
+        "Farming",
+        "Life Sim",
+        "Multiplayer"
+      ],
       "platforms": [
         "Windows",
         "macOS",
@@ -54,6 +63,15 @@
     {
       "id": "terraria",
       "title": "Terraria",
+      "genres": [
+        "Action",
+        "Adventure"
+      ],
+      "tags": [
+        "Sandbox",
+        "Crafting",
+        "Multiplayer"
+      ],
       "platforms": [
         "Windows",
         "macOS",
@@ -81,6 +99,14 @@
     {
       "id": "hollow-knight",
       "title": "Hollow Knight",
+      "genres": [
+        "Action",
+        "Adventure"
+      ],
+      "tags": [
+        "Metroidvania",
+        "Souls-like"
+      ],
       "platforms": [
         "Windows",
         "macOS",
@@ -105,6 +131,14 @@
     {
       "id": "hades",
       "title": "Hades",
+      "genres": [
+        "Action",
+        "RPG"
+      ],
+      "tags": [
+        "Roguelike",
+        "Mythology"
+      ],
       "platforms": [
         "Windows",
         "macOS",
@@ -254,6 +288,52 @@
           "productUrl": "https://store.steampowered.com/app/1623730",
           "platforms": [
             "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "ogu-and-the-secret-forest",
+      "title": "오구와 비밀의 숲",
+      "platforms": [
+        "Windows",
+        "macOS"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1985960",
+          "productUrl": "https://store.steampowered.com/app/1985960",
+          "platforms": [
+            "Windows",
+            "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "project-zomboid",
+      "title": "Project Zomboid",
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "108600",
+          "productUrl": "https://store.steampowered.com/app/108600",
+          "platforms": [
+            "Windows",
+            "macOS",
+            "Linux"
           ],
           "region": "KR",
           "edition": "Standard",

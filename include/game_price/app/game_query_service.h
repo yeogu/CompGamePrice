@@ -43,6 +43,7 @@ public:
 
     std::vector<Game> listGames() const;
     std::vector<Game> searchGames(const std::string& query) const;
+    std::vector<Game> filterGames(const GameCatalogFilter& filter) const;
     std::optional<GamePriceReport> getGamePriceReport(
         const std::string& gameName,
         const std::optional<std::string>& observedSince = std::nullopt,

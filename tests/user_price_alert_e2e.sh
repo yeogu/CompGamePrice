@@ -78,7 +78,7 @@ verify_public_game_journey() {
     "${curl_binary}" -fsS \
         "${api_base}/api/games/hades/prices?platform=Nintendo%20Switch%202" \
         -o "${body}"
-    grep -q '"game":{"id":"hades"' "${body}"
+    grep -q '"id":"hades"' "${body}"
     grep -q '"store":"Nintendo eShop"' "${body}"
     grep -q '"minorAmount":27000' "${body}"
     grep -q '"offerType":"BaseGame"' "${body}"

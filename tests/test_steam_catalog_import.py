@@ -32,6 +32,8 @@ class SteamCatalogImportTest(unittest.TestCase):
             game = steam_catalog_import.import_game(path, self.raw, "413150", False)
             self.assertEqual(game["id"], "stardew-valley")
             self.assertEqual(game["platforms"], ["Windows", "macOS", "Linux"])
+            self.assertEqual(game["genres"], ["Indie", "Simulation", "RPG"])
+            self.assertEqual(game["tags"], ["Multiplayer", "Controller"])
             self.assertEqual(game["products"][0]["offerType"], "BaseGame")
             self.assertEqual(path.read_bytes(), before)
 

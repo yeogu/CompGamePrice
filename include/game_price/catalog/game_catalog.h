@@ -22,6 +22,14 @@ struct CatalogStoreProduct {
     std::vector<PlatformCompatibility> compatibility;
 };
 
+struct GameCatalogFilter {
+    std::string query;
+    std::optional<Store> store;
+    std::optional<Platform> platform;
+    std::string genre;
+    std::string tag;
+};
+
 class GameCatalog {
 public:
     explicit GameCatalog(const std::string& dataPath);
@@ -30,6 +38,7 @@ public:
     std::optional<Game> findByName(const std::string& name) const;
     std::optional<Game> findById(const std::string& id) const;
     std::vector<Game> searchByName(const std::string& query) const;
+    std::vector<Game> filterGames(const GameCatalogFilter& filter) const;
     std::vector<Game> allGames() const;
     std::vector<CatalogStoreProduct> storeProducts(Store store) const;
     std::optional<CatalogStoreProduct> findStoreProduct(

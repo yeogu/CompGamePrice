@@ -16,6 +16,51 @@ class CatalogImportError(ValueError):
     pass
 
 
+GENRE_MAPPING = {
+    "action": "Action",
+    "액션": "Action",
+    "adventure": "Adventure",
+    "어드벤처": "Adventure",
+    "rpg": "RPG",
+    "롤 플레잉": "RPG",
+    "simulation": "Simulation",
+    "시뮬레이션": "Simulation",
+    "strategy": "Strategy",
+    "전략": "Strategy",
+    "sports": "Sports",
+    "스포츠": "Sports",
+    "racing": "Racing",
+    "레이싱": "Racing",
+    "casual": "Casual",
+    "캐주얼": "Casual",
+    "indie": "Indie",
+    "인디": "Indie",
+    "massively multiplayer": "MMO",
+    "대규모 멀티플레이어": "MMO",
+}
+
+CATEGORY_TAG_MAPPING = {
+    "multi-player": "Multiplayer",
+    "멀티플레이어": "Multiplayer",
+    "co-op": "Co-op",
+    "협동": "Co-op",
+    "cross-platform multiplayer": "Cross-Platform",
+    "플랫폼간 멀티플레이어": "Cross-Platform",
+    "full controller support": "Controller",
+    "컨트롤러 완벽 지원": "Controller",
+}
+
+
+def mapped_descriptions(entries, mapping: dict[str, str]) -> list[str]:
+    result = []
+    for entry in entries if isinstance(entries, list) else []:
+        description = entry.get("description") if isinstance(entry, dict) else None
+        mapped = mapping.get(description.casefold()) if isinstance(description, str) else None
+        if mapped and mapped not in result:
+            result.append(mapped)
+    return result
+
+
 def canonical_id(title: str) -> str:
     value = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
     if not value:
@@ -65,6 +110,8 @@ def catalog_game(raw: bytes, app_id: str, game_id: str | None = None) -> dict:
         "id": resolved_game_id,
         "title": title.strip(),
         "platforms": platforms,
+        "genres": mapped_descriptions(data.get("genres"), GENRE_MAPPING),
+        "tags": mapped_descriptions(data.get("categories"), CATEGORY_TAG_MAPPING),
         "products": [
             {
                 "store": "Steam",

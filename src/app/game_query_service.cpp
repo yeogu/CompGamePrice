@@ -18,6 +18,11 @@ std::vector<Game> GameQueryService::searchGames(const std::string& query) const 
     return catalog_.searchByName(query);
 }
 
+std::vector<Game> GameQueryService::filterGames(
+    const GameCatalogFilter& filter) const {
+    return catalog_.filterGames(filter);
+}
+
 std::optional<GamePriceReport> GameQueryService::getGamePriceReport(
     const std::string& gameName,
     const std::optional<std::string>& observedSince,

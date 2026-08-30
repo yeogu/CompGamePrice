@@ -17,6 +17,7 @@
 #include <filesystem>
 #include <fstream>
 #include <regex>
+#include <set>
 #include <sstream>
 #include <iterator>
 #include <mutex>
@@ -45,6 +46,14 @@ Json::Value gameJson(const Game& game) {
     json["platforms"] = Json::arrayValue;
     for (const auto platform : game.supportedPlatforms) {
         json["platforms"].append(toString(platform));
+    }
+    json["genres"] = Json::arrayValue;
+    for (const auto& genre : game.genres) {
+        json["genres"].append(genre);
+    }
+    json["tags"] = Json::arrayValue;
+    for (const auto& tag : game.tags) {
+        json["tags"].append(tag);
     }
     return json;
 }
@@ -487,6 +496,59 @@ std::optional<OAuthProfile> oauthProfile(OAuthProvider provider,const Json::Valu
     return profile;
 }
 
+std::optional<Platform> platformFromParameter(const std::string& value) {
+    if (value.empty()) {
+        return std::nullopt;
+    }
+    if (value == "Windows") {
+        return Platform::Windows;
+    }
+    if (value == "macOS") {
+        return Platform::MacOS;
+    }
+    if (value == "Linux") {
+        return Platform::Linux;
+    }
+    if (value == "Android") {
+        return Platform::Android;
+    }
+    if (value == "iOS") {
+        return Platform::IOS;
+    }
+    if (value == "iPadOS") {
+        return Platform::IPadOS;
+    }
+    if (value == "Nintendo Switch") {
+        return Platform::NintendoSwitch;
+    }
+    if (value == "Nintendo Switch 2") {
+        return Platform::NintendoSwitch2;
+    }
+    throw std::invalid_argument("unsupported platform");
+}
+
+std::optional<Store> storeFromParameter(const std::string& value) {
+    if (value.empty()) {
+        return std::nullopt;
+    }
+    if (value == "Steam") {
+        return Store::Steam;
+    }
+    if (value == "Epic Games Store") {
+        return Store::EpicGamesStore;
+    }
+    if (value == "Nintendo eShop") {
+        return Store::NintendoEShop;
+    }
+    if (value == "Google Play") {
+        return Store::GooglePlay;
+    }
+    if (value == "Apple App Store") {
+        return Store::AppleAppStore;
+    }
+    throw std::invalid_argument("unsupported store");
+}
+
 PriceComparisonCriteria comparisonCriteria(
     const drogon::HttpRequestPtr& request) {
     PriceComparisonCriteria criteria;
@@ -523,16 +585,9 @@ PriceComparisonCriteria comparisonCriteria(
     if (!currency.empty() && currency != "KRW") {
         throw std::invalid_argument("currency must be KRW");
     }
-    if (!platform.empty()) {
-        if (platform == "Windows") criteria.platform = Platform::Windows;
-        else if (platform == "macOS") criteria.platform = Platform::MacOS;
-        else if (platform == "Linux") criteria.platform = Platform::Linux;
-        else if (platform == "Android") criteria.platform = Platform::Android;
-        else if (platform == "iOS") criteria.platform = Platform::IOS;
-        else if (platform == "iPadOS") criteria.platform = Platform::IPadOS;
-        else if (platform == "Nintendo Switch") criteria.platform = Platform::NintendoSwitch;
-        else if (platform == "Nintendo Switch 2") criteria.platform = Platform::NintendoSwitch2;
-        else throw std::invalid_argument("unsupported platform");
+    const auto parsedPlatform = platformFromParameter(platform);
+    if (parsedPlatform) {
+        criteria.platform = *parsedPlatform;
     }
     return criteria;
 }
@@ -1202,14 +1257,75 @@ int main() {
             [&queryService](const drogon::HttpRequestPtr& request,
                             std::function<void(const HttpResponsePtr&)>&& callback) {
                 const auto query = request->getParameter("query");
-                if(query.size()>100){callback(jsonError(drogon::k400BadRequest,"query must contain at most 100 characters"));return;}
+                const auto store = request->getParameter("store");
+                const auto platform = request->getParameter("platform");
+                const auto genre = request->getParameter("genre");
+                const auto tag = request->getParameter("tag");
+                if (query.size() > 100 || genre.size() > 50 || tag.size() > 50) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "query, genre, or tag is too long"));
+                    return;
+                }
+                GameCatalogFilter filter;
+                try {
+                    filter.query = query;
+                    filter.store = storeFromParameter(store);
+                    filter.platform = platformFromParameter(platform);
+                    filter.genre = genre;
+                    filter.tag = tag;
+                } catch (const std::invalid_argument& error) {
+                    callback(jsonError(drogon::k400BadRequest, error.what()));
+                    return;
+                }
                 Json::Value response;
                 response["games"] = Json::arrayValue;
-                const auto games = query.empty()
-                    ? queryService.listGames()
-                    : queryService.searchGames(query);
+                const auto games = queryService.filterGames(filter);
                 for (const auto& game : games) {
                     response["games"].append(gameJson(game));
+                }
+                callback(jsonResponse(response));
+            },
+            {drogon::Get});
+
+        drogon::app().registerHandler(
+            "/api/catalog/filters",
+            [&catalog](const drogon::HttpRequestPtr&,
+                       std::function<void(const HttpResponsePtr&)>&& callback) {
+                const std::vector<Store> supportedStores{
+                    Store::Steam,
+                    Store::EpicGamesStore,
+                    Store::NintendoEShop,
+                    Store::GooglePlay,
+                    Store::AppleAppStore};
+                std::set<std::string> platforms;
+                std::set<std::string> genres;
+                std::set<std::string> tags;
+                Json::Value response;
+                response["stores"] = Json::arrayValue;
+                for (const auto store : supportedStores) {
+                    if (!catalog.storeProducts(store).empty()) {
+                        response["stores"].append(toString(store));
+                    }
+                }
+                for (const auto& game : catalog.allGames()) {
+                    for (const auto platform : game.supportedPlatforms) {
+                        platforms.insert(toString(platform));
+                    }
+                    genres.insert(game.genres.begin(), game.genres.end());
+                    tags.insert(game.tags.begin(), game.tags.end());
+                }
+                response["platforms"] = Json::arrayValue;
+                response["genres"] = Json::arrayValue;
+                response["tags"] = Json::arrayValue;
+                for (const auto& platform : platforms) {
+                    response["platforms"].append(platform);
+                }
+                for (const auto& genre : genres) {
+                    response["genres"].append(genre);
+                }
+                for (const auto& tag : tags) {
+                    response["tags"].append(tag);
                 }
                 callback(jsonResponse(response));
             },

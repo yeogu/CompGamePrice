@@ -5,6 +5,8 @@
       "id": "stardew-valley",
       "title": "Stardew Valley",
       "platforms": ["Windows", "macOS", "Linux"],
+      "genres": ["Simulation", "RPG"],
+      "tags": ["Farming", "Life Sim"],
       "products": [
         { "store": "Steam", "productId": "413150", "productUrl": "https://store.steampowered.com/app/413150", "platforms": ["Windows", "macOS", "Linux"], "region": "KR", "edition": "Standard", "offerType": "BaseGame" }
       ]
