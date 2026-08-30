@@ -54,7 +54,7 @@ class GooglePlayCatalogImportTest(unittest.TestCase):
     def test_rejects_matching_title_with_different_developer(self):
         self.catalog["games"][0]["developers"] = ["Different Studio"]
         metadata = catalog_import.verified_product(self.raw, "com.chucklefish.stardewvalley")
-        decision = catalog_import.match_decision(self.catalog["games"][0], metadata)
+        decision = catalog_import.catalog_matcher.evaluate(self.catalog["games"][0], metadata)
         self.assertEqual(decision["status"], "Rejected")
         self.assertIn("Developer differs from the canonical game", decision["reasons"])
 
@@ -84,7 +84,7 @@ class GooglePlayCatalogImportTest(unittest.TestCase):
         metadata = catalog_import.verified_product(self.raw, "com.chucklefish.stardewvalley")
         metadata["title"] = "Stardew Valley Guide"
         metadata["excludedWords"] = ["guide"]
-        decision = catalog_import.match_decision(self.catalog["games"][0], metadata)
+        decision = catalog_import.catalog_matcher.evaluate(self.catalog["games"][0], metadata)
         self.assertEqual(decision["status"], "Rejected")
 
     def test_apply_preserves_backup(self):

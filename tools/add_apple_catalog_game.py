@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Preview or attach a verified Google Play game to a canonical catalog game."""
+"""Preview or attach a verified Apple App Store game to a canonical game."""
 
 from __future__ import annotations
 
@@ -8,51 +8,57 @@ import json
 from pathlib import Path
 import re
 import shutil
+from urllib.request import urlopen
 
-import collect_google_play_snapshot as google_play
-import collect_steam_snapshot as network_support
 import catalog_matcher
+import collect_steam_snapshot as network_support
 
 
 class CatalogImportError(ValueError):
     pass
 
 
-def verified_product(raw: bytes, package_name: str) -> dict:
-    product = google_play.product_document(raw)
-    title = product.get("name")
-    category = product.get("applicationCategory")
-    operating_system = product.get("operatingSystem")
+def apple_product(raw: bytes, track_id: str) -> dict:
+    document = json.loads(raw)
+    results = document.get("results", [])
+    if document.get("resultCount") != 1 or len(results) != 1:
+        raise CatalogImportError("Apple product was not found")
+    product = results[0]
+    if str(product.get("trackId")) != track_id:
+        raise CatalogImportError("Apple response Track ID mismatch")
+    title = product.get("trackName")
     if not isinstance(title, str) or not title.strip():
-        raise CatalogImportError("Google Play product has no title")
-    offers = product.get("offers")
-    offer = offers[0] if isinstance(offers, list) and offers else offers
-    offer = offer if isinstance(offer, dict) else {}
-    currency = offer.get("priceCurrency", "")
-    try:
-        price_minor = int(offer.get("price", -1))
-    except (TypeError, ValueError):
-        price_minor = -1
-    author = product.get("author")
-    developer = author.get("name", "") if isinstance(author, dict) else ""
+        raise CatalogImportError("Apple product has no title")
+    price = product.get("price")
+    price_minor = int(price) if isinstance(price, (int, float)) and int(price) == price else -1
+    supported = product.get("supportedDevices", [])
+    platforms = []
+    if any(str(value).startswith("iPhone") for value in supported):
+        platforms.append("iOS")
+    if any(str(value).startswith("iPad") for value in supported):
+        platforms.append("iPadOS")
+    genres = {str(value).casefold() for value in product.get("genres", [])}
+    primary_genre = str(product.get("primaryGenreName", "")).casefold()
+    is_game = primary_genre in {"games", "게임"} or bool(genres & {"games", "게임"})
     return {
         "title": title.strip(),
-        "developer": developer,
+        "developer": str(product.get("sellerName") or product.get("artistName") or ""),
         "priceMinor": price_minor,
-        "currency": currency,
-        "isGame": isinstance(category, str) and category.startswith("GAME"),
-        "supportsTargetPlatform": operating_system == "Android",
+        "currency": str(product.get("currency", "")),
+        "isGame": is_game,
+        "supportsTargetPlatform": bool(platforms),
         "excludedWords": sorted(
             catalog_matcher.normalized_words(title) &
             catalog_matcher.EXCLUDED_TITLE_WORDS
         ),
+        "platforms": platforms,
     }
 
 
 def updated_catalog(
     catalog: dict,
     game_id: str,
-    package_name: str,
+    track_id: str,
     metadata: dict,
     acknowledge_review: bool = False,
 ) -> tuple[dict, dict]:
@@ -62,30 +68,33 @@ def updated_catalog(
     game = next((item for item in games if item.get("id") == game_id), None)
     if game is None:
         raise CatalogImportError("Canonical game ID does not exist")
+    for catalog_game in games:
+        for existing in catalog_game.get("products", []):
+            if existing.get("store") == "AppleAppStore" and existing.get("productId") == track_id:
+                raise CatalogImportError("Apple Track ID already exists")
     decision = catalog_matcher.evaluate(game, metadata)
     product = {
-        "store": "GooglePlay",
-        "productId": package_name,
-        "productUrl": f"https://play.google.com/store/apps/details?id={package_name}",
-        "platforms": ["Android"],
+        "store": "AppleAppStore",
+        "productId": track_id,
+        "productUrl": f"https://apps.apple.com/app/id{track_id}",
+        "platforms": metadata["platforms"],
         "region": "KR",
         "edition": "Standard",
         "offerType": "BaseGame",
     }
+    preview = {
+        **game,
+        "matchedProduct": {**product, **metadata},
+        "matchDecision": decision,
+    }
     if decision["status"] == "Rejected" or (
         decision["status"] == "NeedsReview" and not acknowledge_review
     ):
-        return catalog, {
-            **game,
-            "matchedProduct": {**product, **metadata},
-            "matchDecision": decision,
-        }
-    for catalog_game in games:
-        for product in catalog_game.get("products", []):
-            if product.get("store") == "GooglePlay" and product.get("productId") == package_name:
-                raise CatalogImportError("Google Play package already exists")
+        return catalog, preview
     updated_game = {**game}
-    updated_game["platforms"] = list(dict.fromkeys([*game.get("platforms", []), "Android"]))
+    updated_game["platforms"] = list(
+        dict.fromkeys([*game.get("platforms", []), *metadata["platforms"]])
+    )
     updated_game["products"] = [*game.get("products", []), product]
     updated_games = [updated_game if item is game else item for item in games]
     return {
@@ -101,19 +110,19 @@ def updated_catalog(
 def import_game(
     catalog_path: Path,
     raw: bytes,
-    package_name: str,
+    track_id: str,
     game_id: str,
     apply: bool,
     acknowledge_review: bool = False,
 ) -> dict:
-    if not re.fullmatch(r"[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+", package_name):
-        raise CatalogImportError("Invalid Google Play package name")
+    if not track_id.isdigit():
+        raise CatalogImportError("Apple Track ID must be numeric")
     catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
-    metadata = verified_product(raw, package_name)
+    metadata = apple_product(raw, track_id)
     updated, game = updated_catalog(
         catalog,
         game_id,
-        package_name,
+        track_id,
         metadata,
         acknowledge_review,
     )
@@ -132,10 +141,20 @@ def import_game(
     return game
 
 
+def fetch(track_id: str, timeout: float) -> bytes:
+    url = f"https://itunes.apple.com/lookup?id={track_id}&country=kr&entity=software"
+    with urlopen(
+        url,
+        timeout=timeout,
+        context=network_support.tls_context(),
+    ) as response:
+        return response.read()
+
+
 def main() -> int:
     root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--package-name", required=True)
+    parser.add_argument("--track-id", required=True)
     parser.add_argument("--game-id", required=True)
     parser.add_argument("--catalog", default=root / "data/game_catalog.json", type=Path)
     parser.add_argument("--input", type=Path)
@@ -144,11 +163,11 @@ def main() -> int:
     parser.add_argument("--timeout", default=15.0, type=float)
     arguments = parser.parse_args()
     try:
-        raw = arguments.input.read_bytes() if arguments.input else google_play.fetch(arguments.package_name, arguments.timeout)
+        raw = arguments.input.read_bytes() if arguments.input else fetch(arguments.track_id, arguments.timeout)
         game = import_game(
             arguments.catalog,
             raw,
-            arguments.package_name,
+            arguments.track_id,
             arguments.game_id,
             arguments.apply,
             arguments.acknowledge_review,
