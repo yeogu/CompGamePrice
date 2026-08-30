@@ -193,6 +193,12 @@ bool validCanonicalGameId(const std::string& value) {
     return value.empty() || std::regex_match(value, pattern);
 }
 
+bool validGooglePlayPackage(const std::string& value) {
+    static const std::regex pattern{
+        "[A-Za-z0-9_]+(?:\\.[A-Za-z0-9_]+)+"};
+    return std::regex_match(value, pattern);
+}
+
 std::string shellQuoted(const std::string& value) {
     std::string result{"'"};
     for (const auto character : value) {
@@ -224,26 +230,9 @@ std::string catalogImportError(const std::string& output) {
     return message;
 }
 
-Json::Value runCatalogImport(
-    const std::string& appId,
-    const std::string& gameId,
-    bool apply) {
-    std::lock_guard<std::mutex> toolLock(catalogToolMutex());
-    const auto temporary = std::filesystem::temp_directory_path() /
-        ("compgameprice-catalog-" + appId + ".json");
-    const auto script = std::filesystem::path(PROJECT_SOURCE_DIR) /
-        "tools/add_steam_catalog_game.py";
-    const auto catalog = std::filesystem::path(SAMPLE_DATA_DIR) /
-        "game_catalog.json";
-    std::string command = "python3 " + shellQuoted(script.string()) +
-        " --app-id " + appId +
-        " --catalog " + shellQuoted(catalog.string());
-    if (!gameId.empty()) {
-        command += " --game-id " + gameId;
-    }
-    if (apply) {
-        command += " --apply";
-    }
+Json::Value executeCatalogTool(
+    std::string command,
+    const std::filesystem::path& temporary) {
     command += " > " + shellQuoted(temporary.string());
     command += " 2>&1";
     const auto exitCode = std::system(command.c_str());
@@ -275,15 +264,61 @@ Json::Value runCatalogImport(
     return result;
 }
 
+Json::Value runCatalogImport(
+    const std::string& appId,
+    const std::string& gameId,
+    bool apply) {
+    std::lock_guard<std::mutex> toolLock(catalogToolMutex());
+    const auto temporary = std::filesystem::temp_directory_path() /
+        ("compgameprice-catalog-" + appId + ".json");
+    const auto script = std::filesystem::path(PROJECT_SOURCE_DIR) /
+        "tools/add_steam_catalog_game.py";
+    const auto catalog = std::filesystem::path(SAMPLE_DATA_DIR) /
+        "game_catalog.json";
+    std::string command = "python3 " + shellQuoted(script.string()) +
+        " --app-id " + appId +
+        " --catalog " + shellQuoted(catalog.string());
+    if (!gameId.empty()) {
+        command += " --game-id " + gameId;
+    }
+    if (apply) {
+        command += " --apply";
+    }
+    return executeCatalogTool(std::move(command), temporary);
+}
+
+Json::Value runGooglePlayCatalogImport(
+    const std::string& packageName,
+    const std::string& gameId,
+    bool apply) {
+    std::lock_guard<std::mutex> toolLock(catalogToolMutex());
+    const auto temporary = std::filesystem::temp_directory_path() /
+        "compgameprice-google-play-catalog.json";
+    const auto script = std::filesystem::path(PROJECT_SOURCE_DIR) /
+        "tools/add_google_play_catalog_game.py";
+    const auto catalog = std::filesystem::path(SAMPLE_DATA_DIR) /
+        "game_catalog.json";
+    std::string command = "python3 " + shellQuoted(script.string()) +
+        " --package-name " + shellQuoted(packageName) +
+        " --game-id " + shellQuoted(gameId) +
+        " --catalog " + shellQuoted(catalog.string());
+    if (apply) {
+        command += " --apply";
+    }
+    return executeCatalogTool(std::move(command), temporary);
+}
+
 Json::Value runStoreSearch(const std::string& store, const std::string& query) {
     std::lock_guard<std::mutex> toolLock(catalogToolMutex());
-    if (store != "Steam") {
+    if (store != "Steam" && store != "Google Play") {
         throw std::invalid_argument("store is not supported yet");
     }
     const auto temporary = std::filesystem::temp_directory_path() /
         "compgameprice-store-search.json";
     const auto script = std::filesystem::path(PROJECT_SOURCE_DIR) /
-        "tools/search_steam_catalog.py";
+        (store == "Steam"
+             ? "tools/search_steam_catalog.py"
+             : "tools/search_google_play_catalog.py");
     const auto command = "python3 " + shellQuoted(script.string()) +
         " --query " + shellQuoted(query) +
         " > " + shellQuoted(temporary.string()) + " 2>&1";
@@ -303,12 +338,13 @@ Json::Value runStoreSearch(const std::string& store, const std::string& query) {
 
 class CatalogCollectionJob {
 public:
-    bool start() {
+    bool start(const std::string& store) {
         std::lock_guard<std::mutex> lock(mutex_);
         if (status_ == "RUNNING") {
             return false;
         }
         ++id_;
+        store_ = store;
         status_ = "RUNNING";
         error_.clear();
         std::thread([this]() { run(); }).detach();
@@ -320,6 +356,7 @@ public:
         Json::Value result;
         result["id"] = Json::UInt64(id_);
         result["status"] = status_;
+        result["store"] = store_;
         if (!error_.empty()) {
             result["error"] = error_;
         }
@@ -329,8 +366,11 @@ public:
 private:
     void run() {
         const auto project = std::filesystem::path(PROJECT_SOURCE_DIR);
+        const auto pipeline = store_ == "Google Play"
+            ? "tools/run_google_play_pipeline.py"
+            : "tools/run_steam_pipeline.py";
         const auto command = "python3 " + shellQuoted(
-            (project / "tools/run_steam_pipeline.py").string()) +
+            (project / pipeline).string()) +
             " --tracker " + shellQuoted(
                 (project / "build/game_price_tracker").string()) +
             " --catalog " + shellQuoted(
@@ -341,13 +381,14 @@ private:
         std::lock_guard<std::mutex> lock(mutex_);
         status_ = exitCode == 0 ? "SUCCEEDED" : "FAILED";
         if (exitCode != 0) {
-            error_ = "Steam collection pipeline failed";
+            error_ = store_ + " collection pipeline failed";
         }
     }
 
     mutable std::mutex mutex_;
     std::uint64_t id_{};
     std::string status_{"IDLE"};
+    std::string store_{"Steam"};
     std::string error_;
 };
 
@@ -1107,6 +1148,57 @@ int main() {
             },
             {drogon::Get});
         drogon::app().registerHandler(
+            "/api/admin/catalog/google-play",
+            [&catalog](const drogon::HttpRequestPtr& request,
+                       std::function<void(const HttpResponsePtr&)>&& callback) {
+                if (!catalogAdminEnabled() || !isLoopbackRequest(request)) {
+                    callback(jsonError(
+                        drogon::k403Forbidden,
+                        "catalog admin is disabled"));
+                    return;
+                }
+                const auto body = request->getJsonObject();
+                if (!body || !(*body)["packageName"].isString() ||
+                    !(*body)["gameId"].isString()) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "packageName and gameId are required"));
+                    return;
+                }
+                const auto packageName = (*body)["packageName"].asString();
+                const auto gameId = (*body)["gameId"].asString();
+                if (!validGooglePlayPackage(packageName) || gameId.empty() ||
+                    !validCanonicalGameId(gameId)) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "invalid packageName or gameId"));
+                    return;
+                }
+                const auto apply = (*body)["apply"].isBool() &&
+                    (*body)["apply"].asBool();
+                try {
+                    Json::Value response;
+                    response["game"] = runGooglePlayCatalogImport(
+                        packageName,
+                        gameId,
+                        apply);
+                    response["applied"] = apply;
+                    if (apply) {
+                        catalog.reload(
+                            std::string(SAMPLE_DATA_DIR) + "/game_catalog.json");
+                    }
+                    response["requiresApiRestart"] = false;
+                    callback(jsonResponse(response));
+                } catch (const std::invalid_argument& error) {
+                    callback(jsonError(drogon::k400BadRequest, error.what()));
+                } catch (const std::exception& error) {
+                    callback(jsonError(
+                        drogon::k500InternalServerError,
+                        error.what()));
+                }
+            },
+            {drogon::Post});
+        drogon::app().registerHandler(
             "/api/admin/catalog/collection",
             [&catalogCollectionJob](
                 const drogon::HttpRequestPtr& request,
@@ -1131,7 +1223,17 @@ int main() {
                         "catalog admin is disabled"));
                     return;
                 }
-                if (!catalogCollectionJob.start()) {
+                const auto body = request->getJsonObject();
+                const auto store = body && (*body)["store"].isString()
+                    ? (*body)["store"].asString()
+                    : std::string{"Steam"};
+                if (store != "Steam" && store != "Google Play") {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "unsupported collection store"));
+                    return;
+                }
+                if (!catalogCollectionJob.start(store)) {
                     callback(jsonError(
                         drogon::k409Conflict,
                         "collection is already running"));
