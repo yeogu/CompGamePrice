@@ -100,6 +100,29 @@ class GooglePlayCatalogImportTest(unittest.TestCase):
             )
             self.assertTrue(path.with_suffix(".json.bak").exists())
 
+    def test_rejects_package_already_connected_to_another_game(self):
+        metadata = catalog_import.verified_product(
+            self.raw,
+            "com.chucklefish.stardewvalley",
+        )
+        self.catalog["games"][0]["products"] = [{
+            "store": "GooglePlay",
+            "productId": "com.chucklefish.stardewvalley",
+        }]
+        self.catalog["games"].append({
+            "id": "different-game",
+            "title": "Different Game",
+            "platforms": ["Android"],
+            "products": [],
+        })
+        with self.assertRaisesRegex(ValueError, "already belongs"):
+            catalog_import.updated_catalog(
+                self.catalog,
+                "different-game",
+                "com.chucklefish.stardewvalley",
+                metadata,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

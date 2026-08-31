@@ -63,8 +63,14 @@ class SteamCatalogImportTest(unittest.TestCase):
         game = steam_catalog_import.catalog_game(self.raw, "413150")
         catalog = self.catalog()
         catalog["games"].append(copy.deepcopy(game))
-        with self.assertRaisesRegex(ValueError, "already exists"):
-            steam_catalog_import.updated_catalog(catalog, game)
+        self.assertEqual(
+            steam_catalog_import.updated_catalog(catalog, game),
+            catalog,
+        )
+        conflicting = copy.deepcopy(catalog)
+        conflicting["games"][0]["id"] = "different-game"
+        with self.assertRaisesRegex(ValueError, "already belongs"):
+            steam_catalog_import.updated_catalog(conflicting, game)
 
 
 if __name__ == "__main__":

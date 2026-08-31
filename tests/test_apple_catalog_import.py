@@ -57,16 +57,22 @@ class AppleCatalogImportTest(unittest.TestCase):
             )
             self.assertEqual(decision["status"], "Rejected")
 
-    def test_rejects_developer_mismatch_and_duplicate_track_id(self):
+    def test_rejects_developer_mismatch_and_cross_game_track_id(self):
         metadata = catalog_import.apple_product(self.raw, "1406710800")
         metadata["developer"] = "Different Studio"
         decision = catalog_import.catalog_matcher.evaluate(self.catalog["games"][0], metadata)
         self.assertEqual(decision["status"], "Rejected")
         self.catalog["games"][0]["products"] = [{"store": "AppleAppStore", "productId": "1406710800"}]
-        with self.assertRaisesRegex(ValueError, "already exists"):
+        self.catalog["games"].append({
+            "id": "different-game",
+            "title": "Different Game",
+            "platforms": ["iOS"],
+            "products": [],
+        })
+        with self.assertRaisesRegex(ValueError, "already belongs"):
             catalog_import.updated_catalog(
                 self.catalog,
-                "stardew-valley",
+                "different-game",
                 "1406710800",
                 catalog_import.apple_product(self.raw, "1406710800"),
             )

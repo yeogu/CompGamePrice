@@ -30,6 +30,10 @@ class CatalogSyncAlreadyRunning(RuntimeError):
     pass
 
 
+class CatalogPersistenceError(RuntimeError):
+    pass
+
+
 @contextmanager
 def exclusive_sync_lock(path: Path):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -708,7 +712,22 @@ def synchronize_unlocked(
                         report["review"] += 1
                         mark_discovery_processed(connection, app_id)
                         continue
-                    catalog = catalog_import.updated_catalog(catalog, game)
+                    def apply_game(current: dict) -> tuple[dict, dict]:
+                        return catalog_import.updated_catalog(current, game), game
+                    connection.commit()
+                    try:
+                        catalog_import.catalog_storage.update_catalog(
+                            catalog_path,
+                            apply_game,
+                            store="Steam",
+                            product_id=app_id,
+                            game_id=game["id"],
+                            database_path=database_path,
+                            actor="steam-catalog-sync",
+                        )
+                    except Exception as error:
+                        raise CatalogPersistenceError(str(error)) from error
+                    catalog = catalog_import.load_catalog(catalog_path)
                     record_seen(connection, app_id, "ACCEPTED", checked_at)
                     report["accepted"] += 1
                     report["acceptedAppIds"].append(app_id)
@@ -726,6 +745,8 @@ def synchronize_unlocked(
                         record_seen(connection, app_id, "REVIEW", checked_at)
                         report["review"] += 1
                     mark_discovery_processed(connection, app_id)
+                except CatalogPersistenceError:
+                    raise
                 except Exception:
                     report["failed"] += 1
                     consecutive_failures += 1
@@ -733,8 +754,6 @@ def synchronize_unlocked(
                         break
                 else:
                     mark_discovery_processed(connection, app_id)
-            if report["accepted"] > 0:
-                catalog_import.write_catalog(catalog_path, catalog)
             report["status"] = "SUCCEEDED"
             finish_sync_run(connection, run_id, "SUCCEEDED", report)
             update_state(connection, "SUCCEEDED", started_at, report)

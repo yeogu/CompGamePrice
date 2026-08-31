@@ -70,6 +70,7 @@ def main() -> int:
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--request-delay", default=1.0, type=float)
     parser.add_argument("--timeout", default=15.0, type=float)
+    parser.add_argument("--database", type=Path)
     arguments = parser.parse_args()
 
     try:
@@ -96,7 +97,20 @@ def main() -> int:
                 "Batch contains rejected products; catalog was not changed"
             )
         if arguments.apply:
-            catalog_import.write_catalog(arguments.catalog, updated)
+            def apply_batch(current: dict) -> tuple[dict, list[dict]]:
+                latest = current
+                for game in accepted:
+                    latest = catalog_import.updated_catalog(latest, game)
+                return latest, accepted
+            catalog_import.catalog_storage.update_catalog(
+                arguments.catalog,
+                apply_batch,
+                store="Steam",
+                product_id="BATCH",
+                game_id="multiple",
+                database_path=arguments.database,
+                actor="steam-catalog-batch",
+            )
     except (ValueError, OSError, json.JSONDecodeError) as error:
         parser.error(str(error))
 

@@ -142,11 +142,11 @@ class SteamCatalogSyncTest(unittest.TestCase):
             )
             apps = [{"appid": 10, "name": "First Game"}]
             with mock.patch.object(
-                sync.catalog_import,
-                "write_catalog",
+                sync.catalog_import.catalog_storage,
+                "update_catalog",
                 side_effect=OSError("disk full"),
             ):
-                with self.assertRaisesRegex(OSError, "disk full"):
+                with self.assertRaisesRegex(sync.CatalogPersistenceError, "disk full"):
                     sync.synchronize(
                         catalog,
                         database,

@@ -7,11 +7,10 @@ import argparse
 import json
 from pathlib import Path
 import re
-import shutil
 
 import collect_google_play_snapshot as google_play
-import collect_steam_snapshot as network_support
 import catalog_matcher
+import catalog_storage
 
 
 class CatalogImportError(ValueError):
@@ -72,18 +71,24 @@ def updated_catalog(
         "edition": "Standard",
         "offerType": "BaseGame",
     }
+    preview = {
+        **game,
+        "matchedProduct": {**product, **metadata},
+        "matchDecision": decision,
+    }
+    for catalog_game in games:
+        for existing in catalog_game.get("products", []):
+            if existing.get("store") != "GooglePlay" or existing.get("productId") != package_name:
+                continue
+            if catalog_game.get("id") == game_id:
+                return catalog, preview
+            raise CatalogImportError(
+                f"Google Play package already belongs to {catalog_game.get('id')}"
+            )
     if decision["status"] == "Rejected" or (
         decision["status"] == "NeedsReview" and not acknowledge_review
     ):
-        return catalog, {
-            **game,
-            "matchedProduct": {**product, **metadata},
-            "matchDecision": decision,
-        }
-    for catalog_game in games:
-        for product in catalog_game.get("products", []):
-            if product.get("store") == "GooglePlay" and product.get("productId") == package_name:
-                raise CatalogImportError("Google Play package already exists")
+        return catalog, preview
     updated_game = {**game}
     updated_game["platforms"] = list(dict.fromkeys([*game.get("platforms", []), "Android"]))
     updated_game["products"] = [*game.get("products", []), product]
@@ -105,30 +110,44 @@ def import_game(
     game_id: str,
     apply: bool,
     acknowledge_review: bool = False,
+    database_path: Path | None = None,
 ) -> dict:
     if not re.fullmatch(r"[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+", package_name):
         raise CatalogImportError("Invalid Google Play package name")
-    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
     metadata = verified_product(raw, package_name)
-    updated, game = updated_catalog(
+    def update(current: dict) -> tuple[dict, dict]:
+        updated, game = updated_catalog(
+            current,
+            game_id,
+            package_name,
+            metadata,
+            acknowledge_review,
+        )
+        decision = game["matchDecision"]["status"]
+        if decision == "Rejected":
+            raise CatalogImportError("Rejected candidate cannot be imported")
+        if decision == "NeedsReview" and not acknowledge_review:
+            raise CatalogImportError("NeedsReview requires explicit acknowledgement")
+        return updated, game
+    if apply:
+        game, _ = catalog_storage.update_catalog(
+            catalog_path,
+            update,
+            store="GooglePlay",
+            product_id=package_name,
+            game_id=game_id,
+            database_path=database_path,
+        )
+        return game
+    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    catalog_storage.validate_catalog(catalog)
+    _, game = updated_catalog(
         catalog,
         game_id,
         package_name,
         metadata,
         acknowledge_review,
     )
-    decision = game["matchDecision"]["status"]
-    if apply and decision == "Rejected":
-        raise CatalogImportError("Rejected candidate cannot be imported")
-    if apply and decision == "NeedsReview" and not acknowledge_review:
-        raise CatalogImportError("NeedsReview requires explicit acknowledgement")
-    if apply:
-        backup = catalog_path.with_suffix(catalog_path.suffix + ".bak")
-        shutil.copy2(catalog_path, backup)
-        network_support.atomic_write(
-            catalog_path,
-            (json.dumps(updated, ensure_ascii=False, indent=2) + "\n").encode("utf-8"),
-        )
     return game
 
 
@@ -142,6 +161,7 @@ def main() -> int:
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--acknowledge-review", action="store_true")
     parser.add_argument("--timeout", default=15.0, type=float)
+    parser.add_argument("--database", type=Path)
     arguments = parser.parse_args()
     try:
         raw = arguments.input.read_bytes() if arguments.input else google_play.fetch(arguments.package_name, arguments.timeout)
@@ -152,6 +172,7 @@ def main() -> int:
             arguments.game_id,
             arguments.apply,
             arguments.acknowledge_review,
+            arguments.database,
         )
     except (CatalogImportError, OSError, ValueError) as error:
         parser.error(str(error))

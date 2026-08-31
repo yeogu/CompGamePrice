@@ -7,8 +7,8 @@ import argparse
 import json
 from pathlib import Path
 import re
-import shutil
 
+import catalog_storage
 import collect_steam_snapshot as steam
 
 
@@ -141,34 +141,23 @@ def updated_catalog(catalog: dict, game: dict) -> dict:
     if catalog.get("schemaVersion") != 4 or not isinstance(catalog.get("games"), list):
         raise CatalogImportError("Game catalog requires schemaVersion 4 and games")
     for existing in catalog["games"]:
+        for product in existing.get("products", []):
+            if product.get("store") != "Steam" or product.get("productId") != game["products"][0]["productId"]:
+                continue
+            if existing.get("id") == game["id"]:
+                return catalog
+            raise CatalogImportError(
+                f"Steam product already belongs to {existing.get('id')}: {game['products'][0]['productId']}"
+            )
         if existing.get("id") == game["id"]:
             raise CatalogImportError(f"Canonical game id already exists: {game['id']}")
         if existing.get("title", "").casefold() == game["title"].casefold():
             raise CatalogImportError(f"Game title already exists: {game['title']}")
-        for product in existing.get("products", []):
-            if product.get("store") == "Steam" and product.get("productId") == game["products"][0]["productId"]:
-                raise CatalogImportError(
-                    f"Steam product already exists: {game['products'][0]['productId']}"
-                )
     return {**catalog, "games": [*catalog["games"], game]}
 
 
 def load_catalog(catalog_path: Path) -> dict:
     return json.loads(catalog_path.read_text(encoding="utf-8"))
-
-
-def write_catalog(catalog_path: Path, catalog: dict) -> None:
-    backup = catalog_path.with_suffix(catalog_path.suffix + ".bak")
-    shutil.copy2(catalog_path, backup)
-    steam.atomic_write(
-        catalog_path,
-        (json.dumps(catalog, ensure_ascii=False, indent=2) + "\n").encode("utf-8"),
-    )
-    try:
-        steam.load_steam_targets(catalog_path)
-    except Exception:
-        shutil.copy2(backup, catalog_path)
-        raise
 
 
 def import_game(
@@ -177,14 +166,26 @@ def import_game(
     app_id: str,
     apply: bool,
     game_id: str | None = None,
+    database_path: Path | None = None,
 ) -> dict:
     if not app_id.isdigit():
         raise CatalogImportError("Steam app id must be numeric")
-    catalog = load_catalog(catalog_path)
     game = catalog_game(raw, app_id, game_id)
-    updated = updated_catalog(catalog, game)
     if apply:
-        write_catalog(catalog_path, updated)
+        def update(current: dict) -> tuple[dict, dict]:
+            return updated_catalog(current, game), game
+        result, _ = catalog_storage.update_catalog(
+            catalog_path,
+            update,
+            store="Steam",
+            product_id=app_id,
+            game_id=game["id"],
+            database_path=database_path,
+        )
+        return result
+    catalog = load_catalog(catalog_path)
+    catalog_storage.validate_catalog(catalog)
+    updated_catalog(catalog, game)
     return game
 
 
@@ -197,6 +198,7 @@ def main() -> int:
     parser.add_argument("--input", type=Path, help="Use a saved Steam response for testing")
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--timeout", default=15.0, type=float)
+    parser.add_argument("--database", type=Path)
     arguments = parser.parse_args()
     if arguments.input:
         raw = arguments.input.read_bytes()
@@ -209,6 +211,7 @@ def main() -> int:
             arguments.app_id,
             arguments.apply,
             arguments.game_id,
+            arguments.database,
         )
     except (CatalogImportError, json.JSONDecodeError, OSError) as error:
         parser.error(str(error))

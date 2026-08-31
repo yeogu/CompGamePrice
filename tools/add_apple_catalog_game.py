@@ -7,10 +7,10 @@ import argparse
 import json
 from pathlib import Path
 import re
-import shutil
 from urllib.request import urlopen
 
 import catalog_matcher
+import catalog_storage
 import collect_steam_snapshot as network_support
 
 
@@ -68,10 +68,6 @@ def updated_catalog(
     game = next((item for item in games if item.get("id") == game_id), None)
     if game is None:
         raise CatalogImportError("Canonical game ID does not exist")
-    for catalog_game in games:
-        for existing in catalog_game.get("products", []):
-            if existing.get("store") == "AppleAppStore" and existing.get("productId") == track_id:
-                raise CatalogImportError("Apple Track ID already exists")
     decision = catalog_matcher.evaluate(game, metadata)
     product = {
         "store": "AppleAppStore",
@@ -87,6 +83,15 @@ def updated_catalog(
         "matchedProduct": {**product, **metadata},
         "matchDecision": decision,
     }
+    for catalog_game in games:
+        for existing in catalog_game.get("products", []):
+            if existing.get("store") != "AppleAppStore" or existing.get("productId") != track_id:
+                continue
+            if catalog_game.get("id") == game_id:
+                return catalog, preview
+            raise CatalogImportError(
+                f"Apple Track ID already belongs to {catalog_game.get('id')}"
+            )
     if decision["status"] == "Rejected" or (
         decision["status"] == "NeedsReview" and not acknowledge_review
     ):
@@ -114,30 +119,44 @@ def import_game(
     game_id: str,
     apply: bool,
     acknowledge_review: bool = False,
+    database_path: Path | None = None,
 ) -> dict:
     if not track_id.isdigit():
         raise CatalogImportError("Apple Track ID must be numeric")
-    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
     metadata = apple_product(raw, track_id)
-    updated, game = updated_catalog(
+    def update(current: dict) -> tuple[dict, dict]:
+        updated, game = updated_catalog(
+            current,
+            game_id,
+            track_id,
+            metadata,
+            acknowledge_review,
+        )
+        decision = game["matchDecision"]["status"]
+        if decision == "Rejected":
+            raise CatalogImportError("Rejected candidate cannot be imported")
+        if decision == "NeedsReview" and not acknowledge_review:
+            raise CatalogImportError("NeedsReview requires explicit acknowledgement")
+        return updated, game
+    if apply:
+        game, _ = catalog_storage.update_catalog(
+            catalog_path,
+            update,
+            store="AppleAppStore",
+            product_id=track_id,
+            game_id=game_id,
+            database_path=database_path,
+        )
+        return game
+    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    catalog_storage.validate_catalog(catalog)
+    _, game = updated_catalog(
         catalog,
         game_id,
         track_id,
         metadata,
         acknowledge_review,
     )
-    decision = game["matchDecision"]["status"]
-    if apply and decision == "Rejected":
-        raise CatalogImportError("Rejected candidate cannot be imported")
-    if apply and decision == "NeedsReview" and not acknowledge_review:
-        raise CatalogImportError("NeedsReview requires explicit acknowledgement")
-    if apply:
-        backup = catalog_path.with_suffix(catalog_path.suffix + ".bak")
-        shutil.copy2(catalog_path, backup)
-        network_support.atomic_write(
-            catalog_path,
-            (json.dumps(updated, ensure_ascii=False, indent=2) + "\n").encode("utf-8"),
-        )
     return game
 
 
@@ -161,6 +180,7 @@ def main() -> int:
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--acknowledge-review", action="store_true")
     parser.add_argument("--timeout", default=15.0, type=float)
+    parser.add_argument("--database", type=Path)
     arguments = parser.parse_args()
     try:
         raw = arguments.input.read_bytes() if arguments.input else fetch(arguments.track_id, arguments.timeout)
@@ -171,6 +191,7 @@ def main() -> int:
             arguments.game_id,
             arguments.apply,
             arguments.acknowledge_review,
+            arguments.database,
         )
     except (CatalogImportError, OSError, ValueError) as error:
         parser.error(str(error))
