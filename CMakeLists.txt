@@ -215,6 +215,12 @@ if(BUILD_TESTING)
                 ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/steam_appdetails_413150.json
                 ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/game_catalog.json
         )
+        add_test(
+            NAME mobile_price_collection_e2e
+            COMMAND ${Python3_EXECUTABLE}
+                ${CMAKE_CURRENT_SOURCE_DIR}/tests/mobile_price_collection_e2e.py
+                $<TARGET_FILE:game_price_tracker>
+        )
     endif()
     if(TARGET game_price_api AND UNIX)
         find_program(CURL_EXECUTABLE curl)
