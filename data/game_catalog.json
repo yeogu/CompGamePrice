@@ -109,6 +109,29 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "GooglePlay",
+          "productId": "com.and.games505.TerrariaPaid",
+          "productUrl": "https://play.google.com/store/apps/details?id=com.and.games505.TerrariaPaid",
+          "platforms": [
+            "Android"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "AppleAppStore",
+          "productId": "640364616",
+          "productUrl": "https://apps.apple.com/app/id640364616",
+          "platforms": [
+            "iOS",
+            "iPadOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
       ]
     },
@@ -117,7 +140,8 @@
       "title": "Hollow Knight",
       "genres": [
         "Action",
-        "Adventure"
+        "Adventure",
+        "Indie"
       ],
       "tags": [
         "Metroidvania",
@@ -142,6 +166,12 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
+      ],
+      "developers": [
+        "Team Cherry"
+      ],
+      "publishers": [
+        "Team Cherry"
       ]
     },
     {
@@ -149,6 +179,7 @@
       "title": "Hades",
       "genres": [
         "Action",
+        "Indie",
         "RPG"
       ],
       "tags": [
@@ -203,6 +234,12 @@
             }
           ]
         }
+      ],
+      "developers": [
+        "Supergiant Games"
+      ],
+      "publishers": [
+        "Supergiant Games"
       ]
     },
     {
@@ -223,6 +260,17 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
+      ],
+      "developers": [
+        "FromSoftware, Inc."
+      ],
+      "publishers": [
+        "FromSoftware, Inc.",
+        "Bandai Namco Entertainment"
+      ],
+      "genres": [
+        "Action",
+        "RPG"
       ]
     },
     {
@@ -245,6 +293,15 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
+      ],
+      "developers": [
+        "CD PROJEKT RED"
+      ],
+      "publishers": [
+        "CD PROJEKT RED"
+      ],
+      "genres": [
+        "RPG"
       ]
     },
     {
@@ -267,6 +324,17 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
+      ],
+      "developers": [
+        "Larian Studios"
+      ],
+      "publishers": [
+        "Larian Studios"
+      ],
+      "genres": [
+        "Adventure",
+        "RPG",
+        "Strategy"
       ]
     },
     {
@@ -353,6 +421,17 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
+      ],
+      "developers": [
+        "Moonlab Studio",
+        "Sinkhole Studio"
+      ],
+      "publishers": [
+        "Sinkhole Studio",
+        "2P Games"
+      ],
+      "genres": [
+        "Adventure"
       ]
     },
     {
@@ -372,6 +451,2332 @@
             "Windows",
             "macOS",
             "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ],
+      "developers": [
+        "The Indie Stone"
+      ],
+      "publishers": [
+        "The Indie Stone"
+      ],
+      "genres": [
+        "Indie",
+        "RPG",
+        "Simulation",
+        "Early Access"
+      ]
+    },
+    {
+      "id": "hero-siege",
+      "title": "Hero Siege",
+      "aliases": [],
+      "developers": [
+        "Panic Art Studios Ltd"
+      ],
+      "publishers": [
+        "Panic Art Studios Ltd"
+      ],
+      "platforms": [
+        "Windows",
+        "Linux"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Indie",
+        "MMO",
+        "RPG"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "269210",
+          "productUrl": "https://store.steampowered.com/app/269210",
+          "platforms": [
+            "Windows",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "rimworld",
+      "title": "RimWorld",
+      "aliases": [],
+      "developers": [
+        "Ludeon Studios"
+      ],
+      "publishers": [
+        "Ludeon Studios"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "genres": [
+        "Indie",
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "294100",
+          "productUrl": "https://store.steampowered.com/app/294100",
+          "platforms": [
+            "Windows",
+            "macOS",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "dead-by-daylight",
+      "title": "Dead by Daylight",
+      "aliases": [],
+      "developers": [
+        "Behaviour Interactive Inc."
+      ],
+      "publishers": [
+        "Behaviour Interactive Inc."
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "381210",
+          "productUrl": "https://store.steampowered.com/app/381210",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "helldivers-2",
+      "title": "HELLDIVERS™ 2",
+      "aliases": [],
+      "developers": [
+        "Arrowhead Game Studios"
+      ],
+      "publishers": [
+        "PlayStation Publishing LLC"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "553850",
+          "productUrl": "https://store.steampowered.com/app/553850",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "djmax-respect-v",
+      "title": "DJMAX RESPECT V",
+      "aliases": [],
+      "developers": [
+        "NEOWIZ"
+      ],
+      "publishers": [
+        "NEOWIZ"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Casual",
+        "Sports"
+      ],
+      "tags": [
+        "Multiplayer"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "960170",
+          "productUrl": "https://store.steampowered.com/app/960170",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "red-dead-redemption-2",
+      "title": "Red Dead Redemption 2",
+      "aliases": [],
+      "developers": [
+        "Rockstar Games"
+      ],
+      "publishers": [
+        "Rockstar Games"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1174180",
+          "productUrl": "https://store.steampowered.com/app/1174180",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "big-ambitions",
+      "title": "Big Ambitions",
+      "aliases": [],
+      "developers": [
+        "Hovgaard Games"
+      ],
+      "publishers": [
+        "Hovgaard Games"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS"
+      ],
+      "genres": [
+        "Indie",
+        "Simulation"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1331550",
+          "productUrl": "https://store.steampowered.com/app/1331550",
+          "platforms": [
+            "Windows",
+            "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "big-walk",
+      "title": "Big Walk",
+      "aliases": [],
+      "developers": [
+        "House House"
+      ],
+      "publishers": [
+        "Panic"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS"
+      ],
+      "genres": [
+        "Adventure"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1478500",
+          "productUrl": "https://store.steampowered.com/app/1478500",
+          "platforms": [
+            "Windows",
+            "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "doloc-town",
+      "title": "Doloc Town",
+      "aliases": [],
+      "developers": [
+        "RedSaw Games Studio"
+      ],
+      "publishers": [
+        "Logoi Games",
+        "Pathea Games"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Adventure",
+        "Casual",
+        "Indie",
+        "RPG",
+        "Simulation"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2285550",
+          "productUrl": "https://store.steampowered.com/app/2285550",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "bodycam",
+      "title": "Bodycam",
+      "aliases": [],
+      "developers": [
+        "Reissad Studio"
+      ],
+      "publishers": [
+        "Reissad Studio"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Indie",
+        "MMO",
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2406770",
+          "productUrl": "https://store.steampowered.com/app/2406770",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "forza-horizon-6",
+      "title": "Forza Horizon 6",
+      "aliases": [],
+      "developers": [
+        "Playground Games"
+      ],
+      "publishers": [
+        "Xbox Game Studios"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Racing",
+        "Simulation",
+        "Sports"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2483190",
+          "productUrl": "https://store.steampowered.com/app/2483190",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "way-of-the-sword",
+      "title": "귀무자 Way of the Sword",
+      "aliases": [],
+      "developers": [
+        "CAPCOM Co., Ltd."
+      ],
+      "publishers": [
+        "CAPCOM Co., Ltd."
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "RPG"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2638890",
+          "productUrl": "https://store.steampowered.com/app/2638890",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "2",
+      "title": "마블 스파이더맨 2",
+      "aliases": [],
+      "developers": [
+        "Insomniac Games",
+        "Nixxes Software"
+      ],
+      "publishers": [
+        "PlayStation Publishing LLC"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2651280",
+          "productUrl": "https://store.steampowered.com/app/2651280",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "grand-theft-auto-v",
+      "title": "Grand Theft Auto V 인핸스드",
+      "aliases": [],
+      "developers": [
+        "Rockstar North"
+      ],
+      "publishers": [
+        "Rockstar Games"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Racing"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "3240220",
+          "productUrl": "https://store.steampowered.com/app/3240220",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "enhanced",
+      "title": "붉은사막 Enhanced",
+      "aliases": [],
+      "developers": [
+        "Pearl Abyss"
+      ],
+      "publishers": [
+        "Pearl Abyss"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS"
+      ],
+      "genres": [
+        "Action",
+        "Adventure"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "3321460",
+          "productUrl": "https://store.steampowered.com/app/3321460",
+          "platforms": [
+            "Windows",
+            "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "peak",
+      "title": "PEAK",
+      "aliases": [],
+      "developers": [
+        "Team PEAK"
+      ],
+      "publishers": [
+        "Aggro Crab",
+        "Evil Landfall?"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Indie"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "3527290",
+          "productUrl": "https://store.steampowered.com/app/3527290",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "hogwarts-legacy",
+      "title": "호그와트 레거시",
+      "aliases": [],
+      "developers": [
+        "Avalanche Software"
+      ],
+      "publishers": [
+        "Warner Bros. Games"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "RPG"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "990080",
+          "productUrl": "https://store.steampowered.com/app/990080",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "gamble-with-your-friends",
+      "title": "Gamble With Your Friends",
+      "aliases": [],
+      "developers": [
+        "TEAM GWYF"
+      ],
+      "publishers": [
+        "TENSTACK"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Adventure",
+        "Indie",
+        "Simulation"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "3892270",
+          "productUrl": "https://store.steampowered.com/app/3892270",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "escape-from-tarkov",
+      "title": "Escape from Tarkov",
+      "aliases": [],
+      "developers": [
+        "Battlestate Games"
+      ],
+      "publishers": [
+        "Battlestate Games"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "MMO",
+        "RPG",
+        "Simulation"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "3932890",
+          "productUrl": "https://store.steampowered.com/app/3932890",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "machine-party",
+      "title": "Machine Party",
+      "aliases": [],
+      "developers": [
+        "Mike Klubnika",
+        "GDeavid"
+      ],
+      "publishers": [
+        "Oro Interactive"
+      ],
+      "platforms": [
+        "Windows",
+        "Linux"
+      ],
+      "genres": [
+        "Action",
+        "Indie"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "4108000",
+          "productUrl": "https://store.steampowered.com/app/4108000",
+          "platforms": [
+            "Windows",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "bills-must-be-paid",
+      "title": "Bills Must Be Paid",
+      "aliases": [],
+      "developers": [
+        "Rike Games"
+      ],
+      "publishers": [
+        "Rike Games"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS"
+      ],
+      "genres": [
+        "Action",
+        "Casual",
+        "Indie",
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "4421010",
+          "productUrl": "https://store.steampowered.com/app/4421010",
+          "platforms": [
+            "Windows",
+            "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "eslabong",
+      "title": "Eslabong",
+      "aliases": [],
+      "developers": [
+        "shirowita"
+      ],
+      "publishers": [
+        "shirowita"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Indie",
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "4560660",
+          "productUrl": "https://store.steampowered.com/app/4560660",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "meccha-chameleon",
+      "title": "MECCHA CHAMELEON",
+      "aliases": [],
+      "developers": [
+        "lemorion_1224"
+      ],
+      "publishers": [
+        "lemorion_1224"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Casual"
+      ],
+      "tags": [
+        "Multiplayer"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "4704690",
+          "productUrl": "https://store.steampowered.com/app/4704690",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "vii",
+      "title": "시드 마이어의 문명 VII",
+      "aliases": [],
+      "developers": [
+        "Firaxis Games"
+      ],
+      "publishers": [
+        "2K"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "genres": [
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1295660",
+          "productUrl": "https://store.steampowered.com/app/1295660",
+          "platforms": [
+            "Windows",
+            "macOS",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "outer-wilds",
+      "title": "Outer Wilds",
+      "aliases": [],
+      "developers": [
+        "Mobius Digital"
+      ],
+      "publishers": [
+        "Annapurna Interactive"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "753640",
+          "productUrl": "https://store.steampowered.com/app/753640",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "wakuwaku-park",
+      "title": "WakuWaku Park",
+      "aliases": [],
+      "developers": [
+        "DOUJIN3ARIES"
+      ],
+      "publishers": [
+        "072 Project"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Casual",
+        "Indie"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "3850800",
+          "productUrl": "https://store.steampowered.com/app/3850800",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "garden-of-witches",
+      "title": "마녀의 정원",
+      "aliases": [],
+      "developers": [
+        "Team Tapas"
+      ],
+      "publishers": [
+        "Team Tapas"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Indie",
+        "RPG"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2530470",
+          "productUrl": "https://store.steampowered.com/app/2530470",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "star-wars-zero-company",
+      "title": "STAR WARS Zero Company™",
+      "aliases": [
+        "스타워즈 제로 컴퍼니™"
+      ],
+      "developers": [
+        "Bit Reactor"
+      ],
+      "publishers": [
+        "Electronic Arts"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Adventure",
+        "RPG",
+        "Simulation",
+        "Sports",
+        "Strategy"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2075800",
+          "productUrl": "https://store.steampowered.com/app/2075800",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "sephiria",
+      "title": "Sephiria",
+      "aliases": [
+        "세피리아"
+      ],
+      "developers": [
+        "TEAM HORAY"
+      ],
+      "publishers": [
+        "TEAM HORAY"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Indie",
+        "RPG"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2436940",
+          "productUrl": "https://store.steampowered.com/app/2436940",
+          "platforms": [
+            "Windows",
+            "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "how-to-fish",
+      "title": "How to Fish",
+      "aliases": [
+        "낚시 방법"
+      ],
+      "developers": [
+        "Dazed Games"
+      ],
+      "publishers": [
+        "Dazed Games"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Casual",
+        "Indie",
+        "Simulation"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "4001890",
+          "productUrl": "https://store.steampowered.com/app/4001890",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "dragonsword-awakening",
+      "title": "DragonSword : Awakening",
+      "aliases": [
+        "드래곤소드 : 어웨이크닝"
+      ],
+      "developers": [
+        "Hound13 Inc."
+      ],
+      "publishers": [
+        "Hound13 Inc."
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "RPG"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "4570720",
+          "productUrl": "https://store.steampowered.com/app/4570720",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "the-first-berserker-khazan",
+      "title": "The First Berserker: Khazan",
+      "aliases": [
+        "퍼스트 버서커: 카잔"
+      ],
+      "developers": [
+        "Neople"
+      ],
+      "publishers": [
+        "NEXON"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "RPG"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2680010",
+          "productUrl": "https://store.steampowered.com/app/2680010",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "darkest-dungeon",
+      "title": "Darkest Dungeon®",
+      "aliases": [],
+      "developers": [
+        "Red Hook Studios"
+      ],
+      "publishers": [
+        "Red Hook Studios"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "genres": [
+        "Indie",
+        "RPG",
+        "Strategy"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "262060",
+          "productUrl": "https://store.steampowered.com/app/262060",
+          "platforms": [
+            "Windows",
+            "macOS",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "ark-survival-evolved",
+      "title": "ARK: Survival Evolved",
+      "aliases": [],
+      "developers": [
+        "Studio Wildcard",
+        "Instinct Games",
+        "Efecto Studios",
+        "Virtual Basement LLC"
+      ],
+      "publishers": [
+        "Studio Wildcard",
+        "Snail Games USA"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Indie",
+        "MMO",
+        "RPG"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "346110",
+          "productUrl": "https://store.steampowered.com/app/346110",
+          "platforms": [
+            "Windows",
+            "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "risk-of-rain-2",
+      "title": "Risk of Rain 2",
+      "aliases": [],
+      "developers": [
+        "Hopoo Games"
+      ],
+      "publishers": [
+        "Gearbox Publishing",
+        "2K"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Indie"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "632360",
+          "productUrl": "https://store.steampowered.com/app/632360",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "super-bunny-man",
+      "title": "Super Bunny Man",
+      "aliases": [],
+      "developers": [
+        "Catobyte"
+      ],
+      "publishers": [
+        "Catobyte Ltd"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "genres": [
+        "Action",
+        "Indie"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "673750",
+          "productUrl": "https://store.steampowered.com/app/673750",
+          "platforms": [
+            "Windows",
+            "macOS",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "world-war-z",
+      "title": "World War Z",
+      "aliases": [],
+      "developers": [
+        "Saber Interactive Inc"
+      ],
+      "publishers": [
+        "Saber Interactive Inc"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "699130",
+          "productUrl": "https://store.steampowered.com/app/699130",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "phasmophobia",
+      "title": "Phasmophobia",
+      "aliases": [],
+      "developers": [
+        "Kinetic Games"
+      ],
+      "publishers": [
+        "Kinetic Games"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Indie"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "739630",
+          "productUrl": "https://store.steampowered.com/app/739630",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "the-riftbreaker",
+      "title": "The Riftbreaker",
+      "aliases": [],
+      "developers": [
+        "EXOR Studios"
+      ],
+      "publishers": [
+        "EXOR Studios",
+        "Surefire.Games"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Indie",
+        "RPG",
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "780310",
+          "productUrl": "https://store.steampowered.com/app/780310",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "dead-island-2",
+      "title": "Dead Island 2",
+      "aliases": [],
+      "developers": [
+        "Dambuster Studios"
+      ],
+      "publishers": [
+        "Deep Silver"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS"
+      ],
+      "genres": [
+        "Action",
+        "Adventure"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "934700",
+          "productUrl": "https://store.steampowered.com/app/934700",
+          "platforms": [
+            "Windows",
+            "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "a-dance-of-fire-and-ice",
+      "title": "불과 얼음의 춤 (A Dance of Fire and Ice)",
+      "aliases": [],
+      "developers": [
+        "7th Beat Games"
+      ],
+      "publishers": [
+        "7th Beat Games",
+        "indienova"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "genres": [
+        "Indie"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "977950",
+          "productUrl": "https://store.steampowered.com/app/977950",
+          "platforms": [
+            "Windows",
+            "macOS",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "ixion",
+      "title": "IXION",
+      "aliases": [],
+      "developers": [
+        "Bulwark Studios"
+      ],
+      "publishers": [
+        "Kasedo Games"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Indie",
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1113120",
+          "productUrl": "https://store.steampowered.com/app/1113120",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "icarus",
+      "title": "ICARUS 외계 행성 서바이벌",
+      "aliases": [],
+      "developers": [
+        "RocketWerkz"
+      ],
+      "publishers": [
+        "RocketWerkz"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Simulation"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1149460",
+          "productUrl": "https://store.steampowered.com/app/1149460",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "overcooked-all-you-can-eat",
+      "title": "Overcooked! All You Can Eat",
+      "aliases": [],
+      "developers": [
+        "Team17 Digital",
+        "Ghost Town Games"
+      ],
+      "publishers": [
+        "Team17 Digital"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Casual",
+        "Indie",
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1243830",
+          "productUrl": "https://store.steampowered.com/app/1243830",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "powerwash-simulator",
+      "title": "PowerWash Simulator",
+      "aliases": [],
+      "developers": [
+        "FuturLab"
+      ],
+      "publishers": [
+        "FuturLab"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Casual",
+        "Indie",
+        "Simulation"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1290000",
+          "productUrl": "https://store.steampowered.com/app/1290000",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "stray",
+      "title": "Stray",
+      "aliases": [],
+      "developers": [
+        "BlueTwelve Studio"
+      ],
+      "publishers": [
+        "Annapurna Interactive"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS"
+      ],
+      "genres": [
+        "Adventure",
+        "Indie"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1332010",
+          "productUrl": "https://store.steampowered.com/app/1332010",
+          "platforms": [
+            "Windows",
+            "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "against-the-storm",
+      "title": "Against the Storm 어게인스트 더 스톰",
+      "aliases": [],
+      "developers": [
+        "Eremite Games"
+      ],
+      "publishers": [
+        "Hooded Horse"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1336490",
+          "productUrl": "https://store.steampowered.com/app/1336490",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "warhammer-40-000-darktide",
+      "title": "Warhammer 40,000: Darktide",
+      "aliases": [],
+      "developers": [
+        "Fatshark"
+      ],
+      "publishers": [
+        "Fatshark"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "RPG"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1361210",
+          "productUrl": "https://store.steampowered.com/app/1361210",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "manor-lords",
+      "title": "Manor Lords 매너 로드",
+      "aliases": [],
+      "developers": [
+        "Slavic Magic"
+      ],
+      "publishers": [
+        "Hooded Horse"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1363080",
+          "productUrl": "https://store.steampowered.com/app/1363080",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "forza-horizon-5",
+      "title": "Forza Horizon 5",
+      "aliases": [],
+      "developers": [
+        "Playground Games"
+      ],
+      "publishers": [
+        "Xbox Game Studios"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Racing",
+        "Simulation",
+        "Sports"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1551360",
+          "productUrl": "https://store.steampowered.com/app/1551360",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "longvinter",
+      "title": "Longvinter",
+      "aliases": [],
+      "developers": [
+        "Uuvana Studios"
+      ],
+      "publishers": [
+        "Uuvana Studios"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "MMO",
+        "RPG",
+        "Simulation"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1635450",
+          "productUrl": "https://store.steampowered.com/app/1635450",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "s-t-a-l-k-e-r-2-heart-of-chornobyl",
+      "title": "S.T.A.L.K.E.R. 2: Heart of Chornobyl",
+      "aliases": [],
+      "developers": [
+        "GSC Game World"
+      ],
+      "publishers": [
+        "GSC Game World (worldwide)",
+        "SEGA (Japan)",
+        "4Divinity (China and South East Asia)"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "RPG"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1643320",
+          "productUrl": "https://store.steampowered.com/app/1643320",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "minecraft-dungeons",
+      "title": "Minecraft Dungeons",
+      "aliases": [],
+      "developers": [
+        "Mojang Studios",
+        "‪Double Eleven"
+      ],
+      "publishers": [
+        "Xbox Game Studios"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "RPG"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1672970",
+          "productUrl": "https://store.steampowered.com/app/1672970",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "vampire-survivors",
+      "title": "Vampire Survivors",
+      "aliases": [],
+      "developers": [
+        "poncle"
+      ],
+      "publishers": [
+        "poncle"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS"
+      ],
+      "genres": [
+        "Action",
+        "Casual",
+        "Indie",
+        "RPG"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1794680",
+          "productUrl": "https://store.steampowered.com/app/1794680",
+          "platforms": [
+            "Windows",
+            "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "33",
+      "title": "클레르 옵스퀴르: 33 원정대",
+      "aliases": [],
+      "developers": [
+        "Sandfall Interactive"
+      ],
+      "publishers": [
+        "Kepler Interactive"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "RPG"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1903340",
+          "productUrl": "https://store.steampowered.com/app/1903340",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "bits-bops",
+      "title": "비츠 앤 밥스 Bits & Bops",
+      "aliases": [],
+      "developers": [
+        "Tempo Lab Games"
+      ],
+      "publishers": [
+        "Tempo Lab Games"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "genres": [
+        "Action",
+        "Casual",
+        "Indie"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1929290",
+          "productUrl": "https://store.steampowered.com/app/1929290",
+          "platforms": [
+            "Windows",
+            "macOS",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "dragon-s-dogma-2",
+      "title": "Dragon's Dogma 2",
+      "aliases": [],
+      "developers": [
+        "CAPCOM Co., Ltd."
+      ],
+      "publishers": [
+        "CAPCOM Co., Ltd."
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "RPG"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2054970",
+          "productUrl": "https://store.steampowered.com/app/2054970",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "ark-survival-ascended",
+      "title": "ARK: Survival Ascended",
+      "aliases": [],
+      "developers": [
+        "Studio Wildcard",
+        "Grove Street Games",
+        "Instinct Games"
+      ],
+      "publishers": [
+        "Studio Wildcard",
+        "Snail Games USA"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Indie",
+        "MMO",
+        "RPG"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2399830",
+          "productUrl": "https://store.steampowered.com/app/2399830",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "microsoft-flight-simulator-2024",
+      "title": "Microsoft Flight Simulator 2024",
+      "aliases": [],
+      "developers": [
+        "Asobo Studio"
+      ],
+      "publishers": [
+        "Xbox Game Studios"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Simulation"
+      ],
+      "tags": [
+        "Multiplayer"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2537590",
+          "productUrl": "https://store.steampowered.com/app/2537590",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "powerwash-simulator-2",
+      "title": "PowerWash Simulator 2",
+      "aliases": [],
+      "developers": [
+        "FuturLab"
+      ],
+      "publishers": [
+        "FuturLab"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Casual",
+        "Indie",
+        "Simulation"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2968420",
+          "productUrl": "https://store.steampowered.com/app/2968420",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "windrose",
+      "title": "Windrose",
+      "aliases": [],
+      "developers": [
+        "Kraken Express"
+      ],
+      "publishers": [
+        "Kraken Express",
+        "Pocketpair Publishing (Japan)"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "RPG"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "3041230",
+          "productUrl": "https://store.steampowered.com/app/3041230",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "far-far-west",
+      "title": "Far Far West",
+      "aliases": [],
+      "developers": [
+        "Evil Raptor"
+      ],
+      "publishers": [
+        "Fireshine Games"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Indie"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "3124540",
+          "productUrl": "https://store.steampowered.com/app/3124540",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "escape-from-duckov",
+      "title": "Escape from Duckov 逃离鸭科夫",
+      "aliases": [],
+      "developers": [
+        "Team Soda"
+      ],
+      "publishers": [
+        "bilibili"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Indie",
+        "RPG"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "3167020",
+          "productUrl": "https://store.steampowered.com/app/3167020",
+          "platforms": [
+            "Windows",
+            "macOS"
           ],
           "region": "KR",
           "edition": "Standard",
