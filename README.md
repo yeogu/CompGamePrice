@@ -238,6 +238,23 @@ Google Play과 Apple App Store의 canonical Game 후보도 제한된 배치로 �
 동일 game/store 조합은 다시 탐색하지 않으며, 일시적인 네트워크 실패는 최대 3회만
 시도합니다.
 
+Admin 화면의 모바일 검토 큐는 canonical Game별로 Google Play와 Apple App Store
+후보를 묶어 보여줍니다. 자동 승인은 제목과 유효한 KRW 본편 구매 조건에 더해
+canonical Game의 개발사 또는 공식 퍼블리셔 중 하나가 Store 제공자와 일치해야
+합니다. 메타데이터가 부족하면 Admin 화면에서 변경 전후 diff를 확인한 다음
+개발사·퍼블리셔를 저장할 수 있으며, 변경과 Store 상품 연결은
+`catalog_change_audit`에 기록됩니다.
+
+전체 canonical Game의 신원 메타데이터 누락 여부는 다음 명령으로 점검합니다.
+
+```bash
+python3 tools/audit_catalog_metadata.py
+```
+
+자동 배포 검증에서 누락을 오류로 처리하려면 `--fail-on-incomplete`를 추가할 수
+있습니다. 현재 카탈로그를 강제로 차단하지 않는 이유는 기존 prototype 게임을
+안전하게 보존하면서 관리자가 검증된 정보부터 단계적으로 보완하기 위해서입니다.
+
 ```bash
 python3 tools/sync_mobile_catalog.py --store GooglePlay --batch-size 10
 python3 tools/sync_mobile_catalog.py --store AppleAppStore --batch-size 10
