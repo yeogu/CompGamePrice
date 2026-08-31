@@ -20,6 +20,7 @@ class DailyOperationsTest(unittest.TestCase):
         def fake_run(name, command, environment):
             self.assertTrue(command)
             self.assertIn("GAME_PRICE_DATABASE_PATH", environment)
+            self.assertIn("GAME_PRICE_CATALOG_PATH", environment)
             return {"name": name, "exitCode": next(exit_codes)}
 
         with patch.object(daily_operations, "run_step", side_effect=fake_run):

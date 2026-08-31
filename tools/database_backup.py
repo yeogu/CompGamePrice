@@ -35,6 +35,21 @@ def verify_database(path: Path) -> None:
         raise RuntimeError(f"SQLite integrity check failed for {path}: {detail}")
 
 
+def verify_catalog(path: Path) -> dict:
+    if not path.is_file():
+        raise FileNotFoundError(f"Game catalog does not exist: {path}")
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise RuntimeError(f"Cannot read Game Catalog {path}: {error}") from error
+    if document.get("schemaVersion") != 4 or not isinstance(
+        document.get("games"),
+        list,
+    ):
+        raise RuntimeError(f"Invalid Game Catalog schema: {path}")
+    return document
+
+
 def copy_database(source: Path, destination: Path) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary_name = tempfile.mkstemp(
@@ -67,7 +82,9 @@ def prune_backups(
     removed = 0
     for path in backup_directory.iterdir():
         if not path.is_file() or not (
-            path.name.endswith(".db") or path.name.endswith(".metadata.json")
+            path.name.endswith(".db") or
+            path.name.endswith(".metadata.json") or
+            path.name.endswith(".catalog.json")
         ):
             continue
         modified = datetime.fromtimestamp(path.stat().st_mtime, timezone.utc)
@@ -82,6 +99,7 @@ def create_backup(
     backup_directory: Path,
     retention_days: int = 30,
     now: datetime | None = None,
+    catalog: Path | None = None,
 ) -> tuple[Path, int]:
     verify_database(source)
     created_at = timestamp(now)
@@ -89,6 +107,11 @@ def create_backup(
     backup = backup_directory / f"{name}.db"
     metadata_path = backup_directory / f"{name}.metadata.json"
     copy_database(source, backup)
+    catalog_backup = None
+    if catalog is not None:
+        verify_catalog(catalog)
+        catalog_backup = backup_directory / f"{name}.catalog.json"
+        catalog_backup.write_bytes(catalog.read_bytes())
     metadata = {
         "createdAt": created_at,
         "source": str(source.resolve()),
@@ -97,6 +120,11 @@ def create_backup(
         "sha256": hashlib.sha256(backup.read_bytes()).hexdigest(),
         "integrityCheck": "ok",
     }
+    if catalog_backup is not None:
+        metadata["catalogBackup"] = str(catalog_backup.resolve())
+        metadata["catalogSha256"] = hashlib.sha256(
+            catalog_backup.read_bytes()
+        ).hexdigest()
     metadata_path.write_text(
         json.dumps(metadata, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
@@ -112,12 +140,21 @@ def restore_to_new_path(backup: Path, output: Path) -> None:
     copy_database(backup, output)
 
 
+def restore_catalog_to_new_path(backup: Path, output: Path) -> None:
+    verify_catalog(backup)
+    if output.exists():
+        raise FileExistsError(f"Restore output already exists: {output}")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_bytes(backup.read_bytes())
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     backup_parser = subparsers.add_parser("backup")
     backup_parser.add_argument("--database", default="build/game_prices.db", type=Path)
+    backup_parser.add_argument("--catalog", type=Path)
     backup_parser.add_argument(
         "--output-dir", default="snapshots/db-backups", type=Path
     )
@@ -130,19 +167,29 @@ def main() -> int:
     restore_parser.add_argument("--backup", required=True, type=Path)
     restore_parser.add_argument("--output", required=True, type=Path)
 
+    catalog_restore_parser = subparsers.add_parser("restore-catalog")
+    catalog_restore_parser.add_argument("--backup", required=True, type=Path)
+    catalog_restore_parser.add_argument("--output", required=True, type=Path)
+
     arguments = parser.parse_args()
     try:
         if arguments.command == "backup":
             path, removed = create_backup(
-                arguments.database, arguments.output_dir, arguments.retention_days
+                arguments.database,
+                arguments.output_dir,
+                arguments.retention_days,
+                catalog=arguments.catalog,
             )
             print(f"SQLite backup created: {path} ({removed} expired files removed)")
         elif arguments.command == "verify":
             verify_database(arguments.backup)
             print(f"SQLite backup integrity is ok: {arguments.backup}")
-        else:
+        elif arguments.command == "restore":
             restore_to_new_path(arguments.backup, arguments.output)
             print(f"SQLite backup restored to new path: {arguments.output}")
+        else:
+            restore_catalog_to_new_path(arguments.backup, arguments.output)
+            print(f"Game Catalog backup restored to new path: {arguments.output}")
     except (FileNotFoundError, FileExistsError, ValueError, RuntimeError) as error:
         parser.error(str(error))
     return 0

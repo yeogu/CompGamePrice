@@ -124,6 +124,7 @@ def run_pipeline(
                     database_path,
                     database_backup_directory,
                     database_backup_retention_days,
+                    catalog=catalog_path,
                 )
             except Exception as error:
                 backup_error = str(error)

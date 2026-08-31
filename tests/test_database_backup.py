@@ -29,11 +29,20 @@ class DatabaseBackupTest(unittest.TestCase):
             source = root / "source.db"
             backup_directory = root / "backups"
             restored = root / "restored.db"
+            catalog = root / "game_catalog.json"
             self.create_source(source)
+            catalog.write_text(
+                json.dumps({"schemaVersion": 4, "games": []}),
+                encoding="utf-8",
+            )
             now = datetime(2026, 8, 26, 9, 0, tzinfo=timezone.utc)
 
             backup, removed = database_backup.create_backup(
-                source, backup_directory, 30, now
+                source,
+                backup_directory,
+                30,
+                now,
+                catalog,
             )
             self.assertEqual(removed, 0)
             database_backup.verify_database(backup)
@@ -42,6 +51,8 @@ class DatabaseBackupTest(unittest.TestCase):
             )
             self.assertEqual(metadata["integrityCheck"], "ok")
             self.assertEqual(len(metadata["sha256"]), 64)
+            self.assertEqual(len(metadata["catalogSha256"]), 64)
+            self.assertTrue(Path(metadata["catalogBackup"]).is_file())
 
             database_backup.restore_to_new_path(backup, restored)
             with sqlite3.connect(restored) as connection:
@@ -49,6 +60,17 @@ class DatabaseBackupTest(unittest.TestCase):
             self.assertEqual(row, ("Stardew Valley", 16000))
             with self.assertRaises(FileExistsError):
                 database_backup.restore_to_new_path(backup, restored)
+
+            catalog_backup = Path(metadata["catalogBackup"])
+            restored_catalog = root / "restored" / "game_catalog.json"
+            database_backup.restore_catalog_to_new_path(
+                catalog_backup,
+                restored_catalog,
+            )
+            self.assertEqual(
+                json.loads(restored_catalog.read_text()),
+                {"schemaVersion": 4, "games": []},
+            )
 
     def test_rejects_corrupt_database(self):
         with tempfile.TemporaryDirectory() as directory:

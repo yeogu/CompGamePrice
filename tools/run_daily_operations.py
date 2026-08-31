@@ -25,9 +25,15 @@ def run_operations(
     catalog_batch_size: int = 20,
 ) -> list[dict]:
     python = sys.executable
-    catalog = project / "data" / "game_catalog.json"
+    catalog = Path(
+        os.environ.get(
+            "GAME_PRICE_CATALOG_PATH",
+            str(project / "data" / "game_catalog.json"),
+        )
+    )
     environment = os.environ.copy()
     environment["GAME_PRICE_DATABASE_PATH"] = str(database)
+    environment["GAME_PRICE_CATALOG_PATH"] = str(catalog)
     steps = [
         (
             "steam-discovery",
