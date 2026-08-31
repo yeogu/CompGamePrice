@@ -115,7 +115,8 @@ export interface CatalogMatchDecision { status: CatalogMatchStatus; reasons: str
 export interface CatalogMetadataDiff { before?: string | string[]; after?: string | string[] }
 export interface CatalogMetadataUpdateResult { game: GameSummary; diff: Record<string, CatalogMetadataDiff>; changed: boolean }
 export interface CatalogChangeAudit { id: number; actor: string; action: string; store: string; externalProductId: string; gameId: string; outcome: 'APPLIED' | 'NO_OP' | 'PENDING'; occurredAt: string; detail?: string }
-export interface AdminHealthSummary { metadata: { complete: number; incomplete: number; total: number }; collection: { recentFailures: number; lastFailure?: { store: string; error?: string; startedAt: string } }; notifications: { pending: number; retryable: number; exhausted: number; sent: number } }
+export interface AdminStoreQuality { store: string; registeredProducts: number; pricedProducts: number; freshPrices: number; stalePrices: number; pendingReviews: number; lastSuccessfulCollectionAt?: string }
+export interface AdminHealthSummary { metadata: { complete: number; incomplete: number; total: number }; collection: { recentFailures: number; lastFailure?: { store: string; error?: string; startedAt: string } }; stores: AdminStoreQuality[]; notifications: { pending: number; retryable: number; exhausted: number; sent: number } }
 export interface MetadataReview { gameId: string; sourceStore: string; externalProductId: string; proposed: { developers: string[]; publishers: string[]; genres: string[] }; diff: Record<string, CatalogMetadataDiff>; status: 'PENDING' | 'APPROVED' | 'REJECTED'; createdAt: string; resolvedAt?: string }
 export interface MetadataSyncStatus { autoApplied?: number; discovered?: number; failed?: Array<{ gameId: string; error: string }>; pendingReviews: MetadataReview[]; reviewHistory: MetadataReview[] }
 export interface CatalogAdminResult {
@@ -136,7 +137,7 @@ export interface CatalogCollectionJob { id: number; store?: string; status: 'IDL
 export interface StoreProductCandidate { store: string; externalProductId: string; title: string; productUrl: string; platforms: string[]; developer?: string; priceMinor?: number; currency?: string }
 export interface CatalogSyncReview { externalProductId: string; title: string; reason: string; status: 'PENDING' | 'APPROVED' | 'REJECTED'; createdAt: string }
 export interface MobileCatalogSyncReview extends CatalogSyncReview { gameId: string; decision: CatalogMatchStatus; productUrl?: string }
-export interface MobileCatalogSyncRun { id: number; status: string; startedAt: string; finishedAt?: string; processed: number; approvedCandidates: number; needsReview: number; rejected: number; failed: number; retries: number; error?: string }
+export interface MobileCatalogSyncRun { id: number; status: string; startedAt: string; finishedAt?: string; processed: number; approvedCandidates: number; autoConnected?: number; needsReview: number; rejected: number; failed: number; retries: number; error?: string }
 export interface MobileCatalogSyncJob { provider: 'GooglePlay' | 'AppleAppStore'; status?: 'IDLE' | 'RUNNING' | 'SUCCEEDED' | 'PARTIAL' | 'FAILED'; pendingReviews: MobileCatalogSyncReview[]; reviewHistory: MobileCatalogSyncReview[]; recentRuns: MobileCatalogSyncRun[] }
 export interface CatalogGameRequest { query: string; status: string; requestCount: number; requestedAt: string; error?: string }
 export interface CatalogSyncRun { id: number; status: string; startedAt: string; finishedAt?: string; processed: number; accepted: number; review: number; skipped: number; failed: number; error?: string }

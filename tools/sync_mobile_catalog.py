@@ -16,6 +16,7 @@ import search_apple_catalog as apple_search
 import search_google_play_catalog as google_search
 import sync_steam_catalog as catalog_sync
 import catalog_matcher
+import catalog_storage
 
 
 STORE_CONFIG = {
@@ -24,12 +25,14 @@ STORE_CONFIG = {
         "search": google_search.search,
         "fetch": lambda product_id, timeout: google_import.google_play.fetch(product_id, timeout),
         "metadata": google_import.verified_product,
+        "update": google_import.updated_catalog,
     },
     "AppleAppStore": {
         "catalogStore": "AppleAppStore",
         "search": apple_search.search,
         "fetch": apple_import.fetch,
         "metadata": apple_import.apple_product,
+        "update": apple_import.updated_catalog,
     },
 }
 
@@ -241,6 +244,40 @@ def record_candidate(
     )
 
 
+def connect_approved_candidate(
+    catalog_path: Path,
+    database_path: Path,
+    provider: str,
+    game: dict,
+    candidate: dict,
+    metadata: dict,
+    updater,
+) -> None:
+    product_id = str(candidate["externalProductId"])
+
+    def update(current: dict) -> tuple[dict, dict]:
+        updated, result = updater(
+            current,
+            game["id"],
+            product_id,
+            metadata,
+        )
+        if result["matchDecision"]["status"] != "ApprovedCandidate":
+            raise ValueError("only approved mobile candidates can be auto-connected")
+        return updated, result
+
+    catalog_storage.update_catalog(
+        catalog_path,
+        update,
+        store=STORE_CONFIG[provider]["catalogStore"],
+        product_id=product_id,
+        game_id=game["id"],
+        database_path=database_path,
+        actor="mobile-catalog-sync",
+        action="AUTO_CONNECT_STORE_PRODUCT",
+    )
+
+
 def start_run(connection: sqlite3.Connection, provider: str, started_at: str) -> int:
     cursor = connection.execute(
         "INSERT INTO catalog_sync_runs(provider, status, started_at) VALUES(?, 'RUNNING', ?)",
@@ -307,6 +344,7 @@ def synchronize_provider(
         "status": "RUNNING",
         "processed": 0,
         "approvedCandidates": 0,
+        "autoConnected": 0,
         "needsReview": 0,
         "rejected": 0,
         "failed": 0,
@@ -343,10 +381,22 @@ def synchronize_provider(
                     max_attempts,
                     retry_counter,
                 )
-                record_candidate(connection, provider, game, candidate, metadata, decision)
+                if decision["status"] == "ApprovedCandidate":
+                    connect_approved_candidate(
+                        catalog_path,
+                        database_path,
+                        provider,
+                        game,
+                        candidate,
+                        metadata,
+                        config["update"],
+                    )
+                else:
+                    record_candidate(connection, provider, game, candidate, metadata, decision)
                 record_game_processed(connection, provider, game["id"], decision["status"])
                 if decision["status"] == "ApprovedCandidate":
                     report["approvedCandidates"] += 1
+                    report["autoConnected"] += 1
                 elif decision["status"] == "NeedsReview":
                     report["needsReview"] += 1
                 else:

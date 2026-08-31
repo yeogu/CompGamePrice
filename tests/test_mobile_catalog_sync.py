@@ -47,6 +47,7 @@ def approved_metadata(raw: bytes, product_id: str) -> dict:
         "isGame": True,
         "supportsTargetPlatform": True,
         "excludedWords": [],
+        "platforms": ["iOS"],
     }
 
 
@@ -64,7 +65,7 @@ class MobileCatalogSyncTest(unittest.TestCase):
     def tearDown(self):
         self.temporary.cleanup()
 
-    def test_approved_candidate_is_queued_without_catalog_registration(self):
+    def test_approved_google_candidate_is_connected_without_manual_review(self):
         report = sync.synchronize_provider(
             self.catalog,
             self.database,
@@ -82,11 +83,56 @@ class MobileCatalogSyncTest(unittest.TestCase):
         )
 
         self.assertEqual(report["approvedCandidates"], 1)
+        self.assertEqual(report["autoConnected"], 1)
+        updated = json.loads(self.catalog.read_text(encoding="utf-8"))
+        self.assertEqual(
+            updated["games"][0]["products"][0]["store"],
+            "GooglePlay",
+        )
+        status = sync.synchronization_status(self.database, "GooglePlay")
+        self.assertEqual(status["pendingReviews"], [])
+
+    def test_approved_apple_candidate_is_connected_with_device_platforms(self):
+        report = sync.synchronize_provider(
+            self.catalog,
+            self.database,
+            "AppleAppStore",
+            10,
+            searcher=lambda query, limit, timeout: [
+                {"externalProductId": "1406710800", "title": query}
+            ],
+            fetcher=lambda product_id, timeout: b"product",
+            metadata_parser=approved_metadata,
+        )
+
+        self.assertEqual(report["autoConnected"], 1)
+        game = json.loads(self.catalog.read_text(encoding="utf-8"))["games"][0]
+        self.assertIn("iOS", game["platforms"])
+        self.assertEqual(game["products"][0]["store"], "AppleAppStore")
+
+    def test_uncertain_candidate_remains_in_manual_review(self):
+        def incomplete_metadata(raw, product_id):
+            result = approved_metadata(raw, product_id)
+            result["developer"] = ""
+            return result
+
+        report = sync.synchronize_provider(
+            self.catalog,
+            self.database,
+            "GooglePlay",
+            10,
+            searcher=lambda query, limit, timeout: [
+                {"externalProductId": "com.example.stardew", "title": query}
+            ],
+            fetcher=lambda product_id, timeout: b"product",
+            metadata_parser=incomplete_metadata,
+        )
+
+        self.assertEqual(report["needsReview"], 1)
         unchanged = json.loads(self.catalog.read_text(encoding="utf-8"))
         self.assertEqual(unchanged["games"][0]["products"], [])
         status = sync.synchronization_status(self.database, "GooglePlay")
-        self.assertEqual(status["pendingReviews"][0]["gameId"], "stardew-valley")
-        self.assertEqual(status["pendingReviews"][0]["decision"], "ApprovedCandidate")
+        self.assertEqual(status["pendingReviews"][0]["decision"], "NeedsReview")
 
     def test_rerun_does_not_duplicate_processed_game(self):
         arguments = {
@@ -117,7 +163,15 @@ class MobileCatalogSyncTest(unittest.TestCase):
             count = connection.execute(
                 "SELECT COUNT(*) FROM catalog_sync_review WHERE provider = 'AppleAppStore'"
             ).fetchone()[0]
-        self.assertEqual(count, 1)
+        self.assertEqual(count, 0)
+        with sqlite3.connect(self.database) as connection:
+            audits = connection.execute(
+                "SELECT action, outcome FROM catalog_change_audit"
+            ).fetchall()
+        self.assertEqual(
+            audits,
+            [("AUTO_CONNECT_STORE_PRODUCT", "APPLIED")],
+        )
 
     def test_retry_is_bounded_and_recorded(self):
         attempts = []
@@ -171,11 +225,9 @@ class MobileCatalogSyncTest(unittest.TestCase):
         )
 
         status = sync.synchronization_status(self.database, "GooglePlay")
-        self.assertEqual(
-            status["pendingReviews"][0]["externalProductId"],
-            "correct.product",
-        )
-        self.assertEqual(status["pendingReviews"][0]["decision"], "ApprovedCandidate")
+        self.assertEqual(status["pendingReviews"], [])
+        game = json.loads(self.catalog.read_text(encoding="utf-8"))["games"][0]
+        self.assertEqual(game["products"][0]["productId"], "correct.product")
 
     def test_one_game_failure_does_not_abort_next_game(self):
         document = catalog_document()

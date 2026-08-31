@@ -283,6 +283,12 @@ python3 tools/sync_mobile_catalog.py --store AppleAppStore --batch-size 10
 python3 tools/sync_mobile_catalog.py --store GooglePlay --status
 ```
 
+모바일 후보는 공통 identity matcher로 제목 또는 alias, 공식 개발사·퍼블리셔,
+게임 카테고리, 대상 플랫폼, KRW 유료 구매 여부를 함께 확인합니다. 모든 조건이
+일치하는 `ApprovedCandidate`는 기존 안전 저장·감사 기록 경로로 자동 연결하고,
+개발사 정보가 부족한 `NeedsReview`만 관리자 검토 큐에 남깁니다. 불일치 상품과
+가이드·Demo·미디어 상품은 자동 제외됩니다.
+
 동기화는 카탈로그 발견 단계입니다. 새로 등록된 게임의 실제 현재 가격은 이후
 `python3 tools/run_steam_pipeline.py` 또는 관리자 화면의 가격 수집 버튼으로
 수집합니다. 자동 테스트는 Steam live API를 호출하지 않고 repository fixture를
