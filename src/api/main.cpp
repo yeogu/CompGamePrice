@@ -173,6 +173,11 @@ HttpResponsePtr jsonError(drogon::HttpStatusCode status, const std::string& mess
     return jsonResponse(json, status);
 }
 
+std::string env(const char* name) {
+    const char* value = std::getenv(name);
+    return value ? value : "";
+}
+
 int serverPort() {
     const char* value = std::getenv("GAME_PRICE_API_PORT");
     return value ? std::stoi(value) : 8080;
@@ -183,9 +188,66 @@ std::string databasePath() {
     return value ? value : GAME_PRICE_DATABASE_PATH;
 }
 
+std::string catalogPath() {
+    const char* value = std::getenv("GAME_PRICE_CATALOG_PATH");
+    return value
+        ? value
+        : std::string(SAMPLE_DATA_DIR) + "/game_catalog.json";
+}
+
+std::filesystem::path projectPath() {
+    const auto value = env("GAME_PRICE_PROJECT_PATH");
+    return value.empty()
+        ? std::filesystem::path(PROJECT_SOURCE_DIR)
+        : std::filesystem::path(value);
+}
+
+std::filesystem::path trackerPath() {
+    const auto value = env("GAME_PRICE_TRACKER_PATH");
+    return value.empty()
+        ? projectPath() / "build/game_price_tracker"
+        : std::filesystem::path(value);
+}
+
 bool catalogAdminEnabled() {
     const char* value = std::getenv("CATALOG_ADMIN_ENABLED");
     return value && std::string(value) == "true";
+}
+
+void validateRuntimeConfiguration() {
+    if (env("APP_ENV") != "production") {
+        return;
+    }
+    const auto webUrl = env("WEB_APP_URL");
+    const auto callbackBase = env("OAUTH_CALLBACK_BASE");
+    if (webUrl.rfind("https://", 0) != 0) {
+        throw std::runtime_error(
+            "production WEB_APP_URL must use HTTPS");
+    }
+    if (callbackBase.rfind("https://", 0) != 0) {
+        throw std::runtime_error(
+            "production OAUTH_CALLBACK_BASE must use HTTPS");
+    }
+    if (env("COOKIE_SECURE") != "true") {
+        throw std::runtime_error(
+            "production COOKIE_SECURE must be true");
+    }
+    const auto validateCredentialPair = [](const char* idName,
+                                            const char* secretName) {
+        const auto clientId = env(idName);
+        const auto clientSecret = env(secretName);
+        if (clientId.empty() != clientSecret.empty()) {
+            throw std::runtime_error(
+                std::string(idName) + " and " + secretName +
+                " must be configured together");
+        }
+    };
+    validateCredentialPair(
+        "GOOGLE_OAUTH_CLIENT_ID",
+        "GOOGLE_OAUTH_CLIENT_SECRET");
+    validateCredentialPair(
+        "NAVER_OAUTH_CLIENT_ID",
+        "NAVER_OAUTH_CLIENT_SECRET");
 }
 
 bool validSteamAppId(const std::string& value) {
@@ -285,10 +347,9 @@ Json::Value runCatalogImport(
     std::lock_guard<std::mutex> toolLock(catalogToolMutex());
     const auto temporary = std::filesystem::temp_directory_path() /
         ("compgameprice-catalog-" + appId + ".json");
-    const auto script = std::filesystem::path(PROJECT_SOURCE_DIR) /
+    const auto script = projectPath() /
         "tools/add_steam_catalog_game.py";
-    const auto catalog = std::filesystem::path(SAMPLE_DATA_DIR) /
-        "game_catalog.json";
+    const auto catalog = std::filesystem::path(catalogPath());
     std::string command = "python3 " + shellQuoted(script.string()) +
         " --app-id " + appId +
         " --catalog " + shellQuoted(catalog.string());
@@ -310,10 +371,9 @@ Json::Value runGooglePlayCatalogImport(
     std::lock_guard<std::mutex> toolLock(catalogToolMutex());
     const auto temporary = std::filesystem::temp_directory_path() /
         "compgameprice-google-play-catalog.json";
-    const auto script = std::filesystem::path(PROJECT_SOURCE_DIR) /
+    const auto script = projectPath() /
         "tools/add_google_play_catalog_game.py";
-    const auto catalog = std::filesystem::path(SAMPLE_DATA_DIR) /
-        "game_catalog.json";
+    const auto catalog = std::filesystem::path(catalogPath());
     std::string command = "python3 " + shellQuoted(script.string()) +
         " --package-name " + shellQuoted(packageName) +
         " --game-id " + shellQuoted(gameId) +
@@ -336,10 +396,9 @@ Json::Value runAppleCatalogImport(
     std::lock_guard<std::mutex> toolLock(catalogToolMutex());
     const auto temporary = std::filesystem::temp_directory_path() /
         "compgameprice-apple-catalog.json";
-    const auto script = std::filesystem::path(PROJECT_SOURCE_DIR) /
+    const auto script = projectPath() /
         "tools/add_apple_catalog_game.py";
-    const auto catalog = std::filesystem::path(SAMPLE_DATA_DIR) /
-        "game_catalog.json";
+    const auto catalog = std::filesystem::path(catalogPath());
     std::string command = "python3 " + shellQuoted(script.string()) +
         " --track-id " + shellQuoted(trackId) +
         " --game-id " + shellQuoted(gameId) +
@@ -370,10 +429,9 @@ Json::Value runCatalogMetadataUpdate(
         builder["indentation"] = "  ";
         stream << Json::writeString(builder, metadata);
     }
-    const auto script = std::filesystem::path(PROJECT_SOURCE_DIR) /
+    const auto script = projectPath() /
         "tools/update_catalog_game_metadata.py";
-    const auto catalog = std::filesystem::path(SAMPLE_DATA_DIR) /
-        "game_catalog.json";
+    const auto catalog = std::filesystem::path(catalogPath());
     std::string command = "python3 " + shellQuoted(script.string());
     command += " --game-id " + shellQuoted(gameId);
     command += " --catalog " + shellQuoted(catalog.string());
@@ -398,7 +456,7 @@ Json::Value runCatalogAuditList(int limit) {
     std::lock_guard<std::mutex> toolLock(catalogToolMutex());
     const auto temporary = std::filesystem::temp_directory_path() /
         "compgameprice-catalog-audits.json";
-    const auto script = std::filesystem::path(PROJECT_SOURCE_DIR) /
+    const auto script = projectPath() /
         "tools/list_catalog_audits.py";
     std::string command = "python3 " + shellQuoted(script.string());
     command += " --database " + shellQuoted(databasePath());
@@ -422,7 +480,7 @@ Json::Value runStoreSearch(const std::string& store, const std::string& query) {
     } else {
         scriptName = "tools/search_apple_catalog.py";
     }
-    const auto script = std::filesystem::path(PROJECT_SOURCE_DIR) / scriptName;
+    const auto script = projectPath() / scriptName;
     const auto command = "python3 " + shellQuoted(script.string()) +
         " --query " + shellQuoted(query) +
         " > " + shellQuoted(temporary.string()) + " 2>&1";
@@ -469,7 +527,7 @@ public:
 
 private:
     void run() {
-        const auto project = std::filesystem::path(PROJECT_SOURCE_DIR);
+        const auto project = projectPath();
         std::string pipeline;
         if (store_ == "Google Play") {
             pipeline = "tools/run_google_play_pipeline.py";
@@ -480,10 +538,8 @@ private:
         }
         const auto command = "python3 " + shellQuoted(
             (project / pipeline).string()) +
-            " --tracker " + shellQuoted(
-                (project / "build/game_price_tracker").string()) +
-            " --catalog " + shellQuoted(
-                (project / "data/game_catalog.json").string()) +
+            " --tracker " + shellQuoted(trackerPath().string()) +
+            " --catalog " + shellQuoted(catalogPath()) +
             " --output-dir " + shellQuoted(
                 (project / "snapshots/latest").string());
         const auto exitCode = std::system(command.c_str());
@@ -505,12 +561,11 @@ Json::Value runCatalogSyncCommand(
     const std::filesystem::path& script,
     const std::string& arguments) {
     std::lock_guard<std::mutex> toolLock(catalogToolMutex());
-    const auto project = std::filesystem::path(PROJECT_SOURCE_DIR);
+    const auto project = projectPath();
     const auto temporary = std::filesystem::temp_directory_path() /
         "compgameprice-catalog-sync.json";
     std::string command = "python3 " + shellQuoted(script.string()) +
-        " --catalog " + shellQuoted(
-            (project / "data/game_catalog.json").string()) +
+        " --catalog " + shellQuoted(catalogPath()) +
         " --database " + shellQuoted(databasePath()) + arguments;
     command += " > " + shellQuoted(temporary.string()) + " 2>&1";
     const auto exitCode = std::system(command.c_str());
@@ -528,12 +583,11 @@ Json::Value runCatalogSyncCommand(
 }
 
 Json::Value runCatalogSyncTool(bool synchronize, int batchSize) {
-    const auto project = std::filesystem::path(PROJECT_SOURCE_DIR);
+    const auto project = projectPath();
     if (synchronize) {
         return runCatalogSyncCommand(
             project / "tools/run_catalog_sync_pipeline.py",
-            " --tracker " + shellQuoted(
-                (project / "build/game_price_tracker").string()) +
+            " --tracker " + shellQuoted(trackerPath().string()) +
             " --output-dir " + shellQuoted(
                 (project / "snapshots/latest").string()) +
             " --batch-size " + std::to_string(batchSize));
@@ -546,7 +600,7 @@ Json::Value runCatalogSyncTool(bool synchronize, int batchSize) {
 void resolveCatalogReview(
     const std::string& appId,
     const std::string& resolution) {
-    const auto project = std::filesystem::path(PROJECT_SOURCE_DIR);
+    const auto project = projectPath();
     runCatalogSyncCommand(
         project / "tools/sync_steam_catalog.py",
         " --resolve-app-id " + appId +
@@ -554,14 +608,14 @@ void resolveCatalogReview(
 }
 
 Json::Value requestCatalogGame(const std::string& query) {
-    const auto project = std::filesystem::path(PROJECT_SOURCE_DIR);
+    const auto project = projectPath();
     return runCatalogSyncCommand(
         project / "tools/sync_steam_catalog.py",
         " --request-game " + shellQuoted(query));
 }
 
 Json::Value adminHealthSummary() {
-    const auto project = std::filesystem::path(PROJECT_SOURCE_DIR);
+    const auto project = projectPath();
     return runCatalogSyncCommand(
         project / "tools/admin_health_summary.py",
         "");
@@ -570,7 +624,7 @@ Json::Value adminHealthSummary() {
 Json::Value disconnectCatalogProduct(
     const std::string& store,
     const std::string& productId) {
-    const auto project = std::filesystem::path(PROJECT_SOURCE_DIR);
+    const auto project = projectPath();
     return runCatalogSyncCommand(
         project / "tools/remove_catalog_product.py",
         " --store " + shellQuoted(store) +
@@ -582,7 +636,7 @@ Json::Value runMetadataSync(
     bool synchronize,
     const std::string& gameId = {},
     const std::string& resolution = {}) {
-    const auto project = std::filesystem::path(PROJECT_SOURCE_DIR);
+    const auto project = projectPath();
     std::string arguments;
     if (!gameId.empty()) {
         arguments += " --resolve-game-id " + shellQuoted(gameId);
@@ -599,7 +653,7 @@ Json::Value runMobileCatalogSyncTool(
     const std::string& store,
     bool synchronize,
     int batchSize) {
-    const auto project = std::filesystem::path(PROJECT_SOURCE_DIR);
+    const auto project = projectPath();
     std::string arguments = " --store " + shellQuoted(store);
     if (synchronize) {
         arguments += " --batch-size " + std::to_string(batchSize);
@@ -615,7 +669,7 @@ Json::Value resolveMobileCatalogReview(
     const std::string& store,
     const std::string& productId,
     const std::string& resolution) {
-    const auto project = std::filesystem::path(PROJECT_SOURCE_DIR);
+    const auto project = projectPath();
     return runCatalogSyncCommand(
         project / "tools/sync_mobile_catalog.py",
         " --store " + shellQuoted(store) +
@@ -720,8 +774,7 @@ private:
         try {
             runCatalogSyncTool(true, batchSize);
             next = runCatalogSyncTool(false, 0);
-            catalog_.reload(
-                std::string(SAMPLE_DATA_DIR) + "/game_catalog.json");
+            catalog_.reload(catalogPath());
         } catch (const std::exception& error) {
             next["provider"] = "Steam";
             next["status"] = "FAILED";
@@ -747,7 +800,6 @@ struct OAuthConfig {
     std::string userPath;
     std::string scope;
 };
-std::string env(const char* name) { const char* value=std::getenv(name); return value?value:""; }
 std::optional<OAuthConfig> oauthConfig(OAuthProvider provider) {
     OAuthConfig config;
     if(provider==OAuthProvider::Google) config={provider,env("GOOGLE_OAUTH_CLIENT_ID"),env("GOOGLE_OAUTH_CLIENT_SECRET"),"https://accounts.google.com/o/oauth2/v2/auth","https://oauth2.googleapis.com","/token","https://openidconnect.googleapis.com","/v1/userinfo","openid email profile"};
@@ -936,10 +988,11 @@ int main() {
     using namespace game_price;
 
     try {
+        validateRuntimeConfiguration();
         Database database(databasePath());
         StoreProductRepository repository(database);
         repository.initializeSchema();
-        GameCatalog catalog(std::string(SAMPLE_DATA_DIR) + "/game_catalog.json");
+        GameCatalog catalog(catalogPath());
         GameQueryService queryService(catalog, repository);
         AccountRepository accountRepository(database);
         AuthService authService(accountRepository);
@@ -1402,9 +1455,7 @@ int main() {
                         gameId,
                         resolution)));
                     if (resolution == "APPROVED") {
-                        catalog.reload(
-                            std::string(SAMPLE_DATA_DIR) +
-                            "/game_catalog.json");
+                        catalog.reload(catalogPath());
                     }
                 } catch (const std::exception& error) {
                     callback(jsonError(
@@ -1446,9 +1497,7 @@ int main() {
                         apply);
                     response["applied"] = apply;
                     if (apply) {
-                        catalog.reload(
-                            std::string(SAMPLE_DATA_DIR) +
-                            "/game_catalog.json");
+                        catalog.reload(catalogPath());
                     }
                     callback(jsonResponse(response));
                 } catch (const std::invalid_argument& error) {
@@ -1488,9 +1537,7 @@ int main() {
                     const auto result = disconnectCatalogProduct(
                         store,
                         productId);
-                    catalog.reload(
-                        std::string(SAMPLE_DATA_DIR) +
-                        "/game_catalog.json");
+                    catalog.reload(catalogPath());
                     callback(jsonResponse(result));
                 } catch (const std::exception& error) {
                     callback(jsonError(
@@ -1568,8 +1615,7 @@ int main() {
                     response["game"] = runCatalogImport(appId, gameId, apply);
                     response["applied"] = apply;
                     if (apply) {
-                        catalog.reload(
-                            std::string(SAMPLE_DATA_DIR) + "/game_catalog.json");
+                        catalog.reload(catalogPath());
                     }
                     response["requiresApiRestart"] = false;
                     callback(jsonResponse(response));
@@ -1648,8 +1694,7 @@ int main() {
                         acknowledgeReview);
                     response["applied"] = apply;
                     if (apply) {
-                        catalog.reload(
-                            std::string(SAMPLE_DATA_DIR) + "/game_catalog.json");
+                        catalog.reload(catalogPath());
                     }
                     response["requiresApiRestart"] = false;
                     callback(jsonResponse(response));
@@ -1701,8 +1746,7 @@ int main() {
                         acknowledgeReview);
                     response["applied"] = apply;
                     if (apply) {
-                        catalog.reload(
-                            std::string(SAMPLE_DATA_DIR) + "/game_catalog.json");
+                        catalog.reload(catalogPath());
                     }
                     response["requiresApiRestart"] = false;
                     callback(jsonResponse(response));

@@ -8,6 +8,9 @@ Makefile
 *.db
 *.db-shm
 *.db-wal
+.env
+.env.*
+!.env.example
 
 # Local scratch and generated deliverables
 work/

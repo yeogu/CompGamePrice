@@ -14,10 +14,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/*
 COPY --from=build /tmp/build/game_price_api /app/game_price_api
 COPY --from=build /tmp/build/game_price_tracker /app/game_price_tracker
-COPY --from=build /src/data /app/data
+COPY --from=build /src/data /app/seed-data
 COPY --from=build /src/tools /app/tools
+COPY --from=build /src/deploy/start-api.sh /app/start-api.sh
 WORKDIR /app
 ENV GAME_PRICE_API_PORT=8080
 ENV GAME_PRICE_DATABASE_PATH=/data/game_prices.db
+ENV GAME_PRICE_CATALOG_PATH=/data/game_catalog.json
+ENV GAME_PRICE_PROJECT_PATH=/app
+ENV GAME_PRICE_TRACKER_PATH=/app/game_price_tracker
 EXPOSE 8080
-CMD ["/app/game_price_api"]
+CMD ["/app/start-api.sh"]

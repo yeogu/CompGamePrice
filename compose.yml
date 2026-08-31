@@ -4,8 +4,21 @@ services:
       context: .
       dockerfile: deploy/Dockerfile.api
     environment:
+      APP_ENV: ${APP_ENV:-development}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       WEB_APP_URL: ${WEB_APP_URL:-http://127.0.0.1:8088}
+      OAUTH_CALLBACK_BASE: ${OAUTH_CALLBACK_BASE:-http://127.0.0.1:8088}
+      CATALOG_ADMIN_ENABLED: ${CATALOG_ADMIN_ENABLED:-false}
+      GAME_PRICE_DATABASE_PATH: /data/game_prices.db
+      GAME_PRICE_CATALOG_PATH: /data/game_catalog.json
+      GAME_PRICE_PROJECT_PATH: /app
+      GAME_PRICE_TRACKER_PATH: /app/game_price_tracker
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      KAKAO_OAUTH_CLIENT_ID: ${KAKAO_OAUTH_CLIENT_ID:-}
+      KAKAO_OAUTH_CLIENT_SECRET: ${KAKAO_OAUTH_CLIENT_SECRET:-}
+      NAVER_OAUTH_CLIENT_ID: ${NAVER_OAUTH_CLIENT_ID:-}
+      NAVER_OAUTH_CLIENT_SECRET: ${NAVER_OAUTH_CLIENT_SECRET:-}
     volumes:
       - game-price-data:/data
     restart: unless-stopped
@@ -36,6 +49,8 @@ services:
       - backup
       - --database
       - /data/game_prices.db
+      - --catalog
+      - /data/game_catalog.json
       - --output-dir
       - /backups
     profiles: ["maintenance"]
