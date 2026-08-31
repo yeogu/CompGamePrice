@@ -295,11 +295,17 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .candidate-confirmation span, .candidate-confirmation label { color: #a9bdb2; font-size: .8rem; }
 .candidate-confirmation input { padding: 11px; color: #eef8f2; background: #101f18; border: 1px solid #315141; border-radius: 9px; }
 .candidate-confirmation label small { color: #7fae94; }
-.filter-chips, .catalog-pagination { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0; }
+.filter-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0; }
 .filter-chips button { padding: 7px 10px; color: #b9f2d2; background: #173426; border: 1px solid #39835a; border-radius: 999px; font-size: .78rem; }
-.catalog-pagination { justify-content: center; margin-top: 18px; }
-.catalog-pagination button { padding: 8px 14px; }
-.catalog-pagination span { color: #a9bdb2; }
+.catalog-pagination { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 24px 0 4px; }
+.catalog-pagination button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 104px; padding: 11px 16px; color: #b9f2d2; background: #13271d; border: 1px solid #315141; border-radius: 999px; font-weight: 800; transition: background .16s ease, border-color .16s ease, color .16s ease, transform .16s ease; }
+.catalog-pagination button:hover:not(:disabled) { color: #07110d; background: #73e2a7; border-color: #73e2a7; transform: translateY(-1px); }
+.catalog-pagination button:focus-visible { outline: 3px solid rgba(115, 226, 167, .28); outline-offset: 2px; }
+.catalog-pagination button:disabled { color: #53675c; background: #0c1812; border-color: #21342a; cursor: not-allowed; }
+.catalog-pagination button span { font-size: 1.05rem; line-height: 1; }
+.pagination-status { display: flex; align-items: baseline; justify-content: center; gap: 7px; min-width: 126px; padding: 9px 17px; color: #82968b; background: #0b1812; border: 1px solid #263c31; border-radius: 999px; }
+.pagination-status strong { color: #73e2a7; font-size: 1.08rem; }
+.pagination-status small { color: #71877a; font-size: .72rem; }
 .catalog-heading select { padding: 8px 10px; color: #eef8f2; background: #101f18; border: 1px solid #315141; border-radius: 8px; }
 .candidate-confirmation .admin-feedback { grid-column: 1 / -1; margin: 0; }
 .admin-feedback.error { padding: 10px 12px; color: #ffc7c7; background: #351919; border: 1px solid #743b3b; border-radius: 9px; }

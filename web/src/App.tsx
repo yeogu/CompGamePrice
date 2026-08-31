@@ -1126,7 +1126,34 @@ function App() {
               </button>
             ))}
           </div>
-          {browseMode && catalogTotal > 12 && <nav className="catalog-pagination" aria-label="게임 목록 페이지"><button type="button" disabled={catalogPage <= 1 || loading} onClick={() => void browseCatalog({ store: selectedStore || undefined, platform: browsePlatform || undefined, genre: selectedGenre || undefined, tag: selectedTag || undefined, sort: gameSort, page: catalogPage - 1 })}>이전</button><span>{catalogPage} / {Math.ceil(catalogTotal / 12)}</span><button type="button" disabled={catalogPage * 12 >= catalogTotal || loading} onClick={() => void browseCatalog({ store: selectedStore || undefined, platform: browsePlatform || undefined, genre: selectedGenre || undefined, tag: selectedTag || undefined, sort: gameSort, page: catalogPage + 1 })}>다음</button></nav>}
+          {browseMode && catalogTotal > 12 && (
+            <nav className="catalog-pagination" aria-label="게임 목록 페이지">
+              <button
+                type="button"
+                aria-label="이전 페이지"
+                disabled={catalogPage <= 1 || loading}
+                onClick={() => void browseCatalog({ store: selectedStore || undefined, platform: browsePlatform || undefined, genre: selectedGenre || undefined, tag: selectedTag || undefined, sort: gameSort, page: catalogPage - 1 })}
+              >
+                <span aria-hidden="true">←</span>
+                이전
+              </button>
+              <div className="pagination-status" aria-live="polite">
+                <strong>{catalogPage}</strong>
+                <span>/</span>
+                <span>{Math.ceil(catalogTotal / 12)}</span>
+                <small>페이지</small>
+              </div>
+              <button
+                type="button"
+                aria-label="다음 페이지"
+                disabled={catalogPage * 12 >= catalogTotal || loading}
+                onClick={() => void browseCatalog({ store: selectedStore || undefined, platform: browsePlatform || undefined, genre: selectedGenre || undefined, tag: selectedTag || undefined, sort: gameSort, page: catalogPage + 1 })}
+              >
+                다음
+                <span aria-hidden="true">→</span>
+              </button>
+            </nav>
+          )}
         </section>
       )}
       {showGameResults && games.length === 0 && browseMode && <section className="panel empty-catalog-result"><h2>조건에 맞는 게임이 없습니다.</h2><p>필터를 줄이거나 이름으로 검색해보세요.</p></section>}
