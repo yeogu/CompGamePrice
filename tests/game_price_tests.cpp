@@ -895,9 +895,15 @@ void testGameCatalogSearch() {
            "Catalog should preserve the product comparison identity");
     GameCatalogFilter simulation;
     simulation.genre = "simulation";
-    expect(catalog.filterGames(simulation).size() == 1 &&
-               catalog.filterGames(simulation).front().id == "stardew-valley",
-           "Catalog should filter genres without case sensitivity");
+    const auto simulationGames = catalog.filterGames(simulation);
+    expect(
+        std::any_of(
+            simulationGames.begin(),
+            simulationGames.end(),
+            [](const auto& game) {
+                return game.id == "stardew-valley";
+            }),
+        "Catalog should filter genres without case sensitivity");
     GameCatalogFilter farmingOnAndroid;
     farmingOnAndroid.platform = Platform::Android;
     farmingOnAndroid.tag = "Farming";

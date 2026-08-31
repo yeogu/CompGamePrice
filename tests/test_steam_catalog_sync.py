@@ -195,6 +195,64 @@ class SteamCatalogSyncTest(unittest.TestCase):
                 ).fetchone()
             self.assertEqual(request, ("MATCHED", 2))
 
+    def test_app_list_outage_does_not_fail_queued_candidates(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            catalog = root / "catalog.json"
+            database = root / "catalog.db"
+            catalog.write_text(
+                json.dumps({"schemaVersion": 4, "games": []}),
+                encoding="utf-8",
+            )
+            with sqlite3.connect(database) as connection:
+                sync.initialize_state(connection)
+                connection.execute(
+                    """
+                    INSERT INTO catalog_discovery_candidates(
+                        provider, external_product_id, title,
+                        source, priority, discovered_at
+                    ) VALUES('Steam', '10', 'Queued Game', 'test', 10, ?)
+                    """,
+                    (sync.utc_now(),),
+                )
+                connection.commit()
+            report = sync.synchronize(
+                catalog,
+                database,
+                2,
+                app_list_fetcher=lambda: self.fail_with(
+                    OSError("HTTP Error 404: Not Found")
+                ),
+                detail_fetcher=lambda app_id: self.detail_for(
+                    app_id,
+                    "Queued Game",
+                ),
+            )
+            self.assertEqual(report["status"], "SUCCEEDED")
+            self.assertEqual(report["acceptedAppIds"], ["10"])
+            self.assertIn("App List is unavailable", report["warning"])
+
+    def test_app_list_outage_with_empty_queue_is_a_successful_no_op(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            catalog = root / "catalog.json"
+            database = root / "catalog.db"
+            catalog.write_text(
+                json.dumps({"schemaVersion": 4, "games": []}),
+                encoding="utf-8",
+            )
+            report = sync.synchronize(
+                catalog,
+                database,
+                1,
+                app_list_fetcher=lambda: self.fail_with(
+                    OSError("HTTP Error 404: Not Found")
+                ),
+            )
+            self.assertEqual(report["status"], "SUCCEEDED")
+            self.assertEqual(report["processed"], 0)
+            self.assertIn("App List is unavailable", report["warning"])
+
     def test_retries_transient_detail_failure_with_a_bound(self):
         attempts = 0
 
@@ -208,6 +266,9 @@ class SteamCatalogSyncTest(unittest.TestCase):
         raw = sync.fetch_detail_with_retry(fetch, "10")
         self.assertIn(b"Retry Game", raw)
         self.assertEqual(attempts, 3)
+
+    def fail_with(self, error):
+        raise error
 
     def test_rejects_concurrent_catalog_sync(self):
         with tempfile.TemporaryDirectory() as directory:

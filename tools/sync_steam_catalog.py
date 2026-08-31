@@ -684,18 +684,24 @@ def synchronize_unlocked(
             )
             selected = pending_apps(connection, priority_apps, catalog, batch_size)
             if len(selected) < batch_size:
-                apps = parse_app_list(app_list_fetcher())
-                fallback = pending_apps(
-                    connection,
-                    apps,
-                    catalog,
-                    batch_size - len(selected),
-                )
-                selected_ids = {app["appId"] for app in selected}
-                selected.extend(
-                    app for app in fallback if app["appId"] not in selected_ids
-                )
-                selected = selected[:batch_size]
+                try:
+                    apps = parse_app_list(app_list_fetcher())
+                    fallback = pending_apps(
+                        connection,
+                        apps,
+                        catalog,
+                        batch_size - len(selected),
+                    )
+                    selected_ids = {app["appId"] for app in selected}
+                    selected.extend(
+                        app for app in fallback if app["appId"] not in selected_ids
+                    )
+                    selected = selected[:batch_size]
+                except Exception as error:
+                    report["warning"] = (
+                        "Steam App List is unavailable; processed only queued "
+                        f"and requested candidates: {error}"
+                    )
             consecutive_failures = 0
             for app in selected:
                 app_id = app["appId"]
@@ -755,8 +761,21 @@ def synchronize_unlocked(
                 else:
                     mark_discovery_processed(connection, app_id)
             report["status"] = "SUCCEEDED"
-            finish_sync_run(connection, run_id, "SUCCEEDED", report)
-            update_state(connection, "SUCCEEDED", started_at, report)
+            warning = report.get("warning")
+            finish_sync_run(
+                connection,
+                run_id,
+                "SUCCEEDED",
+                report,
+                warning,
+            )
+            update_state(
+                connection,
+                "SUCCEEDED",
+                started_at,
+                report,
+                warning,
+            )
             return report
         except Exception as error:
             connection.rollback()
