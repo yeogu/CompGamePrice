@@ -341,6 +341,7 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .audit-list { display: grid; gap: 8px; }
 .audit-list > div { display: grid; grid-template-columns: 1fr 2fr auto; gap: 12px; padding: 10px; border-top: 1px solid #213a2d; }
 .audit-list small { color: #82968b; }
+.audit-list .danger { padding: 8px 10px; color: #ffc7c7; background: #351919; border: 1px solid #743b3b; border-radius: 8px; font-size: .75rem; }
 .match-decision { display: grid; gap: 10px; margin: 16px 0; padding: 14px; border: 1px solid #315141; border-radius: 10px; }
 .match-decision.approvedcandidate { border-color: #39835a; }
 .match-decision.needsreview { border-color: #8a6b2f; }

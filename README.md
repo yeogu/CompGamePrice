@@ -62,6 +62,10 @@ credential을 요구하는 흐름은 실행하지 않습니다.
 
 ## Container deployment
 
+NAS 비공개 베타의 권장 구조, 친구 관리자에게 확인할 권한, HTTPS, 영속 volume과
+DB·카탈로그 복원 절차는 [NAS 배포 준비 문서](docs/nas-deployment.md)에 정리되어
+있습니다.
+
 Docker Compose는 API, same-origin Web reverse proxy와 영속 SQLite volume을
 제공합니다. 로컬 또는 NAS에서 다음 명령으로 실행할 수 있습니다.
 

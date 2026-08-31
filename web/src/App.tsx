@@ -25,6 +25,26 @@ const recommendationReason: Record<string, string> = {
   'Current price is not close enough to the historical low.': '현재 가격이 역대 최저가와 충분히 가깝지 않습니다.',
 }
 
+const canRollbackAudit = (
+  audit: CatalogChangeAudit,
+  audits: CatalogChangeAudit[],
+) => {
+  const connectActions = new Set([
+    'CONNECT_STORE_PRODUCT',
+    'AUTO_CONNECT_STORE_PRODUCT',
+  ])
+  if (!connectActions.has(audit.action) || audit.outcome !== 'APPLIED') {
+    return false
+  }
+  return !audits.some((candidate) =>
+    candidate.id > audit.id &&
+    candidate.action === 'DISCONNECT_STORE_PRODUCT' &&
+    candidate.outcome === 'APPLIED' &&
+    candidate.store === audit.store &&
+    candidate.externalProductId === audit.externalProductId,
+  )
+}
+
 const authenticationErrorMessage = (reason: unknown, mode: 'login' | 'register') => {
   const message = reason instanceof Error ? reason.message : ''
   if (message === 'Failed to fetch' || message.includes('NetworkError')) {
@@ -574,13 +594,20 @@ function App() {
     }
   }
 
-  const disconnectAdminProduct = async () => {
-    const product = adminResult?.game.matchedProduct
-    if (!product) {
+  const disconnectAdminProduct = async (
+    store?: string,
+    productId?: string,
+    gameTitle?: string,
+  ) => {
+    const previewProduct = adminResult?.game.matchedProduct
+    const targetStore = store ?? previewProduct?.store
+    const targetProductId = productId ?? previewProduct?.productId
+    const targetTitle = gameTitle ?? adminResult?.game.title
+    if (!targetStore || !targetProductId || !targetTitle) {
       return
     }
     const confirmed = window.confirm(
-      `${adminResult.game.title}에서 ${product.store} 상품 연결을 해제할까요? 마지막 상품이면 게임도 카탈로그에서 제거됩니다.`,
+      `${targetTitle}에서 ${targetStore} 상품 ${targetProductId} 연결을 해제할까요? 마지막 상품이면 게임도 카탈로그에서 제거됩니다.`,
     )
     if (!confirmed) {
       return
@@ -588,7 +615,7 @@ function App() {
     setAdminImporting(true)
     setAdminError('')
     try {
-      const result = await disconnectCatalogProduct(product.store, product.productId)
+      const result = await disconnectCatalogProduct(targetStore, targetProductId)
       setAdminResult(null)
       setAdminCandidates([])
       setActionMessage(
@@ -1491,7 +1518,7 @@ function App() {
         {adminSection === 'audit' && <article className="catalog-audit-panel">
           <h2>최근 관리자 변경 기록</h2>
           <p>누가 어떤 canonical Game 또는 Store 상품을 변경했는지 확인합니다.</p>
-          <div className="audit-list">{catalogAudits.map((audit) => <div key={audit.id}><strong>{audit.gameId}</strong><span>{audit.action === 'UPDATE_GAME_METADATA' ? '메타데이터 변경' : `${audit.store} 상품 연결`} · {audit.outcome}</span><small>{new Date(audit.occurredAt).toLocaleString('ko-KR')} · {audit.actor}</small></div>)}{catalogAudits.length === 0 && <p>아직 관리자 변경 기록이 없습니다.</p>}</div>
+          <div className="audit-list">{catalogAudits.map((audit) => <div key={audit.id}><strong>{audit.gameId}</strong><span>{audit.action === 'UPDATE_GAME_METADATA' ? '메타데이터 변경' : audit.action === 'DISCONNECT_STORE_PRODUCT' ? `${audit.store} 상품 연결 해제` : `${audit.store} 상품 연결`} · {audit.outcome}<br /><small>상품 ID {audit.externalProductId}</small></span><small>{new Date(audit.occurredAt).toLocaleString('ko-KR')} · {audit.actor}</small>{canRollbackAudit(audit, catalogAudits) && <button className="danger" disabled={adminImporting} onClick={() => void disconnectAdminProduct(audit.store, audit.externalProductId, audit.gameId)}>이 연결 되돌리기</button>}</div>)}{catalogAudits.length === 0 && <p>아직 관리자 변경 기록이 없습니다.</p>}</div>
         </article>}
       </section>}
     </main>
