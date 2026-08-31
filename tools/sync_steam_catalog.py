@@ -282,6 +282,35 @@ def queued_discovery_apps(
     return [{"appId": row[0], "name": row[1]} for row in rows]
 
 
+def localized_review_apps(connection: sqlite3.Connection) -> list[dict]:
+    rows = connection.execute(
+        """
+        SELECT external_product_id, title
+        FROM catalog_sync_review
+        WHERE provider = 'Steam'
+          AND status = 'PENDING'
+          AND reason LIKE '%canonical game id%'
+        ORDER BY created_at ASC
+        """
+    ).fetchall()
+    return [{"appId": row[0], "name": row[1]} for row in rows]
+
+
+def clear_pending_review(
+    connection: sqlite3.Connection,
+    app_id: str,
+) -> None:
+    connection.execute(
+        """
+        DELETE FROM catalog_sync_review
+        WHERE provider = 'Steam'
+          AND external_product_id = ?
+          AND status = 'PENDING'
+        """,
+        (app_id,),
+    )
+
+
 def mark_discovery_processed(
     connection: sqlite3.Connection,
     app_id: str,
@@ -315,6 +344,39 @@ def review_reason(game: dict) -> str | None:
     if REVIEW_TITLE_PATTERN.search(game["title"]):
         return "title suggests a non-standard edition or related product"
     return None
+
+
+def localized_title(raw: bytes, app_id: str) -> str | None:
+    try:
+        document = json.loads(raw)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return None
+    data = document.get(app_id, {}).get("data", {})
+    title = data.get("name")
+    if isinstance(title, str) and title.strip():
+        return title.strip()
+    return None
+
+
+def catalog_game_with_english_fallback(
+    localized_raw: bytes,
+    app_id: str,
+    english_detail_fetcher,
+) -> dict:
+    try:
+        return catalog_import.catalog_game(localized_raw, app_id)
+    except catalog_import.CatalogImportError as error:
+        if "canonical game id" not in str(error):
+            raise
+    english_raw = fetch_detail_with_retry(english_detail_fetcher, app_id)
+    game = catalog_import.catalog_game(english_raw, app_id)
+    local_title = localized_title(localized_raw, app_id)
+    if local_title and local_title != game["title"]:
+        game["aliases"] = list(dict.fromkeys([
+            *game.get("aliases", []),
+            local_title,
+        ]))
+    return game
 
 
 def record_seen(
@@ -647,6 +709,7 @@ def synchronize_unlocked(
     app_list_fetcher=fetch_app_list,
     detail_fetcher=None,
     candidate_searcher=steam_search.search,
+    english_detail_fetcher=None,
 ) -> dict:
     if not 1 <= batch_size <= 100:
         raise ValueError("batch size must be between 1 and 100")
@@ -655,6 +718,13 @@ def synchronize_unlocked(
             app_id,
             "kr",
             "korean",
+            15.0,
+        )[0]
+    if english_detail_fetcher is None:
+        english_detail_fetcher = lambda app_id: steam.fetch(
+            app_id,
+            "kr",
+            "english",
             15.0,
         )[0]
     started_at = utc_now()
@@ -675,14 +745,34 @@ def synchronize_unlocked(
         run_id = start_sync_run(connection, started_at)
         update_state(connection, "RUNNING", started_at, report)
         try:
-            priority_apps = requested_apps(connection, candidate_searcher)
+            localized_apps = localized_review_apps(connection)
+            localized_ids = {app["appId"] for app in localized_apps}
+            priority_apps = list(localized_apps)
+            priority_apps.extend(
+                app
+                for app in requested_apps(connection, candidate_searcher)
+                if app["appId"] not in localized_ids
+            )
             priority_ids = {app["appId"] for app in priority_apps}
             priority_apps.extend(
                 app
                 for app in queued_discovery_apps(connection, batch_size)
                 if app["appId"] not in priority_ids
             )
-            selected = pending_apps(connection, priority_apps, catalog, batch_size)
+            regular_priority = [
+                app
+                for app in priority_apps
+                if app["appId"] not in localized_ids
+            ]
+            selected = localized_apps[:batch_size]
+            selected.extend(
+                pending_apps(
+                    connection,
+                    regular_priority,
+                    catalog,
+                    batch_size - len(selected),
+                )
+            )
             if len(selected) < batch_size:
                 try:
                     apps = parse_app_list(app_list_fetcher())
@@ -710,7 +800,11 @@ def synchronize_unlocked(
                 checked_at = utc_now()
                 try:
                     raw_detail = fetch_detail_with_retry(detail_fetcher, app_id)
-                    game = catalog_import.catalog_game(raw_detail, app_id)
+                    game = catalog_game_with_english_fallback(
+                        raw_detail,
+                        app_id,
+                        english_detail_fetcher,
+                    )
                     reason = review_reason(game)
                     if reason:
                         record_review(connection, app, reason, game, checked_at)
@@ -734,6 +828,7 @@ def synchronize_unlocked(
                     except Exception as error:
                         raise CatalogPersistenceError(str(error)) from error
                     catalog = catalog_import.load_catalog(catalog_path)
+                    clear_pending_review(connection, app_id)
                     record_seen(connection, app_id, "ACCEPTED", checked_at)
                     report["accepted"] += 1
                     report["acceptedAppIds"].append(app_id)
@@ -745,6 +840,7 @@ def synchronize_unlocked(
                         or "Free Steam games" in reason
                     ):
                         record_seen(connection, app_id, "SKIPPED", checked_at)
+                        clear_pending_review(connection, app_id)
                         report["skipped"] += 1
                     else:
                         record_review(connection, app, reason, None, checked_at)
@@ -792,6 +888,7 @@ def synchronize(
     app_list_fetcher=fetch_app_list,
     detail_fetcher=None,
     candidate_searcher=steam_search.search,
+    english_detail_fetcher=None,
 ) -> dict:
     if not 1 <= batch_size <= 100:
         raise ValueError("batch size must be between 1 and 100")
@@ -804,6 +901,7 @@ def synchronize(
             app_list_fetcher,
             detail_fetcher,
             candidate_searcher,
+            english_detail_fetcher,
         )
 
 

@@ -77,7 +77,7 @@ class SteamCatalogSyncTest(unittest.TestCase):
         self.assertEqual(status["recentRuns"][0]["processed"], 1)
         self.assertEqual(status["recentRuns"][0]["status"], "SUCCEEDED")
 
-    def test_quarantines_localized_and_suspicious_titles(self):
+    def test_uses_english_title_and_preserves_localized_alias(self):
         apps = [
             {"appid": 10, "name": "오구와 비밀의 숲"},
             {"appid": 20, "name": "Example Deluxe Edition"},
@@ -86,28 +86,49 @@ class SteamCatalogSyncTest(unittest.TestCase):
             "10": self.detail_for("10", "오구와 비밀의 숲"),
             "20": self.detail_for("20", "Example Deluxe Edition"),
         }
-        report, catalog, database = self.run_sync(apps, details)
-        self.assertEqual(report["review"], 2)
-        self.assertEqual(json.loads(catalog.read_text())["games"], [])
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        catalog = root / "catalog.json"
+        database = root / "catalog.db"
+        catalog.write_text(
+            json.dumps({"schemaVersion": 4, "games": []}),
+            encoding="utf-8",
+        )
+        report = sync.synchronize(
+            catalog,
+            database,
+            20,
+            app_list_fetcher=lambda: self.app_list(apps),
+            detail_fetcher=lambda app_id: details[app_id],
+            english_detail_fetcher=lambda app_id: self.detail_for(
+                app_id,
+                "Ogu and the Secret Forest",
+            ),
+        )
+        self.assertEqual(report["accepted"], 1)
+        self.assertEqual(report["review"], 1)
+        games = json.loads(catalog.read_text())["games"]
+        self.assertEqual(games[0]["id"], "ogu-and-the-secret-forest")
+        self.assertEqual(games[0]["title"], "Ogu and the Secret Forest")
+        self.assertEqual(games[0]["aliases"], ["오구와 비밀의 숲"])
         with sqlite3.connect(database) as connection:
             reviews = connection.execute(
                 "SELECT external_product_id, status FROM catalog_sync_review ORDER BY external_product_id"
             ).fetchall()
-        self.assertEqual(reviews, [("10", "PENDING"), ("20", "PENDING")])
+        self.assertEqual(reviews, [("20", "PENDING")])
         status = sync.synchronization_status(database)
         self.assertEqual(status["status"], "SUCCEEDED")
-        self.assertEqual(len(status["pendingReviews"]), 2)
-        resolved = sync.resolve_review(database, "10", "APPROVED")
-        self.assertEqual(resolved["status"], "APPROVED")
+        self.assertEqual(len(status["pendingReviews"]), 1)
         sync.resolve_review(database, "20", "REJECTED")
         resolved_status = sync.synchronization_status(database)
         self.assertEqual(resolved_status["pendingReviews"], [])
-        self.assertEqual(len(resolved_status["reviewHistory"]), 2)
+        self.assertEqual(len(resolved_status["reviewHistory"]), 1)
         with sqlite3.connect(database) as connection:
             outcomes = connection.execute(
                 "SELECT external_product_id, outcome FROM catalog_sync_seen ORDER BY external_product_id"
             ).fetchall()
-        self.assertEqual(outcomes, [("10", "APPROVED"), ("20", "REJECTED")])
+        self.assertEqual(outcomes, [("10", "ACCEPTED"), ("20", "REJECTED")])
 
     def test_skips_non_games_and_does_not_process_seen_apps_twice(self):
         apps = [{"appid": 10, "name": "Soundtrack"}]
@@ -122,6 +143,56 @@ class SteamCatalogSyncTest(unittest.TestCase):
             detail_fetcher=lambda app_id: details[app_id],
         )
         self.assertEqual(second["processed"], 0)
+
+    def test_reprocesses_only_localized_title_reviews(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            catalog = root / "catalog.json"
+            database = root / "catalog.db"
+            catalog.write_text(
+                json.dumps({"schemaVersion": 4, "games": []}),
+                encoding="utf-8",
+            )
+            with sqlite3.connect(database) as connection:
+                sync.initialize_state(connection)
+                for app_id, reason in [
+                    ("10", "Steam title cannot produce a canonical game id"),
+                    ("20", "title suggests a non-standard edition"),
+                ]:
+                    sync.record_review(
+                        connection,
+                        {"appId": app_id, "name": "한국어 게임"},
+                        reason,
+                        None,
+                        sync.utc_now(),
+                    )
+                    sync.record_seen(
+                        connection,
+                        app_id,
+                        "REVIEW",
+                        sync.utc_now(),
+                    )
+                connection.commit()
+            report = sync.synchronize(
+                catalog,
+                database,
+                10,
+                app_list_fetcher=lambda: self.app_list([]),
+                detail_fetcher=lambda app_id: self.detail_for(
+                    app_id,
+                    "한국어 게임",
+                ),
+                english_detail_fetcher=lambda app_id: self.detail_for(
+                    app_id,
+                    "Korean Game",
+                ),
+            )
+            self.assertEqual(report["acceptedAppIds"], ["10"])
+            status = sync.synchronization_status(database)
+            self.assertEqual(
+                [item["externalProductId"] for item in status["pendingReviews"]],
+                ["20"],
+            )
 
     def test_rejects_invalid_batch_size_and_app_list(self):
         with self.assertRaisesRegex(ValueError, "batch size"):
