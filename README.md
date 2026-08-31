@@ -643,7 +643,17 @@ version 5–6에서 만든 기존 원문 세션은 version 7 이전 시 폐기�
 명시적으로 추가할 수 있지만 현재 MVP는 기본 본편 알림만 제공합니다.
 알림은 웹 알림함에 즉시 저장되고 `notification_outbox`에도 `PENDING`
 상태로 쌓입니다. 실제 이메일 발송은 이후 SMTP 또는 메일 API worker가 Outbox를
-처리하도록 분리되어 있습니다.
+처리하도록 분리되어 있습니다. 발송 실패는 최대 3회까지 지수 backoff로 재시도하며
+`attempt_count`, `last_error`, `last_attempt_at`, `next_attempt_at`에 운영 정보를
+남깁니다. 재시도 한도를 넘긴 항목은 자동으로 다시 보내지 않습니다.
+
+현재 Outbox 상태만 확인할 때는 실제 메일 credential이 필요하지 않습니다.
+
+```bash
+python3 tools/dispatch_notification_outbox.py \
+  --database build/game_prices.db \
+  --status
+```
 
 소셜 로그인은 Authorization Code flow와 Provider별 고유 사용자 ID를 사용합니다.
 Provider가 같은 이메일을 반환하더라도 기존 계정을 자동 병합하지 않으며, 로그인된

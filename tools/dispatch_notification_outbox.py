@@ -10,20 +10,58 @@ import os
 from pathlib import Path
 import smtplib
 import sqlite3
+from datetime import datetime, timedelta, timezone
 
 
-def pending_messages(connection: sqlite3.Connection, limit: int) -> list[dict]:
+OUTBOX_COLUMNS = {
+    "attempt_count": "INTEGER NOT NULL DEFAULT 0",
+    "last_error": "TEXT",
+    "last_attempt_at": "TEXT",
+    "next_attempt_at": "TEXT",
+    "sent_at": "TEXT",
+}
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def timestamp(value: datetime) -> str:
+    return value.isoformat().replace("+00:00", "Z")
+
+
+def ensure_delivery_columns(connection: sqlite3.Connection) -> None:
+    existing = {
+        row[1]
+        for row in connection.execute("PRAGMA table_info(notification_outbox)")
+    }
+    for name, definition in OUTBOX_COLUMNS.items():
+        if name not in existing:
+            connection.execute(
+                f"ALTER TABLE notification_outbox ADD COLUMN {name} {definition}"
+            )
+
+
+def pending_messages(
+    connection: sqlite3.Connection,
+    limit: int,
+    max_attempts: int,
+    now: str,
+) -> list[dict]:
     rows = connection.execute(
         """
         SELECT o.notification_id, u.email, n.game_id, n.store,
-               n.price_minor, n.currency, n.message
+               n.price_minor, n.currency, n.message, o.attempt_count
         FROM notification_outbox o
         JOIN notifications n ON n.id = o.notification_id
         JOIN users u ON u.id = n.user_id
-        WHERE o.status = 'PENDING' AND o.channel = 'email'
+        WHERE o.status IN ('PENDING', 'FAILED')
+          AND o.channel = 'email'
+          AND o.attempt_count < ?
+          AND (o.next_attempt_at IS NULL OR o.next_attempt_at <= ?)
         ORDER BY o.notification_id LIMIT ?
         """,
-        (limit,),
+        (max_attempts, now, limit),
     ).fetchall()
     return [
         {
@@ -31,6 +69,7 @@ def pending_messages(connection: sqlite3.Connection, limit: int) -> list[dict]:
             "to": row[1],
             "subject": f"[CompGamePrice] {row[2]} 가격 알림",
             "body": f"{row[2]} · {row[3]} · {row[4]} {row[5]}\n{row[6]}",
+            "attemptCount": row[7],
         }
         for row in rows
     ]
@@ -60,13 +99,34 @@ def send_smtp(message: dict) -> None:
         client.send_message(email)
 
 
-def dispatch(database: Path, output: Path | None, limit: int = 100) -> tuple[int, int]:
+def dispatch(
+    database: Path,
+    output: Path | None,
+    limit: int = 100,
+    max_attempts: int = 3,
+    retry_base_seconds: int = 60,
+) -> tuple[int, int]:
     if limit < 1:
         raise ValueError("limit must be at least 1")
+    if max_attempts < 1:
+        raise ValueError("max_attempts must be at least 1")
+    if retry_base_seconds < 0:
+        raise ValueError("retry_base_seconds cannot be negative")
     sent = 0
     failed = 0
     with sqlite3.connect(database) as connection:
-        for message in pending_messages(connection, limit):
+        ensure_delivery_columns(connection)
+        current_time = utc_now()
+        current_timestamp = timestamp(current_time)
+        for message in pending_messages(
+            connection,
+            limit,
+            max_attempts,
+            current_timestamp,
+        ):
+            error_message = None
+            sent_at = None
+            next_attempt_at = None
             try:
                 if output is not None:
                     write_jsonl(message, output)
@@ -74,15 +134,56 @@ def dispatch(database: Path, output: Path | None, limit: int = 100) -> tuple[int
                     send_smtp(message)
                 status = "SENT"
                 sent += 1
-            except Exception:
+                sent_at = current_timestamp
+            except Exception as error:
                 status = "FAILED"
                 failed += 1
+                error_message = str(error)[:1000]
+                delay = retry_base_seconds * (2 ** message["attemptCount"])
+                next_attempt_at = timestamp(
+                    current_time + timedelta(seconds=delay)
+                )
             connection.execute(
-                "UPDATE notification_outbox SET status = ? WHERE notification_id = ?",
-                (status, message["notificationId"]),
+                """
+                UPDATE notification_outbox
+                SET status = ?, attempt_count = attempt_count + 1,
+                    last_error = ?, last_attempt_at = ?,
+                    next_attempt_at = ?, sent_at = ?
+                WHERE notification_id = ?
+                """,
+                (
+                    status,
+                    error_message,
+                    current_timestamp,
+                    next_attempt_at,
+                    sent_at,
+                    message["notificationId"],
+                ),
             )
         connection.commit()
     return sent, failed
+
+
+def delivery_status(database: Path, max_attempts: int = 3) -> dict:
+    with sqlite3.connect(database) as connection:
+        ensure_delivery_columns(connection)
+        row = connection.execute(
+            """
+            SELECT
+                SUM(CASE WHEN status = 'PENDING' THEN 1 ELSE 0 END),
+                SUM(CASE WHEN status = 'FAILED' AND attempt_count < ? THEN 1 ELSE 0 END),
+                SUM(CASE WHEN status = 'FAILED' AND attempt_count >= ? THEN 1 ELSE 0 END),
+                SUM(CASE WHEN status = 'SENT' THEN 1 ELSE 0 END)
+            FROM notification_outbox
+            """,
+            (max_attempts, max_attempts),
+        ).fetchone()
+    return {
+        "pending": row[0] or 0,
+        "retryable": row[1] or 0,
+        "exhausted": row[2] or 0,
+        "sent": row[3] or 0,
+    }
 
 
 def main() -> int:
@@ -90,12 +191,24 @@ def main() -> int:
     parser.add_argument("--database", default="build/game_prices.db", type=Path)
     parser.add_argument("--output-file", type=Path)
     parser.add_argument("--limit", default=100, type=int)
+    parser.add_argument("--max-attempts", default=3, type=int)
+    parser.add_argument("--retry-base-seconds", default=60, type=int)
+    parser.add_argument("--status", action="store_true")
     arguments = parser.parse_args()
+    if arguments.status:
+        print(json.dumps(delivery_status(arguments.database, arguments.max_attempts)))
+        return 0
     if arguments.output_file is None and not (
         os.environ.get("SMTP_HOST") and os.environ.get("SMTP_FROM")
     ):
         parser.error("SMTP_HOST and SMTP_FROM are required without --output-file")
-    sent, failed = dispatch(arguments.database, arguments.output_file, arguments.limit)
+    sent, failed = dispatch(
+        arguments.database,
+        arguments.output_file,
+        arguments.limit,
+        arguments.max_attempts,
+        arguments.retry_base_seconds,
+    )
     print(json.dumps({"sent": sent, "failed": failed}))
     return 1 if failed else 0
 

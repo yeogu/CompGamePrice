@@ -405,6 +405,22 @@ void testDatabaseSchemaVersion() {
     expect(database.userVersion() == StoreProductRepository::CurrentSchemaVersion,
            "Schema initialization should be idempotent");
 
+    Database versionThirteenDatabase(":memory:");
+    versionThirteenDatabase.execute(R"sql(
+        CREATE TABLE notification_outbox (
+            notification_id INTEGER PRIMARY KEY,
+            channel TEXT NOT NULL DEFAULT 'email',
+            status TEXT NOT NULL DEFAULT 'PENDING'
+        );
+        PRAGMA user_version = 13;
+    )sql");
+    StoreProductRepository versionThirteenRepository(versionThirteenDatabase);
+    versionThirteenRepository.initializeSchema();
+    expect(
+        versionThirteenDatabase.userVersion() ==
+            StoreProductRepository::CurrentSchemaVersion,
+        "Version 13 should migrate notification delivery metadata");
+
     Database futureDatabase(":memory:");
     futureDatabase.execute("PRAGMA user_version = 999;");
     StoreProductRepository futureRepository(futureDatabase);

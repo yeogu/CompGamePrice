@@ -450,7 +450,12 @@ void StoreProductRepository::initializeSchema() const {
         CREATE TABLE IF NOT EXISTS notification_outbox (
             notification_id INTEGER PRIMARY KEY REFERENCES notifications(id) ON DELETE CASCADE,
             channel TEXT NOT NULL DEFAULT 'email',
-            status TEXT NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING','SENT','FAILED'))
+            status TEXT NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING','SENT','FAILED')),
+            attempt_count INTEGER NOT NULL DEFAULT 0,
+            last_error TEXT,
+            last_attempt_at TEXT,
+            next_attempt_at TEXT,
+            sent_at TEXT
         );
         CREATE TRIGGER IF NOT EXISTS enqueue_notification_email
         AFTER INSERT ON notifications
@@ -603,7 +608,46 @@ void StoreProductRepository::initializeSchema() const {
                     CHECK(role IN ('USER','ADMIN'));
             )sql");
         }
-        database_.execute("PRAGMA user_version = 13;");
+        if (existingVersion < 14 && existingVersion > 0) {
+            if (!tableHasColumn(
+                    database_.handle(),
+                    "notification_outbox",
+                    "attempt_count")) {
+                database_.execute(R"sql(
+                    ALTER TABLE notification_outbox
+                        ADD COLUMN attempt_count INTEGER NOT NULL DEFAULT 0;
+                )sql");
+            }
+            if (!tableHasColumn(
+                    database_.handle(),
+                    "notification_outbox",
+                    "last_error")) {
+                database_.execute(
+                    "ALTER TABLE notification_outbox ADD COLUMN last_error TEXT;");
+            }
+            if (!tableHasColumn(
+                    database_.handle(),
+                    "notification_outbox",
+                    "last_attempt_at")) {
+                database_.execute(
+                    "ALTER TABLE notification_outbox ADD COLUMN last_attempt_at TEXT;");
+            }
+            if (!tableHasColumn(
+                    database_.handle(),
+                    "notification_outbox",
+                    "next_attempt_at")) {
+                database_.execute(
+                    "ALTER TABLE notification_outbox ADD COLUMN next_attempt_at TEXT;");
+            }
+            if (!tableHasColumn(
+                    database_.handle(),
+                    "notification_outbox",
+                    "sent_at")) {
+                database_.execute(
+                    "ALTER TABLE notification_outbox ADD COLUMN sent_at TEXT;");
+            }
+        }
+        database_.execute("PRAGMA user_version = 14;");
         database_.execute("COMMIT;");
     } catch (...) {
         try {
