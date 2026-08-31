@@ -103,6 +103,10 @@ export const deleteFavorite = (token: string, gameId: string) => requestJson<obj
 export const getPreferences = (token: string) => requestJson<UserPreferences>('/api/account/preferences', {}, token)
 export const updatePreferences = (token: string, preferences: UserPreferences) => requestJson<UserPreferences>('/api/account/preferences', { method: 'PATCH', body: JSON.stringify(preferences) }, token)
 export const getCatalogAdminStatus = () => requestJson<{ enabled: boolean }>('/api/admin/catalog/status')
+export const getAdminHealthSummary = () => requestJson<import('./types').AdminHealthSummary>('/api/admin/health')
+export const getMetadataSyncStatus = () => requestJson<import('./types').MetadataSyncStatus>('/api/admin/catalog/metadata-sync')
+export const startMetadataSync = () => requestJson<import('./types').MetadataSyncStatus>('/api/admin/catalog/metadata-sync', { method: 'POST' })
+export const resolveMetadataReview = (gameId: string, resolution: 'APPROVED' | 'REJECTED') => requestJson<import('./types').MetadataSyncStatus>(`/api/admin/catalog/metadata-sync/${encodeURIComponent(gameId)}`, { method: 'PATCH', body: JSON.stringify({ resolution }) })
 export const updateCatalogGameMetadata = (gameId: string, metadata: object, apply: boolean) => requestJson<{ result: import('./types').CatalogMetadataUpdateResult; applied: boolean }>(`/api/admin/catalog/games/${encodeURIComponent(gameId)}/metadata`, { method: 'PATCH', body: JSON.stringify({ metadata, apply }) })
 export const getCatalogChangeAudits = async () => (await requestJson<{ audits: import('./types').CatalogChangeAudit[] }>('/api/admin/catalog/audits')).audits
 export const importSteamCatalogGame = (appId: string, gameId: string, apply: boolean) => requestJson<CatalogAdminResult>('/api/admin/catalog/steam', { method: 'POST', body: JSON.stringify({ appId, ...(gameId ? { gameId } : {}), apply }) })

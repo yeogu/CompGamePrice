@@ -560,6 +560,30 @@ Json::Value requestCatalogGame(const std::string& query) {
         " --request-game " + shellQuoted(query));
 }
 
+Json::Value adminHealthSummary() {
+    const auto project = std::filesystem::path(PROJECT_SOURCE_DIR);
+    return runCatalogSyncCommand(
+        project / "tools/admin_health_summary.py",
+        "");
+}
+
+Json::Value runMetadataSync(
+    bool synchronize,
+    const std::string& gameId = {},
+    const std::string& resolution = {}) {
+    const auto project = std::filesystem::path(PROJECT_SOURCE_DIR);
+    std::string arguments;
+    if (!gameId.empty()) {
+        arguments += " --resolve-game-id " + shellQuoted(gameId);
+        arguments += " --resolution " + shellQuoted(resolution);
+    } else if (!synchronize) {
+        arguments += " --status";
+    }
+    return runCatalogSyncCommand(
+        project / "tools/sync_steam_metadata.py",
+        arguments);
+}
+
 Json::Value runMobileCatalogSyncTool(
     const std::string& store,
     bool synchronize,
@@ -1286,6 +1310,98 @@ int main() {
                 callback(jsonResponse(response));
             },
             {drogon::Get});
+        drogon::app().registerHandler(
+            "/api/admin/health",
+            [&authService](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
+                    return;
+                }
+                try {
+                    callback(jsonResponse(adminHealthSummary()));
+                } catch (const std::exception& error) {
+                    callback(jsonError(
+                        drogon::k500InternalServerError,
+                        error.what()));
+                }
+            },
+            {drogon::Get});
+        drogon::app().registerHandler(
+            "/api/admin/catalog/metadata-sync",
+            [&authService](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
+                    return;
+                }
+                try {
+                    callback(jsonResponse(runMetadataSync(false)));
+                } catch (const std::exception& error) {
+                    callback(jsonError(
+                        drogon::k500InternalServerError,
+                        error.what()));
+                }
+            },
+            {drogon::Get});
+        drogon::app().registerHandler(
+            "/api/admin/catalog/metadata-sync",
+            [&authService](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
+                    return;
+                }
+                try {
+                    callback(jsonResponse(runMetadataSync(true)));
+                } catch (const std::exception& error) {
+                    callback(jsonError(
+                        drogon::k502BadGateway,
+                        error.what()));
+                }
+            },
+            {drogon::Post});
+        drogon::app().registerHandler(
+            "/api/admin/catalog/metadata-sync/{1}",
+            [&catalog, &authService](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback,
+                const std::string& gameId) {
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
+                    return;
+                }
+                const auto body = request->getJsonObject();
+                const auto resolution = body && (*body)["resolution"].isString()
+                    ? (*body)["resolution"].asString()
+                    : std::string{};
+                if (!validCanonicalGameId(gameId) ||
+                    (resolution != "APPROVED" && resolution != "REJECTED")) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "valid game ID and resolution are required"));
+                    return;
+                }
+                try {
+                    callback(jsonResponse(runMetadataSync(
+                        false,
+                        gameId,
+                        resolution)));
+                    if (resolution == "APPROVED") {
+                        catalog.reload(
+                            std::string(SAMPLE_DATA_DIR) +
+                            "/game_catalog.json");
+                    }
+                } catch (const std::exception& error) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        error.what()));
+                }
+            },
+            {drogon::Patch});
         drogon::app().registerHandler(
             "/api/admin/catalog/games/{1}/metadata",
             [&catalog, &authService](

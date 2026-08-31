@@ -1,7 +1,7 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react'
-import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, getAlertRules, getCatalogAdminStatus, getCatalogChangeAudits, getCatalogCollectionJob, getCatalogFilters, getCatalogSyncJob, getCollectionRuns, getExternalIdentities, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getMobileCatalogSyncJob, getNotifications, getOAuthUrl, getPreferences, importAppleCatalogGame, importGooglePlayCatalogGame, importSteamCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, resolveCatalogSyncReview, resolveMobileCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, startMobileCatalogSync, unlinkExternalIdentity, updateCatalogGameMetadata, updatePreferences } from './api'
+import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, getAdminHealthSummary, getAlertRules, getCatalogAdminStatus, getCatalogChangeAudits, getCatalogCollectionJob, getCatalogFilters, getCatalogSyncJob, getCollectionRuns, getExternalIdentities, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getMetadataSyncStatus, getMobileCatalogSyncJob, getNotifications, getOAuthUrl, getPreferences, importAppleCatalogGame, importGooglePlayCatalogGame, importSteamCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, resolveCatalogSyncReview, resolveMetadataReview, resolveMobileCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, startMetadataSync, startMobileCatalogSync, unlinkExternalIdentity, updateCatalogGameMetadata, updatePreferences } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
-import type { AlertRule, AlertRuleType, CatalogAdminResult, CatalogChangeAudit, CatalogCollectionJob, CatalogFilterOptions, CatalogMetadataUpdateResult, CatalogSyncJob, CollectionRun, ExternalIdentity, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSort, GameSummary, MobileCatalogSyncJob, MobileCatalogSyncReview, Money, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
+import type { AdminHealthSummary, AlertRule, AlertRuleType, CatalogAdminResult, CatalogChangeAudit, CatalogCollectionJob, CatalogFilterOptions, CatalogMetadataUpdateResult, CatalogSyncJob, CollectionRun, ExternalIdentity, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSort, GameSummary, MetadataSyncStatus, MobileCatalogSyncJob, MobileCatalogSyncReview, Money, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
 
 const formatMoney = (money: Money) =>
   new Intl.NumberFormat('ko-KR', {
@@ -140,6 +140,9 @@ function App() {
   const [metadataPublishers, setMetadataPublishers] = useState('')
   const [metadataPreview, setMetadataPreview] = useState<CatalogMetadataUpdateResult | null>(null)
   const [catalogAudits, setCatalogAudits] = useState<CatalogChangeAudit[]>([])
+  const [adminHealth, setAdminHealth] = useState<AdminHealthSummary | null>(null)
+  const [metadataSync, setMetadataSync] = useState<MetadataSyncStatus | null>(null)
+  const [metadataSyncRunning, setMetadataSyncRunning] = useState(false)
   const [reviewConfirmed, setReviewConfirmed] = useState(false)
   const [pendingCandidate, setPendingCandidate] = useState<StoreProductCandidate | null>(null)
   const [actionMessage, setActionMessage] = useState('')
@@ -552,6 +555,30 @@ function App() {
     }
   }
 
+  const discoverMetadata = async () => {
+    setMetadataSyncRunning(true)
+    setAdminError('')
+    try {
+      setMetadataSync(await startMetadataSync())
+      setAdminHealth(await getAdminHealthSummary())
+    } catch (reason) {
+      setAdminError(reason instanceof Error ? reason.message : 'Steam 메타데이터를 확인하지 못했습니다.')
+    } finally {
+      setMetadataSyncRunning(false)
+    }
+  }
+
+  const decideMetadata = async (gameId: string, resolution: 'APPROVED' | 'REJECTED') => {
+    setAdminError('')
+    try {
+      setMetadataSync(await resolveMetadataReview(gameId, resolution))
+      setAdminHealth(await getAdminHealthSummary())
+      setCatalogAudits(await getCatalogChangeAudits())
+    } catch (reason) {
+      setAdminError(reason instanceof Error ? reason.message : '메타데이터 검토 결과를 저장하지 못했습니다.')
+    }
+  }
+
   const collectCatalogPrices = async () => {
     setError('')
     try {
@@ -824,6 +851,8 @@ function App() {
           void getCatalogSyncJob().then(setCatalogSyncJob)
           void refreshMobileSyncJobs()
           void getCatalogChangeAudits().then(setCatalogAudits)
+          void getAdminHealthSummary().then(setAdminHealth)
+          void getMetadataSyncStatus().then(setMetadataSync)
         }
       })
       .catch(() => setCatalogAdminEnabled(false))
@@ -1272,6 +1301,12 @@ function App() {
         <p className="eyebrow">LOCAL ADMIN</p>
         <h1 className="view-title">Store 상품 연결</h1>
         <p className="view-description">게임 이름으로 Store를 검색하고 본편 상품이 맞는지 확인한 뒤 등록하세요.</p>
+        {adminHealth && <section className="admin-health-grid" aria-label="운영 상태 요약"><article><strong>메타데이터 완성률</strong><span>{adminHealth.metadata.complete} / {adminHealth.metadata.total}</span><small>보완 필요 {adminHealth.metadata.incomplete}개</small></article><article><strong>최근 수집 실패</strong><span>{adminHealth.collection.recentFailures}건</span><small>{adminHealth.collection.lastFailure ? `${adminHealth.collection.lastFailure.store} · ${adminHealth.collection.lastFailure.error ?? '원인 없음'}` : '실패 없음'}</small></article><article><strong>알림 전달</strong><span>대기 {adminHealth.notifications.pending} · 재시도 {adminHealth.notifications.retryable}</span><small>재시도 소진 {adminHealth.notifications.exhausted}건</small></article></section>}
+        <article className="catalog-sync-panel">
+          <div><h2>Steam 신원 메타데이터 보완</h2><p>연결된 공식 Steam 상품에서 개발사·퍼블리셔·장르를 제안합니다. 승인 전에는 catalog를 변경하지 않습니다.</p></div>
+          <button disabled={metadataSyncRunning} onClick={() => void discoverMetadata()}>{metadataSyncRunning ? '확인 중…' : '누락 메타데이터 찾기'}</button>
+          <div className="sync-reviews">{metadataSync?.pendingReviews.map((review) => <div key={review.gameId}><strong>{review.gameId}</strong><span>개발사 {review.proposed.developers.join(' · ') || '없음'}<br />퍼블리셔 {review.proposed.publishers.join(' · ') || '없음'}<br />장르 {review.proposed.genres.join(' · ') || '없음'}</span><a href={`https://store.steampowered.com/app/${review.externalProductId}`} target="_blank" rel="noreferrer">Steam 확인 ↗</a><div className="review-actions"><button onClick={() => void decideMetadata(review.gameId, 'APPROVED')}>승인</button><button className="danger" onClick={() => void decideMetadata(review.gameId, 'REJECTED')}>거절</button></div></div>)}{metadataSync && metadataSync.pendingReviews.length === 0 && <p>메타데이터 검토 대기 항목이 없습니다.</p>}</div>
+        </article>
         <article className="catalog-sync-panel">
           <div>
             <h2>Steam 자동 동기화</h2>

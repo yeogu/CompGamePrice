@@ -304,6 +304,10 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .metadata-diff { padding: 10px; background: #101f18; border-radius: 8px; }
 .metadata-diff p { display: grid; grid-template-columns: 120px 1fr; gap: 8px; margin: 5px 0; }
 .catalog-audit-panel { margin-top: 20px; padding: 20px; background: #0b1812; border: 1px solid #315141; border-radius: 14px; }
+.admin-health-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 20px 0; }
+.admin-health-grid article { display: grid; gap: 8px; padding: 16px; background: #0b1812; border: 1px solid #315141; border-radius: 12px; }
+.admin-health-grid span { color: #79cda0; font-size: 1.25rem; }
+.admin-health-grid small { color: #91a79b; }
 .audit-list { display: grid; gap: 8px; }
 .audit-list > div { display: grid; grid-template-columns: 1fr 2fr auto; gap: 12px; padding: 10px; border-top: 1px solid #213a2d; }
 .audit-list small { color: #82968b; }

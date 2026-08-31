@@ -116,6 +116,14 @@ if(BUILD_TESTING)
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_catalog_metadata_audit.py
         )
         add_test(
+            NAME steam_metadata_sync_tests
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_steam_metadata_sync.py
+        )
+        add_test(
+            NAME admin_health_summary_tests
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_admin_health_summary.py
+        )
+        add_test(
             NAME steam_catalog_batch_import_tests
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_steam_catalog_batch_import.py
         )

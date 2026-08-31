@@ -262,6 +262,12 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/admin/catalog/collection")
 [[ "${status}" == "401" ]]
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/admin/health")
+[[ "${status}" == "401" ]]
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/admin/catalog/metadata-sync")
+[[ "${status}" == "401" ]]
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     -X POST "${api_base}/api/admin/catalog/collection")
 [[ "${status}" == "401" ]]
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
@@ -303,6 +309,15 @@ grep -q '"enabled":true' "${response_body}"
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     -b "${cookie_jar}" "${api_base}/api/admin/catalog/collection")
 [[ "${status}" == "200" ]]
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -b "${cookie_jar}" "${api_base}/api/admin/health")
+[[ "${status}" == "200" ]]
+grep -q '"metadata"' "${response_body}"
+grep -q '"notifications"' "${response_body}"
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -b "${cookie_jar}" "${api_base}/api/admin/catalog/metadata-sync")
+[[ "${status}" == "200" ]]
+grep -q '"pendingReviews"' "${response_body}"
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/games?query=terraria")
