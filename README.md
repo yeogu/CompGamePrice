@@ -277,6 +277,12 @@ Admin 대시보드는 canonical 메타데이터 완성률, 최근 가격 수집 
 상품 검색·연결, 가격 수집 기능만 표시됩니다. Store 선택 dropdown은 사용하지 않아
 다른 Store에 잘못 연결하는 실수를 방지합니다.
 
+관리자 대시보드는 Store별 등록 상품, 최신·오래된 가격, 검토 대기 건수와 마지막
+성공 수집 시간을 한 화면에 표시합니다. 상품 연결 직후 잘못된 매칭을 발견하면
+Preview 결과의 `잘못 연결된 상품 되돌리기`를 사용할 수 있습니다. 이 작업은
+확인 절차 후 원자적으로 실행되고 변경 기록에 남으며, 마지막 Store 상품을 제거한
+경우 비어 있는 canonical Game도 함께 제거합니다.
+
 ```bash
 python3 tools/sync_mobile_catalog.py --store GooglePlay --batch-size 10
 python3 tools/sync_mobile_catalog.py --store AppleAppStore --batch-size 10

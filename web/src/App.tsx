@@ -1,5 +1,5 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react'
-import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, getAdminHealthSummary, getAlertRules, getCatalogAdminStatus, getCatalogChangeAudits, getCatalogCollectionJob, getCatalogFilters, getCatalogSyncJob, getCollectionRuns, getExternalIdentities, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getMetadataSyncStatus, getMobileCatalogSyncJob, getNotifications, getOAuthUrl, getPreferences, importAppleCatalogGame, importGooglePlayCatalogGame, importSteamCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, resolveCatalogSyncReview, resolveMetadataReview, resolveMobileCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, startMetadataSync, startMobileCatalogSync, unlinkExternalIdentity, updateCatalogGameMetadata, updatePreferences } from './api'
+import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, disconnectCatalogProduct, getAdminHealthSummary, getAlertRules, getCatalogAdminStatus, getCatalogChangeAudits, getCatalogCollectionJob, getCatalogFilters, getCatalogSyncJob, getCollectionRuns, getExternalIdentities, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getMetadataSyncStatus, getMobileCatalogSyncJob, getNotifications, getOAuthUrl, getPreferences, importAppleCatalogGame, importGooglePlayCatalogGame, importSteamCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, resolveCatalogSyncReview, resolveMetadataReview, resolveMobileCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, startMetadataSync, startMobileCatalogSync, unlinkExternalIdentity, updateCatalogGameMetadata, updatePreferences } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
 import type { AdminHealthSummary, AlertRule, AlertRuleType, CatalogAdminResult, CatalogChangeAudit, CatalogCollectionJob, CatalogFilterOptions, CatalogMetadataUpdateResult, CatalogSyncJob, CollectionRun, ExternalIdentity, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSort, GameSummary, MetadataSyncStatus, MobileCatalogSyncJob, MobileCatalogSyncReview, Money, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
 
@@ -569,6 +569,37 @@ function App() {
       }
     } catch (reason) {
       setAdminError(reason instanceof Error ? reason.message : '메타데이터를 변경하지 못했습니다.')
+    } finally {
+      setAdminImporting(false)
+    }
+  }
+
+  const disconnectAdminProduct = async () => {
+    const product = adminResult?.game.matchedProduct
+    if (!product) {
+      return
+    }
+    const confirmed = window.confirm(
+      `${adminResult.game.title}에서 ${product.store} 상품 연결을 해제할까요? 마지막 상품이면 게임도 카탈로그에서 제거됩니다.`,
+    )
+    if (!confirmed) {
+      return
+    }
+    setAdminImporting(true)
+    setAdminError('')
+    try {
+      const result = await disconnectCatalogProduct(product.store, product.productId)
+      setAdminResult(null)
+      setAdminCandidates([])
+      setActionMessage(
+        result.removedGame
+          ? `${result.title} 게임과 잘못된 상품 연결을 제거했습니다.`
+          : `${result.title}에서 Store 상품 연결을 해제했습니다.`,
+      )
+      setCatalogAudits(await getCatalogChangeAudits())
+      setAdminHealth(await getAdminHealthSummary())
+    } catch (reason) {
+      setAdminError(reason instanceof Error ? reason.message : '상품 연결 해제에 실패했습니다.')
     } finally {
       setAdminImporting(false)
     }
@@ -1452,6 +1483,7 @@ function App() {
             {metadataPreview && <div className="metadata-diff">{Object.entries(metadataPreview.diff).map(([field, change]) => <p key={field}><strong>{field}</strong><span>{Array.isArray(change.before) ? change.before.join(', ') : change.before || '없음'} → {Array.isArray(change.after) ? change.after.join(', ') : change.after || '없음'}</span></p>)}{!metadataPreview.changed && <p>변경할 내용이 없습니다.</p>}</div>}
           </section>
           {!adminResult.applied && adminResult.game.matchDecision?.status !== 'Rejected' && <button disabled={adminImporting || (adminResult.game.matchDecision?.status === 'NeedsReview' && !reviewConfirmed)} onClick={() => void runCatalogImport(true)}>{adminImporting ? 'Store 상품 연결 중…' : adminResult.game.matchDecision?.status === 'NeedsReview' ? `확인 완료 후 ${adminResult.game.title}에 연결` : '검증된 Store 상품 연결'}</button>}
+          {adminResult.applied && adminResult.game.matchedProduct && <button className="danger-action" disabled={adminImporting} onClick={() => void disconnectAdminProduct()}>{adminImporting ? '연결 해제 중…' : '잘못 연결된 상품 되돌리기'}</button>}
           {adminResult.applied && <button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectCatalogPrices()}>{catalogJob?.status === 'RUNNING' ? '가격 수집 중…' : `${adminStore} 가격 수집 시작`}</button>}
         </article>}
         {catalogJob && catalogJob.status !== 'IDLE' && <div className={`admin-job ${catalogJob.status.toLowerCase()}`}><strong>{catalogJob.store ?? adminStore} 수집 상태: {catalogJob.status}</strong>{catalogJob.error && <span>{catalogJob.error}</span>}</div>}

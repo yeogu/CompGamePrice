@@ -567,6 +567,17 @@ Json::Value adminHealthSummary() {
         "");
 }
 
+Json::Value disconnectCatalogProduct(
+    const std::string& store,
+    const std::string& productId) {
+    const auto project = std::filesystem::path(PROJECT_SOURCE_DIR);
+    return runCatalogSyncCommand(
+        project / "tools/remove_catalog_product.py",
+        " --store " + shellQuoted(store) +
+        " --product-id " + shellQuoted(productId) +
+        " --apply");
+}
+
 Json::Value runMetadataSync(
     bool synchronize,
     const std::string& gameId = {},
@@ -1449,6 +1460,45 @@ int main() {
                 }
             },
             {drogon::Patch});
+        drogon::app().registerHandler(
+            "/api/admin/catalog/products/{1}/{2}",
+            [&catalog, &authService](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback,
+                const std::string& store,
+                const std::string& productId) {
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
+                    return;
+                }
+                const std::set<std::string> supportedStores{
+                    "Steam",
+                    "GooglePlay",
+                    "AppleAppStore",
+                    "EpicGamesStore",
+                    "NintendoEShop",
+                };
+                if (supportedStores.count(store) == 0 || productId.empty()) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "valid store and product ID are required"));
+                    return;
+                }
+                try {
+                    const auto result = disconnectCatalogProduct(
+                        store,
+                        productId);
+                    catalog.reload(
+                        std::string(SAMPLE_DATA_DIR) +
+                        "/game_catalog.json");
+                    callback(jsonResponse(result));
+                } catch (const std::exception& error) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        error.what()));
+                }
+            },
+            {drogon::Delete});
         drogon::app().registerHandler(
             "/api/admin/catalog/audits",
             [&authService](

@@ -36,12 +36,26 @@ class AdminHealthSummaryTest(unittest.TestCase):
                         notification_id INTEGER PRIMARY KEY, channel TEXT, status TEXT
                     );
                     INSERT INTO notification_outbox VALUES(1, 'email', 'PENDING');
+                    CREATE TABLE store_products(
+                        store TEXT,
+                        last_successful_check_at TEXT
+                    );
+                    INSERT INTO store_products VALUES('Steam', '2020-01-01T00:00:00Z');
+                    CREATE TABLE catalog_sync_review(
+                        provider TEXT,
+                        status TEXT
+                    );
+                    INSERT INTO catalog_sync_review VALUES('Steam', 'PENDING');
                     """
                 )
             result = admin_health_summary.summary(catalog, database)
             self.assertEqual(result["metadata"], {"complete": 1, "incomplete": 1, "total": 2})
             self.assertEqual(result["collection"]["recentFailures"], 1)
             self.assertEqual(result["notifications"]["pending"], 1)
+            steam = next(store for store in result["stores"] if store["store"] == "Steam")
+            self.assertEqual(steam["stalePrices"], 1)
+            self.assertEqual(steam["pendingReviews"], 1)
+            self.assertEqual(steam["registeredProducts"], 0)
 
 
 if __name__ == "__main__":
