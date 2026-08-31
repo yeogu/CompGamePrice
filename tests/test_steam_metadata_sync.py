@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import sqlite3
 import sys
 import tempfile
 import unittest
@@ -11,7 +12,7 @@ import sync_steam_metadata
 
 
 class SteamMetadataSyncTest(unittest.TestCase):
-    def test_discovers_diff_and_applies_only_after_approval(self):
+    def test_automatically_fills_only_missing_verified_fields(self):
         raw = (ROOT / "tests/fixtures/steam_appdetails_413150.json").read_bytes()
         catalog = {
             "schemaVersion": 4,
@@ -31,21 +32,63 @@ class SteamMetadataSyncTest(unittest.TestCase):
                 database,
                 fetcher=lambda app_id: raw,
             )
-            self.assertEqual(result["discovered"], 1)
-            review = result["pendingReviews"][0]
-            self.assertEqual(review["proposed"]["developers"], ["ConcernedApe"])
-            unchanged = json.loads(catalog_path.read_text(encoding="utf-8"))
-            self.assertNotIn("developers", unchanged["games"][0])
-            resolved = sync_steam_metadata.resolve(
-                catalog_path,
-                database,
-                "stardew-valley",
-                "APPROVED",
-            )
-            self.assertEqual(resolved["pendingReviews"], [])
+            self.assertEqual(result["autoApplied"], 1)
+            self.assertEqual(result["discovered"], 0)
+            self.assertEqual(result["pendingReviews"], [])
             updated = json.loads(catalog_path.read_text(encoding="utf-8"))
             self.assertEqual(updated["games"][0]["developers"], ["ConcernedApe"])
             self.assertEqual(updated["games"][0]["publishers"], ["ConcernedApe"])
+            with sqlite3.connect(database) as connection:
+                audit = connection.execute(
+                    """
+                    SELECT actor, action, outcome
+                    FROM catalog_change_audit
+                    """
+                ).fetchone()
+            self.assertEqual(
+                audit,
+                ("steam-metadata-sync", "UPDATE_GAME_METADATA", "APPLIED"),
+            )
+            repeated = sync_steam_metadata.synchronize(
+                catalog_path,
+                database,
+                fetcher=lambda app_id: raw,
+            )
+            self.assertEqual(repeated["autoApplied"], 0)
+            self.assertEqual(repeated["pendingReviews"], [])
+
+    def test_existing_identity_conflict_requires_approval(self):
+        raw = (ROOT / "tests/fixtures/steam_appdetails_413150.json").read_bytes()
+        catalog = {
+            "schemaVersion": 4,
+            "games": [{
+                "id": "stardew-valley",
+                "title": "Stardew Valley",
+                "developers": ["Different Studio"],
+                "products": [{"store": "Steam", "productId": "413150"}],
+            }],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            catalog_path = root / "catalog.json"
+            database = root / "prices.db"
+            catalog_path.write_text(json.dumps(catalog), encoding="utf-8")
+            result = sync_steam_metadata.synchronize(
+                catalog_path,
+                database,
+                fetcher=lambda app_id: raw,
+            )
+            self.assertEqual(result["autoApplied"], 0)
+            self.assertEqual(result["discovered"], 1)
+            self.assertEqual(
+                result["pendingReviews"][0]["diff"]["developers"]["before"],
+                ["Different Studio"],
+            )
+            unchanged = json.loads(catalog_path.read_text(encoding="utf-8"))
+            self.assertEqual(
+                unchanged["games"][0]["developers"],
+                ["Different Studio"],
+            )
 
     def test_partial_failure_does_not_remove_other_proposals(self):
         catalog = {
@@ -79,7 +122,8 @@ class SteamMetadataSyncTest(unittest.TestCase):
                 root / "prices.db",
                 fetcher=fetch,
             )
-            self.assertEqual(result["discovered"], 1)
+            self.assertEqual(result["autoApplied"], 1)
+            self.assertEqual(result["discovered"], 0)
             self.assertEqual(result["failed"][0]["gameId"], "two")
 
 

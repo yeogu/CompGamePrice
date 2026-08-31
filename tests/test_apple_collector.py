@@ -1,6 +1,8 @@
 import importlib.util
+import json
 from pathlib import Path
 import sys
+import tempfile
 import unittest
 
 
@@ -16,10 +18,21 @@ SPEC.loader.exec_module(apple_collector)
 
 class AppleCollectorTest(unittest.TestCase):
     def test_uses_catalog_track_id_and_normalizes_krw_price(self):
-        self.assertEqual(
-            apple_collector.apple_targets(ROOT / "data/game_catalog.json"),
-            [("1406710800", "stardew-valley")],
-        )
+        with tempfile.TemporaryDirectory() as directory:
+            catalog = Path(directory) / "catalog.json"
+            catalog.write_text(json.dumps({
+                "games": [{
+                    "id": "stardew-valley",
+                    "products": [{
+                        "store": "AppleAppStore",
+                        "productId": "1406710800",
+                    }],
+                }],
+            }), encoding="utf-8")
+            self.assertEqual(
+                apple_collector.apple_targets(catalog),
+                [("1406710800", "stardew-valley")],
+            )
         raw = (ROOT / "tests/fixtures/apple_lookup_1406710800.json").read_bytes()
         self.assertEqual(
             apple_collector.normalized_row(raw, "1406710800", "stardew-valley"),

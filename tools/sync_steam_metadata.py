@@ -86,6 +86,27 @@ def proposal_diff(game: dict, proposed: dict) -> dict:
     }
 
 
+def missing_field_changes(game: dict, proposed: dict) -> dict:
+    return {
+        field: values
+        for field, values in proposed.items()
+        if values and not game.get(field)
+    }
+
+
+def identity_conflicts(game: dict, proposed: dict) -> dict:
+    conflicts = {}
+    for field in ("developers", "publishers"):
+        current = game.get(field, [])
+        candidate = proposed.get(field, [])
+        if current and candidate and current != candidate:
+            conflicts[field] = {
+                "before": current,
+                "after": candidate,
+            }
+    return conflicts
+
+
 def fetch_steam_metadata(app_id: str) -> bytes:
     raw, _, _ = steam.fetch(app_id, "kr", "english", 15.0)
     return raw
@@ -100,6 +121,7 @@ def synchronize(
     document = json.loads(catalog_path.read_text(encoding="utf-8"))
     catalog_storage.validate_catalog(document)
     discovered = 0
+    auto_applied = 0
     failed = []
     with sqlite3.connect(database_path) as connection:
         initialize(connection)
@@ -121,30 +143,42 @@ def synchronize(
             app_id = str(product["productId"])
             try:
                 proposed = proposed_metadata(fetcher(app_id), app_id)
-                diff = proposal_diff(game, proposed)
-                if not diff:
+                conflicts = identity_conflicts(game, proposed)
+                changes = missing_field_changes(game, proposed)
+                if conflicts:
+                    connection.execute(
+                        """
+                        INSERT INTO catalog_metadata_review(
+                            game_id, source_store, external_product_id,
+                            proposed_json, diff_json, created_at
+                        ) VALUES(?, 'Steam', ?, ?, ?, ?)
+                        """,
+                        (
+                            game["id"],
+                            app_id,
+                            json.dumps(proposed, ensure_ascii=False),
+                            json.dumps(conflicts, ensure_ascii=False),
+                            utc_now(),
+                        ),
+                    )
+                    discovered += 1
                     continue
-                connection.execute(
-                    """
-                    INSERT INTO catalog_metadata_review(
-                        game_id, source_store, external_product_id,
-                        proposed_json, diff_json, created_at
-                    ) VALUES(?, 'Steam', ?, ?, ?, ?)
-                    """,
-                    (
+                if changes:
+                    metadata_update.update_metadata(
+                        catalog_path,
                         game["id"],
-                        app_id,
-                        json.dumps(proposed, ensure_ascii=False),
-                        json.dumps(diff, ensure_ascii=False),
-                        utc_now(),
-                    ),
-                )
-                discovered += 1
+                        changes,
+                        True,
+                        database_path,
+                        "steam-metadata-sync",
+                    )
+                    auto_applied += 1
             except Exception as error:
                 failed.append({"gameId": game["id"], "error": str(error)})
         connection.commit()
     return {
         "discovered": discovered,
+        "autoApplied": auto_applied,
         "failed": failed,
         **status(database_path),
     }

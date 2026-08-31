@@ -559,8 +559,10 @@ function App() {
     setMetadataSyncRunning(true)
     setAdminError('')
     try {
-      setMetadataSync(await startMetadataSync())
+      const result = await startMetadataSync()
+      setMetadataSync(result)
       setAdminHealth(await getAdminHealthSummary())
+      setActionMessage(`Steam 메타데이터 자동 보완 ${result.autoApplied ?? 0}개 · 관리자 검토 ${result.discovered ?? 0}개 · 실패 ${result.failed?.length ?? 0}개`)
     } catch (reason) {
       setAdminError(reason instanceof Error ? reason.message : 'Steam 메타데이터를 확인하지 못했습니다.')
     } finally {
@@ -1303,7 +1305,7 @@ function App() {
         <p className="view-description">게임 이름으로 Store를 검색하고 본편 상품이 맞는지 확인한 뒤 등록하세요.</p>
         {adminHealth && <section className="admin-health-grid" aria-label="운영 상태 요약"><article><strong>메타데이터 완성률</strong><span>{adminHealth.metadata.complete} / {adminHealth.metadata.total}</span><small>보완 필요 {adminHealth.metadata.incomplete}개</small></article><article><strong>최근 수집 실패</strong><span>{adminHealth.collection.recentFailures}건</span><small>{adminHealth.collection.lastFailure ? `${adminHealth.collection.lastFailure.store} · ${adminHealth.collection.lastFailure.error ?? '원인 없음'}` : '실패 없음'}</small></article><article><strong>알림 전달</strong><span>대기 {adminHealth.notifications.pending} · 재시도 {adminHealth.notifications.retryable}</span><small>재시도 소진 {adminHealth.notifications.exhausted}건</small></article></section>}
         <article className="catalog-sync-panel">
-          <div><h2>Steam 신원 메타데이터 보완</h2><p>연결된 공식 Steam 상품에서 개발사·퍼블리셔·장르를 제안합니다. 승인 전에는 catalog를 변경하지 않습니다.</p></div>
+          <div><h2>Steam 신원 메타데이터 보완</h2><p>비어 있는 개발사·퍼블리셔·장르는 자동 보완하고, 기존 신원 정보와 충돌하는 게임만 관리자에게 요청합니다.</p></div>
           <button disabled={metadataSyncRunning} onClick={() => void discoverMetadata()}>{metadataSyncRunning ? '확인 중…' : '누락 메타데이터 찾기'}</button>
           <div className="sync-reviews">{metadataSync?.pendingReviews.map((review) => <div key={review.gameId}><strong>{review.gameId}</strong><span>개발사 {review.proposed.developers.join(' · ') || '없음'}<br />퍼블리셔 {review.proposed.publishers.join(' · ') || '없음'}<br />장르 {review.proposed.genres.join(' · ') || '없음'}</span><a href={`https://store.steampowered.com/app/${review.externalProductId}`} target="_blank" rel="noreferrer">Steam 확인 ↗</a><div className="review-actions"><button onClick={() => void decideMetadata(review.gameId, 'APPROVED')}>승인</button><button className="danger" onClick={() => void decideMetadata(review.gameId, 'REJECTED')}>거절</button></div></div>)}{metadataSync && metadataSync.pendingReviews.length === 0 && <p>메타데이터 검토 대기 항목이 없습니다.</p>}</div>
         </article>

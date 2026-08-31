@@ -256,8 +256,9 @@ python3 tools/audit_catalog_metadata.py
 안전하게 보존하면서 관리자가 검증된 정보부터 단계적으로 보완하기 위해서입니다.
 
 연결된 Steam 본편에서 누락 메타데이터 제안을 생성하려면 다음 명령을 사용합니다.
-제안은 바로 반영되지 않고 Admin의 `Steam 신원 메타데이터 보완` 검토 큐에
-저장됩니다.
+기존 값이 없는 필드는 자동 반영되고 감사 기록에 `steam-metadata-sync` actor로
+남습니다. 기존 개발사·퍼블리셔와 Steam 값이 충돌하는 경우에만 Admin의
+`Steam 신원 메타데이터 보완` 검토 큐에 저장됩니다.
 
 ```bash
 python3 tools/sync_steam_metadata.py

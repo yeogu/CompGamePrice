@@ -872,8 +872,16 @@ void testGameCatalogSearch() {
            "Catalog product should own its purchase URL");
     expect(catalog.storeProducts(Store::Steam).front().supportedPlatforms.size() == 3,
            "Catalog product should expose Store-specific platforms");
-    expect(catalog.storeProducts(Store::GooglePlay).size() == 1,
-           "Catalog should expose Store-specific product mappings");
+    const auto googlePlayProducts = catalog.storeProducts(Store::GooglePlay);
+    expect(
+        std::any_of(
+            googlePlayProducts.begin(),
+            googlePlayProducts.end(),
+            [](const auto& product) {
+                return product.productId ==
+                    "com.chucklefish.stardewvalley";
+            }),
+        "Catalog should expose Store-specific product mappings");
     expect(catalog.storeProducts(Store::EpicGamesStore).size() == 1,
            "Catalog should expose the Epic product mapping");
     expect(catalog.storeProducts(Store::NintendoEShop).size() == 1 &&

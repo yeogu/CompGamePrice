@@ -100,6 +100,7 @@ def update_metadata(
     payload: dict,
     apply: bool,
     database_path: Path | None = None,
+    actor: str = "catalog-admin",
 ) -> dict:
     changes = validated_changes(payload)
 
@@ -119,6 +120,7 @@ def update_metadata(
             database_path=database_path,
             action="UPDATE_GAME_METADATA",
             detail=json.dumps(preview["diff"], ensure_ascii=False),
+            actor=actor,
         )
         return result
     catalog = json.loads(catalog_path.read_text(encoding="utf-8"))

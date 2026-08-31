@@ -117,7 +117,7 @@ export interface CatalogMetadataUpdateResult { game: GameSummary; diff: Record<s
 export interface CatalogChangeAudit { id: number; actor: string; action: string; store: string; externalProductId: string; gameId: string; outcome: 'APPLIED' | 'NO_OP' | 'PENDING'; occurredAt: string; detail?: string }
 export interface AdminHealthSummary { metadata: { complete: number; incomplete: number; total: number }; collection: { recentFailures: number; lastFailure?: { store: string; error?: string; startedAt: string } }; notifications: { pending: number; retryable: number; exhausted: number; sent: number } }
 export interface MetadataReview { gameId: string; sourceStore: string; externalProductId: string; proposed: { developers: string[]; publishers: string[]; genres: string[] }; diff: Record<string, CatalogMetadataDiff>; status: 'PENDING' | 'APPROVED' | 'REJECTED'; createdAt: string; resolvedAt?: string }
-export interface MetadataSyncStatus { discovered?: number; failed?: Array<{ gameId: string; error: string }>; pendingReviews: MetadataReview[]; reviewHistory: MetadataReview[] }
+export interface MetadataSyncStatus { autoApplied?: number; discovered?: number; failed?: Array<{ gameId: string; error: string }>; pendingReviews: MetadataReview[]; reviewHistory: MetadataReview[] }
 export interface CatalogAdminResult {
   game: {
     id: string
