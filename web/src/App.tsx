@@ -1,7 +1,7 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react'
-import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, getAlertRules, getCatalogAdminStatus, getCatalogCollectionJob, getCatalogFilters, getCatalogSyncJob, getCollectionRuns, getExternalIdentities, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getMobileCatalogSyncJob, getNotifications, getOAuthUrl, getPreferences, importAppleCatalogGame, importGooglePlayCatalogGame, importSteamCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, resolveCatalogSyncReview, resolveMobileCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, startMobileCatalogSync, unlinkExternalIdentity, updatePreferences } from './api'
+import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, getAlertRules, getCatalogAdminStatus, getCatalogChangeAudits, getCatalogCollectionJob, getCatalogFilters, getCatalogSyncJob, getCollectionRuns, getExternalIdentities, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getMobileCatalogSyncJob, getNotifications, getOAuthUrl, getPreferences, importAppleCatalogGame, importGooglePlayCatalogGame, importSteamCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, resolveCatalogSyncReview, resolveMobileCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, startMobileCatalogSync, unlinkExternalIdentity, updateCatalogGameMetadata, updatePreferences } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
-import type { AlertRule, AlertRuleType, CatalogAdminResult, CatalogCollectionJob, CatalogFilterOptions, CatalogSyncJob, CollectionRun, ExternalIdentity, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSort, GameSummary, MobileCatalogSyncJob, MobileCatalogSyncReview, Money, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
+import type { AlertRule, AlertRuleType, CatalogAdminResult, CatalogChangeAudit, CatalogCollectionJob, CatalogFilterOptions, CatalogMetadataUpdateResult, CatalogSyncJob, CollectionRun, ExternalIdentity, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSort, GameSummary, MobileCatalogSyncJob, MobileCatalogSyncReview, Money, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
 
 const formatMoney = (money: Money) =>
   new Intl.NumberFormat('ko-KR', {
@@ -65,7 +65,9 @@ const matchReasonMessage = (reason: string) => {
   const messages: Record<string, string> = {
     'Developer matches the canonical game': '개발사가 canonical Game 정보와 일치합니다.',
     'Developer differs from the canonical game': '개발사가 canonical Game 정보와 다릅니다.',
-    'Developer information is incomplete': 'Store 또는 canonical Game의 개발사 정보가 부족해 자동으로 확인할 수 없습니다.',
+    'Official publisher matches the canonical game': '공식 퍼블리셔가 canonical Game 정보와 일치합니다.',
+    'Developer or publisher differs from the canonical game': '개발사와 퍼블리셔가 canonical Game 정보와 다릅니다.',
+    'Developer and publisher information is incomplete': 'Store 또는 canonical Game의 개발사·퍼블리셔 정보가 부족해 자동으로 확인할 수 없습니다.',
     'Title does not match the canonical title or aliases': '상품명이 canonical Game 제목 또는 별칭과 일치하지 않습니다.',
     'Store category is not a game': 'Store에서 게임 상품으로 분류되지 않았습니다.',
     'Product does not support the target platform': '대상 플랫폼을 지원하지 않는 상품입니다.',
@@ -134,6 +136,10 @@ function App() {
   const [adminImporting, setAdminImporting] = useState(false)
   const [adminError, setAdminError] = useState('')
   const [adminReviewNote, setAdminReviewNote] = useState('')
+  const [metadataDevelopers, setMetadataDevelopers] = useState('')
+  const [metadataPublishers, setMetadataPublishers] = useState('')
+  const [metadataPreview, setMetadataPreview] = useState<CatalogMetadataUpdateResult | null>(null)
+  const [catalogAudits, setCatalogAudits] = useState<CatalogChangeAudit[]>([])
   const [reviewConfirmed, setReviewConfirmed] = useState(false)
   const [pendingCandidate, setPendingCandidate] = useState<StoreProductCandidate | null>(null)
   const [actionMessage, setActionMessage] = useState('')
@@ -466,6 +472,9 @@ function App() {
           : await importSteamCatalogGame(appId, canonicalGameId, apply)
       setAdminGameId(result.game.id)
       setAdminResult(result)
+      setMetadataDevelopers(result.game.developers?.join(', ') ?? '')
+      setMetadataPublishers(result.game.publishers?.join(', ') ?? '')
+      setMetadataPreview(null)
       if (apply && reviewingAppId === appId) {
         try {
           setCatalogSyncJob(await resolveCatalogSyncReview(appId, 'APPROVED'))
@@ -502,6 +511,42 @@ function App() {
       }
     } catch (reason) {
       setAdminError(reason instanceof Error ? reason.message : `${adminStore} 상품을 검증하지 못했습니다.`)
+    } finally {
+      setAdminImporting(false)
+    }
+  }
+
+  const editCatalogMetadata = async (apply: boolean) => {
+    if (!adminResult) {
+      return
+    }
+    setAdminError('')
+    setAdminImporting(true)
+    try {
+      const metadata = {
+        developers: metadataDevelopers.split(',').map((value) => value.trim()).filter(Boolean),
+        publishers: metadataPublishers.split(',').map((value) => value.trim()).filter(Boolean),
+      }
+      const response = await updateCatalogGameMetadata(
+        adminResult.game.id,
+        metadata,
+        apply,
+      )
+      setMetadataPreview(response.result)
+      if (apply) {
+        setAdminResult({
+          ...adminResult,
+          game: {
+            ...adminResult.game,
+            developers: response.result.game.developers,
+            publishers: response.result.game.publishers,
+          },
+        })
+        setCatalogAudits(await getCatalogChangeAudits())
+        setActionMessage('Canonical Game 메타데이터를 저장했습니다.')
+      }
+    } catch (reason) {
+      setAdminError(reason instanceof Error ? reason.message : '메타데이터를 변경하지 못했습니다.')
     } finally {
       setAdminImporting(false)
     }
@@ -778,6 +823,7 @@ function App() {
           void getCatalogCollectionJob().then(setCatalogJob)
           void getCatalogSyncJob().then(setCatalogSyncJob)
           void refreshMobileSyncJobs()
+          void getCatalogChangeAudits().then(setCatalogAudits)
         }
       })
       .catch(() => setCatalogAdminEnabled(false))
@@ -876,6 +922,16 @@ function App() {
       localStorage.removeItem('game-price-session'); setToken(''); setUser(null)
     })
   }, [token])
+
+  const groupedMobileReviews = Object.entries(
+    mobileSyncJobs.reduce<Record<string, Array<{ provider: MobileCatalogSyncJob['provider']; review: MobileCatalogSyncReview }>>>((groups, job) => {
+      for (const review of job.pendingReviews) {
+        groups[review.gameId] ??= []
+        groups[review.gameId].push({ provider: job.provider, review })
+      }
+      return groups
+    }, {}),
+  )
 
   return (
     <div className="app-shell">
@@ -1245,9 +1301,9 @@ function App() {
           </div>
           <label>Store<select value={mobileSyncStore} onChange={(event) => setMobileSyncStore(event.target.value as MobileCatalogSyncJob['provider'])}><option value="GooglePlay">Google Play</option><option value="AppleAppStore">Apple App Store</option></select></label>
           <button disabled={mobileSyncJobs.some((job) => job.status === 'RUNNING')} onClick={() => void synchronizeMobileCatalog()}>{mobileSyncJobs.some((job) => job.status === 'RUNNING') ? '탐색 중…' : '후보 배치 탐색'}</button>
-          <div className="sync-reviews">
-            {mobileSyncJobs.flatMap((job) => job.pendingReviews.map((review) => <div key={`${job.provider}:${review.externalProductId}`}><strong>{review.title}</strong><span>{job.provider} 상품을 <code>{review.gameId}</code>에 연결할 후보입니다.<br />판정: {matchDecisionGuide[review.decision].title}<br />{review.reason.split('; ').map(matchReasonMessage).join(' ')}</span>{review.productUrl && <a href={review.productUrl} target="_blank" rel="noreferrer">Store 상품 확인 ↗</a>}<div className="review-actions"><button onClick={() => inspectMobileCatalogReview(job.provider, review)}>이 상품 검토하기</button><button className="danger" onClick={() => void rejectMobileCatalogReview(job.provider, review.externalProductId)}>후보 제외</button></div></div>))}
-            {!mobileSyncJobs.some((job) => job.pendingReviews.length > 0) && <p>모바일 검토 대기 항목이 없습니다.</p>}
+          <div className="mobile-review-groups">
+            {groupedMobileReviews.map(([gameId, offers]) => <section key={gameId} className="mobile-review-group"><header><strong>{gameId}</strong><span>{offers.length}개 Store 후보를 함께 검토합니다.</span></header><div className="sync-reviews">{offers.map(({ provider, review }) => <div key={`${provider}:${review.externalProductId}`}><strong>{review.title}</strong><span>{provider}<br />판정: {matchDecisionGuide[review.decision].title}<br />{review.reason.split('; ').map(matchReasonMessage).join(' ')}</span>{review.productUrl && <a href={review.productUrl} target="_blank" rel="noreferrer">Store 상품 확인 ↗</a>}<div className="review-actions"><button onClick={() => inspectMobileCatalogReview(provider, review)}>이 상품 검토하기</button><button className="danger" onClick={() => void rejectMobileCatalogReview(provider, review.externalProductId)}>후보 제외</button></div></div>)}</div></section>)}
+            {groupedMobileReviews.length === 0 && <p>모바일 검토 대기 항목이 없습니다.</p>}
           </div>
           <div className="sync-summary">
             {mobileSyncJobs.map((job) => {
@@ -1292,10 +1348,23 @@ function App() {
           {adminError && <p className="admin-feedback error" role="alert"><strong>연결하지 못했습니다.</strong><span>{adminError}</span><small>Store 상품 페이지와 canonical Game ID를 확인한 뒤 다시 시도하세요.</small></p>}
           {adminResult.applied && !adminError && <p className="admin-feedback success" role="status"><strong>카탈로그 연결 완료</strong><span>{adminStore} 상품이 {adminResult.game.title}에 연결되었습니다.</span></p>}
           {adminResult.game.matchDecision && <div className={`match-decision ${adminResult.game.matchDecision.status.toLowerCase()}`} role="status"><strong>{matchDecisionGuide[adminResult.game.matchDecision.status].title}</strong><p>{matchDecisionGuide[adminResult.game.matchDecision.status].summary}</p><div className="identity-comparison"><span>Canonical Game: {adminResult.game.title}<small>{adminResult.game.developers?.join(' · ') || '개발사 정보 없음'}</small></span><span>Store 상품: {adminResult.game.matchedProduct?.title || '상품명 정보 없음'}<small>{adminResult.game.matchedProduct?.developer || '개발사 정보 없음'}</small></span></div><h3>판정 근거</h3><ul>{adminResult.game.matchDecision.reasons.map((reason) => <li key={reason}>{matchReasonMessage(reason)}</li>)}</ul>{adminResult.game.matchDecision.status === 'NeedsReview' && <div className="admin-review-checklist"><h3>관리자가 확인할 항목</h3><ol><li>Store 링크에서 실제 게임 본편인지 확인</li><li>Standard Edition이며 DLC·Bundle·Demo가 아닌지 확인</li><li>개발사 또는 퍼블리셔가 공식 상품과 일치하는지 확인</li><li>확인이 끝났다면 아래 체크박스를 선택</li></ol><label><input type="checkbox" checked={reviewConfirmed} onChange={(event) => setReviewConfirmed(event.target.checked)} /> 위 항목을 직접 확인했으며 이 상품을 연결합니다.</label></div>}{adminResult.game.matchDecision.status === 'Rejected' && <p className="decision-action">이 후보를 제외하고 다른 Store 상품을 선택하세요.</p>}</div>}
+          <section className="metadata-editor">
+            <h3>Canonical Game 신원 정보</h3>
+            <p>Store 상품의 개발사 또는 공식 퍼블리셔와 비교할 기준입니다. 쉼표로 여러 값을 구분하세요.</p>
+            <label>개발사<input value={metadataDevelopers} onChange={(event) => setMetadataDevelopers(event.target.value)} placeholder="예: Re-Logic" /></label>
+            <label>퍼블리셔<input value={metadataPublishers} onChange={(event) => setMetadataPublishers(event.target.value)} placeholder="예: 505 Games" /></label>
+            <div className="review-actions"><button disabled={adminImporting} onClick={() => void editCatalogMetadata(false)}>변경 내용 확인</button>{metadataPreview?.changed && <button disabled={adminImporting} onClick={() => void editCatalogMetadata(true)}>메타데이터 저장</button>}</div>
+            {metadataPreview && <div className="metadata-diff">{Object.entries(metadataPreview.diff).map(([field, change]) => <p key={field}><strong>{field}</strong><span>{Array.isArray(change.before) ? change.before.join(', ') : change.before || '없음'} → {Array.isArray(change.after) ? change.after.join(', ') : change.after || '없음'}</span></p>)}{!metadataPreview.changed && <p>변경할 내용이 없습니다.</p>}</div>}
+          </section>
           {!adminResult.applied && adminResult.game.matchDecision?.status !== 'Rejected' && <button disabled={adminImporting || (adminResult.game.matchDecision?.status === 'NeedsReview' && !reviewConfirmed)} onClick={() => void runCatalogImport(true)}>{adminImporting ? 'Store 상품 연결 중…' : adminResult.game.matchDecision?.status === 'NeedsReview' ? `확인 완료 후 ${adminResult.game.title}에 연결` : '검증된 Store 상품 연결'}</button>}
           {adminResult.applied && <button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectCatalogPrices()}>{catalogJob?.status === 'RUNNING' ? '가격 수집 중…' : `${adminStore} 가격 수집 시작`}</button>}
         </article>}
         {catalogJob && catalogJob.status !== 'IDLE' && <div className={`admin-job ${catalogJob.status.toLowerCase()}`}><strong>{catalogJob.store ?? adminStore} 수집 상태: {catalogJob.status}</strong>{catalogJob.error && <span>{catalogJob.error}</span>}</div>}
+        <article className="catalog-audit-panel">
+          <h2>최근 관리자 변경 기록</h2>
+          <p>누가 어떤 canonical Game 또는 Store 상품을 변경했는지 확인합니다.</p>
+          <div className="audit-list">{catalogAudits.map((audit) => <div key={audit.id}><strong>{audit.gameId}</strong><span>{audit.action === 'UPDATE_GAME_METADATA' ? '메타데이터 변경' : `${audit.store} 상품 연결`} · {audit.outcome}</span><small>{new Date(audit.occurredAt).toLocaleString('ko-KR')} · {audit.actor}</small></div>)}{catalogAudits.length === 0 && <p>아직 관리자 변경 기록이 없습니다.</p>}</div>
+        </article>
       </section>}
     </main>
 

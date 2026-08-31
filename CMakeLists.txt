@@ -108,6 +108,14 @@ if(BUILD_TESTING)
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_catalog_storage.py
         )
         add_test(
+            NAME catalog_metadata_update_tests
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_catalog_metadata_update.py
+        )
+        add_test(
+            NAME catalog_metadata_audit_tests
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_catalog_metadata_audit.py
+        )
+        add_test(
             NAME steam_catalog_batch_import_tests
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_steam_catalog_batch_import.py
         )

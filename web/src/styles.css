@@ -263,6 +263,11 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .sync-reviews a { color: #79cda0; font-size: .8rem; }
 .sync-reviews .approved { color: #73d49b; }
 .sync-reviews .rejected { color: #ffb4a8; }
+.mobile-review-groups { grid-column: 1 / -1; display: grid; gap: 14px; }
+.mobile-review-group { border: 1px solid #294838; border-radius: 12px; overflow: hidden; }
+.mobile-review-group > header { display: flex; justify-content: space-between; gap: 12px; padding: 12px; background: #102219; }
+.mobile-review-group > header span { color: #91a79b; }
+.mobile-review-group .sync-reviews { padding: 0 12px; }
 .admin-form { display: grid; grid-template-columns: 1fr 1fr auto; align-items: end; gap: 12px; margin-top: 24px; }
 .admin-search { display: grid; grid-template-columns: 150px 1fr auto; gap: 10px; margin-top: 24px; }
 .admin-search input, .admin-search select { padding: 12px; color: #eef8f2; background: #0b1812; border: 1px solid #315141; border-radius: 9px; }
@@ -294,6 +299,14 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .admin-preview { margin-top: 20px; padding: 20px; background: #0b1812; border: 1px solid #315141; border-radius: 14px; }
 .admin-preview h2 { margin-top: 0; }
 .admin-preview p { color: #a9bdb2; }
+.metadata-editor { display: grid; gap: 10px; margin: 18px 0; padding: 16px; border: 1px solid #294838; border-radius: 10px; }
+.metadata-editor label { display: grid; gap: 6px; }
+.metadata-diff { padding: 10px; background: #101f18; border-radius: 8px; }
+.metadata-diff p { display: grid; grid-template-columns: 120px 1fr; gap: 8px; margin: 5px 0; }
+.catalog-audit-panel { margin-top: 20px; padding: 20px; background: #0b1812; border: 1px solid #315141; border-radius: 14px; }
+.audit-list { display: grid; gap: 8px; }
+.audit-list > div { display: grid; grid-template-columns: 1fr 2fr auto; gap: 12px; padding: 10px; border-top: 1px solid #213a2d; }
+.audit-list small { color: #82968b; }
 .match-decision { display: grid; gap: 10px; margin: 16px 0; padding: 14px; border: 1px solid #315141; border-radius: 10px; }
 .match-decision.approvedcandidate { border-color: #39835a; }
 .match-decision.needsreview { border-color: #8a6b2f; }

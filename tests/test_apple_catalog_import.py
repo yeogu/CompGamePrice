@@ -77,6 +77,17 @@ class AppleCatalogImportTest(unittest.TestCase):
                 catalog_import.apple_product(self.raw, "1406710800"),
             )
 
+    def test_approves_official_publisher_identity(self):
+        self.catalog["games"][0]["publishers"] = ["505 Games"]
+        metadata = catalog_import.apple_product(self.raw, "1406710800")
+        metadata["developer"] = "505 Games (US), Inc."
+        decision = catalog_import.catalog_matcher.evaluate(
+            self.catalog["games"][0],
+            metadata,
+        )
+        self.assertEqual(decision["status"], "ApprovedCandidate")
+        self.assertTrue(decision["publisherMatched"])
+
     def test_needs_review_requires_acknowledgement(self):
         self.catalog["games"][0]["developers"] = []
         with tempfile.TemporaryDirectory() as directory:

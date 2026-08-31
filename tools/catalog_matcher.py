@@ -18,7 +18,7 @@ EXCLUDED_TITLE_WORDS = {
     "사운드트랙",
 }
 
-DEVELOPER_SUFFIXES = {
+ORGANIZATION_SUFFIXES = {
     "co",
     "company",
     "corp",
@@ -27,6 +27,11 @@ DEVELOPER_SUFFIXES = {
     "limited",
     "llc",
     "ltd",
+    "srl",
+}
+
+ORGANIZATION_QUALIFIERS = {
+    "us",
 }
 
 
@@ -38,9 +43,11 @@ def normalized_identity(value: str) -> str:
     return " ".join(re.findall(r"[^\W_]+", value.casefold(), flags=re.UNICODE))
 
 
-def normalized_developer(value: str) -> str:
+def normalized_organization(value: str) -> str:
     words = normalized_identity(value).split()
-    while words and words[-1] in DEVELOPER_SUFFIXES:
+    while words and words[-1] in ORGANIZATION_SUFFIXES:
+        words.pop()
+    while words and words[-1] in ORGANIZATION_QUALIFIERS:
         words.pop()
     return " ".join(words)
 
@@ -78,25 +85,35 @@ def evaluate(game: dict, offer: dict) -> dict:
         reasons.append("Title does not match the canonical title or aliases")
 
     canonical_developers = {
-        normalized_developer(value)
+        normalized_organization(value)
         for value in game.get("developers", [])
-        if normalized_developer(value)
+        if normalized_organization(value)
     }
-    product_developer = normalized_developer(offer["developer"])
+    canonical_publishers = {
+        normalized_organization(value)
+        for value in game.get("publishers", [])
+        if normalized_organization(value)
+    }
+    product_developer = normalized_organization(offer["developer"])
     developer_matches = bool(
         product_developer and product_developer in canonical_developers
     )
+    publisher_matches = bool(
+        product_developer and product_developer in canonical_publishers
+    )
     if developer_matches:
         reasons.append("Developer matches the canonical game")
-    elif canonical_developers and product_developer:
-        reasons.append("Developer differs from the canonical game")
+    elif publisher_matches:
+        reasons.append("Official publisher matches the canonical game")
+    elif (canonical_developers or canonical_publishers) and product_developer:
+        reasons.append("Developer or publisher differs from the canonical game")
         rejected = True
     else:
-        reasons.append("Developer information is incomplete")
+        reasons.append("Developer and publisher information is incomplete")
 
     if rejected or not title_source:
         status = "Rejected"
-    elif title_source and developer_matches:
+    elif title_source and (developer_matches or publisher_matches):
         status = "ApprovedCandidate"
     else:
         status = "NeedsReview"
@@ -105,4 +122,5 @@ def evaluate(game: dict, offer: dict) -> dict:
         "reasons": reasons,
         "titleMatchSource": title_source,
         "developerMatched": developer_matches,
+        "publisherMatched": publisher_matches,
     }

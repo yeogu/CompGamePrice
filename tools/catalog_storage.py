@@ -186,6 +186,8 @@ def update_catalog(
     game_id: str,
     database_path: Path | None = None,
     actor: str = "catalog-admin",
+    action: str = "CONNECT_STORE_PRODUCT",
+    detail: str | None = None,
 ) -> tuple[dict, bool]:
     with catalog_lock(catalog_path):
         original_bytes = catalog_path.read_bytes()
@@ -204,7 +206,7 @@ def update_catalog(
                 audit_id = begin_audit(
                     connection,
                     actor,
-                    "CONNECT_STORE_PRODUCT",
+                    action,
                     store,
                     product_id,
                     game_id,
@@ -220,7 +222,7 @@ def update_catalog(
                     audit_id,
                     "APPLIED" if changed else "NO_OP",
                     after_hash,
-                    None if changed else "Store product was already connected",
+                    detail if changed else "Catalog already contained the requested state",
                 )
                 connection.commit()
         except Exception:

@@ -354,6 +354,58 @@ Json::Value runAppleCatalogImport(
     return executeCatalogTool(std::move(command), temporary);
 }
 
+Json::Value runCatalogMetadataUpdate(
+    const std::string& gameId,
+    const Json::Value& metadata,
+    bool apply) {
+    std::lock_guard<std::mutex> toolLock(catalogToolMutex());
+    const auto temporaryDirectory = std::filesystem::temp_directory_path();
+    const auto input = temporaryDirectory /
+        "compgameprice-catalog-metadata-input.json";
+    const auto output = temporaryDirectory /
+        "compgameprice-catalog-metadata-output.json";
+    {
+        std::ofstream stream(input);
+        Json::StreamWriterBuilder builder;
+        builder["indentation"] = "  ";
+        stream << Json::writeString(builder, metadata);
+    }
+    const auto script = std::filesystem::path(PROJECT_SOURCE_DIR) /
+        "tools/update_catalog_game_metadata.py";
+    const auto catalog = std::filesystem::path(SAMPLE_DATA_DIR) /
+        "game_catalog.json";
+    std::string command = "python3 " + shellQuoted(script.string());
+    command += " --game-id " + shellQuoted(gameId);
+    command += " --catalog " + shellQuoted(catalog.string());
+    command += " --input " + shellQuoted(input.string());
+    command += " --database " + shellQuoted(databasePath());
+    if (apply) {
+        command += " --apply";
+    }
+    try {
+        auto result = executeCatalogTool(std::move(command), output);
+        std::error_code ignored;
+        std::filesystem::remove(input, ignored);
+        return result;
+    } catch (...) {
+        std::error_code ignored;
+        std::filesystem::remove(input, ignored);
+        throw;
+    }
+}
+
+Json::Value runCatalogAuditList(int limit) {
+    std::lock_guard<std::mutex> toolLock(catalogToolMutex());
+    const auto temporary = std::filesystem::temp_directory_path() /
+        "compgameprice-catalog-audits.json";
+    const auto script = std::filesystem::path(PROJECT_SOURCE_DIR) /
+        "tools/list_catalog_audits.py";
+    std::string command = "python3 " + shellQuoted(script.string());
+    command += " --database " + shellQuoted(databasePath());
+    command += " --limit " + std::to_string(limit);
+    return executeCatalogTool(std::move(command), temporary);
+}
+
 Json::Value runStoreSearch(const std::string& store, const std::string& query) {
     std::lock_guard<std::mutex> toolLock(catalogToolMutex());
     if (store != "Steam" && store != "Google Play" &&
@@ -1232,6 +1284,89 @@ int main() {
                     user &&
                     user->role == UserRole::Admin;
                 callback(jsonResponse(response));
+            },
+            {drogon::Get});
+        drogon::app().registerHandler(
+            "/api/admin/catalog/games/{1}/metadata",
+            [&catalog, &authService](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback,
+                const std::string& gameId) {
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
+                    return;
+                }
+                if (!validCanonicalGameId(gameId)) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "invalid canonical game ID"));
+                    return;
+                }
+                const auto body = request->getJsonObject();
+                if (!body || !(*body)["metadata"].isObject()) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "metadata object is required"));
+                    return;
+                }
+                const auto apply = (*body)["apply"].isBool() &&
+                    (*body)["apply"].asBool();
+                try {
+                    Json::Value response;
+                    response["result"] = runCatalogMetadataUpdate(
+                        gameId,
+                        (*body)["metadata"],
+                        apply);
+                    response["applied"] = apply;
+                    if (apply) {
+                        catalog.reload(
+                            std::string(SAMPLE_DATA_DIR) +
+                            "/game_catalog.json");
+                    }
+                    callback(jsonResponse(response));
+                } catch (const std::invalid_argument& error) {
+                    callback(jsonError(drogon::k400BadRequest, error.what()));
+                } catch (const std::exception& error) {
+                    callback(jsonError(
+                        drogon::k500InternalServerError,
+                        error.what()));
+                }
+            },
+            {drogon::Patch});
+        drogon::app().registerHandler(
+            "/api/admin/catalog/audits",
+            [&authService](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
+                    return;
+                }
+                auto limit = 50;
+                const auto value = request->getParameter("limit");
+                if (!value.empty()) {
+                    try {
+                        limit = std::stoi(value);
+                    } catch (const std::exception&) {
+                        callback(jsonError(
+                            drogon::k400BadRequest,
+                            "limit must be an integer"));
+                        return;
+                    }
+                }
+                if (limit < 1 || limit > 200) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "limit must be between 1 and 200"));
+                    return;
+                }
+                try {
+                    callback(jsonResponse(runCatalogAuditList(limit)));
+                } catch (const std::exception& error) {
+                    callback(jsonError(
+                        drogon::k500InternalServerError,
+                        error.what()));
+                }
             },
             {drogon::Get});
         drogon::app().registerHandler(

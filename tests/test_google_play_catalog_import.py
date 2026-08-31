@@ -56,7 +56,39 @@ class GooglePlayCatalogImportTest(unittest.TestCase):
         metadata = catalog_import.verified_product(self.raw, "com.chucklefish.stardewvalley")
         decision = catalog_import.catalog_matcher.evaluate(self.catalog["games"][0], metadata)
         self.assertEqual(decision["status"], "Rejected")
-        self.assertIn("Developer differs from the canonical game", decision["reasons"])
+        self.assertIn(
+            "Developer or publisher differs from the canonical game",
+            decision["reasons"],
+        )
+
+    def test_approves_official_publisher_when_store_developer_differs(self):
+        self.catalog["games"][0]["publishers"] = ["505 Games"]
+        metadata = catalog_import.verified_product(
+            self.raw,
+            "com.chucklefish.stardewvalley",
+        )
+        metadata["developer"] = "505 Games Srl"
+        decision = catalog_import.catalog_matcher.evaluate(
+            self.catalog["games"][0],
+            metadata,
+        )
+        self.assertEqual(decision["status"], "ApprovedCandidate")
+        self.assertFalse(decision["developerMatched"])
+        self.assertTrue(decision["publisherMatched"])
+
+    def test_normalizes_regional_official_publisher_name(self):
+        self.catalog["games"][0]["publishers"] = ["505 Games"]
+        metadata = catalog_import.verified_product(
+            self.raw,
+            "com.chucklefish.stardewvalley",
+        )
+        metadata["developer"] = "505 Games (US), Inc."
+        decision = catalog_import.catalog_matcher.evaluate(
+            self.catalog["games"][0],
+            metadata,
+        )
+        self.assertEqual(decision["status"], "ApprovedCandidate")
+        self.assertTrue(decision["publisherMatched"])
 
     def test_missing_developer_requires_explicit_review(self):
         self.catalog["games"][0]["developers"] = []

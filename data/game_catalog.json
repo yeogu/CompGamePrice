@@ -72,6 +72,13 @@
     {
       "id": "terraria",
       "title": "Terraria",
+      "aliases": [],
+      "developers": [
+        "Re-Logic"
+      ],
+      "publishers": [
+        "505 Games"
+      ],
       "genres": [
         "Action",
         "Adventure"

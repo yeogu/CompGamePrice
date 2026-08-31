@@ -111,7 +111,10 @@ export type OAuthProvider = 'google' | 'kakao' | 'naver'
 export interface ExternalIdentity { id: number; provider: 'Google' | 'Kakao' | 'Naver'; email?: string }
 export interface UserPreferences { emailNotificationsEnabled: boolean; region: 'KR'; currency: 'KRW' }
 export type CatalogMatchStatus = 'ApprovedCandidate' | 'NeedsReview' | 'Rejected'
-export interface CatalogMatchDecision { status: CatalogMatchStatus; reasons: string[]; titleMatchSource?: string; developerMatched: boolean }
+export interface CatalogMatchDecision { status: CatalogMatchStatus; reasons: string[]; titleMatchSource?: string; developerMatched: boolean; publisherMatched?: boolean }
+export interface CatalogMetadataDiff { before?: string | string[]; after?: string | string[] }
+export interface CatalogMetadataUpdateResult { game: GameSummary; diff: Record<string, CatalogMetadataDiff>; changed: boolean }
+export interface CatalogChangeAudit { id: number; actor: string; action: string; store: string; externalProductId: string; gameId: string; outcome: 'APPLIED' | 'NO_OP' | 'PENDING'; occurredAt: string; detail?: string }
 export interface CatalogAdminResult {
   game: {
     id: string

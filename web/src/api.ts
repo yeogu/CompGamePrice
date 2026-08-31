@@ -103,6 +103,8 @@ export const deleteFavorite = (token: string, gameId: string) => requestJson<obj
 export const getPreferences = (token: string) => requestJson<UserPreferences>('/api/account/preferences', {}, token)
 export const updatePreferences = (token: string, preferences: UserPreferences) => requestJson<UserPreferences>('/api/account/preferences', { method: 'PATCH', body: JSON.stringify(preferences) }, token)
 export const getCatalogAdminStatus = () => requestJson<{ enabled: boolean }>('/api/admin/catalog/status')
+export const updateCatalogGameMetadata = (gameId: string, metadata: object, apply: boolean) => requestJson<{ result: import('./types').CatalogMetadataUpdateResult; applied: boolean }>(`/api/admin/catalog/games/${encodeURIComponent(gameId)}/metadata`, { method: 'PATCH', body: JSON.stringify({ metadata, apply }) })
+export const getCatalogChangeAudits = async () => (await requestJson<{ audits: import('./types').CatalogChangeAudit[] }>('/api/admin/catalog/audits')).audits
 export const importSteamCatalogGame = (appId: string, gameId: string, apply: boolean) => requestJson<CatalogAdminResult>('/api/admin/catalog/steam', { method: 'POST', body: JSON.stringify({ appId, ...(gameId ? { gameId } : {}), apply }) })
 export const importGooglePlayCatalogGame = (packageName: string, gameId: string, apply: boolean, acknowledgeReview = false) => requestJson<CatalogAdminResult>('/api/admin/catalog/google-play', { method: 'POST', body: JSON.stringify({ packageName, gameId, apply, acknowledgeReview }) })
 export const importAppleCatalogGame = (trackId: string, gameId: string, apply: boolean, acknowledgeReview = false) => requestJson<CatalogAdminResult>('/api/admin/catalog/apple', { method: 'POST', body: JSON.stringify({ trackId, gameId, apply, acknowledgeReview }) })
