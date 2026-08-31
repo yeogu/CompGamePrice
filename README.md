@@ -210,6 +210,22 @@ WEB_APP_URL=http://127.0.0.1:5173 \
 HTTP rate limit은 최대 3회까지만 backoff 후 재시도하고, 연속 실패가 누적되면
 해당 배치를 조기에 중단합니다.
 
+모든 Store 상품 등록은 공통 안전 저장 경로를 사용합니다. 파일을 수정하기 직전에
+최신 catalog를 다시 읽고, 하나의 파일 lock 안에서 Store 상품 ID와 canonical
+Game identity를 검증합니다. 같은 상품을 같은 게임에 다시 연결하는 요청은
+`NO_OP`으로 처리하며, 이미 다른 게임에 연결된 상품은 거부합니다. 변경 내용은
+임시 파일에 기록하고 검증을 통과한 경우에만 atomic replace합니다. 파일 교체나
+감사 기록 저장에 실패하면 변경 전 파일을 복원합니다.
+
+API를 통해 실행한 catalog 변경은 SQLite의 `catalog_change_audit`에 실행 주체,
+Store, 상품 ID, canonical Game ID, 변경 전후 hash와 `APPLIED`/`NO_OP` 결과로
+기록됩니다. 최근 기록은 다음처럼 확인할 수 있습니다.
+
+```sh
+sqlite3 build/game_prices.db \
+  "SELECT occurred_at, store, external_product_id, game_id, outcome FROM catalog_change_audit ORDER BY id DESC LIMIT 20;"
+```
+
 웹을 사용하지 않고 동일한 동기화를 실행하거나 상태를 확인할 수도 있습니다.
 
 ```sh

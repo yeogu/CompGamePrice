@@ -292,6 +292,7 @@ Json::Value runCatalogImport(
     std::string command = "python3 " + shellQuoted(script.string()) +
         " --app-id " + appId +
         " --catalog " + shellQuoted(catalog.string());
+    command += " --database " + shellQuoted(databasePath());
     if (!gameId.empty()) {
         command += " --game-id " + gameId;
     }
@@ -317,6 +318,7 @@ Json::Value runGooglePlayCatalogImport(
         " --package-name " + shellQuoted(packageName) +
         " --game-id " + shellQuoted(gameId) +
         " --catalog " + shellQuoted(catalog.string());
+    command += " --database " + shellQuoted(databasePath());
     if (apply) {
         command += " --apply";
     }
@@ -342,6 +344,7 @@ Json::Value runAppleCatalogImport(
         " --track-id " + shellQuoted(trackId) +
         " --game-id " + shellQuoted(gameId) +
         " --catalog " + shellQuoted(catalog.string());
+    command += " --database " + shellQuoted(databasePath());
     if (apply) {
         command += " --apply";
     }
