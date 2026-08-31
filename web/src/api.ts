@@ -49,7 +49,10 @@ export async function getGamePage(query = '', filters: GameCatalogFilters = {}):
 }
 
 export async function getGames(query = '', filters: GameCatalogFilters = {}): Promise<GameSummary[]> {
-  return (await getGamePage(query, filters)).games
+  return (await getGamePage(query, {
+    ...filters,
+    pageSize: filters.pageSize ?? 100,
+  })).games
 }
 
 export const getCatalogFilters = () => getJson<CatalogFilterOptions>('/api/catalog/filters')

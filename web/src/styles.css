@@ -235,6 +235,22 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .view-panel { min-height: 70vh; padding: 38px; background: rgba(16, 31, 24, .72); border: 1px solid #263c31; border-radius: 22px; }
 .view-title { margin: 10px 0; font-size: clamp(2.3rem, 5vw, 4rem); }
 .view-description, .empty-state { color: #91a79b; }
+.admin-section-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 24px 0; padding-bottom: 16px; border-bottom: 1px solid #315141; }
+.admin-section-tabs button { color: #a9bdb2; background: #0b1812; border: 1px solid #315141; }
+.admin-section-tabs button.active { color: #07110d; background: #73e2a7; border-color: #73e2a7; }
+.admin-dashboard { padding: 20px; background: #0b1812; border: 1px solid #315141; border-radius: 14px; }
+.admin-dashboard h2, .admin-dashboard p { margin: 0; }
+.admin-dashboard p, .admin-store-workspace > header p, .admin-product-workspace > p { margin-top: 6px; color: #91a79b; }
+.admin-store-shortcuts { display: flex; flex-wrap: wrap; gap: 8px; }
+.admin-store-workspace { margin-top: 20px; }
+.admin-store-workspace > header { display: flex; align-items: center; gap: 14px; padding: 18px 20px; background: #0b1812; border: 1px solid #315141; border-radius: 14px; }
+.admin-store-workspace > header h2, .admin-store-workspace > header p { margin: 0; }
+.store-badge { display: grid; place-items: center; width: 42px; height: 42px; color: white; background: #315141; border-radius: 12px; font-size: 1.2rem; font-weight: 900; }
+.store-badge.steam { background: #1b4e78; }
+.store-badge.google-play { background: #23865b; }
+.store-badge.apple-app-store { background: #6554c7; }
+.admin-product-workspace { margin-top: 24px; padding: 20px; background: rgba(11, 24, 18, .6); border: 1px solid #294838; border-radius: 14px; }
+.admin-product-workspace > h2, .admin-product-workspace > p { margin: 0; }
 .profile-card { display: flex; align-items: center; gap: 16px; margin-top: 28px; padding: 20px; background: #0b1812; border-radius: 14px; }
 .profile-card p { margin: 5px 0 0; color: #82968b; }
 .preference-card { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 16px; margin-top: 18px; padding: 20px; background: #0b1812; border-radius: 14px; }
@@ -269,7 +285,7 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .mobile-review-group > header span { color: #91a79b; }
 .mobile-review-group .sync-reviews { padding: 0 12px; }
 .admin-form { display: grid; grid-template-columns: 1fr 1fr auto; align-items: end; gap: 12px; margin-top: 24px; }
-.admin-search { display: grid; grid-template-columns: 150px 1fr auto; gap: 10px; margin-top: 24px; }
+.admin-search { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-top: 24px; }
 .admin-search input, .admin-search select { padding: 12px; color: #eef8f2; background: #0b1812; border: 1px solid #315141; border-radius: 9px; }
 .candidate-list { display: grid; gap: 8px; margin-top: 14px; }
 .candidate-list button { display: grid; gap: 4px; text-align: left; color: #eef8f2; background: #0b1812; border: 1px solid #315141; }

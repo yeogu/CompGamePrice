@@ -269,6 +269,11 @@ Admin 대시보드는 canonical 메타데이터 완성률, 최근 가격 수집 
 대기·재시도·재시도 소진 건수를 함께 보여줍니다. 세부 Store 연결 및 메타데이터
 변경 이력은 같은 화면의 관리자 변경 기록에서 확인할 수 있습니다.
 
+카탈로그 관리 화면은 `대시보드`, `Steam`, `Google Play`, `Apple App Store`,
+`변경 기록`으로 분리됩니다. 각 Store 화면에는 해당 Store의 후보 탐색, 검토,
+상품 검색·연결, 가격 수집 기능만 표시됩니다. Store 선택 dropdown은 사용하지 않아
+다른 Store에 잘못 연결하는 실수를 방지합니다.
+
 ```bash
 python3 tools/sync_mobile_catalog.py --store GooglePlay --batch-size 10
 python3 tools/sync_mobile_catalog.py --store AppleAppStore --batch-size 10

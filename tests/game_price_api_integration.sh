@@ -169,7 +169,7 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
 [[ "${status}" == "404" ]]
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
-    "${api_base}/api/games")
+    "${api_base}/api/games?pageSize=100")
 [[ "${status}" == "200" ]]
 grep -q '"id":"stardew-valley"' "${response_body}"
 grep -q '"id":"terraria"' "${response_body}"

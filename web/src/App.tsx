@@ -93,6 +93,7 @@ const matchDecisionGuide = {
 } as const
 
 type AppView = 'games' | 'favorites' | 'alerts' | 'notifications' | 'account' | 'collection' | 'admin'
+type AdminSection = 'dashboard' | 'steam' | 'google-play' | 'apple-app-store' | 'audit'
 
 function App() {
   const [query, setQuery] = useState('')
@@ -130,6 +131,7 @@ function App() {
   const [reviewingMobileStore, setReviewingMobileStore] = useState<MobileCatalogSyncJob['provider'] | ''>('')
   const [adminQueueView, setAdminQueueView] = useState<'pending' | 'history' | 'requests' | 'runs'>('pending')
   const [adminStore, setAdminStore] = useState('Steam')
+  const [adminSection, setAdminSection] = useState<AdminSection>('dashboard')
   const [adminQuery, setAdminQuery] = useState('')
   const [adminCandidates, setAdminCandidates] = useState<StoreProductCandidate[]>([])
   const [adminSearching, setAdminSearching] = useState(false)
@@ -229,6 +231,23 @@ function App() {
   const navigate = (view: AppView) => {
     setActiveView(view)
     setSidebarOpen(false)
+  }
+
+  const selectAdminSection = (section: AdminSection) => {
+    setAdminSection(section)
+    if (section === 'steam') {
+      setAdminStore('Steam')
+    } else if (section === 'google-play') {
+      setAdminStore('Google Play')
+      setMobileSyncStore('GooglePlay')
+    } else if (section === 'apple-app-store') {
+      setAdminStore('Apple App Store')
+      setMobileSyncStore('AppleAppStore')
+    }
+    setAdminCandidates([])
+    setPendingCandidate(null)
+    setAdminResult(null)
+    setAdminError('')
   }
 
   const openGameFinder = () => {
@@ -956,6 +975,9 @@ function App() {
 
   const groupedMobileReviews = Object.entries(
     mobileSyncJobs.reduce<Record<string, Array<{ provider: MobileCatalogSyncJob['provider']; review: MobileCatalogSyncReview }>>>((groups, job) => {
+      if (job.provider !== mobileSyncStore) {
+        return groups
+      }
       for (const review of job.pendingReviews) {
         groups[review.gameId] ??= []
         groups[review.gameId].push({ provider: job.provider, review })
@@ -1301,9 +1323,17 @@ function App() {
 
       {activeView === 'admin' && catalogAdminEnabled && user?.role === 'ADMIN' && <section className="view-panel">
         <p className="eyebrow">LOCAL ADMIN</p>
-        <h1 className="view-title">Store 상품 연결</h1>
-        <p className="view-description">게임 이름으로 Store를 검색하고 본편 상품이 맞는지 확인한 뒤 등록하세요.</p>
-        {adminHealth && <section className="admin-health-grid" aria-label="운영 상태 요약"><article><strong>메타데이터 완성률</strong><span>{adminHealth.metadata.complete} / {adminHealth.metadata.total}</span><small>보완 필요 {adminHealth.metadata.incomplete}개</small></article><article><strong>최근 수집 실패</strong><span>{adminHealth.collection.recentFailures}건</span><small>{adminHealth.collection.lastFailure ? `${adminHealth.collection.lastFailure.store} · ${adminHealth.collection.lastFailure.error ?? '원인 없음'}` : '실패 없음'}</small></article><article><strong>알림 전달</strong><span>대기 {adminHealth.notifications.pending} · 재시도 {adminHealth.notifications.retryable}</span><small>재시도 소진 {adminHealth.notifications.exhausted}건</small></article></section>}
+        <h1 className="view-title">카탈로그 관리</h1>
+        <p className="view-description">Store별 수집과 상품 연결 작업을 독립된 공간에서 관리하세요.</p>
+        <nav className="admin-section-tabs" aria-label="카탈로그 관리 영역">
+          <button className={adminSection === 'dashboard' ? 'active' : ''} onClick={() => selectAdminSection('dashboard')}>대시보드</button>
+          <button className={adminSection === 'steam' ? 'active' : ''} onClick={() => selectAdminSection('steam')}>Steam</button>
+          <button className={adminSection === 'google-play' ? 'active' : ''} onClick={() => selectAdminSection('google-play')}>Google Play</button>
+          <button className={adminSection === 'apple-app-store' ? 'active' : ''} onClick={() => selectAdminSection('apple-app-store')}>Apple App Store</button>
+          <button className={adminSection === 'audit' ? 'active' : ''} onClick={() => selectAdminSection('audit')}>변경 기록</button>
+        </nav>
+        {adminSection === 'dashboard' && <div className="admin-dashboard"><div><h2>운영 상태</h2><p>Store 작업을 시작하기 전에 데이터와 알림 상태를 확인합니다.</p></div>{adminHealth && <section className="admin-health-grid" aria-label="운영 상태 요약"><article><strong>메타데이터 완성률</strong><span>{adminHealth.metadata.complete} / {adminHealth.metadata.total}</span><small>보완 필요 {adminHealth.metadata.incomplete}개</small></article><article><strong>최근 수집 실패</strong><span>{adminHealth.collection.recentFailures}건</span><small>{adminHealth.collection.lastFailure ? `${adminHealth.collection.lastFailure.store} · ${adminHealth.collection.lastFailure.error ?? '원인 없음'}` : '실패 없음'}</small></article><article><strong>알림 전달</strong><span>대기 {adminHealth.notifications.pending} · 재시도 {adminHealth.notifications.retryable}</span><small>재시도 소진 {adminHealth.notifications.exhausted}건</small></article></section>}<div className="admin-store-shortcuts"><button onClick={() => selectAdminSection('steam')}>Steam 관리</button><button onClick={() => selectAdminSection('google-play')}>Google Play 관리</button><button onClick={() => selectAdminSection('apple-app-store')}>Apple App Store 관리</button></div></div>}
+        {adminSection === 'steam' && <div className="admin-store-workspace"><header><span className="store-badge steam">S</span><div><h2>Steam</h2><p>PC 게임 발견, 메타데이터 보완, 상품 연결과 가격 수집을 관리합니다.</p></div></header>
         <article className="catalog-sync-panel">
           <div><h2>Steam 신원 메타데이터 보완</h2><p>비어 있는 개발사·퍼블리셔·장르는 자동 보완하고, 기존 신원 정보와 충돌하는 게임만 관리자에게 요청합니다.</p></div>
           <button disabled={metadataSyncRunning} onClick={() => void discoverMetadata()}>{metadataSyncRunning ? '확인 중…' : '누락 메타데이터 찾기'}</button>
@@ -1331,26 +1361,27 @@ function App() {
             {adminQueueView === 'runs' && <div className="sync-reviews">{catalogSyncJob.recentRuns?.length ? catalogSyncJob.recentRuns.map((run) => <div key={run.id}><strong>실행 #{run.id} · {run.status}</strong><span>처리 {run.processed} · 등록 {run.accepted} · 검토 {run.review} · 제외 {run.skipped} · 실패 {run.failed}</span><small>{new Date(run.startedAt).toLocaleString('ko-KR')}</small></div>) : <p>실행 기록이 없습니다.</p>}</div>}
           </div>}
         </article>
-        <article className="catalog-sync-panel">
+        </div>}
+        {(adminSection === 'google-play' || adminSection === 'apple-app-store') && <div className="admin-store-workspace"><header><span className={`store-badge ${adminSection}`}>{adminSection === 'google-play' ? 'G' : 'A'}</span><div><h2>{adminStore}</h2><p>모바일 상품 후보 탐색, 검토, 연결과 가격 수집을 관리합니다.</p></div></header><article className="catalog-sync-panel">
           <div>
-            <h2>모바일 Store 후보 자동 탐색</h2>
+            <h2>{adminStore} 후보 자동 탐색</h2>
             <p>카탈로그 게임을 Store에서 찾아 매칭 신뢰도를 판정합니다. 후보는 자동 등록하지 않고 검토 큐에 저장됩니다.</p>
           </div>
-          <label>Store<select value={mobileSyncStore} onChange={(event) => setMobileSyncStore(event.target.value as MobileCatalogSyncJob['provider'])}><option value="GooglePlay">Google Play</option><option value="AppleAppStore">Apple App Store</option></select></label>
           <button disabled={mobileSyncJobs.some((job) => job.status === 'RUNNING')} onClick={() => void synchronizeMobileCatalog()}>{mobileSyncJobs.some((job) => job.status === 'RUNNING') ? '탐색 중…' : '후보 배치 탐색'}</button>
           <div className="mobile-review-groups">
             {groupedMobileReviews.map(([gameId, offers]) => <section key={gameId} className="mobile-review-group"><header><strong>{gameId}</strong><span>{offers.length}개 Store 후보를 함께 검토합니다.</span></header><div className="sync-reviews">{offers.map(({ provider, review }) => <div key={`${provider}:${review.externalProductId}`}><strong>{review.title}</strong><span>{provider}<br />판정: {matchDecisionGuide[review.decision].title}<br />{review.reason.split('; ').map(matchReasonMessage).join(' ')}</span>{review.productUrl && <a href={review.productUrl} target="_blank" rel="noreferrer">Store 상품 확인 ↗</a>}<div className="review-actions"><button onClick={() => inspectMobileCatalogReview(provider, review)}>이 상품 검토하기</button><button className="danger" onClick={() => void rejectMobileCatalogReview(provider, review.externalProductId)}>후보 제외</button></div></div>)}</div></section>)}
             {groupedMobileReviews.length === 0 && <p>모바일 검토 대기 항목이 없습니다.</p>}
           </div>
           <div className="sync-summary">
-            {mobileSyncJobs.map((job) => {
+            {mobileSyncJobs.filter((job) => job.provider === mobileSyncStore).map((job) => {
               const run = job.recentRuns[0]
               return <span key={job.provider}>{job.provider}: {job.status ?? run?.status ?? 'IDLE'}{run ? ` · 처리 ${run.processed} · 후보 ${run.approvedCandidates} · 검토 ${run.needsReview} · 제외 ${run.rejected} · 실패 ${run.failed} · 재시도 ${run.retries}` : ''}</span>
             })}
           </div>
         </article>
+        </div>}
+        {(adminSection === 'steam' || adminSection === 'google-play' || adminSection === 'apple-app-store') && <div className="admin-product-workspace"><h2>{adminStore} 상품 검색·연결</h2><p>게임 이름으로 상품을 찾고 canonical Game에 연결합니다.</p>
         <div className="admin-search">
-          <select aria-label="Store" value={adminStore} onChange={(event) => { setAdminStore(event.target.value); setAdminCandidates([]); setPendingCandidate(null); setAdminResult(null) }}><option value="Steam">Steam</option><option value="Google Play">Google Play</option><option value="Apple App Store">Apple App Store</option></select>
           <input aria-label="Store 게임 이름" value={adminQuery} onChange={(event) => setAdminQuery(event.target.value)} placeholder="예: Sekiro" />
           <button disabled={!adminQuery.trim() || adminSearching} onClick={() => void searchCatalogCandidates()}>{adminSearching ? '검색 중…' : 'Store 검색'}</button>
         </div>
@@ -1397,11 +1428,12 @@ function App() {
           {adminResult.applied && <button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectCatalogPrices()}>{catalogJob?.status === 'RUNNING' ? '가격 수집 중…' : `${adminStore} 가격 수집 시작`}</button>}
         </article>}
         {catalogJob && catalogJob.status !== 'IDLE' && <div className={`admin-job ${catalogJob.status.toLowerCase()}`}><strong>{catalogJob.store ?? adminStore} 수집 상태: {catalogJob.status}</strong>{catalogJob.error && <span>{catalogJob.error}</span>}</div>}
-        <article className="catalog-audit-panel">
+        </div>}
+        {adminSection === 'audit' && <article className="catalog-audit-panel">
           <h2>최근 관리자 변경 기록</h2>
           <p>누가 어떤 canonical Game 또는 Store 상품을 변경했는지 확인합니다.</p>
           <div className="audit-list">{catalogAudits.map((audit) => <div key={audit.id}><strong>{audit.gameId}</strong><span>{audit.action === 'UPDATE_GAME_METADATA' ? '메타데이터 변경' : `${audit.store} 상품 연결`} · {audit.outcome}</span><small>{new Date(audit.occurredAt).toLocaleString('ko-KR')} · {audit.actor}</small></div>)}{catalogAudits.length === 0 && <p>아직 관리자 변경 기록이 없습니다.</p>}</div>
-        </article>
+        </article>}
       </section>}
     </main>
 
