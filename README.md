@@ -255,6 +255,19 @@ python3 tools/audit_catalog_metadata.py
 있습니다. 현재 카탈로그를 강제로 차단하지 않는 이유는 기존 prototype 게임을
 안전하게 보존하면서 관리자가 검증된 정보부터 단계적으로 보완하기 위해서입니다.
 
+연결된 Steam 본편에서 누락 메타데이터 제안을 생성하려면 다음 명령을 사용합니다.
+제안은 바로 반영되지 않고 Admin의 `Steam 신원 메타데이터 보완` 검토 큐에
+저장됩니다.
+
+```bash
+python3 tools/sync_steam_metadata.py
+python3 tools/sync_steam_metadata.py --status
+```
+
+Admin 대시보드는 canonical 메타데이터 완성률, 최근 가격 수집 실패, 이메일 알림의
+대기·재시도·재시도 소진 건수를 함께 보여줍니다. 세부 Store 연결 및 메타데이터
+변경 이력은 같은 화면의 관리자 변경 기록에서 확인할 수 있습니다.
+
 ```bash
 python3 tools/sync_mobile_catalog.py --store GooglePlay --batch-size 10
 python3 tools/sync_mobile_catalog.py --store AppleAppStore --batch-size 10
@@ -281,7 +294,9 @@ python3 tools/run_daily_operations.py \
 ```
 
 SMTP를 사용할 때는 `--outbox-file` 대신 `SMTP_HOST`, `SMTP_FROM`과 선택적인
-`SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` 환경 변수를 설정합니다.
+`SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` 환경 변수를 설정합니다. 운영 기본은
+STARTTLS이며, TLS를 제공하지 않는 로컬 개발 SMTP 서버에서만
+`SMTP_STARTTLS=false`를 사용합니다.
 
 이 명령은 기본적으로 `data/game_catalog.json`의 Steam 상품을 수집하고,
 `snapshots/latest`에 저장한 뒤 `build/game_price_tracker collect-steam-all`을

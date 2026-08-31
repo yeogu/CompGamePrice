@@ -2,7 +2,9 @@ import importlib.util
 import json
 from pathlib import Path
 import sqlite3
+import socketserver
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
 
@@ -17,6 +19,70 @@ SPEC.loader.exec_module(notification_outbox)
 
 
 class NotificationOutboxTest(unittest.TestCase):
+    def test_sends_through_a_real_local_smtp_connection(self):
+        messages = []
+
+        class Handler(socketserver.StreamRequestHandler):
+            def handle(self):
+                self.wfile.write(b"220 local smtp\r\n")
+                data_mode = False
+                content = []
+                while True:
+                    line = self.rfile.readline()
+                    if not line:
+                        break
+                    if data_mode:
+                        if line == b".\r\n":
+                            messages.append(b"".join(content))
+                            self.wfile.write(b"250 queued\r\n")
+                            data_mode = False
+                        else:
+                            content.append(line)
+                        continue
+                    command = line.decode("utf-8", errors="replace").upper()
+                    if command.startswith("EHLO"):
+                        self.wfile.write(b"250-local\r\n250 OK\r\n")
+                    elif command.startswith("MAIL FROM") or command.startswith("RCPT TO"):
+                        self.wfile.write(b"250 OK\r\n")
+                    elif command.startswith("DATA"):
+                        self.wfile.write(b"354 end with dot\r\n")
+                        data_mode = True
+                    elif command.startswith("QUIT"):
+                        self.wfile.write(b"221 bye\r\n")
+                        break
+                    else:
+                        self.wfile.write(b"250 OK\r\n")
+
+        class Server(socketserver.ThreadingTCPServer):
+            daemon_threads = True
+            allow_reuse_address = True
+            block_on_close = False
+
+        with Server(("127.0.0.1", 0), Handler) as server:
+            thread = threading.Thread(target=server.serve_forever)
+            thread.start()
+            try:
+                with patch.dict(
+                    "os.environ",
+                    {
+                        "SMTP_HOST": "127.0.0.1",
+                        "SMTP_PORT": str(server.server_address[1]),
+                        "SMTP_FROM": "alerts@example.com",
+                        "SMTP_STARTTLS": "false",
+                    },
+                    clear=False,
+                ):
+                    notification_outbox.send_smtp({
+                        "to": "buyer@example.com",
+                        "subject": "가격 알림",
+                        "body": "목표 가격에 도달했습니다.",
+                    })
+            finally:
+                server.shutdown()
+                thread.join()
+        self.assertEqual(len(messages), 1)
+        self.assertIn(b"buyer@example.com", messages[0])
+
     def test_delivers_pending_message_once(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

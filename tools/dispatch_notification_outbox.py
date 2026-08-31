@@ -91,7 +91,8 @@ def send_smtp(message: dict) -> None:
     email["Subject"] = message["subject"]
     email.set_content(message["body"])
     with smtplib.SMTP(host, port, timeout=10) as client:
-        client.starttls()
+        if os.environ.get("SMTP_STARTTLS", "true").casefold() != "false":
+            client.starttls()
         username = os.environ.get("SMTP_USERNAME")
         password = os.environ.get("SMTP_PASSWORD")
         if username and password:
