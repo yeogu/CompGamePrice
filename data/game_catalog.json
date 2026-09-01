@@ -905,9 +905,11 @@
       ]
     },
     {
-      "id": "2",
-      "title": "마블 스파이더맨 2",
-      "aliases": [],
+      "id": "marvel-s-spider-man-2",
+      "title": "Marvel's Spider-Man 2",
+      "aliases": [
+        "마블 스파이더맨 2"
+      ],
       "developers": [
         "Insomniac Games",
         "Nixxes Software"
@@ -2456,9 +2458,11 @@
       ]
     },
     {
-      "id": "33",
-      "title": "클레르 옵스퀴르: 33 원정대",
-      "aliases": [],
+      "id": "clair-obscur-expedition-33",
+      "title": "Clair Obscur: Expedition 33",
+      "aliases": [
+        "클레르 옵스퀴르: 33 원정대"
+      ],
       "developers": [
         "Sandfall Interactive"
       ],
@@ -2777,6 +2781,431 @@
           "platforms": [
             "Windows",
             "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "broken-arrow",
+      "title": "Broken Arrow",
+      "aliases": [],
+      "developers": [
+        "Steel Balalaika"
+      ],
+      "publishers": [
+        "Slitherine Ltd."
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Strategy"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1604270",
+          "productUrl": "https://store.steampowered.com/app/1604270",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "wardogs",
+      "title": "WARDOGS",
+      "aliases": [],
+      "developers": [
+        "BULKHEAD"
+      ],
+      "publishers": [
+        "Team17"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Indie",
+        "MMO",
+        "Simulation"
+      ],
+      "tags": [
+        "Multiplayer"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1867240",
+          "productUrl": "https://store.steampowered.com/app/1867240",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "the-blood-of-dawnwalker",
+      "title": "The Blood of Dawnwalker 더 블러드 오브 던워커",
+      "aliases": [],
+      "developers": [
+        "Rebel Wolves"
+      ],
+      "publishers": [
+        "Bandai Namco Entertainment"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "RPG"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "3751260",
+          "productUrl": "https://store.steampowered.com/app/3751260",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "zenonia-1",
+      "title": "ZENONIA 1",
+      "aliases": [
+        "제노니아 1: 기억의 실타래"
+      ],
+      "developers": [
+        "Com2us Holdings",
+        "CFK Co., Ltd."
+      ],
+      "publishers": [
+        "Com2us Holdings"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Indie"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "4538960",
+          "productUrl": "https://store.steampowered.com/app/4538960",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "sludgineers",
+      "title": "Sludgineers",
+      "aliases": [
+        "쭉쭉주식회사"
+      ],
+      "developers": [
+        "Snickerdoodle Games",
+        "Funk Games"
+      ],
+      "publishers": [
+        "Funk Games",
+        "Gamersky Games"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "genres": [
+        "Casual",
+        "Simulation"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "4073860",
+          "productUrl": "https://store.steampowered.com/app/4073860",
+          "platforms": [
+            "Windows",
+            "macOS",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "pizza-house-simulator",
+      "title": "Pizza House Simulator🍕",
+      "aliases": [],
+      "developers": [
+        "Broken Lyre Entertainment",
+        "Wendigo Games"
+      ],
+      "publishers": [
+        "Devotion Interactive"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Casual",
+        "Indie",
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "4132330",
+          "productUrl": "https://store.steampowered.com/app/4132330",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "7-days-to-die",
+      "title": "7 Days to Die",
+      "aliases": [],
+      "developers": [
+        "The Fun Pimps"
+      ],
+      "publishers": [
+        "The Fun Pimps Entertainment LLC"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Indie",
+        "RPG",
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "251570",
+          "productUrl": "https://store.steampowered.com/app/251570",
+          "platforms": [
+            "Windows",
+            "macOS",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "subnautica",
+      "title": "Subnautica",
+      "aliases": [
+        "서브노티카"
+      ],
+      "developers": [
+        "Unknown Worlds Entertainment"
+      ],
+      "publishers": [
+        "Unknown Worlds Entertainment"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS"
+      ],
+      "genres": [
+        "Adventure",
+        "Indie"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "264710",
+          "productUrl": "https://store.steampowered.com/app/264710",
+          "platforms": [
+            "Windows",
+            "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "the-long-dark",
+      "title": "The Long Dark",
+      "aliases": [],
+      "developers": [
+        "Hinterland Studio Inc."
+      ],
+      "publishers": [
+        "Hinterland Studio Inc."
+      ],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "genres": [
+        "Adventure",
+        "Indie",
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "305620",
+          "productUrl": "https://store.steampowered.com/app/305620",
+          "platforms": [
+            "Windows",
+            "macOS",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "don-t-starve-together",
+      "title": "Don't Starve Together",
+      "aliases": [],
+      "developers": [
+        "Klei Entertainment"
+      ],
+      "publishers": [
+        "Klei Entertainment"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Indie",
+        "RPG",
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "322330",
+          "productUrl": "https://store.steampowered.com/app/322330",
+          "platforms": [
+            "Windows",
+            "macOS",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "raft",
+      "title": "Raft",
+      "aliases": [],
+      "developers": [
+        "Redbeet Interactive"
+      ],
+      "publishers": [
+        "Axolot Games"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Adventure",
+        "Indie",
+        "Simulation"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "648800",
+          "productUrl": "https://store.steampowered.com/app/648800",
+          "platforms": [
+            "Windows"
           ],
           "region": "KR",
           "edition": "Standard",

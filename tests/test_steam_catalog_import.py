@@ -72,6 +72,14 @@ class SteamCatalogImportTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "already belongs"):
             steam_catalog_import.updated_catalog(conflicting, game)
 
+    def test_rejects_numeric_only_canonical_id_from_localized_title(self):
+        self.assertEqual(
+            steam_catalog_import.canonical_id("7 Days to Die"),
+            "7-days-to-die",
+        )
+        with self.assertRaisesRegex(ValueError, "canonical game id"):
+            steam_catalog_import.canonical_id("제노니아 1: 기억의 실타래")
+
 
 if __name__ == "__main__":
     unittest.main()

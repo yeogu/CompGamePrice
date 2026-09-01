@@ -259,7 +259,14 @@ bool validSteamAppId(const std::string& value) {
 
 bool validCanonicalGameId(const std::string& value) {
     static const std::regex pattern{"[a-z0-9]+(?:-[a-z0-9]+)*"};
-    return value.empty() || std::regex_match(value, pattern);
+    const auto containsLetter = std::any_of(
+        value.begin(),
+        value.end(),
+        [](unsigned char character) {
+            return std::islower(character) != 0;
+        });
+    return value.empty() ||
+        (containsLetter && std::regex_match(value, pattern));
 }
 
 bool validGooglePlayPackage(const std::string& value) {

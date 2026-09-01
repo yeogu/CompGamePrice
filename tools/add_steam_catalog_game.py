@@ -63,7 +63,7 @@ def mapped_descriptions(entries, mapping: dict[str, str]) -> list[str]:
 
 def canonical_id(title: str) -> str:
     value = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
-    if not value:
+    if not value or re.search(r"[a-z]", value) is None:
         raise CatalogImportError("Steam title cannot produce a canonical game id")
     return value
 

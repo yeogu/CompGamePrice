@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import sqlite3
 import tempfile
@@ -45,6 +46,10 @@ def validate_catalog(document: dict) -> None:
         title = game.get("title")
         if not isinstance(game_id, str) or not game_id:
             raise CatalogStorageError("Game catalog contains an invalid game id")
+        if re.search(r"[a-z]", game_id) is None:
+            raise CatalogStorageError(
+                f"Canonical game id must contain a letter: {game_id}"
+            )
         if game_id in game_ids:
             raise CatalogStorageError(f"Duplicate canonical game id: {game_id}")
         if not isinstance(title, str) or not title.strip():
