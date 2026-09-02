@@ -47,6 +47,24 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     -H 'Content-Type: application/json' \
+    -d '{"email":"test@example.com"}' \
+    "${api_base}/api/auth/password-reset/request")
+[[ "${status}" == "202" ]]
+grep -q 'If the account exists' "${response_body}"
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -H 'Content-Type: application/json' \
+    -d '{"email":"missing@example.com"}' \
+    "${api_base}/api/auth/password-reset/request")
+[[ "${status}" == "202" ]]
+grep -q 'If the account exists' "${response_body}"
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -H 'Content-Type: application/json' \
+    -d '{"token":"invalid","password":"new-password-123"}' \
+    "${api_base}/api/auth/password-reset/confirm")
+[[ "${status}" == "400" ]]
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -H 'Content-Type: application/json' \
     -d '{"gameId":"hades"}' \
     "${api_base}/api/favorites")
 [[ "${status}" == "401" ]]

@@ -14,6 +14,10 @@ public:
     explicit AuthService(AccountRepository& repository);
     AuthResult registerUser(const std::string& email, const std::string& password) const;
     std::optional<AuthResult> login(const std::string& email, const std::string& password) const;
+    void requestPasswordReset(
+        const std::string& email,
+        const std::string& webAppUrl) const;
+    bool resetPassword(const std::string& token, const std::string& password) const;
     std::optional<UserAccount> authenticate(const std::string& token) const;
     void logout(const std::string& token) const;
 private:

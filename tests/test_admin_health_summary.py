@@ -17,6 +17,29 @@ class AdminHealthSummaryTest(unittest.TestCase):
             root = Path(directory)
             catalog = root / "catalog.json"
             database = root / "prices.db"
+            (root / "collection-scheduler-status.json").write_text(
+                json.dumps(
+                    {
+                        "job": "collection",
+                        "enabled": False,
+                        "status": "DISABLED",
+                        "updatedAt": "2026-01-02T00:00:00Z",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (root / "backup-scheduler-status.json").write_text(
+                json.dumps(
+                    {
+                        "job": "backup",
+                        "enabled": True,
+                        "status": "SUCCEEDED",
+                        "lastBackup": "game_prices.db",
+                        "updatedAt": "2026-01-02T00:00:00Z",
+                    }
+                ),
+                encoding="utf-8",
+            )
             catalog.write_text(json.dumps({
                 "schemaVersion": 4,
                 "games": [
@@ -52,6 +75,9 @@ class AdminHealthSummaryTest(unittest.TestCase):
             self.assertEqual(result["metadata"], {"complete": 1, "incomplete": 1, "total": 2})
             self.assertEqual(result["collection"]["recentFailures"], 1)
             self.assertEqual(result["notifications"]["pending"], 1)
+            self.assertEqual(result["emails"]["pending"], 0)
+            self.assertEqual(result["automation"]["collection"]["status"], "DISABLED")
+            self.assertEqual(result["automation"]["backup"]["status"], "SUCCEEDED")
             steam = next(store for store in result["stores"] if store["store"] == "Steam")
             self.assertEqual(steam["stalePrices"], 1)
             self.assertEqual(steam["pendingReviews"], 1)

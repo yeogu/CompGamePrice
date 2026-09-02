@@ -1013,6 +1013,45 @@ void testAuthenticationAndPriceAlerts() {
     accounts.clearLoginFailures("buyer@example.com","client-a");
     expect(!accounts.isLoginRateLimited("buyer@example.com","client-a"),
            "A successful login should clear its failure window");
+    auth.requestPasswordReset("missing@example.com", "https://example.com");
+    auth.requestPasswordReset("buyer@example.com", "https://example.com");
+    sqlite3_stmt* resetEmail = nullptr;
+    expect(
+        sqlite3_prepare_v2(
+            database.handle(),
+            "SELECT body FROM email_outbox ORDER BY id DESC LIMIT 1;",
+            -1,
+            &resetEmail,
+            nullptr) == SQLITE_OK &&
+            sqlite3_step(resetEmail) == SQLITE_ROW,
+        "A known account should enqueue a password reset email");
+    const auto resetBody = std::string(
+        reinterpret_cast<const char*>(sqlite3_column_text(resetEmail, 0)));
+    sqlite3_finalize(resetEmail);
+    const auto tokenMarker = std::string("resetToken=");
+    const auto tokenStart = resetBody.find(tokenMarker);
+    expect(
+        tokenStart != std::string::npos,
+        "Password reset email should contain a reset token");
+    const auto resetToken = resetBody.substr(tokenStart + tokenMarker.size(), 64);
+    expect(
+        resetToken.size() == 64,
+        "Password reset email should contain a 30-minute one-time link");
+    expect(
+        auth.resetPassword(resetToken, "new-safe-password-456"),
+        "A valid password reset token should update the password");
+    expect(
+        !auth.resetPassword(resetToken, "another-password-789"),
+        "A used password reset token must not be reusable");
+    expect(
+        !auth.authenticate(registration.token).has_value(),
+        "Password reset should invalidate existing sessions");
+    expect(
+        !auth.login("buyer@example.com", "safe-password-123").has_value(),
+        "Password reset should invalidate the old password");
+    expect(
+        auth.login("buyer@example.com", "new-safe-password-456").has_value(),
+        "Password reset should activate the new password");
 
     const Game game{"alert-game", "Alert Game", "alert game", {Platform::Windows}};
     auto product = StoreProduct{"alert-product", game.id, Store::Steam,

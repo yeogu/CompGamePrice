@@ -90,6 +90,8 @@ export async function getCollectionRuns(limit = 6): Promise<CollectionRun[]> {
 
 export const register = (email: string, password: string) => requestJson<AuthResult>('/api/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) })
 export const login = (email: string, password: string) => requestJson<AuthResult>('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) })
+export const requestPasswordReset = (email: string) => requestJson<{ message: string }>('/api/auth/password-reset/request', { method: 'POST', body: JSON.stringify({ email }) })
+export const confirmPasswordReset = (token: string, password: string) => requestJson<{ message: string }>('/api/auth/password-reset/confirm', { method: 'POST', body: JSON.stringify({ token, password }) })
 export const getMe = (token: string) => requestJson<User>('/api/auth/me', {}, token)
 export const logout = (token: string) => requestJson<object>('/api/auth/logout', { method: 'POST' }, token)
 export const getAlertRules = async (token: string) => (await requestJson<{ rules: AlertRule[] }>('/api/alert-rules', {}, token)).rules

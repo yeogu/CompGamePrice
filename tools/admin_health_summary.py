@@ -6,12 +6,14 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timedelta, timezone
 import json
+import os
 from pathlib import Path
 import sqlite3
 
 import audit_catalog_metadata
 import catalog_storage
 import dispatch_notification_outbox
+import periodic_job_status
 
 
 STORE_NAMES = (
@@ -160,6 +162,30 @@ def summary(catalog: Path, database: Path) -> dict:
         if database.exists()
         else {"pending": 0, "retryable": 0, "exhausted": 0, "sent": 0}
     )
+    email_delivery = (
+        dispatch_notification_outbox.email_delivery_status(database)
+        if database.exists()
+        else {
+            "pending": 0,
+            "retryable": 0,
+            "exhausted": 0,
+            "sent": 0,
+            "lastError": None,
+            "lastAttemptAt": None,
+        }
+    )
+    collection_status_path = Path(
+        os.environ.get(
+            "COLLECTION_STATUS_PATH",
+            database.parent / "collection-scheduler-status.json",
+        )
+    )
+    backup_status_path = Path(
+        os.environ.get(
+            "BACKUP_STATUS_PATH",
+            database.parent / "backup-scheduler-status.json",
+        )
+    )
     return {
         "metadata": {
             "complete": metadata["completeCount"],
@@ -169,6 +195,17 @@ def summary(catalog: Path, database: Path) -> dict:
         "collection": collection_summary(database),
         "stores": store_quality(document, database),
         "notifications": delivery,
+        "emails": email_delivery,
+        "automation": {
+            "collection": periodic_job_status.read_status(
+                collection_status_path,
+                "collection",
+            ),
+            "backup": periodic_job_status.read_status(
+                backup_status_path,
+                "backup",
+            ),
+        },
     }
 
 

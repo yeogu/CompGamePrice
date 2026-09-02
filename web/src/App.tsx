@@ -1,7 +1,7 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react'
-import { addAlertRule, addFavorite, deleteAlertRule, deleteFavorite, disconnectCatalogProduct, getAdminHealthSummary, getAlertRules, getCatalogAdminStatus, getCatalogChangeAudits, getCatalogCollectionJob, getCatalogFilters, getCatalogSyncJob, getCollectionRuns, getExternalIdentities, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getMetadataSyncStatus, getMobileCatalogSyncJob, getNotifications, getOAuthUrl, getPreferences, importAppleCatalogGame, importGooglePlayCatalogGame, importSteamCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, resolveCatalogSyncReview, resolveMetadataReview, resolveMobileCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, startMetadataSync, startMobileCatalogSync, unlinkExternalIdentity, updateCatalogGameMetadata, updatePreferences } from './api'
+import { addAlertRule, addFavorite, confirmPasswordReset, deleteAlertRule, deleteFavorite, disconnectCatalogProduct, getAdminHealthSummary, getAlertRules, getCatalogAdminStatus, getCatalogChangeAudits, getCatalogCollectionJob, getCatalogFilters, getCatalogSyncJob, getCollectionRuns, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getMetadataSyncStatus, getMobileCatalogSyncJob, getNotifications, getPreferences, importAppleCatalogGame, importGooglePlayCatalogGame, importSteamCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, requestPasswordReset, resolveCatalogSyncReview, resolveMetadataReview, resolveMobileCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, startMetadataSync, startMobileCatalogSync, updateCatalogGameMetadata, updatePreferences } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
-import type { AdminHealthSummary, AlertRule, AlertRuleType, CatalogAdminResult, CatalogChangeAudit, CatalogCollectionJob, CatalogFilterOptions, CatalogMetadataUpdateResult, CatalogSyncJob, CollectionRun, ExternalIdentity, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSort, GameSummary, MetadataSyncStatus, MobileCatalogSyncJob, MobileCatalogSyncReview, Money, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
+import type { AdminHealthSummary, AlertRule, AlertRuleType, CatalogAdminResult, CatalogChangeAudit, CatalogCollectionJob, CatalogFilterOptions, CatalogMetadataUpdateResult, CatalogSyncJob, CollectionRun, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSort, GameSummary, MetadataSyncStatus, MobileCatalogSyncJob, MobileCatalogSyncReview, Money, Notification, StoreProductCandidate, User, UserPreferences } from './types'
 
 const formatMoney = (money: Money) =>
   new Intl.NumberFormat('ko-KR', {
@@ -24,6 +24,21 @@ const recommendationReason: Record<string, string> = {
   'Current price is at or above the observed average.': '현재 가격이 관측 평균 이상입니다.',
   'Current price is not close enough to the historical low.': '현재 가격이 역대 최저가와 충분히 가깝지 않습니다.',
 }
+
+const jobStatusLabel: Record<string, string> = {
+  NOT_STARTED: '시작 전',
+  UNKNOWN: '상태 확인 필요',
+  DISABLED: '중지됨',
+  WAITING: '대기 중',
+  RUNNING: '실행 중',
+  SUCCEEDED: '정상',
+  PARTIAL_FAILURE: '일부 실패',
+  FAILED: '실패',
+}
+
+const formatJobTime = (value?: string | null) => value
+  ? new Date(value).toLocaleString('ko-KR')
+  : '기록 없음'
 
 const canRollbackAudit = (
   audit: CatalogChangeAudit,
@@ -129,13 +144,15 @@ function App() {
   const requestSequence = useRef(0)
   const [token, setToken] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('oauth') === 'success' || localStorage.getItem('game-price-session') === '1' ? 'cookie' : '')
   const [user, setUser] = useState<User | null>(null)
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
+  const initialResetToken = new URLSearchParams(window.location.search).get('resetToken') ?? ''
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot' | 'reset'>(initialResetToken ? 'reset' : 'login')
+  const [resetToken, setResetToken] = useState(initialResetToken)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [passwordConfirmation, setPasswordConfirmation] = useState('')
   const [rules, setRules] = useState<AlertRule[]>([])
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [targetPrice, setTargetPrice] = useState('')
-  const [identities, setIdentities] = useState<ExternalIdentity[]>([])
   const [favorites, setFavorites] = useState<GameSummary[]>([])
   const [preferences, setPreferences] = useState<UserPreferences>({ emailNotificationsEnabled: true, region: 'KR', currency: 'KRW' })
   const [catalogAdminEnabled, setCatalogAdminEnabled] = useState(false)
@@ -169,7 +186,7 @@ function App() {
   const [pendingCandidate, setPendingCandidate] = useState<StoreProductCandidate | null>(null)
   const [actionMessage, setActionMessage] = useState('')
   const [activeView, setActiveView] = useState<AppView>('games')
-  const [authOpen, setAuthOpen] = useState(false)
+  const [authOpen, setAuthOpen] = useState(Boolean(initialResetToken))
   const [authError, setAuthError] = useState('')
   const [authSubmitting, setAuthSubmitting] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -193,11 +210,10 @@ function App() {
   const suggestionSequence = useRef(0)
 
   const refreshAccount = async (activeToken: string) => {
-    const [me, nextRules, nextNotifications, nextIdentities] = await Promise.all([
+    const [me, nextRules, nextNotifications] = await Promise.all([
       getMe(activeToken),
       getAlertRules(activeToken),
       getNotifications(activeToken),
-      getExternalIdentities(activeToken),
     ])
     const [nextFavorites, nextPreferences] = await Promise.all([
       getFavorites(activeToken).catch(() => []),
@@ -207,7 +223,7 @@ function App() {
         currency: 'KRW' as const,
       })),
     ])
-    setUser({ ...me, email: nextIdentities[0]?.email ?? me.email })
+    setUser(me)
     const adminStatus = await getCatalogAdminStatus().catch(() => ({ enabled: false }))
     setCatalogAdminEnabled(adminStatus.enabled && me.role === 'ADMIN')
     if (adminStatus.enabled && me.role === 'ADMIN') {
@@ -217,7 +233,6 @@ function App() {
     }
     setRules(nextRules)
     setNotifications(nextNotifications)
-    setIdentities(nextIdentities)
     setFavorites(nextFavorites)
     setPreferences(nextPreferences)
   }
@@ -227,6 +242,32 @@ function App() {
     setAuthError('')
     setAuthSubmitting(true)
     try {
+      if (authMode === 'forgot') {
+        await requestPasswordReset(email)
+        setAuthError('')
+        setActionMessage('가입된 계정이라면 비밀번호 재설정 메일을 보냈습니다.')
+        setAuthOpen(false)
+        return
+      }
+      if (authMode === 'reset') {
+        if (password !== passwordConfirmation) {
+          setAuthError('새 비밀번호가 서로 일치하지 않습니다.')
+          return
+        }
+        await confirmPasswordReset(resetToken, password)
+        const address = new URL(window.location.href)
+        address.searchParams.delete('resetToken')
+        window.history.replaceState(null, '', address)
+        localStorage.removeItem('game-price-session')
+        setToken('')
+        setUser(null)
+        setResetToken('')
+        setPassword('')
+        setPasswordConfirmation('')
+        setAuthMode('login')
+        setActionMessage('비밀번호가 변경되었습니다. 새 비밀번호로 로그인해주세요.')
+        return
+      }
       const result = authMode === 'register' ? await register(email, password) : await login(email, password)
       localStorage.setItem('game-price-session', '1')
       setToken('cookie')
@@ -236,15 +277,20 @@ function App() {
       setAuthOpen(false)
       setActionMessage(authMode === 'login' ? '로그인했습니다.' : '회원가입과 로그인이 완료되었습니다.')
     } catch (reason) {
-      setAuthError(authenticationErrorMessage(reason, authMode))
+      if (authMode === 'reset') {
+        setAuthError('재설정 링크가 만료되었거나 올바르지 않습니다. 다시 요청해주세요.')
+      } else {
+        setAuthError(authenticationErrorMessage(reason, authMode === 'register' ? 'register' : 'login'))
+      }
     } finally {
       setAuthSubmitting(false)
     }
   }
 
-  const openAuth = (mode: 'login' | 'register') => {
+  const openAuth = (mode: 'login' | 'register' | 'forgot') => {
     setAuthMode(mode)
     setAuthError('')
+    setPasswordConfirmation('')
     setAuthOpen(true)
   }
 
@@ -436,7 +482,6 @@ function App() {
     setUser(null)
     setRules([])
     setNotifications([])
-    setIdentities([])
     setFavorites([])
     setCatalogAdminEnabled(false)
     navigate('games')
@@ -799,11 +844,6 @@ function App() {
     void runCatalogImport(false, candidate.externalProductId, suggestedGameId)
   }
 
-  const startSocialLogin = async (provider: OAuthProvider, link = false) => {
-    try { window.location.assign(await getOAuthUrl(provider, token, link)) }
-    catch (reason) { setError(reason instanceof Error ? reason.message : '소셜 로그인을 시작하지 못했습니다.') }
-  }
-
   const selectGame = async (
     game: GameSummary,
     updateAddress = true,
@@ -1050,8 +1090,8 @@ function App() {
       {sidebarOpen && <button className="sidebar-backdrop" aria-label="메뉴 닫기" onClick={() => setSidebarOpen(false)} />}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <button className="brand" onClick={openGameFinder}>
-          <span>CGP</span>
-          <strong>CompGamePrice</strong>
+          <span>DQ</span>
+          <strong>DealQuest</strong>
         </button>
         <nav aria-label="주 메뉴">
           <button className={activeView === 'games' ? 'active' : ''} onClick={openGameFinder}>게임 찾기</button>
@@ -1084,9 +1124,9 @@ function App() {
       {actionMessage && <p className="notice success">{actionMessage}</p>}
       {activeView === 'games' && <>
       <header className="hero">
-        <p className="eyebrow">GAME PRICE TRACKER</p>
+        <p className="eyebrow">DEAL QUEST · 딜퀘</p>
         <h1>어디서 사야 가장 저렴할까?</h1>
-        <p className="intro">Steam과 모바일 Store 가격을 한눈에 비교해보세요.</p>
+        <p className="intro">PC, 모바일, 콘솔 Store 가격을 한눈에 비교해보세요.</p>
         <form onSubmit={submitSearch} className="search-form">
           <div className="autocomplete" ref={autocompleteRef}>
             <input
@@ -1384,14 +1424,6 @@ function App() {
           <label className="toggle"><input type="checkbox" checked={preferences.emailNotificationsEnabled} onChange={(event) => void savePreferences(event.target.checked)} /><span>{preferences.emailNotificationsEnabled ? '사용' : '사용 안 함'}</span></label>
           <div className="preference-meta"><span>지역 <strong>{preferences.region}</strong></span><span>통화 <strong>{preferences.currency}</strong></span></div>
         </div>
-        <div className="social-connections"><h3>연결된 로그인</h3>
-          {(['google', 'kakao', 'naver'] as OAuthProvider[]).map((provider) => {
-            const label: ExternalIdentity['provider'] = provider === 'google' ? 'Google' : provider === 'kakao' ? 'Kakao' : 'Naver'
-            const identity = identities.find((item) => item.provider === label)
-            return identity ? <div className="social-identity" key={provider}><span>{label}{identity.email ? ` · ${identity.email}` : ''}</span><button onClick={() => void runAccountAction(async () => { await unlinkExternalIdentity(token, identity.id); setIdentities(await getExternalIdentities(token)) }, '계정 연결 해제에 실패했습니다.')}>연결 해제</button></div>
-              : <button className={`social-button ${provider}`} key={provider} onClick={() => void startSocialLogin(provider, true)}>{label} 계정 연결</button>
-          })}
-        </div>
       </section>}
 
       {activeView === 'collection' && catalogAdminEnabled && user?.role === 'ADMIN' && <section className="view-panel collection-panel" aria-label="최근 가격 수집 상태">
@@ -1417,7 +1449,7 @@ function App() {
           <button className={adminSection === 'apple-app-store' ? 'active' : ''} onClick={() => selectAdminSection('apple-app-store')}>Apple App Store</button>
           <button className={adminSection === 'audit' ? 'active' : ''} onClick={() => selectAdminSection('audit')}>변경 기록</button>
         </nav>
-        {adminSection === 'dashboard' && <div className="admin-dashboard"><div><h2>운영 상태</h2><p>Store 작업을 시작하기 전에 데이터와 알림 상태를 확인합니다.</p></div>{adminHealth && <><section className="admin-health-grid" aria-label="운영 상태 요약"><article><strong>메타데이터 완성률</strong><span>{adminHealth.metadata.complete} / {adminHealth.metadata.total}</span><small>보완 필요 {adminHealth.metadata.incomplete}개</small></article><article><strong>최근 수집 실패</strong><span>{adminHealth.collection.recentFailures}건</span><small>{adminHealth.collection.lastFailure ? `${adminHealth.collection.lastFailure.store} · ${adminHealth.collection.lastFailure.error ?? '원인 없음'}` : '실패 없음'}</small></article><article><strong>알림 전달</strong><span>대기 {adminHealth.notifications.pending} · 재시도 {adminHealth.notifications.retryable}</span><small>재시도 소진 {adminHealth.notifications.exhausted}건</small></article></section><section className="store-quality-grid" aria-label="Store별 데이터 품질">{adminHealth.stores.filter((store) => store.registeredProducts > 0 || store.pendingReviews > 0).map((store) => <article key={store.store}><header><strong>{store.store}</strong><span>{store.registeredProducts}개 상품</span></header><div><span>최신 가격 <strong>{store.freshPrices}</strong></span><span className={store.stalePrices > 0 ? 'warning' : ''}>오래된 가격 <strong>{store.stalePrices}</strong></span><span>검토 대기 <strong>{store.pendingReviews}</strong></span></div><small>{store.lastSuccessfulCollectionAt ? `마지막 성공 ${new Date(store.lastSuccessfulCollectionAt).toLocaleString('ko-KR')}` : '성공한 가격 수집 기록 없음'}</small></article>)}</section></>}<div className="admin-store-shortcuts"><button onClick={() => selectAdminSection('steam')}>Steam 관리</button><button onClick={() => selectAdminSection('google-play')}>Google Play 관리</button><button onClick={() => selectAdminSection('apple-app-store')}>Apple App Store 관리</button></div></div>}
+        {adminSection === 'dashboard' && <div className="admin-dashboard"><div><h2>운영 상태</h2><p>Store 작업을 시작하기 전에 데이터와 알림 상태를 확인합니다.</p></div>{adminHealth && <><section className="admin-health-grid" aria-label="운영 상태 요약"><article><strong>메타데이터 완성률</strong><span>{adminHealth.metadata.complete} / {adminHealth.metadata.total}</span><small>보완 필요 {adminHealth.metadata.incomplete}개</small></article><article><strong>최근 수집 실패</strong><span>{adminHealth.collection.recentFailures}건</span><small>{adminHealth.collection.lastFailure ? `${adminHealth.collection.lastFailure.store} · ${adminHealth.collection.lastFailure.error ?? '원인 없음'}` : '실패 없음'}</small></article><article><strong>가격 알림 메일</strong><span>대기 {adminHealth.notifications.pending} · 재시도 {adminHealth.notifications.retryable}</span><small>재시도 소진 {adminHealth.notifications.exhausted}건</small></article><article><strong>계정 이메일</strong><span>대기 {adminHealth.emails.pending} · 재시도 {adminHealth.emails.retryable}</span><small>{adminHealth.emails.lastError ? `최근 오류: ${adminHealth.emails.lastError}` : `발송 완료 ${adminHealth.emails.sent}건 · 실패 없음`}</small></article><article><strong>자동 가격 수집</strong><span>{jobStatusLabel[adminHealth.automation.collection.status] ?? adminHealth.automation.collection.status}</span><small>{adminHealth.automation.collection.status === 'DISABLED' ? '.env에서 COLLECTION_ENABLED=true로 재개할 수 있습니다.' : `마지막 완료 ${formatJobTime(adminHealth.automation.collection.lastFinishedAt)} · 다음 ${formatJobTime(adminHealth.automation.collection.nextRunAt)}`}</small><small>worker 확인 {formatJobTime(adminHealth.automation.collection.updatedAt)}</small>{adminHealth.automation.collection.failedSteps?.length ? <small className="warning">실패 단계 {adminHealth.automation.collection.failedSteps.join(', ')}</small> : null}</article><article><strong>자동 백업</strong><span>{jobStatusLabel[adminHealth.automation.backup.status] ?? adminHealth.automation.backup.status}</span><small>{adminHealth.automation.backup.lastBackup ? `최근 파일 ${adminHealth.automation.backup.lastBackup}` : `마지막 완료 ${formatJobTime(adminHealth.automation.backup.lastFinishedAt)}`}</small><small>worker 확인 {formatJobTime(adminHealth.automation.backup.updatedAt)}</small>{adminHealth.automation.backup.error ? <small className="warning">{adminHealth.automation.backup.error}</small> : null}</article></section><section className="store-quality-grid" aria-label="Store별 데이터 품질">{adminHealth.stores.filter((store) => store.registeredProducts > 0 || store.pendingReviews > 0).map((store) => <article key={store.store}><header><strong>{store.store}</strong><span>{store.registeredProducts}개 상품</span></header><div><span>최신 가격 <strong>{store.freshPrices}</strong></span><span className={store.stalePrices > 0 ? 'warning' : ''}>오래된 가격 <strong>{store.stalePrices}</strong></span><span>검토 대기 <strong>{store.pendingReviews}</strong></span></div><small>{store.lastSuccessfulCollectionAt ? `마지막 성공 ${new Date(store.lastSuccessfulCollectionAt).toLocaleString('ko-KR')}` : '성공한 가격 수집 기록 없음'}</small></article>)}</section></>}<div className="admin-store-shortcuts"><button onClick={() => selectAdminSection('steam')}>Steam 관리</button><button onClick={() => selectAdminSection('google-play')}>Google Play 관리</button><button onClick={() => selectAdminSection('apple-app-store')}>Apple App Store 관리</button></div></div>}
         {adminSection === 'steam' && <div className="admin-store-workspace"><header><span className="store-badge steam">S</span><div><h2>Steam</h2><p>PC 게임 발견, 메타데이터 보완, 상품 연결과 가격 수집을 관리합니다.</p></div></header>
         <article className="catalog-sync-panel">
           <div><h2>Steam 신원 메타데이터 보완</h2><p>비어 있는 개발사·퍼블리셔·장르는 자동 보완하고, 기존 신원 정보와 충돌하는 게임만 관리자에게 요청합니다.</p></div>
@@ -1527,15 +1559,16 @@ function App() {
       <section className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title" onMouseDown={(event) => event.stopPropagation()}>
         <button className="modal-close" aria-label="닫기" onClick={() => setAuthOpen(false)}>×</button>
         <p className="eyebrow">WELCOME</p>
-        <h2 id="auth-title">{authMode === 'login' ? '로그인' : '회원가입'}</h2>
-        <p>가격이 원하는 수준에 도달하면 놓치지 않고 확인하세요.</p>
+        <h2 id="auth-title">{authMode === 'login' ? '로그인' : authMode === 'register' ? '회원가입' : authMode === 'forgot' ? '비밀번호 찾기' : '새 비밀번호 설정'}</h2>
+        <p>{authMode === 'forgot' ? '가입한 이메일로 30분 동안 유효한 재설정 링크를 보내드립니다.' : authMode === 'reset' ? '앞으로 사용할 새 비밀번호를 입력해주세요.' : '가격이 원하는 수준에 도달하면 놓치지 않고 확인하세요.'}</p>
         {authError && <p className="auth-feedback error" role="alert">{authError}</p>}
         <form className="auth-form" onSubmit={submitAuth}>
-          <input type="email" required disabled={authSubmitting} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="email@example.com" />
-          <input type="password" required disabled={authSubmitting} minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="8자 이상 비밀번호" />
-          <button disabled={authSubmitting} type="submit">{authSubmitting ? '확인 중…' : authMode === 'login' ? '로그인' : '가입하기'}</button>
-          <button type="button" className="text-button" disabled={authSubmitting} onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError('') }}>{authMode === 'login' ? '처음이신가요? 회원가입' : '이미 계정이 있나요? 로그인'}</button>
-          <div className="social-login">{(['google', 'kakao', 'naver'] as OAuthProvider[]).map((provider) => <button type="button" className={`social-button ${provider}`} key={provider} onClick={() => void startSocialLogin(provider)}>{provider === 'google' ? 'Google' : provider === 'kakao' ? 'Kakao' : 'Naver'}</button>)}</div>
+          {authMode !== 'reset' && <input type="email" required disabled={authSubmitting} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="email@example.com" />}
+          {authMode !== 'forgot' && <input type="password" required disabled={authSubmitting} minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} placeholder={authMode === 'reset' ? '새 비밀번호 (8자 이상)' : '8자 이상 비밀번호'} />}
+          {authMode === 'reset' && <input type="password" required disabled={authSubmitting} minLength={8} value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} placeholder="새 비밀번호 확인" />}
+          <button disabled={authSubmitting} type="submit">{authSubmitting ? '확인 중…' : authMode === 'login' ? '로그인' : authMode === 'register' ? '가입하기' : authMode === 'forgot' ? '재설정 메일 보내기' : '비밀번호 변경'}</button>
+          {authMode === 'login' && <button type="button" className="text-button" disabled={authSubmitting} onClick={() => { setAuthMode('forgot'); setAuthError('') }}>비밀번호를 잊으셨나요?</button>}
+          {authMode !== 'reset' && <button type="button" className="text-button" disabled={authSubmitting} onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError('') }}>{authMode === 'login' ? '처음이신가요? 회원가입' : '로그인으로 돌아가기'}</button>}
         </form>
       </section>
     </div>}

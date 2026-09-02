@@ -116,7 +116,27 @@ export interface CatalogMetadataDiff { before?: string | string[]; after?: strin
 export interface CatalogMetadataUpdateResult { game: GameSummary; diff: Record<string, CatalogMetadataDiff>; changed: boolean }
 export interface CatalogChangeAudit { id: number; actor: string; action: string; store: string; externalProductId: string; gameId: string; outcome: 'APPLIED' | 'NO_OP' | 'PENDING'; occurredAt: string; detail?: string }
 export interface AdminStoreQuality { store: string; registeredProducts: number; pricedProducts: number; freshPrices: number; stalePrices: number; pendingReviews: number; lastSuccessfulCollectionAt?: string }
-export interface AdminHealthSummary { metadata: { complete: number; incomplete: number; total: number }; collection: { recentFailures: number; lastFailure?: { store: string; error?: string; startedAt: string } }; stores: AdminStoreQuality[]; notifications: { pending: number; retryable: number; exhausted: number; sent: number } }
+export interface PeriodicJobStatus {
+  job: 'collection' | 'backup'
+  enabled: boolean | null
+  status: 'NOT_STARTED' | 'UNKNOWN' | 'DISABLED' | 'WAITING' | 'RUNNING' | 'SUCCEEDED' | 'PARTIAL_FAILURE' | 'FAILED'
+  updatedAt?: string | null
+  lastStartedAt?: string | null
+  lastFinishedAt?: string | null
+  nextRunAt?: string | null
+  failedSteps?: string[]
+  lastBackup?: string | null
+  removedFiles?: number
+  error?: string | null
+}
+export interface AdminHealthSummary {
+  metadata: { complete: number; incomplete: number; total: number }
+  collection: { recentFailures: number; lastFailure?: { store: string; error?: string; startedAt: string } }
+  stores: AdminStoreQuality[]
+  notifications: { pending: number; retryable: number; exhausted: number; sent: number }
+  emails: { pending: number; retryable: number; exhausted: number; sent: number; lastError?: string | null; lastAttemptAt?: string | null }
+  automation: { collection: PeriodicJobStatus; backup: PeriodicJobStatus }
+}
 export interface MetadataReview { gameId: string; sourceStore: string; externalProductId: string; proposed: { developers: string[]; publishers: string[]; genres: string[] }; diff: Record<string, CatalogMetadataDiff>; status: 'PENDING' | 'APPROVED' | 'REJECTED'; createdAt: string; resolvedAt?: string }
 export interface MetadataSyncStatus { autoApplied?: number; discovered?: number; failed?: Array<{ gameId: string; error: string }>; pendingReviews: MetadataReview[]; reviewHistory: MetadataReview[] }
 export interface CatalogAdminResult {

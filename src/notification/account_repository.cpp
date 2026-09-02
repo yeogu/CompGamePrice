@@ -134,6 +134,103 @@ void AccountRepository::clearLoginFailures(const std::string& email,const std::s
     Statement statement(database_.handle(),"DELETE FROM login_attempts WHERE email=? AND client_key=?;");
     bindText(statement.get(),1,email);bindText(statement.get(),2,clientKey);statement.execute();
 }
+std::optional<std::string> AccountRepository::createPasswordResetToken(
+    const std::string& email) {
+    const auto user = findUserByEmail(email);
+    if (!user) {
+        return std::nullopt;
+    }
+    Statement recent(database_.handle(), R"sql(
+        SELECT 1 FROM password_reset_tokens
+        WHERE user_id=? AND created_at>strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 minute')
+        LIMIT 1;
+    )sql");
+    sqlite3_bind_int64(recent.get(), 1, user->first.id);
+    if (recent.next()) {
+        return std::nullopt;
+    }
+    const auto token = randomToken();
+    database_.execute("BEGIN IMMEDIATE;");
+    try {
+        Statement cleanup(database_.handle(), R"sql(
+            DELETE FROM password_reset_tokens
+            WHERE user_id=? OR expires_at<=strftime('%Y-%m-%dT%H:%M:%fZ','now');
+        )sql");
+        sqlite3_bind_int64(cleanup.get(), 1, user->first.id);
+        cleanup.execute();
+        Statement insert(database_.handle(), R"sql(
+            INSERT INTO password_reset_tokens(token_hash,user_id,expires_at)
+            VALUES(?,?,strftime('%Y-%m-%dT%H:%M:%fZ','now','+30 minutes'));
+        )sql");
+        bindText(insert.get(), 1, sessionTokenHash(token));
+        sqlite3_bind_int64(insert.get(), 2, user->first.id);
+        insert.execute();
+        database_.execute("COMMIT;");
+    } catch (...) {
+        try {
+            database_.execute("ROLLBACK;");
+        } catch (...) {
+        }
+        throw;
+    }
+    return token;
+}
+bool AccountRepository::resetPassword(
+    const std::string& token,
+    const std::string& passwordHash) {
+    database_.execute("BEGIN IMMEDIATE;");
+    try {
+        Statement select(database_.handle(), R"sql(
+            SELECT user_id FROM password_reset_tokens
+            WHERE token_hash=? AND used_at IS NULL
+              AND expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now');
+        )sql");
+        bindText(select.get(), 1, sessionTokenHash(token));
+        if (!select.next()) {
+            database_.execute("ROLLBACK;");
+            return false;
+        }
+        const auto userId = sqlite3_column_int64(select.get(), 0);
+        Statement updateUser(
+            database_.handle(),
+            "UPDATE users SET password_hash=? WHERE id=?;");
+        bindText(updateUser.get(), 1, passwordHash);
+        sqlite3_bind_int64(updateUser.get(), 2, userId);
+        updateUser.execute();
+        Statement invalidateTokens(database_.handle(), R"sql(
+            UPDATE password_reset_tokens
+            SET used_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
+            WHERE user_id=? AND used_at IS NULL;
+        )sql");
+        sqlite3_bind_int64(invalidateTokens.get(), 1, userId);
+        invalidateTokens.execute();
+        Statement deleteSessions(
+            database_.handle(),
+            "DELETE FROM user_sessions WHERE user_id=?;");
+        sqlite3_bind_int64(deleteSessions.get(), 1, userId);
+        deleteSessions.execute();
+        database_.execute("COMMIT;");
+        return true;
+    } catch (...) {
+        try {
+            database_.execute("ROLLBACK;");
+        } catch (...) {
+        }
+        throw;
+    }
+}
+void AccountRepository::enqueueEmail(
+    const std::string& recipient,
+    const std::string& subject,
+    const std::string& body) {
+    Statement statement(database_.handle(), R"sql(
+        INSERT INTO email_outbox(recipient,subject,body) VALUES(?,?,?);
+    )sql");
+    bindText(statement.get(), 1, recipient);
+    bindText(statement.get(), 2, subject);
+    bindText(statement.get(), 3, body);
+    statement.execute();
+}
 std::string AccountRepository::createOAuthState(
     OAuthProvider provider, std::optional<std::int64_t> linkUserId) {
     const auto state = randomToken();

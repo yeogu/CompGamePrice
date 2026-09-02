@@ -1,5 +1,8 @@
 # CompGamePrice
 
+사용자에게 제공하는 서비스 이름은 **DealQuest(딜퀘)**다. 저장소, CMake target,
+Docker image 등 내부 기술 식별자는 기존 `CompGamePrice` 이름을 유지한다.
+
 AI를 활용하여 개발하는 크로스 플랫폼 게임 가격 비교 Prototype입니다.
 
 가격 데이터의 identity, validation, history, freshness, collection reliability와
@@ -317,6 +320,17 @@ Steam과 Apple 수집, DB 반영, 수집 상태 점검, 알림 Outbox 처리를 
 python3 tools/run_daily_operations.py \
   --outbox-file snapshots/notification-outbox.jsonl
 ```
+
+Docker/NAS 배포에서는 `collector` 컨테이너가 같은 작업을 기본 6시간 간격으로
+자동 실행합니다. 전체 실행 잠금으로 scheduler 중복 기동을 막고, 각 Store 작업은
+독립적으로 처리합니다. 주기는 `.env`의 `COLLECTION_INTERVAL_SECONDS`로 변경하며
+최소값은 300초입니다. NAS 운영 명령과 로그 확인 방법은
+[NAS 배포 준비 문서](docs/nas-deployment.md#가격-수집-자동화)를 참고하세요.
+
+`.env`에서 `COLLECTION_ENABLED=false`로 설정하면 기존 데이터는 유지한 채 자동
+수집만 중지됩니다. `backup-scheduler`는 DB와 카탈로그를 기본 하루 간격으로 검증
+백업하고 최근 14일을 보관합니다. 자동 수집과 백업의 최근 상태는 관리자 운영
+대시보드에서 확인할 수 있습니다.
 
 SMTP를 사용할 때는 `--outbox-file` 대신 `SMTP_HOST`, `SMTP_FROM`과 선택적인
 `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` 환경 변수를 설정합니다. 운영 기본은

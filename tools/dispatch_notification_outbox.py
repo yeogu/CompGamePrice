@@ -20,6 +20,7 @@ OUTBOX_COLUMNS = {
     "next_attempt_at": "TEXT",
     "sent_at": "TEXT",
 }
+DATABASE_BUSY_TIMEOUT_MILLISECONDS = 30000
 
 
 def utc_now() -> datetime:
@@ -28,6 +29,17 @@ def utc_now() -> datetime:
 
 def timestamp(value: datetime) -> str:
     return value.isoformat().replace("+00:00", "Z")
+
+
+def open_database(database: Path) -> sqlite3.Connection:
+    connection = sqlite3.connect(
+        database,
+        timeout=DATABASE_BUSY_TIMEOUT_MILLISECONDS / 1000,
+    )
+    connection.execute(
+        f"PRAGMA busy_timeout={DATABASE_BUSY_TIMEOUT_MILLISECONDS}"
+    )
+    return connection
 
 
 def ensure_delivery_columns(connection: sqlite3.Connection) -> None:
@@ -40,6 +52,23 @@ def ensure_delivery_columns(connection: sqlite3.Connection) -> None:
             connection.execute(
                 f"ALTER TABLE notification_outbox ADD COLUMN {name} {definition}"
             )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS email_outbox (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            recipient TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            body TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'PENDING',
+            attempt_count INTEGER NOT NULL DEFAULT 0,
+            last_error TEXT,
+            last_attempt_at TEXT,
+            next_attempt_at TEXT,
+            sent_at TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
 
 
 def pending_messages(
@@ -48,7 +77,7 @@ def pending_messages(
     max_attempts: int,
     now: str,
 ) -> list[dict]:
-    rows = connection.execute(
+    notification_rows = connection.execute(
         """
         SELECT o.notification_id, u.email, n.game_id, n.store,
                n.price_minor, n.currency, n.message, o.attempt_count
@@ -63,16 +92,41 @@ def pending_messages(
         """,
         (max_attempts, now, limit),
     ).fetchall()
-    return [
+    messages = [
         {
+            "outboxType": "notification",
+            "outboxId": row[0],
             "notificationId": row[0],
             "to": row[1],
-            "subject": f"[CompGamePrice] {row[2]} 가격 알림",
+            "subject": f"[DealQuest] {row[2]} 가격 알림",
             "body": f"{row[2]} · {row[3]} · {row[4]} {row[5]}\n{row[6]}",
             "attemptCount": row[7],
         }
-        for row in rows
+        for row in notification_rows
     ]
+    email_rows = connection.execute(
+        """
+        SELECT id, recipient, subject, body, attempt_count
+        FROM email_outbox
+        WHERE status IN ('PENDING', 'FAILED')
+          AND attempt_count < ?
+          AND (next_attempt_at IS NULL OR next_attempt_at <= ?)
+        ORDER BY id LIMIT ?
+        """,
+        (max_attempts, now, limit),
+    ).fetchall()
+    messages.extend(
+        {
+            "outboxType": "email",
+            "outboxId": row[0],
+            "to": row[1],
+            "subject": row[2],
+            "body": row[3],
+            "attemptCount": row[4],
+        }
+        for row in email_rows
+    )
+    return messages[:limit]
 
 
 def write_jsonl(message: dict, output: Path) -> None:
@@ -90,8 +144,10 @@ def send_smtp(message: dict) -> None:
     email["To"] = message["to"]
     email["Subject"] = message["subject"]
     email.set_content(message["body"])
-    with smtplib.SMTP(host, port, timeout=10) as client:
-        if os.environ.get("SMTP_STARTTLS", "true").casefold() != "false":
+    use_ssl = os.environ.get("SMTP_SSL", "false").casefold() == "true"
+    client_type = smtplib.SMTP_SSL if use_ssl else smtplib.SMTP
+    with client_type(host, port, timeout=10) as client:
+        if not use_ssl and os.environ.get("SMTP_STARTTLS", "true").casefold() != "false":
             client.starttls()
         username = os.environ.get("SMTP_USERNAME")
         password = os.environ.get("SMTP_PASSWORD")
@@ -115,8 +171,9 @@ def dispatch(
         raise ValueError("retry_base_seconds cannot be negative")
     sent = 0
     failed = 0
-    with sqlite3.connect(database) as connection:
+    with open_database(database) as connection:
         ensure_delivery_columns(connection)
+        connection.commit()
         current_time = utc_now()
         current_timestamp = timestamp(current_time)
         for message in pending_messages(
@@ -144,13 +201,23 @@ def dispatch(
                 next_attempt_at = timestamp(
                     current_time + timedelta(seconds=delay)
                 )
+            table = (
+                "notification_outbox"
+                if message["outboxType"] == "notification"
+                else "email_outbox"
+            )
+            id_column = (
+                "notification_id"
+                if message["outboxType"] == "notification"
+                else "id"
+            )
             connection.execute(
-                """
-                UPDATE notification_outbox
+                f"""
+                UPDATE {table}
                 SET status = ?, attempt_count = attempt_count + 1,
                     last_error = ?, last_attempt_at = ?,
                     next_attempt_at = ?, sent_at = ?
-                WHERE notification_id = ?
+                WHERE {id_column} = ?
                 """,
                 (
                     status,
@@ -158,16 +225,22 @@ def dispatch(
                     current_timestamp,
                     next_attempt_at,
                     sent_at,
-                    message["notificationId"],
+                    message["outboxId"],
                 ),
             )
+            if message["outboxType"] == "email" and status == "SENT":
+                connection.execute(
+                    "UPDATE email_outbox SET body='[delivered]' WHERE id=?",
+                    (message["outboxId"],),
+                )
         connection.commit()
     return sent, failed
 
 
 def delivery_status(database: Path, max_attempts: int = 3) -> dict:
-    with sqlite3.connect(database) as connection:
+    with open_database(database) as connection:
         ensure_delivery_columns(connection)
+        connection.commit()
         row = connection.execute(
             """
             SELECT
@@ -184,6 +257,40 @@ def delivery_status(database: Path, max_attempts: int = 3) -> dict:
         "retryable": row[1] or 0,
         "exhausted": row[2] or 0,
         "sent": row[3] or 0,
+    }
+
+
+def email_delivery_status(database: Path, max_attempts: int = 3) -> dict:
+    with open_database(database) as connection:
+        ensure_delivery_columns(connection)
+        connection.commit()
+        row = connection.execute(
+            """
+            SELECT
+                SUM(CASE WHEN status = 'PENDING' THEN 1 ELSE 0 END),
+                SUM(CASE WHEN status = 'FAILED' AND attempt_count < ? THEN 1 ELSE 0 END),
+                SUM(CASE WHEN status = 'FAILED' AND attempt_count >= ? THEN 1 ELSE 0 END),
+                SUM(CASE WHEN status = 'SENT' THEN 1 ELSE 0 END)
+            FROM email_outbox
+            """,
+            (max_attempts, max_attempts),
+        ).fetchone()
+        last_failure = connection.execute(
+            """
+            SELECT last_error, last_attempt_at
+            FROM email_outbox
+            WHERE status = 'FAILED'
+            ORDER BY COALESCE(last_attempt_at, created_at) DESC, id DESC
+            LIMIT 1
+            """
+        ).fetchone()
+    return {
+        "pending": row[0] or 0,
+        "retryable": row[1] or 0,
+        "exhausted": row[2] or 0,
+        "sent": row[3] or 0,
+        "lastError": None if last_failure is None else last_failure[0],
+        "lastAttemptAt": None if last_failure is None else last_failure[1],
     }
 
 

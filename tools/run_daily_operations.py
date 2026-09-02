@@ -12,8 +12,12 @@ import sys
 
 
 def run_step(name: str, command: list[str], environment: dict[str, str]) -> dict:
-    completed = subprocess.run(command, check=False, env=environment)
-    return {"name": name, "exitCode": completed.returncode}
+    try:
+        completed = subprocess.run(command, check=False, env=environment)
+        return {"name": name, "exitCode": completed.returncode}
+    except OSError as error:
+        print(f"{name} could not start: {error}", file=sys.stderr)
+        return {"name": name, "exitCode": 127, "error": str(error)}
 
 
 def run_operations(

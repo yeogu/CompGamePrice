@@ -21,6 +21,12 @@ public:
     bool isLoginRateLimited(const std::string& email, const std::string& clientKey) const;
     void recordLoginFailure(const std::string& email, const std::string& clientKey);
     void clearLoginFailures(const std::string& email, const std::string& clientKey);
+    std::optional<std::string> createPasswordResetToken(const std::string& email);
+    bool resetPassword(const std::string& token, const std::string& passwordHash);
+    void enqueueEmail(
+        const std::string& recipient,
+        const std::string& subject,
+        const std::string& body);
     std::string createOAuthState(OAuthProvider provider, std::optional<std::int64_t> linkUserId);
     std::optional<std::int64_t> consumeOAuthState(
         OAuthProvider provider, const std::string& state);

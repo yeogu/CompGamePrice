@@ -183,6 +183,14 @@ int serverPort() {
     return value ? std::stoi(value) : 8080;
 }
 
+std::string serverHost() {
+    const auto value = env("GAME_PRICE_API_HOST");
+    if (value.empty()) {
+        return "127.0.0.1";
+    }
+    return value;
+}
+
 std::string databasePath() {
     const char* value = std::getenv("GAME_PRICE_DATABASE_PATH");
     return value ? value : GAME_PRICE_DATABASE_PATH;
@@ -1049,6 +1057,61 @@ int main() {
         };
         drogon::app().registerHandler("/api/auth/register", registerAuthHandler(true), {drogon::Post});
         drogon::app().registerHandler("/api/auth/login", registerAuthHandler(false), {drogon::Post});
+        drogon::app().registerHandler(
+            "/api/auth/password-reset/request",
+            [&authService](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                const auto body = request->getJsonObject();
+                if (!body || !(*body)["email"].isString()) {
+                    callback(jsonError(drogon::k400BadRequest, "email is required"));
+                    return;
+                }
+                try {
+                    authService.requestPasswordReset(
+                        (*body)["email"].asString(),
+                        webAppUrl());
+                    Json::Value response;
+                    response["message"] =
+                        "If the account exists, a password reset email was queued.";
+                    callback(jsonResponse(response, drogon::k202Accepted));
+                } catch (const std::invalid_argument& error) {
+                    callback(jsonError(drogon::k400BadRequest, error.what()));
+                }
+            },
+            {drogon::Post});
+        drogon::app().registerHandler(
+            "/api/auth/password-reset/confirm",
+            [&authService](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                const auto body = request->getJsonObject();
+                if (!body || !(*body)["token"].isString() ||
+                    !(*body)["password"].isString()) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "token and password are required"));
+                    return;
+                }
+                try {
+                    if (!authService.resetPassword(
+                            (*body)["token"].asString(),
+                            (*body)["password"].asString())) {
+                        callback(jsonError(
+                            drogon::k400BadRequest,
+                            "password reset link is invalid or expired"));
+                        return;
+                    }
+                    Json::Value response;
+                    response["message"] = "password was reset";
+                    auto httpResponse = jsonResponse(response);
+                    clearSessionCookie(httpResponse);
+                    callback(httpResponse);
+                } catch (const std::invalid_argument& error) {
+                    callback(jsonError(drogon::k400BadRequest, error.what()));
+                }
+            },
+            {drogon::Post});
 
         for (const auto provider : {OAuthProvider::Google, OAuthProvider::Kakao, OAuthProvider::Naver}) {
             const auto path=providerPath(provider);
@@ -2317,9 +2380,10 @@ int main() {
             },
             {drogon::Get});
 
+        const auto host = serverHost();
         const int port = serverPort();
-        std::cout << "Game Price API listening on http://127.0.0.1:" << port << '\n';
-        drogon::app().addListener("127.0.0.1", port).run();
+        std::cout << "Game Price API listening on http://" << host << ':' << port << '\n';
+        drogon::app().addListener(host, port).run();
     } catch (const std::exception& error) {
         std::cerr << "API error: " << error.what() << '\n';
         return 1;

@@ -78,6 +78,39 @@ test('login failure stays visible in the authentication dialog', async ({ page }
   )
 })
 
+test('authentication dialog offers email login only', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: '로그인', exact: true }).click()
+
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByPlaceholder('email@example.com')).toBeVisible()
+  await expect(dialog.getByPlaceholder('8자 이상 비밀번호')).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Google' })).toHaveCount(0)
+  await expect(dialog.getByRole('button', { name: 'Kakao' })).toHaveCount(0)
+  await expect(dialog.getByRole('button', { name: 'Naver' })).toHaveCount(0)
+})
+
+test('user can open the password reset request form', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: '로그인', exact: true }).click()
+  await page.getByRole('button', { name: '비밀번호를 잊으셨나요?' }).click()
+
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByRole('heading', { name: '비밀번호 찾기' })).toBeVisible()
+  await expect(dialog.getByPlaceholder('email@example.com')).toBeVisible()
+  await expect(dialog.getByRole('button', { name: '재설정 메일 보내기' })).toBeVisible()
+})
+
+test('password reset link opens the new password form', async ({ page }) => {
+  await page.goto(`/?resetToken=${'a'.repeat(64)}`)
+
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByRole('heading', { name: '새 비밀번호 설정' })).toBeVisible()
+  await expect(dialog.getByPlaceholder('새 비밀번호 (8자 이상)')).toBeVisible()
+  await expect(dialog.getByPlaceholder('새 비밀번호 확인')).toBeVisible()
+  await expect(dialog.getByRole('button', { name: '비밀번호 변경' })).toBeVisible()
+})
+
 test('user can search, inspect prices, create an alert, and log out', async ({ page }) => {
   await page.goto('/')
 

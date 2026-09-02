@@ -1,8 +1,6 @@
 services:
   api:
-    build:
-      context: .
-      dockerfile: deploy/Dockerfile.api
+    image: compgameprice_api:latest
     environment:
       APP_ENV: ${APP_ENV:-development}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
@@ -11,7 +9,7 @@ services:
       CATALOG_ADMIN_ENABLED: ${CATALOG_ADMIN_ENABLED:-false}
       GAME_PRICE_DATABASE_PATH: /data/game_prices.db
       GAME_PRICE_CATALOG_PATH: /data/game_catalog.json
-      GAME_PRICE_API_HOST: 0.0.0.0
+      GAME_PRICE_API_HOST: 127.0.0.1
       GAME_PRICE_PROJECT_PATH: /app
       GAME_PRICE_TRACKER_PATH: /app/game_price_tracker
       COLLECTION_STATUS_PATH: /data/collection-scheduler-status.json
@@ -22,6 +20,7 @@ services:
       KAKAO_OAUTH_CLIENT_SECRET: ${KAKAO_OAUTH_CLIENT_SECRET:-}
       NAVER_OAUTH_CLIENT_ID: ${NAVER_OAUTH_CLIENT_ID:-}
       NAVER_OAUTH_CLIENT_SECRET: ${NAVER_OAUTH_CLIENT_SECRET:-}
+    network_mode: host
     volumes:
       - game-price-data:/data
     restart: unless-stopped
@@ -32,20 +31,15 @@ services:
       retries: 3
 
   web:
-    build:
-      context: .
-      dockerfile: deploy/Dockerfile.web
+    image: compgameprice_web_synology:latest
+    network_mode: host
     depends_on:
       api:
         condition: service_healthy
-    ports:
-      - "${WEB_PORT:-8088}:80"
     restart: unless-stopped
 
   mailer:
-    build:
-      context: .
-      dockerfile: deploy/Dockerfile.api
+    image: compgameprice_api:latest
     command: ["python3", "/app/tools/run_email_dispatcher.py"]
     environment:
       GAME_PRICE_DATABASE_PATH: /data/game_prices.db
@@ -57,14 +51,13 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
       SMTP_SSL: ${SMTP_SSL:-false}
+    network_mode: host
     volumes:
       - game-price-data:/data
     restart: unless-stopped
 
   collector:
-    build:
-      context: .
-      dockerfile: deploy/Dockerfile.api
+    image: compgameprice_api:latest
     command: ["python3", "/app/tools/run_collection_scheduler.py"]
     depends_on:
       api:
@@ -81,14 +74,13 @@ services:
       COLLECTION_INTERVAL_SECONDS: ${COLLECTION_INTERVAL_SECONDS:-21600}
       COLLECTION_INITIAL_DELAY_SECONDS: ${COLLECTION_INITIAL_DELAY_SECONDS:-120}
       COLLECTION_CATALOG_BATCH_SIZE: ${COLLECTION_CATALOG_BATCH_SIZE:-20}
+    network_mode: host
     volumes:
       - game-price-data:/data
     restart: unless-stopped
 
   backup-scheduler:
-    build:
-      context: .
-      dockerfile: deploy/Dockerfile.api
+    image: compgameprice_api:latest
     command: ["python3", "/app/tools/run_backup_scheduler.py"]
     depends_on:
       api:
@@ -102,29 +94,11 @@ services:
       BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
       BACKUP_INITIAL_DELAY_SECONDS: ${BACKUP_INITIAL_DELAY_SECONDS:-300}
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+    network_mode: host
     volumes:
       - game-price-data:/data
       - ./backups:/backups
     restart: unless-stopped
-
-  backup:
-    build:
-      context: .
-      dockerfile: deploy/Dockerfile.api
-    command:
-      - python3
-      - /app/tools/database_backup.py
-      - backup
-      - --database
-      - /data/game_prices.db
-      - --catalog
-      - /data/game_catalog.json
-      - --output-dir
-      - /backups
-    profiles: ["maintenance"]
-    volumes:
-      - game-price-data:/data:ro
-      - ./backups:/backups
 
 volumes:
   game-price-data:

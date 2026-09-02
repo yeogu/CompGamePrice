@@ -19,6 +19,46 @@ SPEC.loader.exec_module(notification_outbox)
 
 
 class NotificationOutboxTest(unittest.TestCase):
+    def test_uses_implicit_ssl_for_port_465_provider(self):
+        class Client:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, _exception_type, _exception, _traceback):
+                return False
+
+            def login(self, username, password):
+                self.credentials = (username, password)
+
+            def send_message(self, message):
+                self.message = message
+
+        client = Client()
+        with patch.dict(
+            "os.environ",
+            {
+                "SMTP_HOST": "smtp.example.com",
+                "SMTP_PORT": "465",
+                "SMTP_FROM": "sender@example.com",
+                "SMTP_USERNAME": "sender",
+                "SMTP_PASSWORD": "app-password",
+                "SMTP_STARTTLS": "false",
+                "SMTP_SSL": "true",
+            },
+            clear=False,
+        ), patch.object(
+            notification_outbox.smtplib,
+            "SMTP_SSL",
+            return_value=client,
+        ) as smtp_ssl:
+            notification_outbox.send_smtp({
+                "to": "buyer@example.com",
+                "subject": "비밀번호 재설정",
+                "body": "reset link",
+            })
+        smtp_ssl.assert_called_once_with("smtp.example.com", 465, timeout=10)
+        self.assertEqual(client.credentials, ("sender", "app-password"))
+
     def test_sends_through_a_real_local_smtp_connection(self):
         messages = []
 
@@ -69,6 +109,7 @@ class NotificationOutboxTest(unittest.TestCase):
                         "SMTP_PORT": str(server.server_address[1]),
                         "SMTP_FROM": "alerts@example.com",
                         "SMTP_STARTTLS": "false",
+                        "SMTP_SSL": "false",
                     },
                     clear=False,
                 ):
@@ -128,6 +169,70 @@ class NotificationOutboxTest(unittest.TestCase):
             self.assertEqual(delivery[1], 1)
             self.assertIsNone(delivery[2])
             self.assertIsNotNone(delivery[3])
+
+    def test_delivers_password_reset_email_from_generic_outbox(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            database = root / "prices.db"
+            output = root / "mail.jsonl"
+            with sqlite3.connect(database) as connection:
+                connection.executescript(
+                    """
+                    CREATE TABLE notification_outbox(
+                        notification_id INTEGER PRIMARY KEY,
+                        channel TEXT,
+                        status TEXT
+                    );
+                    CREATE TABLE notifications(
+                        id INTEGER PRIMARY KEY,
+                        user_id INTEGER,
+                        game_id TEXT,
+                        store TEXT,
+                        price_minor INTEGER,
+                        currency TEXT,
+                        message TEXT
+                    );
+                    CREATE TABLE users(id INTEGER PRIMARY KEY, email TEXT);
+                    CREATE TABLE email_outbox(
+                        id INTEGER PRIMARY KEY,
+                        recipient TEXT,
+                        subject TEXT,
+                        body TEXT,
+                        status TEXT DEFAULT 'PENDING',
+                        attempt_count INTEGER DEFAULT 0,
+                        last_error TEXT,
+                        last_attempt_at TEXT,
+                        next_attempt_at TEXT,
+                        sent_at TEXT,
+                        created_at TEXT
+                    );
+                    INSERT INTO email_outbox(
+                        id, recipient, subject, body, status
+                    ) VALUES(
+                        1,
+                        'buyer@example.com',
+                        '[DealQuest] 비밀번호 재설정',
+                        'https://example.com/?resetToken=secret',
+                        'PENDING'
+                    );
+                    """
+                )
+            self.assertEqual(
+                notification_outbox.dispatch(database, output),
+                (1, 0),
+            )
+            message = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(message["to"], "buyer@example.com")
+            self.assertIn("resetToken=secret", message["body"])
+            with sqlite3.connect(database) as connection:
+                stored_body = connection.execute(
+                    "SELECT body FROM email_outbox WHERE id=1"
+                ).fetchone()[0]
+            self.assertEqual(stored_body, "[delivered]")
+            status = notification_outbox.email_delivery_status(database)
+            self.assertEqual(status["sent"], 1)
+            self.assertEqual(status["pending"], 0)
+            self.assertIsNone(status["lastError"])
 
     def test_retries_with_a_bound_and_records_failure_reason(self):
         with tempfile.TemporaryDirectory() as directory:

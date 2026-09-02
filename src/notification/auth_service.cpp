@@ -70,4 +70,28 @@ std::optional<AuthResult> AuthService::login(const std::string& email,const std:
 }
 std::optional<UserAccount> AuthService::authenticate(const std::string& token) const { return repository_.findUserBySession(token); }
 void AuthService::logout(const std::string& token) const { repository_.deleteSession(token); }
+void AuthService::requestPasswordReset(
+    const std::string& email,
+    const std::string& webAppUrl) const {
+    const auto normalized = normalizeEmail(email);
+    const auto token = repository_.createPasswordResetToken(normalized);
+    if (!token) {
+        return;
+    }
+    const auto separator = webAppUrl.find('?') == std::string::npos ? "?" : "&";
+    const auto resetUrl = webAppUrl + separator + "resetToken=" + *token;
+    repository_.enqueueEmail(
+        normalized,
+        "[DealQuest] 비밀번호 재설정",
+        "아래 링크에서 30분 이내에 새 비밀번호를 설정하세요.\n\n" + resetUrl +
+            "\n\n요청하지 않았다면 이 메일을 무시하세요.");
+}
+bool AuthService::resetPassword(
+    const std::string& token,
+    const std::string& password) const {
+    if (token.size() != 64) {
+        return false;
+    }
+    return repository_.resetPassword(token, hashPassword(password));
+}
 }  // namespace game_price
