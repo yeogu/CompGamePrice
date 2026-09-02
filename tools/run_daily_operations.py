@@ -48,6 +48,8 @@ def run_operations(
                 str(database),
                 "--per-source-limit",
                 "50",
+                "--pages-per-source",
+                "3",
             ],
         ),
         (

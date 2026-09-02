@@ -324,6 +324,22 @@ class SteamCatalogSyncTest(unittest.TestCase):
             self.assertEqual(report["processed"], 0)
             self.assertIn("App List is unavailable", report["warning"])
 
+    def test_default_sync_does_not_call_deprecated_app_list(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            catalog = root / "catalog.json"
+            database = root / "catalog.db"
+            catalog.write_text(
+                json.dumps({"schemaVersion": 4, "games": []}),
+                encoding="utf-8",
+            )
+
+            report = sync.synchronize(catalog, database, 1)
+
+            self.assertEqual(report["status"], "SUCCEEDED")
+            self.assertEqual(report["processed"], 0)
+            self.assertNotIn("warning", report)
+
     def test_retries_transient_detail_failure_with_a_bound(self):
         attempts = 0
 

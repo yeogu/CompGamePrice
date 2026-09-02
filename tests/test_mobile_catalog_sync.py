@@ -133,6 +133,64 @@ class MobileCatalogSyncTest(unittest.TestCase):
         self.assertEqual(unchanged["games"][0]["products"], [])
         status = sync.synchronization_status(self.database, "GooglePlay")
         self.assertEqual(status["pendingReviews"][0]["decision"], "NeedsReview")
+        reasons = status["recentRuns"][0]["reasonCounts"]
+        self.assertEqual(
+            reasons["Developer and publisher information is incomplete"],
+            1,
+        )
+
+    def test_no_search_result_is_reported_as_a_rejection_reason(self):
+        report = sync.synchronize_provider(
+            self.catalog,
+            self.database,
+            "GooglePlay",
+            10,
+            searcher=lambda query, limit, timeout: [],
+        )
+
+        self.assertEqual(report["rejected"], 1)
+        self.assertEqual(report["reasonCounts"]["No Store search results"], 1)
+        status = sync.synchronization_status(self.database, "GooglePlay")
+        self.assertEqual(
+            status["recentRuns"][0]["reasonCounts"]["No Store search results"],
+            1,
+        )
+
+    def test_rechecks_old_rejection_but_not_recent_rejection(self):
+        with sqlite3.connect(self.database) as connection:
+            sync.initialize_state(connection)
+            connection.execute(
+                """
+                INSERT INTO catalog_sync_seen(
+                    provider, external_product_id, outcome, checked_at
+                ) VALUES('GooglePlay:game', 'stardew-valley', 'NO_MATCH', ?)
+                """,
+                ("2020-01-01T00:00:00Z",),
+            )
+            connection.commit()
+            old_rejection = sync.pending_games(
+                connection,
+                catalog_document(),
+                "GooglePlay",
+                10,
+            )
+            connection.execute(
+                """
+                UPDATE catalog_sync_seen
+                SET checked_at = ?
+                WHERE provider = 'GooglePlay:game'
+                """,
+                (sync.utc_now(),),
+            )
+            recent_rejection = sync.pending_games(
+                connection,
+                catalog_document(),
+                "GooglePlay",
+                10,
+            )
+
+        self.assertEqual([game["id"] for game in old_rejection], ["stardew-valley"])
+        self.assertEqual(recent_rejection, [])
 
     def test_rerun_does_not_duplicate_processed_game(self):
         arguments = {

@@ -69,6 +69,23 @@ class AdminHealthSummaryTest(unittest.TestCase):
                         status TEXT
                     );
                     INSERT INTO catalog_sync_review VALUES('Steam', 'PENDING');
+                    CREATE TABLE catalog_sync_runs(
+                        id INTEGER PRIMARY KEY,
+                        provider TEXT,
+                        status TEXT,
+                        started_at TEXT,
+                        finished_at TEXT,
+                        processed_count INTEGER,
+                        accepted_count INTEGER,
+                        review_count INTEGER,
+                        skipped_count INTEGER,
+                        failed_count INTEGER
+                    );
+                    INSERT INTO catalog_sync_runs VALUES(
+                        1, 'Steam', 'SUCCEEDED',
+                        '2099-01-01T00:00:00Z', '2099-01-01T00:01:00Z',
+                        20, 3, 2, 14, 1
+                    );
                     """
                 )
             result = admin_health_summary.summary(catalog, database)
@@ -82,6 +99,12 @@ class AdminHealthSummaryTest(unittest.TestCase):
             self.assertEqual(steam["stalePrices"], 1)
             self.assertEqual(steam["pendingReviews"], 1)
             self.assertEqual(steam["registeredProducts"], 0)
+            self.assertEqual(steam["catalogProcessed"], 20)
+            self.assertEqual(steam["catalogAccepted"], 3)
+            self.assertEqual(steam["catalogReview"], 2)
+            self.assertEqual(steam["catalogSkippedOrRejected"], 14)
+            self.assertEqual(steam["catalogFailed"], 1)
+            self.assertEqual(steam["catalogAddedLast7Days"], 3)
 
 
 if __name__ == "__main__":

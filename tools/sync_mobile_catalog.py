@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
 import sqlite3
@@ -35,6 +35,7 @@ STORE_CONFIG = {
         "update": apple_import.updated_catalog,
     },
 }
+REJECTED_GAME_RECHECK_DAYS = 7
 
 
 def utc_now() -> str:
@@ -57,6 +58,7 @@ def initialize_state(connection: sqlite3.Connection) -> None:
     ensure_column(connection, "catalog_sync_review", "game_id", "TEXT")
     ensure_column(connection, "catalog_sync_review", "decision", "TEXT")
     ensure_column(connection, "catalog_sync_runs", "retry_count", "INTEGER NOT NULL DEFAULT 0")
+    ensure_column(connection, "catalog_sync_runs", "summary_json", "TEXT")
     connection.commit()
 
 
@@ -82,17 +84,36 @@ def pending_games(
     batch_size: int,
 ) -> list[dict]:
     processed = {
-        row[0]
+        row[0]: (row[1], row[2])
         for row in connection.execute(
-            "SELECT external_product_id FROM catalog_sync_seen WHERE provider = ?",
+            """
+            SELECT external_product_id, outcome, checked_at
+            FROM catalog_sync_seen
+            WHERE provider = ?
+            """,
             (f"{provider}:game",),
         )
     }
     return [
         game
         for game in games_missing_store(catalog, STORE_CONFIG[provider]["catalogStore"])
-        if game.get("id") not in processed
+        if should_process_game(processed.get(game.get("id")))
     ][:batch_size]
+
+
+def should_process_game(previous: tuple[str, str] | None) -> bool:
+    if previous is None:
+        return True
+    outcome, checked_at = previous
+    if outcome not in {"NO_MATCH", "Rejected"}:
+        return False
+    try:
+        checked = datetime.fromisoformat(checked_at.replace("Z", "+00:00"))
+    except ValueError:
+        return True
+    return checked <= datetime.now(timezone.utc) - timedelta(
+        days=REJECTED_GAME_RECHECK_DAYS
+    )
 
 
 def call_with_retry(operation, max_attempts: int, retry_counter: list[int]):
@@ -287,6 +308,11 @@ def start_run(connection: sqlite3.Connection, provider: str, started_at: str) ->
     return cursor.lastrowid
 
 
+def increment_reason(report: dict, reason: str) -> None:
+    reason_counts = report["reasonCounts"]
+    reason_counts[reason] = reason_counts.get(reason, 0) + 1
+
+
 def finish_run(
     connection: sqlite3.Connection,
     run_id: int,
@@ -298,7 +324,7 @@ def finish_run(
         UPDATE catalog_sync_runs
         SET status = ?, finished_at = ?, processed_count = ?,
             accepted_count = ?, review_count = ?, skipped_count = ?,
-            failed_count = ?, error_message = ?, retry_count = ?
+            failed_count = ?, error_message = ?, retry_count = ?, summary_json = ?
         WHERE id = ?
         """,
         (
@@ -311,6 +337,10 @@ def finish_run(
             report["failed"],
             error,
             report["retries"],
+            json.dumps(
+                {"reasonCounts": report["reasonCounts"]},
+                ensure_ascii=False,
+            ),
             run_id,
         ),
     )
@@ -350,6 +380,7 @@ def synchronize_provider(
         "failed": 0,
         "retries": 0,
         "errors": [],
+        "reasonCounts": {},
     }
     started_at = utc_now()
     with sqlite3.connect(database_path) as connection:
@@ -369,6 +400,7 @@ def synchronize_provider(
                 )
                 if not candidates:
                     record_game_processed(connection, provider, game["id"], "NO_MATCH")
+                    increment_reason(report, "No Store search results")
                     report["rejected"] += 1
                     continue
                 candidate, metadata, decision = best_candidate(
@@ -393,6 +425,8 @@ def synchronize_provider(
                     )
                 else:
                     record_candidate(connection, provider, game, candidate, metadata, decision)
+                for reason in decision.get("reasons", []):
+                    increment_reason(report, reason)
                 record_game_processed(connection, provider, game["id"], decision["status"])
                 if decision["status"] == "ApprovedCandidate":
                     report["approvedCandidates"] += 1
@@ -435,7 +469,7 @@ def synchronization_status(database_path: Path, provider: str, limit: int = 20) 
             """
             SELECT id, status, started_at, finished_at, processed_count,
                    accepted_count, review_count, skipped_count, failed_count,
-                   error_message, retry_count
+                   error_message, retry_count, summary_json
             FROM catalog_sync_runs
             WHERE provider = ?
             ORDER BY id DESC
@@ -466,6 +500,7 @@ def review_document(row: tuple) -> dict:
 
 
 def run_document(row: tuple) -> dict:
+    summary = json.loads(row[11]) if row[11] else {}
     return {
         "id": row[0],
         "status": row[1],
@@ -478,6 +513,7 @@ def run_document(row: tuple) -> dict:
         "failed": row[8],
         "error": row[9],
         "retries": row[10],
+        "reasonCounts": summary.get("reasonCounts", {}),
     }
 
 

@@ -67,6 +67,13 @@ def store_quality(document: dict, database: Path) -> list[dict]:
             "stalePrices": 0,
             "pendingReviews": 0,
             "lastSuccessfulCollectionAt": None,
+            "catalogProcessed": 0,
+            "catalogAccepted": 0,
+            "catalogReview": 0,
+            "catalogSkippedOrRejected": 0,
+            "catalogFailed": 0,
+            "catalogAddedLast7Days": 0,
+            "lastCatalogSyncAt": None,
         }
         for store in sorted(stores | set(STORE_NAMES))
     }
@@ -119,6 +126,43 @@ def store_quality(document: dict, database: Path) -> list[dict]:
             for store, finished_at in rows:
                 if store in result:
                     result[store]["lastSuccessfulCollectionAt"] = finished_at
+        if table_exists(connection, "catalog_sync_runs"):
+            rows = connection.execute(
+                """
+                SELECT run.provider, run.processed_count, run.accepted_count,
+                       run.review_count, run.skipped_count, run.failed_count,
+                       COALESCE(run.finished_at, run.started_at)
+                FROM catalog_sync_runs run
+                INNER JOIN (
+                    SELECT provider, MAX(id) AS id
+                    FROM catalog_sync_runs
+                    GROUP BY provider
+                ) latest ON latest.id = run.id
+                """
+            ).fetchall()
+            for row in rows:
+                store = row[0]
+                if store not in result:
+                    continue
+                result[store]["catalogProcessed"] = row[1]
+                result[store]["catalogAccepted"] = row[2]
+                result[store]["catalogReview"] = row[3]
+                result[store]["catalogSkippedOrRejected"] = row[4]
+                result[store]["catalogFailed"] = row[5]
+                result[store]["lastCatalogSyncAt"] = row[6]
+            cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+            rows = connection.execute(
+                """
+                SELECT provider, COALESCE(SUM(accepted_count), 0)
+                FROM catalog_sync_runs
+                WHERE COALESCE(finished_at, started_at) >= ?
+                GROUP BY provider
+                """,
+                (cutoff.isoformat().replace("+00:00", "Z"),),
+            ).fetchall()
+            for store, accepted in rows:
+                if store in result:
+                    result[store]["catalogAddedLast7Days"] = accepted
     return list(result.values())
 
 

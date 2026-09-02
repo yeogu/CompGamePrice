@@ -31,9 +31,22 @@ class SteamCatalogDiscoveryTest(unittest.TestCase):
         def fetch(parameters):
             return responses[parameters.get("filter", "specials")]
 
-        candidates = discovery.discover(fetch, 10)
+        candidates = discovery.discover(fetch, 10, 1)
         self.assertEqual([candidate["appId"] for candidate in candidates], ["10", "20"])
         self.assertEqual(candidates[0]["source"], "top-sellers")
+
+    def test_fetches_multiple_bounded_pages_per_source(self):
+        pages = []
+
+        def fetch(parameters):
+            pages.append((parameters.get("filter", "specials"), parameters["page"]))
+            return self.html(parameters["page"], f"Game {parameters['page']}")
+
+        candidates = discovery.discover(fetch, 10, 2)
+
+        self.assertEqual(len(pages), 6)
+        self.assertEqual({page for _, page in pages}, {"1", "2"})
+        self.assertEqual([candidate["appId"] for candidate in candidates], ["1", "2"])
 
     def test_enqueues_candidates_for_priority_processing(self):
         with tempfile.TemporaryDirectory() as directory:

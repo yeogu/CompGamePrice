@@ -32,24 +32,32 @@ def fetch_source(parameters: dict[str, str], timeout: float = 15.0) -> bytes:
         return response.read()
 
 
-def discover(fetcher=fetch_source, per_source_limit: int = 50) -> list[dict]:
+def discover(
+    fetcher=fetch_source,
+    per_source_limit: int = 50,
+    pages_per_source: int = 3,
+) -> list[dict]:
     if not 1 <= per_source_limit <= 100:
         raise ValueError("per-source limit must be between 1 and 100")
+    if not 1 <= pages_per_source <= 10:
+        raise ValueError("pages-per-source must be between 1 and 10")
     candidates = {}
     for source, priority, parameters in SOURCES:
-        for candidate in steam_search.parse_results(
-            fetcher(parameters),
-            per_source_limit,
-        ):
-            app_id = candidate["externalProductId"]
-            existing = candidates.get(app_id)
-            if existing is None or priority > existing["priority"]:
-                candidates[app_id] = {
-                    "appId": app_id,
-                    "title": candidate["title"],
-                    "source": source,
-                    "priority": priority,
-                }
+        for page in range(1, pages_per_source + 1):
+            page_parameters = {**parameters, "page": str(page)}
+            for candidate in steam_search.parse_results(
+                fetcher(page_parameters),
+                per_source_limit,
+            ):
+                app_id = candidate["externalProductId"]
+                existing = candidates.get(app_id)
+                if existing is None or priority > existing["priority"]:
+                    candidates[app_id] = {
+                        "appId": app_id,
+                        "title": candidate["title"],
+                        "source": source,
+                        "priority": priority,
+                    }
     return sorted(
         candidates.values(),
         key=lambda candidate: (-candidate["priority"], int(candidate["appId"])),
@@ -89,8 +97,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--database", default=root / "build/game_prices.db", type=Path)
     parser.add_argument("--per-source-limit", default=50, type=int)
+    parser.add_argument("--pages-per-source", default=3, type=int)
     arguments = parser.parse_args()
-    candidates = discover(per_source_limit=arguments.per_source_limit)
+    candidates = discover(
+        per_source_limit=arguments.per_source_limit,
+        pages_per_source=arguments.pages_per_source,
+    )
     queued = enqueue(arguments.database, candidates)
     print(json.dumps({"provider": "Steam", "queued": queued}, ensure_ascii=False))
     return 0

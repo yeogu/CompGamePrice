@@ -706,7 +706,7 @@ def synchronize_unlocked(
     catalog_path: Path,
     database_path: Path,
     batch_size: int,
-    app_list_fetcher=fetch_app_list,
+    app_list_fetcher=None,
     detail_fetcher=None,
     candidate_searcher=steam_search.search,
     english_detail_fetcher=None,
@@ -773,7 +773,7 @@ def synchronize_unlocked(
                     batch_size - len(selected),
                 )
             )
-            if len(selected) < batch_size:
+            if len(selected) < batch_size and app_list_fetcher is not None:
                 try:
                     apps = parse_app_list(app_list_fetcher())
                     fallback = pending_apps(
@@ -885,7 +885,7 @@ def synchronize(
     catalog_path: Path,
     database_path: Path,
     batch_size: int,
-    app_list_fetcher=fetch_app_list,
+    app_list_fetcher=None,
     detail_fetcher=None,
     candidate_searcher=steam_search.search,
     english_detail_fetcher=None,
