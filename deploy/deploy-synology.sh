@@ -3,6 +3,7 @@ set -euo pipefail
 
 project_directory=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 compose_binary=/usr/local/bin/docker-compose
+docker_binary=/usr/local/bin/docker
 compose_file="${project_directory}/compose.synology.yml"
 environment_file="${project_directory}/.env"
 backup_directory="${project_directory}/backups"
@@ -10,6 +11,10 @@ data_volume=compgameprice_game-price-data
 
 if [[ ! -x "${compose_binary}" ]]; then
     echo "Synology docker-compose를 찾을 수 없습니다: ${compose_binary}" >&2
+    exit 1
+fi
+if [[ ! -x "${docker_binary}" ]]; then
+    echo "Synology Docker CLI를 찾을 수 없습니다: ${docker_binary}" >&2
     exit 1
 fi
 if [[ ! -f "${environment_file}" ]]; then
@@ -28,7 +33,7 @@ echo "[1/6] Compose 설정을 검증합니다."
 sudo "${compose_binary}" -f "${compose_file}" config >/dev/null
 
 echo "[2/6] 현재 SQLite DB와 카탈로그를 백업합니다."
-sudo docker run --rm \
+sudo "${docker_binary}" run --rm \
     -v "${data_volume}:/data:ro" \
     -v "${backup_directory}:/backups" \
     compgameprice_api:latest \
@@ -38,19 +43,19 @@ sudo docker run --rm \
     --output-dir /backups
 
 echo "[3/6] API 이미지를 빌드합니다."
-sudo docker build \
+sudo "${docker_binary}" build \
     --network host \
     -f deploy/Dockerfile.api \
     -t compgameprice_api:latest \
     .
 
 echo "[4/6] Web 이미지를 빌드합니다."
-sudo docker build \
+sudo "${docker_binary}" build \
     --network host \
     -f deploy/Dockerfile.web \
     -t compgameprice_web:latest \
     .
-sudo docker build \
+sudo "${docker_binary}" build \
     -f deploy/Dockerfile.web.synology \
     -t compgameprice_web_synology:latest \
     .
