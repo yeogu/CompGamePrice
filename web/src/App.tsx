@@ -10,6 +10,19 @@ const formatMoney = (money: Money) =>
     maximumFractionDigits: 0,
   }).format(money.minorAmount)
 
+const formatCatalogPrice = (game: GameSummary) => {
+  if (game.priceStatus === 'Stale') {
+    return '가격 갱신 필요'
+  }
+  if (game.priceStatus !== 'Available' || !game.lowestPrice) {
+    return '가격 수집 중'
+  }
+  const discount = game.maxDiscountPercent
+    ? `${game.maxDiscountPercent}% 할인`
+    : '할인 없음'
+  return `최저 ${formatMoney(game.lowestPrice)} · ${discount}`
+}
+
 const recommendationLabel: Record<string, string> = {
   StrongBuy: '구매 추천',
   Buy: '구매 고려',
@@ -1286,7 +1299,7 @@ function App() {
                 <strong>{game.title}</strong>
                 <small>{game.platforms.join(' · ')}</small>
                 <span>{game.genres.join(' · ') || '장르 정보 수집 중'}</span>
-                <em>{game.priceStatus === 'Available' && game.lowestPrice ? `최저 ${formatMoney(game.lowestPrice)}${game.maxDiscountPercent ? ` · 최대 ${game.maxDiscountPercent}% 할인` : ''}` : game.priceStatus === 'Stale' ? '가격 갱신 필요' : '가격 수집 중'}</em>
+                <em>{formatCatalogPrice(game)}</em>
               </button>
             ))}
           </div>

@@ -8,19 +8,51 @@ api_port=19081
 api_base="http://127.0.0.1:${api_port}"
 response_body="/tmp/game_price_api_response_$$.json"
 test_database="/tmp/game_price_api_test_$$.db"
+test_catalog="/tmp/game_price_api_catalog_$$.json"
 cookie_jar="/tmp/game_price_api_cookie_$$.txt"
 project_directory=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 
 cleanup() {
     if [[ -n "${api_pid:-}" ]]; then kill "${api_pid}" 2>/dev/null || true; fi
-    rm -f "${response_body}" "${cookie_jar}" "${test_database}" "${test_database}-shm" "${test_database}-wal"
+    rm -f "${response_body}" "${cookie_jar}" "${test_catalog}" "${test_database}" "${test_database}-shm" "${test_database}-wal"
 }
 trap cleanup EXIT
+
+python3 - "${project_directory}/data/game_catalog.json" "${test_catalog}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as source:
+    catalog = json.load(source)
+
+catalog["games"].append({
+    "id": "unpriced-nintendo-game",
+    "title": "Unpriced Nintendo Game",
+    "platforms": ["NintendoSwitch"],
+    "genres": ["Test"],
+    "tags": [],
+    "aliases": [],
+    "developers": ["Test"],
+    "publishers": ["Test"],
+    "products": [{
+        "store": "NintendoEShop",
+        "productId": "test-without-price",
+        "productUrl": "https://example.invalid/unpriced-nintendo-game",
+        "platforms": ["NintendoSwitch"],
+        "region": "KR",
+        "edition": "Standard",
+        "offerType": "BaseGame",
+    }],
+})
+with open(sys.argv[2], "w", encoding="utf-8") as output:
+    json.dump(catalog, output)
+PY
 
 GAME_PRICE_DATABASE_PATH="${test_database}" "${tracker_binary}" seed-demo >/dev/null
 GAME_PRICE_DATABASE_PATH="${test_database}" "${tracker_binary}" collect \
     --data-dir "${project_directory}/data" Hades >/dev/null
-GAME_PRICE_DATABASE_PATH="${test_database}" GAME_PRICE_API_PORT="${api_port}" \
+GAME_PRICE_DATABASE_PATH="${test_database}" GAME_PRICE_CATALOG_PATH="${test_catalog}" \
+    GAME_PRICE_API_PORT="${api_port}" \
     CATALOG_ADMIN_ENABLED=true \
     GOOGLE_OAUTH_CLIENT_ID="google-test-id" GOOGLE_OAUTH_CLIENT_SECRET="google-test-secret" \
     KAKAO_OAUTH_CLIENT_ID="kakao-test-id" KAKAO_OAUTH_CLIENT_SECRET="kakao-test-secret" \
@@ -269,6 +301,18 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
 [[ "${status}" == "200" ]]
 grep -q '"id":"stardew-valley"' "${response_body}"
 ! grep -q '"id":"hades"' "${response_body}"
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/games?store=Nintendo%20eShop")
+[[ "${status}" == "200" ]]
+grep -q '"id":"hades"' "${response_body}"
+! grep -q '"id":"unpriced-nintendo-game"' "${response_body}"
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/games?platform=Nintendo%20Switch")
+[[ "${status}" == "200" ]]
+grep -q '"id":"hades"' "${response_body}"
+! grep -q '"id":"unpriced-nintendo-game"' "${response_body}"
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/games?store=Unknown")

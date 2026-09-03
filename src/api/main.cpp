@@ -2293,8 +2293,16 @@ int main() {
                 std::vector<CatalogGameSummary> summaries;
                 const auto games = queryService.filterGames(filter);
                 for (const auto& game : games) {
-                    const auto report = queryService.getGamePriceReportById(game.id);
+                    PriceComparisonCriteria criteria;
+                    criteria.platform = filter.platform;
+                    const auto report = queryService.getGamePriceReportById(
+                        game.id,
+                        std::nullopt,
+                        criteria);
                     if (!report || report->productReports.empty()) {
+                        if (filter.store || filter.platform) {
+                            continue;
+                        }
                         summaries.push_back(
                             CatalogGameSummary{
                                 game,
@@ -2302,32 +2310,49 @@ int main() {
                                 std::nullopt,
                                 {},
                                 "Collecting"});
-                    } else if (report->comparison.cheapestProduct) {
-                        std::string lastUpdatedAt;
-                        int maxDiscountPercent = 0;
-                        for (const auto& product : report->comparison.products) {
-                            if (product.lastSuccessfulCheckAt &&
-                                *product.lastSuccessfulCheckAt > lastUpdatedAt) {
-                                lastUpdatedAt = *product.lastSuccessfulCheckAt;
-                            }
-                            maxDiscountPercent = std::max(
-                                maxDiscountPercent,
-                                product.discountPercent);
+                        continue;
+                    }
+                    std::optional<Money> lowestPrice;
+                    std::optional<int> maxDiscountPercent;
+                    std::string lastUpdatedAt;
+                    for (const auto& product : report->comparison.products) {
+                        if (product.freshness != PriceFreshness::Fresh) {
+                            continue;
                         }
+                        if (filter.store && product.store != *filter.store) {
+                            continue;
+                        }
+                        if (!lowestPrice ||
+                            product.currentPrice.minorAmount < lowestPrice->minorAmount) {
+                            lowestPrice = product.currentPrice;
+                        }
+                        if (!maxDiscountPercent ||
+                            product.discountPercent > *maxDiscountPercent) {
+                            maxDiscountPercent = product.discountPercent;
+                        }
+                        if (product.lastSuccessfulCheckAt &&
+                            *product.lastSuccessfulCheckAt > lastUpdatedAt) {
+                            lastUpdatedAt = *product.lastSuccessfulCheckAt;
+                        }
+                    }
+                    if (lowestPrice) {
                         summaries.push_back(CatalogGameSummary{
                             game,
-                            report->comparison.cheapestProduct->currentPrice,
+                            *lowestPrice,
                             maxDiscountPercent,
                             std::move(lastUpdatedAt),
                             "Available"});
-                    } else {
-                        summaries.push_back(CatalogGameSummary{
-                            game,
-                            std::nullopt,
-                            std::nullopt,
-                            {},
-                            "Stale"});
+                        continue;
                     }
+                    if (filter.store || filter.platform) {
+                        continue;
+                    }
+                    summaries.push_back(CatalogGameSummary{
+                        game,
+                        std::nullopt,
+                        std::nullopt,
+                        {},
+                        "Stale"});
                 }
                 const auto selectedSort = sort.empty() ? "titleAsc" : sort;
                 std::sort(summaries.begin(), summaries.end(), [&](const auto& left, const auto& right) {
