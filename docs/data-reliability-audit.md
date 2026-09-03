@@ -94,8 +94,9 @@ prices, freshness and change-only history behavior.
 
 ### P1
 
-- Only Steam currently has a live network collector. Epic, Nintendo, Google Play and
-  Apple App Store reliability is proven against local snapshots, not production APIs.
+- Steam, Epic, Nintendo, Google Play and Apple have live network collectors. Their
+  parsing and failure behavior is covered by deterministic fixtures; Epic production
+  collection can still be rejected by Store-side Cloudflare policy.
 - Catalog mappings are manually curated. Steam verifies the returned app ID, but does
   not yet verify Store product type/name against an independently reviewed mapping.
 - A malformed raw row with no recoverable Game ID cannot be attached to a game-scoped
@@ -118,4 +119,3 @@ prices, freshness and change-only history behavior.
 - Edition/OfferType-specific alerts are not yet user-configurable. The default criteria
   are shared so those fields can later be added to `alert_rules` without changing the
   price evaluation model.
-

@@ -80,7 +80,7 @@ verify_public_game_journey() {
         -o "${body}"
     grep -q '"id":"hades"' "${body}"
     grep -q '"store":"Nintendo eShop"' "${body}"
-    grep -q '"minorAmount":27000' "${body}"
+    grep -q '"minorAmount":28600' "${body}"
     grep -q '"offerType":"BaseGame"' "${body}"
     grep -q '"edition":"Standard"' "${body}"
     ! grep -q '"store":"Steam"' "${body}"
@@ -90,7 +90,7 @@ verify_public_game_journey() {
         -o "${body}"
     grep -q '"store":"Nintendo eShop"' "${body}"
     grep -q '"observations":\[' "${body}"
-    grep -q '"minorAmount":27000' "${body}"
+    grep -q '"minorAmount":28600' "${body}"
 
     expect_status 404 "${api_base}/api/games/missing-game/prices"
 }
@@ -184,7 +184,7 @@ verify_user_isolation() {
 
 cross_target_and_verify_notification() {
     sed -i.bak \
-        's/70010000033131,hades,27000,27000,0/70010000033131,hades,27000,25000,7/' \
+        's/70010000033128,hades,28600,28600,0/70010000033128,hades,28600,25000,13/' \
         "${test_data}/nintendo_eshop_products.csv"
     GAME_PRICE_DATABASE_PATH="${database}" "${tracker_binary}" collect \
         --data-dir "${test_data}" Hades >/dev/null
@@ -193,7 +193,7 @@ cross_target_and_verify_notification() {
         "${api_base}/api/notifications" -o "${body}"
     [[ "$(notification_count)" == "1" ]]
     grep -q '"store":"Nintendo eShop"' "${body}"
-    grep -q '"productId":"70010000033131"' "${body}"
+    grep -q '"productId":"70010000033128"' "${body}"
     grep -q '"minorAmount":25000' "${body}"
     ! grep -q '"store":"Steam"' "${body}"
     ! grep -q '"store":"Epic Games Store"' "${body}"

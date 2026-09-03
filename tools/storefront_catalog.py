@@ -183,7 +183,11 @@ class ProductDocumentParser(HTMLParser):
             self.in_json_ld = True
             self.json_ld = []
         if tag == "meta":
-            key = values.get("property") or values.get("name")
+            key = (
+                values.get("itemprop")
+                or values.get("property")
+                or values.get("name")
+            )
             content = values.get("content")
             if key and content:
                 self.meta[key] = content

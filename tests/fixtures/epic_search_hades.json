@@ -1,0 +1,37 @@
+{
+  "data": {
+    "Catalog": {
+      "searchStore": {
+        "elements": [
+          {
+            "title": "Hades Soundtrack",
+            "productSlug": "hades-soundtrack",
+            "categories": [{"path": "addons"}],
+            "price": {
+              "totalPrice": {
+                "discountPrice": 11000,
+                "originalPrice": 11000,
+                "currencyCode": "KRW",
+                "currencyInfo": {"decimals": 0}
+              }
+            }
+          },
+          {
+            "title": "Hades",
+            "productSlug": "hades/home",
+            "categories": [{"path": "games/edition/base"}],
+            "tags": [{"id": "9547"}, {"id": "10719"}],
+            "price": {
+              "totalPrice": {
+                "discountPrice": 16800,
+                "originalPrice": 28000,
+                "currencyCode": "KRW",
+                "currencyInfo": {"decimals": 0}
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

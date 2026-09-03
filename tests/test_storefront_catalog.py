@@ -23,7 +23,7 @@ EPIC_PRODUCT = b"""
 
 NINTENDO_PRODUCT = b"""
 <script type="application/ld+json">
-{"@type":"Product","name":"Hades","sku":"70010000033131",
+{"@type":"Product","name":"Hades","sku":"70010000033128",
  "brand":{"name":"Supergiant Games"},
  "offers":{"price":"25000","priceCurrency":"KRW"}}
 </script>
@@ -55,6 +55,26 @@ class StorefrontCatalogTest(unittest.TestCase):
             storefront_catalog.product_id_from_url(
                 "EpicGamesStore",
                 "https://example.com/p/hades",
+            )
+
+    def test_rejects_global_nintendo_product_for_kr_catalog(self):
+        catalog = {
+            "schemaVersion": 4,
+            "games": [{
+                "id": "hades",
+                "title": "Hades",
+                "developers": [],
+                "platforms": ["NintendoSwitch"],
+                "products": [],
+            }],
+        }
+        with self.assertRaisesRegex(ValueError, "Nintendo KR catalog"):
+            catalog_import.updated_catalog(
+                catalog,
+                "NintendoEShop",
+                "https://www.nintendo.com/us/store/products/hades-switch/",
+                "hades",
+                {"productId": "70010000033131"},
             )
 
     def test_distinguishes_nintendo_switch_2_edition(self):
@@ -110,7 +130,7 @@ class StorefrontCatalogTest(unittest.TestCase):
             metadata,
         )
         product = updated["games"][0]["products"][0]
-        self.assertEqual(product["productId"], "70010000033131")
+        self.assertEqual(product["productId"], "70010000033128")
         self.assertEqual(product["store"], "NintendoEShop")
         self.assertEqual(preview["matchDecision"]["status"], "ApprovedCandidate")
 

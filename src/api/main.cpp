@@ -553,7 +553,8 @@ public:
         store_ = store;
         status_ = "RUNNING";
         error_.clear();
-        std::thread([this]() { run(); }).detach();
+        const auto selectedStore = store_;
+        std::thread([this, selectedStore]() { run(selectedStore); }).detach();
         return true;
     }
 
@@ -570,18 +571,25 @@ public:
     }
 
 private:
-    void run() {
+    void run(const std::string& store) {
         const auto project = projectPath();
         std::string pipeline;
-        if (store_ == "Google Play") {
+        std::string pipelineArguments;
+        if (store == "Google Play") {
             pipeline = "tools/run_google_play_pipeline.py";
-        } else if (store_ == "Apple App Store") {
+        } else if (store == "Apple App Store") {
             pipeline = "tools/run_apple_pipeline.py";
+        } else if (store == "Epic Games Store") {
+            pipeline = "tools/run_storefront_price_pipeline.py";
+            pipelineArguments = " --store EpicGamesStore";
+        } else if (store == "Nintendo eShop") {
+            pipeline = "tools/run_storefront_price_pipeline.py";
+            pipelineArguments = " --store NintendoEShop";
         } else {
             pipeline = "tools/run_steam_pipeline.py";
         }
         const auto command = "python3 " + shellQuoted(
-            (project / pipeline).string()) +
+            (project / pipeline).string()) + pipelineArguments +
             " --tracker " + shellQuoted(trackerPath().string()) +
             " --catalog " + shellQuoted(catalogPath()) +
             " --output-dir " + shellQuoted(
@@ -590,7 +598,7 @@ private:
         std::lock_guard<std::mutex> lock(mutex_);
         status_ = exitCode == 0 ? "SUCCEEDED" : "FAILED";
         if (exitCode != 0) {
-            error_ = store_ + " collection pipeline failed";
+            error_ = store + " collection pipeline failed";
         }
     }
 
@@ -1940,7 +1948,8 @@ int main() {
                 const auto store = body && (*body)["store"].isString()
                     ? (*body)["store"].asString()
                     : std::string{"Steam"};
-                if (store != "Steam" && store != "Google Play" &&
+                if (store != "Steam" && store != "Epic Games Store" &&
+                    store != "Nintendo eShop" && store != "Google Play" &&
                     store != "Apple App Store") {
                     callback(jsonError(
                         drogon::k400BadRequest,

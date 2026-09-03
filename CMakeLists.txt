@@ -216,6 +216,14 @@ if(BUILD_TESTING)
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_storefront_catalog.py
         )
         add_test(
+            NAME storefront_price_collector_tests
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_storefront_price_collectors.py
+        )
+        add_test(
+            NAME storefront_price_pipeline_tests
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_storefront_price_pipeline.py
+        )
+        add_test(
             NAME remove_catalog_product_tests
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_remove_catalog_product.py
         )

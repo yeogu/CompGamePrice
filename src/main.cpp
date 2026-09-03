@@ -174,6 +174,52 @@ CollectionResult collectAllGooglePlayProducts(
     return combined;
 }
 
+CollectionResult collectAllStoreProducts(
+    const GameCatalog& catalog,
+    StoreProductRepository& repository,
+    const StoreProductProvider& provider,
+    const std::string& label) {
+    std::vector<std::reference_wrapper<const StoreProductProvider>> providers{
+        provider};
+    AccountRepository accounts(repository.database());
+    AlertService alerts(accounts);
+    CollectionService service(
+        catalog,
+        repository,
+        std::move(providers),
+        2,
+        &alerts);
+    CollectionResult combined;
+    for (const auto& game : catalog.allGames()) {
+        const auto result = service.collect(game);
+        combined.runs.insert(
+            combined.runs.end(),
+            result.runs.begin(),
+            result.runs.end());
+        combined.totalProducts += result.totalProducts;
+        std::cout << "- " << game.title << ": " << result.totalProducts
+                  << ' ' << label << " product(s) saved\n";
+    }
+    return combined;
+}
+
+CollectionResult collectAllEpicProducts(
+    const GameCatalog& catalog,
+    StoreProductRepository& repository,
+    const std::string& dataDirectory) {
+    EpicGamesProvider epic(dataDirectory + "/epic_games_products.txt");
+    return collectAllStoreProducts(catalog, repository, epic, "Epic");
+}
+
+CollectionResult collectAllNintendoProducts(
+    const GameCatalog& catalog,
+    StoreProductRepository& repository,
+    const std::string& dataDirectory) {
+    NintendoEShopProvider nintendo(
+        dataDirectory + "/nintendo_eshop_products.csv");
+    return collectAllStoreProducts(catalog, repository, nintendo, "Nintendo");
+}
+
 bool collectionCompletedSuccessfully(const CollectionResult& result) {
     std::vector<std::pair<Store, CrawlRunStatus>> finalStatuses;
     for (const auto& run : result.runs) {
@@ -399,6 +445,32 @@ int main(int argc, char* argv[]) {
                 catalog, repository, options.dataDirectory.value());
             std::cout << "Saved " << result.totalProducts
                       << " normalized Steam products to SQLite.\n";
+            return static_cast<int>(
+                collectionCompletedSuccessfully(result)
+                    ? AppExitCode::Success
+                    : AppExitCode::CollectionFailed);
+        }
+        if (options.command == AppCommand::CollectEpicAll) {
+            std::cout << "Epic catalog collection:\n";
+            const auto result = collectAllEpicProducts(
+                catalog,
+                repository,
+                options.dataDirectory.value());
+            std::cout << "Saved " << result.totalProducts
+                      << " normalized Epic products to SQLite.\n";
+            return static_cast<int>(
+                collectionCompletedSuccessfully(result)
+                    ? AppExitCode::Success
+                    : AppExitCode::CollectionFailed);
+        }
+        if (options.command == AppCommand::CollectNintendoAll) {
+            std::cout << "Nintendo catalog collection:\n";
+            const auto result = collectAllNintendoProducts(
+                catalog,
+                repository,
+                options.dataDirectory.value());
+            std::cout << "Saved " << result.totalProducts
+                      << " normalized Nintendo products to SQLite.\n";
             return static_cast<int>(
                 collectionCompletedSuccessfully(result)
                     ? AppExitCode::Success

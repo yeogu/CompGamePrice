@@ -11,6 +11,8 @@ enum class AppCommand {
     Collect,
     CollectSteam,
     CollectSteamAll,
+    CollectEpicAll,
+    CollectNintendoAll,
     CollectGooglePlayAll,
     CollectAppleAll,
     Compare,

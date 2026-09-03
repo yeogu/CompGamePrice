@@ -673,8 +673,18 @@ Google Play, Apple App Store를 Store별 탭으로 구분한다. Nintendo는 공
 비교한다. 외부 도메인의 임의 URL은 거부되며,
 검증 결과가 불확실하면 관리자의 명시적 확인 없이는 연결되지 않는다.
 
-Epic/Nintendo의 자동 대량 동기화와 실시간 가격 수집은 아직 활성화하지 않았다.
-현재 관리자 기능의 범위는 후보 검색, 상품 검증, 안전한 연결 및 변경 감사 기록이다.
+Epic과 Nintendo의 등록 상품 가격은 기존 C++ Provider와 같은 검증·SQLite 저장
+경로를 통해 수집한다. 관리자 화면에서 Store별 수집을 시작할 수 있고 정기 수집에도
+포함된다. Epic 공식 GraphQL은 Cloudflare 정책에 따라 서버 요청이 403으로 거절될
+수 있으므로, 이 경우 Epic만 실패 처리하고 마지막 정상 가격을 보존한다. Nintendo는
+한국 eShop URL과 한국 NSUID만 허용하며 다른 국가의 상품 ID는 등록하지 않는다.
+
+개별 파이프라인은 다음처럼 실행한다.
+
+```bash
+python3 tools/run_storefront_price_pipeline.py --store EpicGamesStore
+python3 tools/run_storefront_price_pipeline.py --store NintendoEShop
+```
 
 ## HTTP API
 

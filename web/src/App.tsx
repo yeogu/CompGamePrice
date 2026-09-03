@@ -1573,7 +1573,7 @@ function App() {
           </section>
           {!adminResult.applied && adminResult.game.matchDecision?.status !== 'Rejected' && <button disabled={adminImporting || (adminResult.game.matchDecision?.status === 'NeedsReview' && !reviewConfirmed)} onClick={() => void runCatalogImport(true)}>{adminImporting ? 'Store 상품 연결 중…' : adminResult.game.matchDecision?.status === 'NeedsReview' ? `확인 완료 후 ${adminResult.game.title}에 연결` : '검증된 Store 상품 연결'}</button>}
           {adminResult.applied && adminResult.game.matchedProduct && <button className="danger-action" disabled={adminImporting} onClick={() => void disconnectAdminProduct()}>{adminImporting ? '연결 해제 중…' : '잘못 연결된 상품 되돌리기'}</button>}
-          {adminResult.applied && adminStore !== 'Epic Games Store' && adminStore !== 'Nintendo eShop' && <button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectCatalogPrices()}>{catalogJob?.status === 'RUNNING' ? '가격 수집 중…' : `${adminStore} 가격 수집 시작`}</button>}
+          {adminResult.applied && <button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectCatalogPrices()}>{catalogJob?.status === 'RUNNING' ? '가격 수집 중…' : `${adminStore} 가격 수집 시작`}</button>}
         </article>}
         {catalogJob && catalogJob.status !== 'IDLE' && <div className={`admin-job ${catalogJob.status.toLowerCase()}`}><strong>{catalogJob.store ?? adminStore} 수집 상태: {catalogJob.status}</strong>{catalogJob.error && <span>{catalogJob.error}</span>}</div>}
         </div>}

@@ -20,6 +20,13 @@ def updated_catalog(
     metadata: dict,
     acknowledge_review: bool = False,
 ) -> tuple[dict, dict]:
+    if (
+        store == "NintendoEShop"
+        and "store.nintendo.co.kr" not in product_url
+    ):
+        raise ValueError(
+            "Nintendo KR catalog requires a store.nintendo.co.kr product URL",
+        )
     settings = storefront_catalog.config(store)
     game = next(
         (item for item in catalog["games"] if item.get("id") == game_id),

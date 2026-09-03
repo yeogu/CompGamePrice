@@ -73,6 +73,30 @@ CommandLineOptions parseCommandLine(const std::vector<std::string>& arguments) {
             std::nullopt,
             arguments[2]};
     }
+    if (command == "collect-epic-all") {
+        if (arguments.size() != 3 || arguments[1] != "--data-dir" ||
+            arguments[2].empty()) {
+            throw std::invalid_argument(
+                "collect-epic-all requires --data-dir PATH");
+        }
+        return CommandLineOptions{
+            AppCommand::CollectEpicAll,
+            "",
+            std::nullopt,
+            arguments[2]};
+    }
+    if (command == "collect-nintendo-all") {
+        if (arguments.size() != 3 || arguments[1] != "--data-dir" ||
+            arguments[2].empty()) {
+            throw std::invalid_argument(
+                "collect-nintendo-all requires --data-dir PATH");
+        }
+        return CommandLineOptions{
+            AppCommand::CollectNintendoAll,
+            "",
+            std::nullopt,
+            arguments[2]};
+    }
     if (command == "collect-apple-all") {
         if (arguments.size() != 3 || arguments[1] != "--data-dir" ||
             arguments[2].empty()) {
@@ -145,6 +169,10 @@ std::string commandLineHelp() {
         "            Required: collect-steam --data-dir PATH [game name]\n"
         "  collect-steam-all  Collect Steam snapshots for every catalog game\n"
         "            Required: collect-steam-all --data-dir PATH\n"
+        "  collect-epic-all  Collect Epic snapshots for every catalog game\n"
+        "            Required: collect-epic-all --data-dir PATH\n"
+        "  collect-nintendo-all  Collect Nintendo snapshots for every catalog game\n"
+        "            Required: collect-nintendo-all --data-dir PATH\n"
         "  collect-apple-all  Collect Apple snapshots for every catalog game\n"
         "            Required: collect-apple-all --data-dir PATH\n"
         "  collect-google-play-all  Collect Google Play snapshots for every catalog game\n"
