@@ -21,6 +21,7 @@
 #include <sstream>
 #include <iterator>
 #include <mutex>
+#include <optional>
 #include <thread>
 #include <stdexcept>
 #include <string>
@@ -31,6 +32,71 @@ namespace {
 using namespace game_price;
 using drogon::HttpResponse;
 using drogon::HttpResponsePtr;
+
+struct CatalogGameSummary {
+    Game game;
+    std::optional<Money> lowestPrice;
+    std::optional<int> maxDiscountPercent;
+    std::string lastUpdatedAt;
+    std::string priceStatus;
+};
+
+bool supportedGameSort(const std::string& sort) {
+    static const std::set<std::string> supported{
+        "title",
+        "titleAsc",
+        "titleDesc",
+        "lowestPrice",
+        "recentlyUpdated",
+        "updatedDesc",
+        "updatedAsc",
+        "discountDesc",
+        "discountAsc",
+    };
+    return sort.empty() || supported.count(sort) > 0;
+}
+
+bool catalogSummaryLess(
+    const CatalogGameSummary& left,
+    const CatalogGameSummary& right,
+    const std::string& sort) {
+    if (sort == "titleDesc") {
+        return left.game.title > right.game.title;
+    }
+    if (sort == "lowestPrice") {
+        if (left.lowestPrice && right.lowestPrice &&
+            left.lowestPrice->minorAmount != right.lowestPrice->minorAmount) {
+            return left.lowestPrice->minorAmount < right.lowestPrice->minorAmount;
+        }
+        if (left.lowestPrice.has_value() != right.lowestPrice.has_value()) {
+            return left.lowestPrice.has_value();
+        }
+    }
+    if (sort == "discountDesc" || sort == "discountAsc") {
+        if (left.maxDiscountPercent && right.maxDiscountPercent &&
+            *left.maxDiscountPercent != *right.maxDiscountPercent) {
+            if (sort == "discountDesc") {
+                return *left.maxDiscountPercent > *right.maxDiscountPercent;
+            }
+            return *left.maxDiscountPercent < *right.maxDiscountPercent;
+        }
+        if (left.maxDiscountPercent.has_value() != right.maxDiscountPercent.has_value()) {
+            return left.maxDiscountPercent.has_value();
+        }
+    }
+    if (sort == "updatedDesc" || sort == "recentlyUpdated" || sort == "updatedAsc") {
+        if (left.lastUpdatedAt.empty() != right.lastUpdatedAt.empty()) {
+            return !left.lastUpdatedAt.empty();
+        }
+        if (left.lastUpdatedAt != right.lastUpdatedAt) {
+            if (sort == "updatedAsc") {
+                return left.lastUpdatedAt < right.lastUpdatedAt;
+            }
+            return left.lastUpdatedAt > right.lastUpdatedAt;
+        }
+    }
+    return left.game.title < right.game.title;
+}
 
 std::size_t unsignedParameter(
     const std::string& value,
@@ -2217,60 +2283,55 @@ int main() {
                         request->getParameter("page"), 1, 100000, "page");
                     pageSize = unsignedParameter(
                         request->getParameter("pageSize"), 20, 100, "pageSize");
-                    if (!sort.empty() && sort != "title" && sort != "lowestPrice" &&
-                        sort != "recentlyUpdated") {
+                    if (!supportedGameSort(sort)) {
                         throw std::invalid_argument("unsupported game sort");
                     }
                 } catch (const std::invalid_argument& error) {
                     callback(jsonError(drogon::k400BadRequest, error.what()));
                     return;
                 }
-                struct Summary {
-                    Game game;
-                    std::optional<Money> lowestPrice;
-                    std::string lastUpdatedAt;
-                    std::string priceStatus;
-                };
-                std::vector<Summary> summaries;
+                std::vector<CatalogGameSummary> summaries;
                 const auto games = queryService.filterGames(filter);
                 for (const auto& game : games) {
                     const auto report = queryService.getGamePriceReportById(game.id);
                     if (!report || report->productReports.empty()) {
                         summaries.push_back(
-                            Summary{game, std::nullopt, {}, "Collecting"});
+                            CatalogGameSummary{
+                                game,
+                                std::nullopt,
+                                std::nullopt,
+                                {},
+                                "Collecting"});
                     } else if (report->comparison.cheapestProduct) {
                         std::string lastUpdatedAt;
+                        int maxDiscountPercent = 0;
                         for (const auto& product : report->comparison.products) {
                             if (product.lastSuccessfulCheckAt &&
                                 *product.lastSuccessfulCheckAt > lastUpdatedAt) {
                                 lastUpdatedAt = *product.lastSuccessfulCheckAt;
                             }
+                            maxDiscountPercent = std::max(
+                                maxDiscountPercent,
+                                product.discountPercent);
                         }
-                        summaries.push_back(Summary{
+                        summaries.push_back(CatalogGameSummary{
                             game,
                             report->comparison.cheapestProduct->currentPrice,
+                            maxDiscountPercent,
                             std::move(lastUpdatedAt),
                             "Available"});
                     } else {
-                        summaries.push_back(Summary{game, std::nullopt, {}, "Stale"});
+                        summaries.push_back(CatalogGameSummary{
+                            game,
+                            std::nullopt,
+                            std::nullopt,
+                            {},
+                            "Stale"});
                     }
                 }
-                const auto selectedSort = sort.empty() ? "title" : sort;
+                const auto selectedSort = sort.empty() ? "titleAsc" : sort;
                 std::sort(summaries.begin(), summaries.end(), [&](const auto& left, const auto& right) {
-                    if (selectedSort == "lowestPrice") {
-                        if (left.lowestPrice && right.lowestPrice &&
-                            left.lowestPrice->minorAmount != right.lowestPrice->minorAmount) {
-                            return left.lowestPrice->minorAmount < right.lowestPrice->minorAmount;
-                        }
-                        if (left.lowestPrice.has_value() != right.lowestPrice.has_value()) {
-                            return left.lowestPrice.has_value();
-                        }
-                    }
-                    if (selectedSort == "recentlyUpdated" &&
-                        left.lastUpdatedAt != right.lastUpdatedAt) {
-                        return left.lastUpdatedAt > right.lastUpdatedAt;
-                    }
-                    return left.game.title < right.game.title;
+                    return catalogSummaryLess(left, right, selectedSort);
                 });
                 Json::Value response;
                 response["games"] = Json::arrayValue;
@@ -2285,6 +2346,9 @@ int main() {
                     item["priceStatus"] = summary.priceStatus;
                     if (summary.lowestPrice) {
                         item["lowestPrice"] = moneyJson(*summary.lowestPrice);
+                    }
+                    if (summary.maxDiscountPercent) {
+                        item["maxDiscountPercent"] = *summary.maxDiscountPercent;
                     }
                     if (!summary.lastUpdatedAt.empty()) {
                         item["lastUpdatedAt"] = summary.lastUpdatedAt;

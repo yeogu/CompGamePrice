@@ -9,11 +9,12 @@ export interface GameSummary {
   publishers: string[]
   priceStatus?: 'Available' | 'Collecting' | 'Stale'
   lowestPrice?: Money
+  maxDiscountPercent?: number
   lastUpdatedAt?: string
 }
 
 export interface CatalogFilterOptions { stores: string[]; platforms: string[]; genres: string[]; tags: string[] }
-export type GameSort = 'title' | 'lowestPrice' | 'recentlyUpdated'
+export type GameSort = 'titleAsc' | 'titleDesc' | 'lowestPrice' | 'updatedDesc' | 'updatedAsc' | 'discountDesc' | 'discountAsc'
 export interface GameCatalogFilters { store?: string; platform?: string; genre?: string; tag?: string; page?: number; pageSize?: number; sort?: GameSort }
 export interface GameCatalogPage { games: GameSummary[]; page: number; pageSize: number; total: number }
 

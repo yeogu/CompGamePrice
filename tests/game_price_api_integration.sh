@@ -214,6 +214,40 @@ grep -q '"page":2' "${response_body}"
 grep -q '"pageSize":2' "${response_body}"
 [[ $(grep -o '"id"' "${response_body}" | wc -l | tr -d ' ') == "2" ]]
 
+for sort in titleAsc titleDesc updatedDesc updatedAsc discountDesc discountAsc lowestPrice; do
+    status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+        "${api_base}/api/games?pageSize=100&sort=${sort}")
+    [[ "${status}" == "200" ]]
+    python3 - "${response_body}" "${sort}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as source:
+    games = json.load(source)["games"]
+
+sort = sys.argv[2]
+if sort == "titleAsc":
+    assert games == sorted(games, key=lambda game: game["title"])
+elif sort == "titleDesc":
+    assert games == sorted(games, key=lambda game: game["title"], reverse=True)
+elif sort in {"updatedDesc", "updatedAsc"}:
+    available = [game for game in games if "lastUpdatedAt" in game]
+    missing = [game for game in games if "lastUpdatedAt" not in game]
+    reverse = sort == "updatedDesc"
+    timestamps = [game["lastUpdatedAt"] for game in available]
+    assert timestamps == sorted(timestamps, reverse=reverse)
+    assert games == available + missing
+elif sort in {"discountDesc", "discountAsc"}:
+    available = [game for game in games if "maxDiscountPercent" in game]
+    missing = [game for game in games if "maxDiscountPercent" not in game]
+    reverse = sort == "discountDesc"
+    discounts = [game["maxDiscountPercent"] for game in available]
+    assert discounts == sorted(discounts, reverse=reverse)
+    assert games == available + missing
+PY
+done
+grep -q '"maxDiscountPercent":' "${response_body}"
+
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/games?page=0")
 [[ "${status}" == "400" ]]

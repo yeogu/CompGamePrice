@@ -231,7 +231,7 @@ function App() {
   const [browsePlatform, setBrowsePlatform] = useState(initialParameters.get('browsePlatform') ?? '')
   const [selectedGenre, setSelectedGenre] = useState(initialParameters.get('genre') ?? '')
   const [selectedTag, setSelectedTag] = useState(initialParameters.get('tag') ?? '')
-  const [gameSort, setGameSort] = useState<GameSort>((initialParameters.get('sort') as GameSort) || 'title')
+  const [gameSort, setGameSort] = useState<GameSort>((initialParameters.get('sort') as GameSort) || 'titleAsc')
   const [catalogPage, setCatalogPage] = useState(1)
   const [catalogTotal, setCatalogTotal] = useState(0)
   const [browseMode, setBrowseMode] = useState(false)
@@ -442,7 +442,7 @@ function App() {
           browsePlatform: filters.platform,
           genre: filters.genre,
           tag: filters.tag,
-          sort: filters.sort === 'title' ? undefined : filters.sort,
+          sort: filters.sort === 'titleAsc' ? undefined : filters.sort,
         }
         Object.entries(urlValues).forEach(([name, value]) => {
           if (value) {
@@ -1263,7 +1263,15 @@ function App() {
                 sort,
                 page: 1,
               })
-            }}><option value="title">이름순</option><option value="lowestPrice">최저가순</option><option value="recentlyUpdated">최근 갱신순</option></select>}
+            }}>
+              <option value="titleAsc">이름: A → Z</option>
+              <option value="titleDesc">이름: Z → A</option>
+              <option value="updatedDesc">최근 갱신순</option>
+              <option value="updatedAsc">오래된 갱신순</option>
+              <option value="discountDesc">할인율 높은순</option>
+              <option value="discountAsc">할인율 낮은순</option>
+              <option value="lowestPrice">가격 낮은순</option>
+            </select>}
           </div>
           {browseMode && Object.entries(activeBrowseFilters).some(([, value]) => value) && <div className="filter-chips" aria-label="적용된 필터">{Object.entries(activeBrowseFilters).filter(([, value]) => value).map(([name, value]) => <button key={name} type="button" onClick={() => clearBrowseFilter(name as keyof typeof activeBrowseFilters)}>{value} ×</button>)}</div>}
           <div className="game-list">
@@ -1278,7 +1286,7 @@ function App() {
                 <strong>{game.title}</strong>
                 <small>{game.platforms.join(' · ')}</small>
                 <span>{game.genres.join(' · ') || '장르 정보 수집 중'}</span>
-                <em>{game.priceStatus === 'Available' && game.lowestPrice ? `최저 ${formatMoney(game.lowestPrice)}` : game.priceStatus === 'Stale' ? '가격 갱신 필요' : '가격 수집 중'}</em>
+                <em>{game.priceStatus === 'Available' && game.lowestPrice ? `최저 ${formatMoney(game.lowestPrice)}${game.maxDiscountPercent ? ` · 최대 ${game.maxDiscountPercent}% 할인` : ''}` : game.priceStatus === 'Stale' ? '가격 갱신 필요' : '가격 수집 중'}</em>
               </button>
             ))}
           </div>
