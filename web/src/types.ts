@@ -172,7 +172,9 @@ export interface CatalogCollectionJob { id: number; store?: string; status: 'IDL
 export interface StoreProductCandidate { store: string; externalProductId: string; title: string; productUrl: string; platforms: string[]; developer?: string; priceMinor?: number; currency?: string }
 export interface CatalogSyncReview { externalProductId: string; title: string; reason: string; status: 'PENDING' | 'APPROVED' | 'REJECTED'; createdAt: string }
 export interface MobileCatalogSyncReview extends CatalogSyncReview { gameId: string; decision: CatalogMatchStatus; productUrl?: string }
-export interface MobileCatalogSyncRun { id: number; status: string; startedAt: string; finishedAt?: string; processed: number; approvedCandidates: number; autoConnected?: number; needsReview: number; rejected: number; failed: number; retries: number; error?: string; reasonCounts: Record<string, number> }
+export interface MobileCatalogSyncFailure { gameId: string; title?: string; reason: string }
+export interface MobileCatalogSyncExclusion extends MobileCatalogSyncFailure { externalProductId?: string; productUrl?: string }
+export interface MobileCatalogSyncRun { id: number; status: string; startedAt: string; finishedAt?: string; processed: number; approvedCandidates: number; autoConnected?: number; needsReview: number; rejected: number; failed: number; retries: number; error?: string; reasonCounts: Record<string, number>; failures?: MobileCatalogSyncFailure[]; exclusions?: MobileCatalogSyncExclusion[] }
 export interface MobileCatalogSyncJob { provider: 'GooglePlay' | 'AppleAppStore' | 'NintendoEShop'; status?: 'IDLE' | 'RUNNING' | 'SUCCEEDED' | 'PARTIAL' | 'FAILED'; pendingReviews: MobileCatalogSyncReview[]; reviewHistory: MobileCatalogSyncReview[]; recentRuns: MobileCatalogSyncRun[] }
 export interface CatalogGameRequest { query: string; status: string; requestCount: number; requestedAt: string; error?: string }
 export interface CatalogSyncRun { id: number; status: string; startedAt: string; finishedAt?: string; processed: number; accepted: number; review: number; skipped: number; failed: number; error?: string }

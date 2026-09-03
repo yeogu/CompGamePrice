@@ -195,6 +195,7 @@ function App() {
   const [reviewingAppId, setReviewingAppId] = useState('')
   const [reviewingMobileStore, setReviewingMobileStore] = useState<MobileCatalogSyncJob['provider'] | ''>('')
   const [adminQueueView, setAdminQueueView] = useState<'pending' | 'history' | 'requests' | 'runs'>('pending')
+  const [storeDiscoveryView, setStoreDiscoveryView] = useState<'pending' | 'excluded' | 'failed' | 'runs'>('pending')
   const [adminStore, setAdminStore] = useState('Steam')
   const [adminSection, setAdminSection] = useState<AdminSection>('dashboard')
   const [adminQuery, setAdminQuery] = useState('')
@@ -1133,6 +1134,8 @@ function App() {
   )
   const runningMobileSyncJob = mobileSyncJobs.find((job) => job.status === 'RUNNING')
   const selectedMobileSyncJob = mobileSyncJobs.find((job) => job.provider === mobileSyncStore)
+  const selectedMobileSyncRun = selectedMobileSyncJob?.recentRuns[0]
+  const rejectedMobileReviews = selectedMobileSyncJob?.reviewHistory.filter((review) => review.status === 'REJECTED') ?? []
   const mobileSyncButtonLabel = selectedMobileSyncJob?.status === 'RUNNING'
     ? `${catalogProviderLabel(mobileSyncStore)} 탐색 중…`
     : runningMobileSyncJob
@@ -1543,15 +1546,25 @@ function App() {
             <p>카탈로그 게임을 Store에서 찾아 매칭 신뢰도를 판정합니다. 제목과 공식 개발사·퍼블리셔가 일치하는 유료 게임은 자동 연결하고, 불확실한 후보만 검토 큐에 저장합니다.</p>
           </div>
           <button disabled={Boolean(runningMobileSyncJob)} onClick={() => void synchronizeMobileCatalog()}>{mobileSyncButtonLabel}</button>
-          <div className="mobile-review-groups">
-            {groupedMobileReviews.map(([gameId, offers]) => <section key={gameId} className="mobile-review-group"><header><strong>{gameId}</strong><span>{offers.length}개 Store 후보를 함께 검토합니다.</span></header><div className="sync-reviews">{offers.map(({ provider, review }) => <div key={`${provider}:${review.externalProductId}`}><strong>{review.title}</strong><span>{provider}<br />판정: {matchDecisionGuide[review.decision].title}<br />{review.reason.split('; ').map(matchReasonMessage).join(' ')}</span>{review.productUrl && <a href={review.productUrl} target="_blank" rel="noreferrer">Store 상품 확인 ↗</a>}<div className="review-actions"><button onClick={() => inspectMobileCatalogReview(provider, review)}>이 상품 검토하기</button><button className="danger" onClick={() => void rejectMobileCatalogReview(provider, review.externalProductId)}>후보 제외</button></div></div>)}</div></section>)}
-            {groupedMobileReviews.length === 0 && <p>Store 검토 대기 항목이 없습니다.</p>}
-          </div>
-          <div className="sync-summary">
-            {mobileSyncJobs.filter((job) => job.provider === mobileSyncStore).map((job) => {
-              const run = job.recentRuns[0]
-              return <span key={job.provider}>{job.provider}: {job.status ?? run?.status ?? 'IDLE'}{run ? ` · 처리 ${run.processed} · 후보 ${run.approvedCandidates} · 검토 ${run.needsReview} · 제외 ${run.rejected} · 실패 ${run.failed} · 재시도 ${run.retries}` : ''}{run && Object.keys(run.reasonCounts).length > 0 ? <small>주요 판정 사유: {topReasonSummary(run.reasonCounts)}</small> : null}</span>
-            })}
+          {selectedMobileSyncRun && <div className="discovery-summary" aria-label="최근 탐색 결과">
+            <article><small>처리</small><strong>{selectedMobileSyncRun.processed}</strong></article>
+            <article className="success"><small>자동 연결</small><strong>{selectedMobileSyncRun.approvedCandidates}</strong></article>
+            <article className="review"><small>검토 대기</small><strong>{selectedMobileSyncRun.needsReview}</strong></article>
+            <article className="excluded"><small>제외</small><strong>{selectedMobileSyncRun.rejected}</strong></article>
+            <article className="failed"><small>실패</small><strong>{selectedMobileSyncRun.failed}</strong></article>
+            <article><small>재시도</small><strong>{selectedMobileSyncRun.retries}</strong></article>
+          </div>}
+          <div className="sync-queue store-discovery-queue">
+            <div className="queue-tabs">
+              <button className={storeDiscoveryView === 'pending' ? 'active' : ''} onClick={() => setStoreDiscoveryView('pending')}>검토 대기 {selectedMobileSyncJob?.pendingReviews.length ?? 0}</button>
+              <button className={storeDiscoveryView === 'excluded' ? 'active' : ''} onClick={() => setStoreDiscoveryView('excluded')}>제외 {selectedMobileSyncRun?.exclusions?.length ?? selectedMobileSyncRun?.rejected ?? 0}</button>
+              <button className={storeDiscoveryView === 'failed' ? 'active' : ''} onClick={() => setStoreDiscoveryView('failed')}>실패 {selectedMobileSyncRun?.failures?.length ?? selectedMobileSyncRun?.failed ?? 0}</button>
+              <button className={storeDiscoveryView === 'runs' ? 'active' : ''} onClick={() => setStoreDiscoveryView('runs')}>실행 기록</button>
+            </div>
+            {storeDiscoveryView === 'pending' && <div className="mobile-review-groups">{groupedMobileReviews.map(([gameId, offers]) => <section key={gameId} className="mobile-review-group"><header><strong>{gameId}</strong><span>{offers.length}개 후보</span></header><div className="sync-reviews">{offers.map(({ provider, review }) => <div key={`${provider}:${review.externalProductId}`}><strong>{review.title}</strong><span>{review.reason.split('; ').map(matchReasonMessage).join(' ')}</span>{review.productUrl && <a href={review.productUrl} target="_blank" rel="noreferrer">Store 확인 ↗</a>}<div className="review-actions"><button onClick={() => inspectMobileCatalogReview(provider, review)}>검토</button><button className="danger" onClick={() => void rejectMobileCatalogReview(provider, review.externalProductId)}>제외</button></div></div>)}</div></section>)}{groupedMobileReviews.length === 0 && <p>관리자가 검토할 후보가 없습니다.</p>}</div>}
+            {storeDiscoveryView === 'excluded' && <div className="sync-reviews">{selectedMobileSyncRun?.exclusions?.length ? selectedMobileSyncRun.exclusions.map((item, index) => <div key={`${item.gameId}-${item.externalProductId ?? index}`}><strong>{item.title || item.gameId}</strong><span>{item.reason.split('; ').map(matchReasonMessage).join(' ')}</span>{item.productUrl ? <a href={item.productUrl} target="_blank" rel="noreferrer">Store 확인 ↗</a> : <small>검색 결과 없음</small>}<button onClick={() => setAdminQuery(item.title || item.gameId)}>직접 검색</button></div>) : rejectedMobileReviews.length ? rejectedMobileReviews.map((review) => <div key={review.externalProductId}><strong>{review.title}</strong><span>{review.reason.split('; ').map(matchReasonMessage).join(' ')}</span>{review.productUrl && <a href={review.productUrl} target="_blank" rel="noreferrer">Store 확인 ↗</a>}<button onClick={() => inspectMobileCatalogReview(mobileSyncStore, review)}>다시 검토</button></div>) : <p>제외된 게임이 없습니다.</p>}</div>}
+            {storeDiscoveryView === 'failed' && <div className="sync-reviews">{selectedMobileSyncRun?.failures?.length ? selectedMobileSyncRun.failures.map((item, index) => <div key={`${item.gameId}-${index}`}><strong>{item.title || item.gameId}</strong><span>{item.reason}</span><small>자동 연결되지 않았으며 다음 배치에서 재시도할 수 있습니다.</small><button onClick={() => setAdminQuery(item.title || item.gameId)}>직접 검색</button></div>) : <p>최근 실행에서 상세 실패 내역이 없습니다. 이전 버전의 실행은 합계만 표시됩니다.</p>}</div>}
+            {storeDiscoveryView === 'runs' && <div className="sync-reviews">{selectedMobileSyncJob?.recentRuns.length ? selectedMobileSyncJob.recentRuns.map((run) => <div key={run.id}><strong>실행 #{run.id} · {run.status}</strong><span>처리 {run.processed} · 자동 연결 {run.approvedCandidates} · 검토 {run.needsReview} · 제외 {run.rejected} · 실패 {run.failed}</span><time>{new Date(run.startedAt).toLocaleString('ko-KR')}</time>{Object.keys(run.reasonCounts).length > 0 && <small>{topReasonSummary(run.reasonCounts)}</small>}</div>) : <p>실행 기록이 없습니다.</p>}</div>}
           </div>
         </article>
         </div>}

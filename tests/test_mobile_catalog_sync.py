@@ -184,6 +184,10 @@ class MobileCatalogSyncTest(unittest.TestCase):
         self.assertEqual(report["reasonCounts"]["No Store search results"], 1)
         status = sync.synchronization_status(self.database, "GooglePlay")
         self.assertEqual(
+            status["recentRuns"][0]["exclusions"][0]["gameId"],
+            "stardew-valley",
+        )
+        self.assertEqual(
             status["recentRuns"][0]["reasonCounts"]["No Store search results"],
             1,
         )
@@ -351,6 +355,11 @@ class MobileCatalogSyncTest(unittest.TestCase):
         self.assertEqual(report["status"], "PARTIAL")
         self.assertEqual(report["failed"], 1)
         self.assertEqual(report["approvedCandidates"], 1)
+        status = sync.synchronization_status(self.database, "GooglePlay")
+        failures = status["recentRuns"][0]["failures"]
+        self.assertEqual(failures[0]["gameId"], "stardew-valley")
+        self.assertEqual(failures[0]["title"], "Stardew Valley")
+        self.assertEqual(failures[0]["reason"], "malformed response")
 
 
 if __name__ == "__main__":

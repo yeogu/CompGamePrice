@@ -368,7 +368,11 @@ def finish_run(
             error,
             report["retries"],
             json.dumps(
-                {"reasonCounts": report["reasonCounts"]},
+                {
+                    "reasonCounts": report["reasonCounts"],
+                    "failures": report["errors"],
+                    "exclusions": report["exclusions"],
+                },
                 ensure_ascii=False,
             ),
             run_id,
@@ -410,6 +414,7 @@ def synchronize_provider(
         "failed": 0,
         "retries": 0,
         "errors": [],
+        "exclusions": [],
         "reasonCounts": {},
     }
     started_at = utc_now()
@@ -431,6 +436,11 @@ def synchronize_provider(
                 if not candidates:
                     record_game_processed(connection, provider, game["id"], "NO_MATCH")
                     increment_reason(report, "No Store search results")
+                    report["exclusions"].append({
+                        "gameId": game["id"],
+                        "title": game.get("title", ""),
+                        "reason": "No Store search results",
+                    })
                     report["rejected"] += 1
                     continue
                 candidate, metadata, decision = best_candidate(
@@ -465,9 +475,20 @@ def synchronize_provider(
                     report["needsReview"] += 1
                 else:
                     report["rejected"] += 1
+                    report["exclusions"].append({
+                        "gameId": game["id"],
+                        "title": metadata.get("title", game.get("title", "")),
+                        "reason": "; ".join(decision.get("reasons", [])),
+                        "externalProductId": candidate.get("externalProductId"),
+                        "productUrl": candidate.get("productUrl"),
+                    })
             except Exception as error:
                 report["failed"] += 1
-                report["errors"].append({"gameId": game.get("id"), "reason": str(error)})
+                report["errors"].append({
+                    "gameId": game.get("id"),
+                    "title": game.get("title", ""),
+                    "reason": str(error),
+                })
             finally:
                 report["retries"] += retry_counter[0]
                 connection.commit()
@@ -544,6 +565,8 @@ def run_document(row: tuple) -> dict:
         "error": row[9],
         "retries": row[10],
         "reasonCounts": summary.get("reasonCounts", {}),
+        "failures": summary.get("failures", []),
+        "exclusions": summary.get("exclusions", []),
     }
 
 

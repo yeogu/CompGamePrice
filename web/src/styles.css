@@ -286,6 +286,15 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .mobile-review-group > header { display: flex; justify-content: space-between; gap: 12px; padding: 12px; background: #102219; }
 .mobile-review-group > header span { color: #91a79b; }
 .mobile-review-group .sync-reviews { padding: 0 12px; }
+.discovery-summary { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(6, minmax(90px, 1fr)); gap: 8px; }
+.discovery-summary article { display: grid; gap: 4px; padding: 12px; background: #102219; border: 1px solid #294838; border-radius: 10px; }
+.discovery-summary small { color: #91a79b; }
+.discovery-summary strong { color: #eef8f2; font-size: 1.35rem; }
+.discovery-summary .success strong { color: #73d49b; }
+.discovery-summary .review strong { color: #f0cf78; }
+.discovery-summary .excluded strong, .discovery-summary .failed strong { color: #ff9d8f; }
+.store-discovery-queue { margin-top: 4px; }
+.store-discovery-queue > .sync-reviews > div { grid-template-columns: minmax(150px, 1fr) minmax(240px, 2fr) auto auto; }
 .admin-form { display: grid; grid-template-columns: 1fr 1fr auto; align-items: end; gap: 12px; margin-top: 24px; }
 .admin-search { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-top: 24px; }
 .admin-search input, .admin-search select { padding: 12px; color: #eef8f2; background: #0b1812; border: 1px solid #315141; border-radius: 9px; }
@@ -388,6 +397,7 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
   .game-summary { grid-template-columns: repeat(2, 1fr); }
   .preference-card { grid-template-columns: 1fr; }
   .catalog-sync-panel { grid-template-columns: 1fr; }
+  .discovery-summary { grid-template-columns: repeat(2, 1fr); }
   .detailed-filters form { grid-template-columns: 1fr; }
   .sync-reviews > div { grid-template-columns: 1fr; }
   .admin-form { grid-template-columns: 1fr; }
