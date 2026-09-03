@@ -12,11 +12,13 @@ import time
 
 import add_apple_catalog_game as apple_import
 import add_google_play_catalog_game as google_import
+import add_storefront_catalog_game as storefront_import
 import search_apple_catalog as apple_search
 import search_google_play_catalog as google_search
 import sync_steam_catalog as catalog_sync
 import catalog_matcher
 import catalog_storage
+import storefront_catalog
 
 
 STORE_CONFIG = {
@@ -33,6 +35,34 @@ STORE_CONFIG = {
         "fetch": apple_import.fetch,
         "metadata": apple_import.apple_product,
         "update": apple_import.updated_catalog,
+    },
+    "NintendoEShop": {
+        "catalogStore": "NintendoEShop",
+        "search": lambda query, limit, timeout: storefront_catalog.search(
+            "NintendoEShop",
+            query,
+            limit,
+            timeout,
+        ),
+        "fetch": lambda product_id, timeout: storefront_catalog.fetch_product(
+            "NintendoEShop",
+            f"https://store.nintendo.co.kr/{product_id}",
+            timeout,
+        ),
+        "metadata": lambda raw, product_id: storefront_catalog.verified_product(
+            raw,
+            "NintendoEShop",
+            f"https://store.nintendo.co.kr/{product_id}",
+        ),
+        "update": lambda catalog, game_id, product_id, metadata: (
+            storefront_import.updated_catalog(
+                catalog,
+                "NintendoEShop",
+                f"https://store.nintendo.co.kr/{product_id}",
+                game_id,
+                metadata,
+            )
+        ),
     },
 }
 REJECTED_GAME_RECHECK_DAYS = 7
@@ -359,7 +389,7 @@ def synchronize_provider(
     metadata_parser=None,
 ) -> dict:
     if provider not in STORE_CONFIG:
-        raise ValueError("unsupported mobile store")
+        raise ValueError("unsupported catalog store")
     if not 1 <= batch_size <= 100:
         raise ValueError("batch size must be between 1 and 100")
     if not 1 <= max_attempts <= 5:
@@ -531,7 +561,7 @@ def resolve_review(database_path: Path, provider: str, product_id: str, resoluti
             (resolution, provider, product_id),
         )
         if cursor.rowcount != 1:
-            raise ValueError("pending mobile catalog review was not found")
+            raise ValueError("pending catalog review was not found")
         connection.commit()
     return synchronization_status(database_path, provider)
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from html.parser import HTMLParser
+from html import unescape
 import json
 import re
 from urllib.parse import urlencode, urljoin, urlparse
@@ -239,6 +240,19 @@ def named_value(value) -> str:
     return ""
 
 
+def nintendo_publisher(document: str) -> str:
+    publisher = re.search(
+        r'class="product-attribute\s+publisher[^\"]*".*?'
+        r'class="attribute-item-val"[^>]*>(.*?)</div>',
+        document,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if not publisher:
+        return ""
+    without_tags = re.sub(r"<[^>]+>", " ", publisher.group(1))
+    return " ".join(unescape(without_tags).split())
+
+
 def verified_product(raw: bytes, store: str, product_url: str) -> dict:
     if store == "EpicGamesStore" and raw.lstrip().startswith(b"{"):
         document = json.loads(raw)
@@ -267,8 +281,9 @@ def verified_product(raw: bytes, store: str, product_url: str) -> dict:
                 catalog_matcher.EXCLUDED_TITLE_WORDS
             ),
         }
+    html_document = raw.decode("utf-8", errors="replace")
     parser = ProductDocumentParser()
-    parser.feed(raw.decode("utf-8", errors="replace"))
+    parser.feed(html_document)
     product = first_product(parser.documents)
     title = named_value(product.get("name")) or parser.meta.get("og:title", "").strip()
     if not title:
@@ -291,6 +306,8 @@ def verified_product(raw: bytes, store: str, product_url: str) -> dict:
     developer = named_value(product.get("brand"))
     if not developer:
         developer = named_value(product.get("author"))
+    if not developer and store == "NintendoEShop":
+        developer = nintendo_publisher(html_document)
     platforms = config(store)["platforms"]
     if store == "NintendoEShop" and "nintendo switch 2" in title.lower():
         platforms = ["NintendoSwitch2"]

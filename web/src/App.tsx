@@ -321,6 +321,7 @@ function App() {
       setAdminStore('Epic Games Store')
     } else if (section === 'nintendo-eshop') {
       setAdminStore('Nintendo eShop')
+      setMobileSyncStore('NintendoEShop')
     }
     setAdminCandidates([])
     setPendingCandidate(null)
@@ -748,6 +749,7 @@ function App() {
     const jobs = await Promise.all([
       getMobileCatalogSyncJob('GooglePlay'),
       getMobileCatalogSyncJob('AppleAppStore'),
+      getMobileCatalogSyncJob('NintendoEShop'),
     ])
     setMobileSyncJobs(jobs)
   }
@@ -758,12 +760,16 @@ function App() {
       const job = await startMobileCatalogSync(mobileSyncStore, catalogSyncBatchSize)
       setMobileSyncJobs((current) => [...current.filter((item) => item.provider !== mobileSyncStore), job])
     } catch (reason) {
-      setAdminError(reason instanceof Error ? reason.message : '모바일 후보 탐색을 시작하지 못했습니다.')
+      setAdminError(reason instanceof Error ? reason.message : 'Store 후보 탐색을 시작하지 못했습니다.')
     }
   }
 
   const inspectMobileCatalogReview = (store: MobileCatalogSyncJob['provider'], review: MobileCatalogSyncReview) => {
-    const displayStore = store === 'GooglePlay' ? 'Google Play' : 'Apple App Store'
+    const displayStore = store === 'GooglePlay'
+      ? 'Google Play'
+      : store === 'AppleAppStore'
+        ? 'Apple App Store'
+        : 'Nintendo eShop'
     setAdminStore(displayStore)
     setReviewingAppId('')
     setReviewingMobileStore(store)
@@ -774,7 +780,11 @@ function App() {
       externalProductId: review.externalProductId,
       title: review.title,
       productUrl: review.productUrl ?? '',
-      platforms: store === 'GooglePlay' ? ['Android'] : ['iOS', 'iPadOS'],
+      platforms: store === 'GooglePlay'
+        ? ['Android']
+        : store === 'AppleAppStore'
+          ? ['iOS', 'iPadOS']
+          : ['NintendoSwitch'],
     })
     setAdminResult(null)
     setAdminError('')
@@ -1507,8 +1517,8 @@ function App() {
           </div>}
         </article>
         </div>}
-        {(adminSection === 'epic-games' || adminSection === 'nintendo-eshop') && <div className="admin-store-workspace"><header><span className={`store-badge ${adminSection}`}>{adminSection === 'epic-games' ? 'E' : 'N'}</span><div><h2>{adminStore}</h2><p>공식 Store 검색 결과를 canonical Game과 비교하고 검증된 상품만 연결합니다.</p></div></header><article className="catalog-sync-panel"><div><h2>{adminStore} 관리자 검수</h2><p>현재는 관리자가 검색한 후보를 검수해 연결합니다. 자동 대량 동기화와 실시간 가격 수집은 Store별 수집기 안정화 후 별도로 활성화합니다.</p></div></article></div>}
-        {(adminSection === 'google-play' || adminSection === 'apple-app-store') && <div className="admin-store-workspace"><header><span className={`store-badge ${adminSection}`}>{adminSection === 'google-play' ? 'G' : 'A'}</span><div><h2>{adminStore}</h2><p>모바일 상품 후보 탐색, 검토, 연결과 가격 수집을 관리합니다.</p></div></header><article className="catalog-sync-panel">
+        {adminSection === 'epic-games' && <div className="admin-store-workspace"><header><span className="store-badge epic-games">E</span><div><h2>{adminStore}</h2><p>공식 Store 검색 결과를 canonical Game과 비교하고 검증된 상품만 연결합니다.</p></div></header><article className="catalog-sync-panel"><div><h2>{adminStore} 관리자 검수</h2><p>Epic의 자동 요청 제한 때문에 공식 상품 URL을 이용해 검수합니다. 실패해도 기존 가격은 보존되고 다른 Store 수집은 계속됩니다.</p></div></article></div>}
+        {(adminSection === 'nintendo-eshop' || adminSection === 'google-play' || adminSection === 'apple-app-store') && <div className="admin-store-workspace"><header><span className={`store-badge ${adminSection}`}>{adminSection === 'google-play' ? 'G' : adminSection === 'apple-app-store' ? 'A' : 'N'}</span><div><h2>{adminStore}</h2><p>Store 상품 후보 탐색, 검토, 연결과 가격 수집을 관리합니다.</p></div></header><article className="catalog-sync-panel">
           <div>
             <h2>{adminStore} 후보 자동 탐색</h2>
             <p>카탈로그 게임을 Store에서 찾아 매칭 신뢰도를 판정합니다. 제목과 공식 개발사·퍼블리셔가 일치하는 유료 게임은 자동 연결하고, 불확실한 후보만 검토 큐에 저장합니다.</p>
@@ -1516,7 +1526,7 @@ function App() {
           <button disabled={mobileSyncJobs.some((job) => job.status === 'RUNNING')} onClick={() => void synchronizeMobileCatalog()}>{mobileSyncJobs.some((job) => job.status === 'RUNNING') ? '탐색 중…' : '후보 배치 탐색'}</button>
           <div className="mobile-review-groups">
             {groupedMobileReviews.map(([gameId, offers]) => <section key={gameId} className="mobile-review-group"><header><strong>{gameId}</strong><span>{offers.length}개 Store 후보를 함께 검토합니다.</span></header><div className="sync-reviews">{offers.map(({ provider, review }) => <div key={`${provider}:${review.externalProductId}`}><strong>{review.title}</strong><span>{provider}<br />판정: {matchDecisionGuide[review.decision].title}<br />{review.reason.split('; ').map(matchReasonMessage).join(' ')}</span>{review.productUrl && <a href={review.productUrl} target="_blank" rel="noreferrer">Store 상품 확인 ↗</a>}<div className="review-actions"><button onClick={() => inspectMobileCatalogReview(provider, review)}>이 상품 검토하기</button><button className="danger" onClick={() => void rejectMobileCatalogReview(provider, review.externalProductId)}>후보 제외</button></div></div>)}</div></section>)}
-            {groupedMobileReviews.length === 0 && <p>모바일 검토 대기 항목이 없습니다.</p>}
+            {groupedMobileReviews.length === 0 && <p>Store 검토 대기 항목이 없습니다.</p>}
           </div>
           <div className="sync-summary">
             {mobileSyncJobs.filter((job) => job.provider === mobileSyncStore).map((job) => {

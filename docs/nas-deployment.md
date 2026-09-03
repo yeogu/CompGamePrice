@@ -281,9 +281,31 @@ NAS 관리자와 함께 수행한다.
 
 관리자 카탈로그 메뉴에서 Epic Games와 Nintendo eShop 탭을 제공하며, 검수·연결한
 상품은 관리자 가격 수집 버튼과 `collector` 정기 작업의 대상이 된다. Nintendo는
-한국 eShop 상품 URL과 NSUID를 사용한다. Epic 공식 Store가 서버 요청을 403으로
-제한하면 Epic 단계만 실패하고 Nintendo를 포함한 이후 단계는 계속 실행된다. 이때
-기존 정상 가격은 덮어쓰지 않으며 관리자 운영 상태에서 실패를 확인할 수 있다.
+한국 eShop 상품 URL과 NSUID를 사용한다. 정기 작업은 canonical Game 중 Nintendo
+상품이 없는 게임을 제한된 배치로 검색하며, 제목과 메이커가 모두 일치하는 본편만
+자동 연결한다. 애매한 후보는 기존 관리자 검토 큐에 남기고, 제외된 게임은 7일 뒤에
+다시 확인한다. 상품 가격에서는 `final_price`, `regular_price`, 통화와 판매 가능 상태를
+검증하여 할인 가격을 저장한다.
+
+Epic은 2026-09-03 현재 공식 개발자 문서에서 일반 소비자용 Store 가격 조회 API를
+확인할 수 없었고, Store 웹 GraphQL 요청은 실행 환경에 따라 HTTP 403으로 제한된다.
+인증되지 않은 우회 방식은 사용하지 않는다. Epic 단계가 실패하면 기존 정상 snapshot과
+DB 가격을 보존하고 Nintendo를 포함한 이후 단계는 계속 실행되며, 실패는 관리자 운영
+상태에 기록된다. 공식적으로 안정적인 API가 제공되면 현재 Provider 입력 형식 앞단의
+collector만 교체한다.
+
+NAS 배포 후에는 다음 항목을 확인한다.
+
+```bash
+curl -fsS http://127.0.0.1:8088/health
+sudo /usr/local/bin/docker-compose -f compose.synology.yml ps
+sudo /usr/local/bin/docker-compose -f compose.synology.yml logs --tail 100 collector
+```
+
+관리자 화면의 Nintendo eShop 탭에서 `후보 배치 탐색`을 한 번 실행한 뒤, 최근 실행의
+처리·자동 등록·검토·실패 수가 표시되는지 확인한다. 운영 catalog를 직접 수정하지 않는
+사전 검증은 catalog와 DB 복사본에 `sync_mobile_catalog.py --store NintendoEShop`을
+실행하는 방식으로 수행한다.
 
 ## 공개 전 확인
 

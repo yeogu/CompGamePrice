@@ -110,6 +110,38 @@ class MobileCatalogSyncTest(unittest.TestCase):
         self.assertIn("iOS", game["platforms"])
         self.assertEqual(game["products"][0]["store"], "AppleAppStore")
 
+    def test_approved_nintendo_candidate_is_connected_to_korean_eshop(self):
+        def nintendo_metadata(raw, product_id):
+            del raw
+            return {
+                **approved_metadata(b"", product_id),
+                "productId": product_id,
+                "platforms": ["NintendoSwitch"],
+            }
+
+        report = sync.synchronize_provider(
+            self.catalog,
+            self.database,
+            "NintendoEShop",
+            10,
+            searcher=lambda query, limit, timeout: [{
+                "externalProductId": "70010000033128",
+                "title": query,
+                "productUrl": "https://store.nintendo.co.kr/70010000033128",
+            }],
+            fetcher=lambda product_id, timeout: b"product",
+            metadata_parser=nintendo_metadata,
+        )
+
+        self.assertEqual(report["autoConnected"], 1)
+        game = json.loads(self.catalog.read_text(encoding="utf-8"))["games"][0]
+        self.assertIn("NintendoSwitch", game["platforms"])
+        self.assertEqual(game["products"][0]["store"], "NintendoEShop")
+        self.assertEqual(
+            game["products"][0]["productUrl"],
+            "https://store.nintendo.co.kr/70010000033128",
+        )
+
     def test_uncertain_candidate_remains_in_manual_review(self):
         def incomplete_metadata(raw, product_id):
             result = approved_metadata(raw, product_id)

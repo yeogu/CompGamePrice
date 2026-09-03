@@ -1977,10 +1977,11 @@ int main() {
                     return;
                 }
                 const auto store = request->getParameter("store");
-                if (store != "GooglePlay" && store != "AppleAppStore") {
+                if (store != "GooglePlay" && store != "AppleAppStore" &&
+                    store != "NintendoEShop") {
                     callback(jsonError(
                         drogon::k400BadRequest,
-                        "store must be GooglePlay or AppleAppStore"));
+                        "store must be GooglePlay, AppleAppStore or NintendoEShop"));
                     return;
                 }
                 try {
@@ -2008,7 +2009,8 @@ int main() {
                 const auto batchSize = body && (*body)["batchSize"].isInt()
                     ? (*body)["batchSize"].asInt()
                     : 10;
-                if ((store != "GooglePlay" && store != "AppleAppStore") ||
+                if ((store != "GooglePlay" && store != "AppleAppStore" &&
+                     store != "NintendoEShop") ||
                     batchSize < 1 || batchSize > 100) {
                     callback(jsonError(
                         drogon::k400BadRequest,
@@ -2042,7 +2044,8 @@ int main() {
                 const auto resolution = body && (*body)["resolution"].isString()
                     ? (*body)["resolution"].asString()
                     : std::string{};
-                if ((store != "GooglePlay" && store != "AppleAppStore") ||
+                if ((store != "GooglePlay" && store != "AppleAppStore" &&
+                     store != "NintendoEShop") ||
                     (resolution != "APPROVED" && resolution != "REJECTED")) {
                     callback(jsonError(
                         drogon::k400BadRequest,

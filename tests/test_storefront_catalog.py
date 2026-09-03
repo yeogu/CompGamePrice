@@ -85,6 +85,15 @@ class StorefrontCatalogTest(unittest.TestCase):
         )
         self.assertEqual(metadata["platforms"], ["NintendoSwitch2"])
 
+    def test_reads_nintendo_korean_publisher_for_identity_matching(self):
+        raw = (ROOT / "tests/fixtures/nintendo_hades_product.html").read_bytes()
+        metadata = storefront_catalog.verified_product(
+            raw,
+            "NintendoEShop",
+            "https://store.nintendo.co.kr/70010000033128",
+        )
+        self.assertEqual(metadata["developer"], "Supergiant Games")
+
     def test_missing_price_requires_identity_review_instead_of_rejection(self):
         metadata = storefront_catalog.verified_product(
             json.dumps({

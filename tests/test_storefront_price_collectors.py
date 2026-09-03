@@ -59,7 +59,7 @@ class StorefrontPriceCollectorsTest(unittest.TestCase):
                 "ignored",
             )
 
-    def test_nintendo_normalizes_product_meta_price(self):
+    def test_nintendo_normalizes_embedded_regular_and_discount_price(self):
         raw = (ROOT / "tests/fixtures/nintendo_hades_product.html").read_bytes()
         row = nintendo.normalized_row(
             raw,
@@ -69,8 +69,24 @@ class StorefrontPriceCollectorsTest(unittest.TestCase):
         )
         self.assertEqual(
             row,
-            "70010000033128,hades,28600,28600,0,SWITCH,KR,AVAILABLE,SUPPORTED",
+            "70010000033128,hades,28600,17160,40,SWITCH,KR,AVAILABLE,SUPPORTED",
         )
+
+    def test_nintendo_rejects_final_price_above_regular_price(self):
+        raw = b'''<meta itemprop="priceCurrency" content="KRW"><script>
+        {"price_info":{"final_price":30000,"regular_price":20000,
+        "currency_code":"KRW"}}
+        </script>'''
+        with self.assertRaisesRegex(ValueError, "cannot exceed"):
+            nintendo.normalized_row(raw, "1", "game", "ignored")
+
+    def test_nintendo_preserves_unavailable_product_state(self):
+        raw = b'''<meta itemprop="priceCurrency" content="KRW"><script>
+        {"price_info":{"final_price":20000,"regular_price":20000,
+        "currency_code":"KRW"},"is_available":false}
+        </script>'''
+        row = nintendo.normalized_row(raw, "1", "game", "ignored")
+        self.assertIn(",UNAVAILABLE,SUPPORTED", row)
 
     def test_partial_failure_keeps_successful_snapshot(self):
         with tempfile.TemporaryDirectory() as directory:

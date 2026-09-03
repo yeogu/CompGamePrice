@@ -21,6 +21,8 @@ class NintendoPriceParser(HTMLParser):
         self.json_ld: list[dict] = []
         self.in_json_ld = False
         self.json_text: list[str] = []
+        self.script_texts: list[str] = []
+        self.in_script = False
 
     def handle_starttag(self, tag, attributes):
         values = dict(attributes)
@@ -32,13 +34,21 @@ class NintendoPriceParser(HTMLParser):
         if tag == "script" and values.get("type") == "application/ld+json":
             self.in_json_ld = True
             self.json_text = []
+        if tag == "script":
+            self.in_script = True
+            self.script_texts.append("")
 
     def handle_data(self, data):
         if self.in_json_ld:
             self.json_text.append(data)
+        if self.in_script and self.script_texts:
+            self.script_texts[-1] += data
 
     def handle_endtag(self, tag):
-        if tag != "script" or not self.in_json_ld:
+        if tag != "script":
+            return
+        self.in_script = False
+        if not self.in_json_ld:
             return
         self.in_json_ld = False
         try:
@@ -47,6 +57,44 @@ class NintendoPriceParser(HTMLParser):
             return
         if isinstance(document, dict):
             self.json_ld.append(document)
+
+
+def embedded_price_info(parser: NintendoPriceParser) -> dict:
+    pattern = re.compile(r'"price_info"\s*:\s*(\{[^{}]*\})')
+    for script in parser.script_texts:
+        for match in pattern.finditer(script):
+            try:
+                price_info = json.loads(match.group(1))
+            except json.JSONDecodeError:
+                continue
+            if isinstance(price_info, dict):
+                return price_info
+    return {}
+
+
+def embedded_availability(parser: NintendoPriceParser) -> bool:
+    pattern = re.compile(r'"is_available"\s*:\s*(true|false)', re.IGNORECASE)
+    for script in parser.script_texts:
+        match = pattern.search(script)
+        if match:
+            return match.group(1).lower() == "true"
+    return True
+
+
+def integer_krw(value, field: str) -> int:
+    if isinstance(value, bool):
+        raise support.PermanentCollectionError(f"Nintendo {field} is invalid")
+    try:
+        number = float(value)
+    except (TypeError, ValueError) as error:
+        raise support.PermanentCollectionError(
+            f"Nintendo {field} is invalid",
+        ) from error
+    if not number.is_integer():
+        raise support.PermanentCollectionError(
+            f"Nintendo {field} must be whole KRW",
+        )
+    return int(number)
 
 
 def nintendo_targets(catalog: Path) -> list[tuple[str, str, str]]:
@@ -96,8 +144,19 @@ def normalized_row(
     del product_url
     parser = NintendoPriceParser()
     parser.feed(raw.decode("utf-8", errors="replace"))
+    price_info = embedded_price_info(parser)
+    availability = "AVAILABLE" if embedded_availability(parser) else "UNAVAILABLE"
     currency = parser.meta.get("priceCurrency", "")
     price_text = parser.meta.get("price", "")
+    if price_info:
+        currency = str(price_info.get("currency_code", currency))
+        current_value = price_info.get("final_price")
+        regular_value = price_info.get("regular_price", current_value)
+        current_price = integer_krw(current_value, "final price")
+        regular_price = integer_krw(regular_value, "regular price")
+    else:
+        current_price = None
+        regular_price = None
     if not price_text:
         for document in parser.json_ld:
             offer = document.get("offers")
@@ -107,21 +166,30 @@ def normalized_row(
                 break
     if currency != "KRW":
         raise support.PermanentCollectionError("Nintendo price must be KRW")
-    normalized_price = re.sub(r"[^0-9]", "", price_text)
-    if not normalized_price:
-        raise support.PermanentCollectionError("Nintendo response has no price")
-    price = int(normalized_price)
-    if price < 0:
+    if current_price is None:
+        normalized_price = re.sub(r"[^0-9]", "", price_text)
+        if not normalized_price:
+            raise support.PermanentCollectionError("Nintendo response has no price")
+        current_price = int(normalized_price)
+        regular_price = current_price
+    if current_price < 0 or regular_price < 0:
         raise support.PermanentCollectionError("Nintendo price cannot be negative")
+    if current_price > regular_price:
+        raise support.PermanentCollectionError(
+            "Nintendo final price cannot exceed regular price",
+        )
+    discount = 0
+    if regular_price > 0:
+        discount = round((regular_price - current_price) * 100 / regular_price)
     return ",".join([
         product_id,
         game_id,
-        str(price),
-        str(price),
-        "0",
+        str(regular_price),
+        str(current_price),
+        str(discount),
         "SWITCH",
         "KR",
-        "AVAILABLE",
+        availability,
         "SUPPORTED",
     ])
 

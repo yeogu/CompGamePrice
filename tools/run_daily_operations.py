@@ -96,6 +96,21 @@ def run_operations(
             ],
         ),
         (
+            "nintendo-catalog-discovery",
+            [
+                python,
+                str(project / "tools" / "sync_mobile_catalog.py"),
+                "--store",
+                "NintendoEShop",
+                "--catalog",
+                str(catalog),
+                "--database",
+                str(database),
+                "--batch-size",
+                str(catalog_batch_size),
+            ],
+        ),
+        (
             "steam",
             [
                 python,
