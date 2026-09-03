@@ -138,6 +138,26 @@ const matchDecisionGuide = {
 type AppView = 'games' | 'favorites' | 'alerts' | 'notifications' | 'account' | 'collection' | 'admin'
 type AdminSection = 'dashboard' | 'steam' | 'epic-games' | 'nintendo-eshop' | 'google-play' | 'apple-app-store' | 'audit'
 
+const catalogProviderLabel = (provider: MobileCatalogSyncJob['provider']) => {
+  if (provider === 'GooglePlay') {
+    return 'Google Play'
+  }
+  if (provider === 'AppleAppStore') {
+    return 'Apple App Store'
+  }
+  return 'Nintendo eShop'
+}
+
+const catalogProviderPlatforms = (provider: MobileCatalogSyncJob['provider']) => {
+  if (provider === 'GooglePlay') {
+    return ['Android']
+  }
+  if (provider === 'AppleAppStore') {
+    return ['iOS', 'iPadOS']
+  }
+  return ['NintendoSwitch']
+}
+
 function App() {
   const [query, setQuery] = useState('')
   const [games, setGames] = useState<GameSummary[]>([])
@@ -765,11 +785,7 @@ function App() {
   }
 
   const inspectMobileCatalogReview = (store: MobileCatalogSyncJob['provider'], review: MobileCatalogSyncReview) => {
-    const displayStore = store === 'GooglePlay'
-      ? 'Google Play'
-      : store === 'AppleAppStore'
-        ? 'Apple App Store'
-        : 'Nintendo eShop'
+    const displayStore = catalogProviderLabel(store)
     setAdminStore(displayStore)
     setReviewingAppId('')
     setReviewingMobileStore(store)
@@ -780,11 +796,7 @@ function App() {
       externalProductId: review.externalProductId,
       title: review.title,
       productUrl: review.productUrl ?? '',
-      platforms: store === 'GooglePlay'
-        ? ['Android']
-        : store === 'AppleAppStore'
-          ? ['iOS', 'iPadOS']
-          : ['NintendoSwitch'],
+      platforms: catalogProviderPlatforms(store),
     })
     setAdminResult(null)
     setAdminError('')
@@ -1119,6 +1131,13 @@ function App() {
       return groups
     }, {}),
   )
+  const runningMobileSyncJob = mobileSyncJobs.find((job) => job.status === 'RUNNING')
+  const selectedMobileSyncJob = mobileSyncJobs.find((job) => job.provider === mobileSyncStore)
+  const mobileSyncButtonLabel = selectedMobileSyncJob?.status === 'RUNNING'
+    ? `${catalogProviderLabel(mobileSyncStore)} 탐색 중…`
+    : runningMobileSyncJob
+      ? `${catalogProviderLabel(runningMobileSyncJob.provider)} 탐색 중 · 대기`
+      : '후보 배치 탐색'
 
   return (
     <div className="app-shell">
@@ -1523,7 +1542,7 @@ function App() {
             <h2>{adminStore} 후보 자동 탐색</h2>
             <p>카탈로그 게임을 Store에서 찾아 매칭 신뢰도를 판정합니다. 제목과 공식 개발사·퍼블리셔가 일치하는 유료 게임은 자동 연결하고, 불확실한 후보만 검토 큐에 저장합니다.</p>
           </div>
-          <button disabled={mobileSyncJobs.some((job) => job.status === 'RUNNING')} onClick={() => void synchronizeMobileCatalog()}>{mobileSyncJobs.some((job) => job.status === 'RUNNING') ? '탐색 중…' : '후보 배치 탐색'}</button>
+          <button disabled={Boolean(runningMobileSyncJob)} onClick={() => void synchronizeMobileCatalog()}>{mobileSyncButtonLabel}</button>
           <div className="mobile-review-groups">
             {groupedMobileReviews.map(([gameId, offers]) => <section key={gameId} className="mobile-review-group"><header><strong>{gameId}</strong><span>{offers.length}개 Store 후보를 함께 검토합니다.</span></header><div className="sync-reviews">{offers.map(({ provider, review }) => <div key={`${provider}:${review.externalProductId}`}><strong>{review.title}</strong><span>{provider}<br />판정: {matchDecisionGuide[review.decision].title}<br />{review.reason.split('; ').map(matchReasonMessage).join(' ')}</span>{review.productUrl && <a href={review.productUrl} target="_blank" rel="noreferrer">Store 상품 확인 ↗</a>}<div className="review-actions"><button onClick={() => inspectMobileCatalogReview(provider, review)}>이 상품 검토하기</button><button className="danger" onClick={() => void rejectMobileCatalogReview(provider, review.externalProductId)}>후보 제외</button></div></div>)}</div></section>)}
             {groupedMobileReviews.length === 0 && <p>Store 검토 대기 항목이 없습니다.</p>}
