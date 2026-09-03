@@ -245,6 +245,8 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .admin-store-workspace { margin-top: 20px; }
 .admin-store-workspace > header { display: flex; align-items: center; gap: 14px; padding: 18px 20px; background: #0b1812; border: 1px solid #315141; border-radius: 14px; }
 .admin-store-workspace > header h2, .admin-store-workspace > header p { margin: 0; }
+.store-badge.epic-games { background: #2f2f2f; color: #fff; }
+.store-badge.nintendo-eshop { background: #e60012; color: #fff; }
 .store-badge { display: grid; place-items: center; width: 42px; height: 42px; color: white; background: #315141; border-radius: 12px; font-size: 1.2rem; font-weight: 900; }
 .store-badge.steam { background: #1b4e78; }
 .store-badge.google-play { background: #23865b; }

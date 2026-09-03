@@ -61,7 +61,12 @@ def evaluate(game: dict, offer: dict) -> dict:
     if not offer["supportsTargetPlatform"]:
         reasons.append("Product does not support the target platform")
         rejected = True
-    if offer["currency"] != "KRW" or offer["priceMinor"] <= 0:
+    price_minor = offer.get("priceMinor")
+    currency = offer.get("currency", "")
+    price_missing = price_minor is None and not currency
+    if price_missing and offer.get("allowMissingPrice"):
+        reasons.append("Price is unavailable during catalog review")
+    elif currency != "KRW" or not isinstance(price_minor, int) or price_minor <= 0:
         reasons.append("Product is not a paid KRW purchase")
         rejected = True
     if offer["excludedWords"]:

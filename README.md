@@ -664,6 +664,18 @@ Store별 최대 시도 횟수를 설정할 수 있고, 실패한 각 시도도 �
 기본 250ms부터 두 배씩, 최대 30초까지 기다리는 bounded exponential backoff로
 재시도합니다.
 
+### 관리자 Store 검수 범위
+
+관리자 카탈로그 화면은 Steam, Epic Games Store, Nintendo eShop,
+Google Play, Apple App Store를 Store별 탭으로 구분한다. Nintendo는 공식 Store
+검색 결과를 선택하고, Epic은 공식 검색에서 복사한 상품 URL을 입력한다. 이후
+상품 페이지의 구조화 데이터를 다시 읽어 canonical Game의 제목·개발사와
+비교한다. 외부 도메인의 임의 URL은 거부되며,
+검증 결과가 불확실하면 관리자의 명시적 확인 없이는 연결되지 않는다.
+
+Epic/Nintendo의 자동 대량 동기화와 실시간 가격 수집은 아직 활성화하지 않았다.
+현재 관리자 기능의 범위는 후보 검색, 상품 검증, 안전한 연결 및 변경 감사 기록이다.
+
 ## HTTP API
 
 Web과 Mobile client가 같은 Core 로직을 사용하도록 Drogon 기반 API를

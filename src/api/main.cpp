@@ -428,6 +428,33 @@ Json::Value runAppleCatalogImport(
     return executeCatalogTool(std::move(command), temporary);
 }
 
+Json::Value runStorefrontCatalogImport(
+    const std::string& store,
+    const std::string& productUrl,
+    const std::string& gameId,
+    bool apply,
+    bool acknowledgeReview) {
+    std::lock_guard<std::mutex> toolLock(catalogToolMutex());
+    const auto temporary = std::filesystem::temp_directory_path() /
+        "compgameprice-storefront-catalog.json";
+    const auto script = projectPath() /
+        "tools/add_storefront_catalog_game.py";
+    const auto catalog = std::filesystem::path(catalogPath());
+    std::string command = "python3 " + shellQuoted(script.string());
+    command += " --store " + shellQuoted(store);
+    command += " --product-url " + shellQuoted(productUrl);
+    command += " --game-id " + shellQuoted(gameId);
+    command += " --catalog " + shellQuoted(catalog.string());
+    command += " --database " + shellQuoted(databasePath());
+    if (apply) {
+        command += " --apply";
+    }
+    if (acknowledgeReview) {
+        command += " --acknowledge-review";
+    }
+    return executeCatalogTool(std::move(command), temporary);
+}
+
 Json::Value runCatalogMetadataUpdate(
     const std::string& gameId,
     const Json::Value& metadata,
@@ -482,7 +509,7 @@ Json::Value runCatalogAuditList(int limit) {
 Json::Value runStoreSearch(const std::string& store, const std::string& query) {
     std::lock_guard<std::mutex> toolLock(catalogToolMutex());
     if (store != "Steam" && store != "Google Play" &&
-        store != "Apple App Store") {
+        store != "Apple App Store" && store != "Nintendo eShop") {
         throw std::invalid_argument("store is not supported yet");
     }
     const auto temporary = std::filesystem::temp_directory_path() /
@@ -492,8 +519,10 @@ Json::Value runStoreSearch(const std::string& store, const std::string& query) {
         scriptName = "tools/search_steam_catalog.py";
     } else if (store == "Google Play") {
         scriptName = "tools/search_google_play_catalog.py";
-    } else {
+    } else if (store == "Apple App Store") {
         scriptName = "tools/search_apple_catalog.py";
+    } else {
+        scriptName = "tools/search_nintendo_catalog.py";
     }
     const auto script = projectPath() / scriptName;
     const auto command = "python3 " + shellQuoted(script.string()) +
@@ -1819,6 +1848,63 @@ int main() {
                         catalog.reload(catalogPath());
                     }
                     response["requiresApiRestart"] = false;
+                    callback(jsonResponse(response));
+                } catch (const std::invalid_argument& error) {
+                    callback(jsonError(drogon::k400BadRequest, error.what()));
+                } catch (const std::exception& error) {
+                    callback(jsonError(
+                        drogon::k500InternalServerError,
+                        error.what()));
+                }
+            },
+            {drogon::Post});
+        drogon::app().registerHandler(
+            "/api/admin/catalog/storefront",
+            [&catalog, &authService](const drogon::HttpRequestPtr& request,
+               std::function<void(const HttpResponsePtr&)>&& callback) {
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
+                    return;
+                }
+                const auto body = request->getJsonObject();
+                if (!body || !(*body)["store"].isString() ||
+                    !(*body)["productUrl"].isString() ||
+                    !(*body)["gameId"].isString()) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "store, productUrl and gameId are required"));
+                    return;
+                }
+                const auto store = (*body)["store"].asString();
+                const auto productUrl = (*body)["productUrl"].asString();
+                const auto gameId = (*body)["gameId"].asString();
+                if ((store != "EpicGamesStore" &&
+                     store != "NintendoEShop") ||
+                    productUrl.empty() ||
+                    !validCanonicalGameId(gameId)) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "invalid storefront catalog request"));
+                    return;
+                }
+                const auto apply = (*body)["apply"].isBool() &&
+                    (*body)["apply"].asBool();
+                const auto acknowledgeReview =
+                    (*body)["acknowledgeReview"].isBool() &&
+                    (*body)["acknowledgeReview"].asBool();
+                try {
+                    Json::Value response;
+                    response["game"] = runStorefrontCatalogImport(
+                        store,
+                        productUrl,
+                        gameId,
+                        apply,
+                        acknowledgeReview);
+                    response["applied"] = apply;
+                    response["requiresApiRestart"] = false;
+                    if (apply) {
+                        catalog.reload(catalogPath());
+                    }
                     callback(jsonResponse(response));
                 } catch (const std::invalid_argument& error) {
                     callback(jsonError(drogon::k400BadRequest, error.what()));

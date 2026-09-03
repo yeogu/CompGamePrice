@@ -277,6 +277,12 @@ python3 tools/database_backup.py restore-catalog \
 검증된 복원 파일을 실제 volume에 반영하는 작업은 API와 수집 작업을 중지한 상태에서
 NAS 관리자와 함께 수행한다.
 
+### 관리자 Store 검수
+
+관리자 카탈로그 메뉴에서 Epic Games와 Nintendo eShop 탭도 제공된다. 두 Store는
+현재 공식 Store 후보 검색과 수동 검수·연결까지만 지원하며, 자동 가격 수집이
+지원되는 것으로 오해하지 않도록 화면에 현재 범위를 표시한다.
+
 ## 공개 전 확인
 
 - 일반 사용자와 관리자 계정의 권한 분리

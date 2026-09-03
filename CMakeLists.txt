@@ -212,6 +212,10 @@ if(BUILD_TESTING)
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_mobile_catalog_sync.py
         )
         add_test(
+            NAME storefront_catalog_tests
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_storefront_catalog.py
+        )
+        add_test(
             NAME remove_catalog_product_tests
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_remove_catalog_product.py
         )

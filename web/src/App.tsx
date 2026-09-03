@@ -1,5 +1,5 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react'
-import { addAlertRule, addFavorite, confirmPasswordReset, deleteAlertRule, deleteFavorite, disconnectCatalogProduct, getAdminHealthSummary, getAlertRules, getCatalogAdminStatus, getCatalogChangeAudits, getCatalogCollectionJob, getCatalogFilters, getCatalogSyncJob, getCollectionRuns, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getMetadataSyncStatus, getMobileCatalogSyncJob, getNotifications, getPreferences, importAppleCatalogGame, importGooglePlayCatalogGame, importSteamCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, requestPasswordReset, resolveCatalogSyncReview, resolveMetadataReview, resolveMobileCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, startMetadataSync, startMobileCatalogSync, updateCatalogGameMetadata, updatePreferences } from './api'
+import { addAlertRule, addFavorite, confirmPasswordReset, deleteAlertRule, deleteFavorite, disconnectCatalogProduct, getAdminHealthSummary, getAlertRules, getCatalogAdminStatus, getCatalogChangeAudits, getCatalogCollectionJob, getCatalogFilters, getCatalogSyncJob, getCollectionRuns, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getMetadataSyncStatus, getMobileCatalogSyncJob, getNotifications, getPreferences, importAppleCatalogGame, importGooglePlayCatalogGame, importSteamCatalogGame, importStorefrontCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, requestPasswordReset, resolveCatalogSyncReview, resolveMetadataReview, resolveMobileCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, startMetadataSync, startMobileCatalogSync, updateCatalogGameMetadata, updatePreferences } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
 import type { AdminHealthSummary, AlertRule, AlertRuleType, CatalogAdminResult, CatalogChangeAudit, CatalogCollectionJob, CatalogFilterOptions, CatalogMetadataUpdateResult, CatalogSyncJob, CollectionRun, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSort, GameSummary, MetadataSyncStatus, MobileCatalogSyncJob, MobileCatalogSyncReview, Money, Notification, StoreProductCandidate, User, UserPreferences } from './types'
 
@@ -107,6 +107,7 @@ const matchReasonMessage = (reason: string) => {
     'Store category is not a game': 'Store에서 게임 상품으로 분류되지 않았습니다.',
     'Product does not support the target platform': '대상 플랫폼을 지원하지 않는 상품입니다.',
     'Product is not a paid KRW purchase': 'KRW 유료 구매 상품이 아닙니다.',
+    'Price is unavailable during catalog review': '상품 연결 검수 중에는 가격을 확인하지 못했습니다. 가격 수집 전까지 사용자에게 노출되지 않습니다.',
     'Title indicates guide, demo, companion, or media content': '가이드·데모·컴패니언·미디어 상품일 가능성이 있습니다.',
     'No Store search results': 'Store 검색 결과가 없습니다.',
   }
@@ -135,7 +136,7 @@ const matchDecisionGuide = {
 } as const
 
 type AppView = 'games' | 'favorites' | 'alerts' | 'notifications' | 'account' | 'collection' | 'admin'
-type AdminSection = 'dashboard' | 'steam' | 'google-play' | 'apple-app-store' | 'audit'
+type AdminSection = 'dashboard' | 'steam' | 'epic-games' | 'nintendo-eshop' | 'google-play' | 'apple-app-store' | 'audit'
 
 function App() {
   const [query, setQuery] = useState('')
@@ -316,6 +317,10 @@ function App() {
     } else if (section === 'apple-app-store') {
       setAdminStore('Apple App Store')
       setMobileSyncStore('AppleAppStore')
+    } else if (section === 'epic-games') {
+      setAdminStore('Epic Games Store')
+    } else if (section === 'nintendo-eshop') {
+      setAdminStore('Nintendo eShop')
     }
     setAdminCandidates([])
     setPendingCandidate(null)
@@ -549,7 +554,16 @@ function App() {
     setActionMessage('')
     try {
       const acknowledgeReview = apply && adminResult?.game.matchDecision?.status === 'NeedsReview'
-      const result = adminStore === 'Google Play'
+      const productUrl = pendingCandidate?.productUrl || appId
+      const result = adminStore === 'Epic Games Store' || adminStore === 'Nintendo eShop'
+        ? await importStorefrontCatalogGame(
+            adminStore === 'Epic Games Store' ? 'EpicGamesStore' : 'NintendoEShop',
+            productUrl,
+            canonicalGameId,
+            apply,
+            acknowledgeReview,
+          )
+        : adminStore === 'Google Play'
         ? await importGooglePlayCatalogGame(
             appId,
             canonicalGameId,
@@ -593,15 +607,17 @@ function App() {
           setAdminError(reason instanceof Error ? `게임은 등록됐지만 모바일 검토 상태를 갱신하지 못했습니다: ${reason.message}` : '게임은 등록됐지만 모바일 검토 상태를 갱신하지 못했습니다.')
         }
       }
-      if (apply) {
+      if (apply && adminStore !== 'Epic Games Store' && adminStore !== 'Nintendo eShop') {
         try {
           setCatalogJob(await startCatalogCollection(adminStore))
           setActionMessage(`카탈로그 등록을 완료했고 ${adminStore} 가격 수집을 시작했습니다.`)
         } catch (reason) {
           setAdminError(reason instanceof Error ? `게임은 등록됐지만 가격 수집을 시작하지 못했습니다: ${reason.message}` : '게임은 등록됐지만 가격 수집을 시작하지 못했습니다.')
         }
-      } else {
+      } else if (!apply) {
         setActionMessage(`${adminStore} 상품 검증이 완료되었습니다.`)
+      } else {
+        setActionMessage(`${adminStore} 상품 연결을 완료했습니다. 가격 수집기는 다음 단계에서 연결합니다.`)
       }
     } catch (reason) {
       setAdminError(reason instanceof Error ? reason.message : `${adminStore} 상품을 검증하지 못했습니다.`)
@@ -834,7 +850,10 @@ function App() {
   const chooseCatalogCandidate = (candidate: StoreProductCandidate) => {
     const suggestedGameId = canonicalIdFromTitle(candidate.title)
     setReviewingAppId('')
-    setAdminAppId(candidate.externalProductId)
+    const identifier = candidate.store === 'Epic Games Store' || candidate.store === 'Nintendo eShop'
+      ? candidate.productUrl
+      : candidate.externalProductId
+    setAdminAppId(identifier)
     setReviewingAppId('')
     setReviewingMobileStore('')
     setAdminGameId(suggestedGameId)
@@ -848,7 +867,7 @@ function App() {
       setAdminError('영문 게임명 또는 canonical Game ID를 입력한 뒤 Preview해주세요.')
       return
     }
-    void runCatalogImport(false, candidate.externalProductId, suggestedGameId)
+    void runCatalogImport(false, identifier, suggestedGameId)
   }
 
   const selectGame = async (
@@ -1452,11 +1471,13 @@ function App() {
         <nav className="admin-section-tabs" aria-label="카탈로그 관리 영역">
           <button className={adminSection === 'dashboard' ? 'active' : ''} onClick={() => selectAdminSection('dashboard')}>대시보드</button>
           <button className={adminSection === 'steam' ? 'active' : ''} onClick={() => selectAdminSection('steam')}>Steam</button>
+          <button className={adminSection === 'epic-games' ? 'active' : ''} onClick={() => selectAdminSection('epic-games')}>Epic Games</button>
+          <button className={adminSection === 'nintendo-eshop' ? 'active' : ''} onClick={() => selectAdminSection('nintendo-eshop')}>Nintendo eShop</button>
           <button className={adminSection === 'google-play' ? 'active' : ''} onClick={() => selectAdminSection('google-play')}>Google Play</button>
           <button className={adminSection === 'apple-app-store' ? 'active' : ''} onClick={() => selectAdminSection('apple-app-store')}>Apple App Store</button>
           <button className={adminSection === 'audit' ? 'active' : ''} onClick={() => selectAdminSection('audit')}>변경 기록</button>
         </nav>
-        {adminSection === 'dashboard' && <div className="admin-dashboard"><div><h2>운영 상태</h2><p>Store 작업을 시작하기 전에 데이터와 알림 상태를 확인합니다.</p></div>{adminHealth && <><section className="admin-health-grid" aria-label="운영 상태 요약"><article><strong>메타데이터 완성률</strong><span>{adminHealth.metadata.complete} / {adminHealth.metadata.total}</span><small>보완 필요 {adminHealth.metadata.incomplete}개</small></article><article><strong>최근 수집 실패</strong><span>{adminHealth.collection.recentFailures}건</span><small>{adminHealth.collection.lastFailure ? `${adminHealth.collection.lastFailure.store} · ${adminHealth.collection.lastFailure.error ?? '원인 없음'}` : '실패 없음'}</small></article><article><strong>가격 알림 메일</strong><span>대기 {adminHealth.notifications.pending} · 재시도 {adminHealth.notifications.retryable}</span><small>재시도 소진 {adminHealth.notifications.exhausted}건</small></article><article><strong>계정 이메일</strong><span>대기 {adminHealth.emails.pending} · 재시도 {adminHealth.emails.retryable}</span><small>{adminHealth.emails.lastError ? `최근 오류: ${adminHealth.emails.lastError}` : `발송 완료 ${adminHealth.emails.sent}건 · 실패 없음`}</small></article><article><strong>자동 가격 수집</strong><span>{jobStatusLabel[adminHealth.automation.collection.status] ?? adminHealth.automation.collection.status}</span><small>{adminHealth.automation.collection.status === 'DISABLED' ? '.env에서 COLLECTION_ENABLED=true로 재개할 수 있습니다.' : `마지막 완료 ${formatJobTime(adminHealth.automation.collection.lastFinishedAt)} · 다음 ${formatJobTime(adminHealth.automation.collection.nextRunAt)}`}</small><small>worker 확인 {formatJobTime(adminHealth.automation.collection.updatedAt)}</small>{adminHealth.automation.collection.failedSteps?.length ? <small className="warning">실패 단계 {adminHealth.automation.collection.failedSteps.join(', ')}</small> : null}</article><article><strong>자동 백업</strong><span>{jobStatusLabel[adminHealth.automation.backup.status] ?? adminHealth.automation.backup.status}</span><small>{adminHealth.automation.backup.lastBackup ? `최근 파일 ${adminHealth.automation.backup.lastBackup}` : `마지막 완료 ${formatJobTime(adminHealth.automation.backup.lastFinishedAt)}`}</small><small>worker 확인 {formatJobTime(adminHealth.automation.backup.updatedAt)}</small>{adminHealth.automation.backup.error ? <small className="warning">{adminHealth.automation.backup.error}</small> : null}</article></section><section className="store-quality-grid" aria-label="Store별 데이터 품질">{adminHealth.stores.filter((store) => store.registeredProducts > 0 || store.pendingReviews > 0 || store.catalogProcessed > 0).map((store) => <article key={store.store}><header><strong>{store.store}</strong><span>{store.registeredProducts}개 상품</span></header><div><span>최신 가격 <strong>{store.freshPrices}</strong></span><span className={store.stalePrices > 0 ? 'warning' : ''}>오래된 가격 <strong>{store.stalePrices}</strong></span><span>검토 대기 <strong>{store.pendingReviews}</strong></span></div><div><span>최근 탐색 <strong>{store.catalogProcessed}</strong></span><span>자동 등록 <strong>{store.catalogAccepted}</strong></span><span>최근 7일 추가 <strong>{store.catalogAddedLast7Days}</strong></span></div><small>검토 {store.catalogReview} · 제외/건너뜀 {store.catalogSkippedOrRejected} · 실패 {store.catalogFailed}</small><small>{store.lastCatalogSyncAt ? `마지막 카탈로그 동기화 ${new Date(store.lastCatalogSyncAt).toLocaleString('ko-KR')}` : '카탈로그 동기화 기록 없음'}</small><small>{store.lastSuccessfulCollectionAt ? `마지막 가격 수집 성공 ${new Date(store.lastSuccessfulCollectionAt).toLocaleString('ko-KR')}` : '성공한 가격 수집 기록 없음'}</small></article>)}</section></>}<div className="admin-store-shortcuts"><button onClick={() => selectAdminSection('steam')}>Steam 관리</button><button onClick={() => selectAdminSection('google-play')}>Google Play 관리</button><button onClick={() => selectAdminSection('apple-app-store')}>Apple App Store 관리</button></div></div>}
+        {adminSection === 'dashboard' && <div className="admin-dashboard"><div><h2>운영 상태</h2><p>Store 작업을 시작하기 전에 데이터와 알림 상태를 확인합니다.</p></div>{adminHealth && <><section className="admin-health-grid" aria-label="운영 상태 요약"><article><strong>메타데이터 완성률</strong><span>{adminHealth.metadata.complete} / {adminHealth.metadata.total}</span><small>보완 필요 {adminHealth.metadata.incomplete}개</small></article><article><strong>최근 수집 실패</strong><span>{adminHealth.collection.recentFailures}건</span><small>{adminHealth.collection.lastFailure ? `${adminHealth.collection.lastFailure.store} · ${adminHealth.collection.lastFailure.error ?? '원인 없음'}` : '실패 없음'}</small></article><article><strong>가격 알림 메일</strong><span>대기 {adminHealth.notifications.pending} · 재시도 {adminHealth.notifications.retryable}</span><small>재시도 소진 {adminHealth.notifications.exhausted}건</small></article><article><strong>계정 이메일</strong><span>대기 {adminHealth.emails.pending} · 재시도 {adminHealth.emails.retryable}</span><small>{adminHealth.emails.lastError ? `최근 오류: ${adminHealth.emails.lastError}` : `발송 완료 ${adminHealth.emails.sent}건 · 실패 없음`}</small></article><article><strong>자동 가격 수집</strong><span>{jobStatusLabel[adminHealth.automation.collection.status] ?? adminHealth.automation.collection.status}</span><small>{adminHealth.automation.collection.status === 'DISABLED' ? '.env에서 COLLECTION_ENABLED=true로 재개할 수 있습니다.' : `마지막 완료 ${formatJobTime(adminHealth.automation.collection.lastFinishedAt)} · 다음 ${formatJobTime(adminHealth.automation.collection.nextRunAt)}`}</small><small>worker 확인 {formatJobTime(adminHealth.automation.collection.updatedAt)}</small>{adminHealth.automation.collection.failedSteps?.length ? <small className="warning">실패 단계 {adminHealth.automation.collection.failedSteps.join(', ')}</small> : null}</article><article><strong>자동 백업</strong><span>{jobStatusLabel[adminHealth.automation.backup.status] ?? adminHealth.automation.backup.status}</span><small>{adminHealth.automation.backup.lastBackup ? `최근 파일 ${adminHealth.automation.backup.lastBackup}` : `마지막 완료 ${formatJobTime(adminHealth.automation.backup.lastFinishedAt)}`}</small><small>worker 확인 {formatJobTime(adminHealth.automation.backup.updatedAt)}</small>{adminHealth.automation.backup.error ? <small className="warning">{adminHealth.automation.backup.error}</small> : null}</article></section><section className="store-quality-grid" aria-label="Store별 데이터 품질">{adminHealth.stores.filter((store) => store.registeredProducts > 0 || store.pendingReviews > 0 || store.catalogProcessed > 0).map((store) => <article key={store.store}><header><strong>{store.store}</strong><span>{store.registeredProducts}개 상품</span></header><div><span>최신 가격 <strong>{store.freshPrices}</strong></span><span className={store.stalePrices > 0 ? 'warning' : ''}>오래된 가격 <strong>{store.stalePrices}</strong></span><span>검토 대기 <strong>{store.pendingReviews}</strong></span></div><div><span>최근 탐색 <strong>{store.catalogProcessed}</strong></span><span>자동 등록 <strong>{store.catalogAccepted}</strong></span><span>최근 7일 추가 <strong>{store.catalogAddedLast7Days}</strong></span></div><small>검토 {store.catalogReview} · 제외/건너뜀 {store.catalogSkippedOrRejected} · 실패 {store.catalogFailed}</small><small>{store.lastCatalogSyncAt ? `마지막 카탈로그 동기화 ${new Date(store.lastCatalogSyncAt).toLocaleString('ko-KR')}` : '카탈로그 동기화 기록 없음'}</small><small>{store.lastSuccessfulCollectionAt ? `마지막 가격 수집 성공 ${new Date(store.lastSuccessfulCollectionAt).toLocaleString('ko-KR')}` : '성공한 가격 수집 기록 없음'}</small></article>)}</section></>}<div className="admin-store-shortcuts"><button onClick={() => selectAdminSection('steam')}>Steam 관리</button><button onClick={() => selectAdminSection('epic-games')}>Epic Games 관리</button><button onClick={() => selectAdminSection('nintendo-eshop')}>Nintendo eShop 관리</button><button onClick={() => selectAdminSection('google-play')}>Google Play 관리</button><button onClick={() => selectAdminSection('apple-app-store')}>Apple App Store 관리</button></div></div>}
         {adminSection === 'steam' && <div className="admin-store-workspace"><header><span className="store-badge steam">S</span><div><h2>Steam</h2><p>PC 게임 발견, 메타데이터 보완, 상품 연결과 가격 수집을 관리합니다.</p></div></header>
         <article className="catalog-sync-panel">
           <div><h2>Steam 신원 메타데이터 보완</h2><p>비어 있는 개발사·퍼블리셔·장르는 자동 보완하고, 기존 신원 정보와 충돌하는 게임만 관리자에게 요청합니다.</p></div>
@@ -1486,6 +1507,7 @@ function App() {
           </div>}
         </article>
         </div>}
+        {(adminSection === 'epic-games' || adminSection === 'nintendo-eshop') && <div className="admin-store-workspace"><header><span className={`store-badge ${adminSection}`}>{adminSection === 'epic-games' ? 'E' : 'N'}</span><div><h2>{adminStore}</h2><p>공식 Store 검색 결과를 canonical Game과 비교하고 검증된 상품만 연결합니다.</p></div></header><article className="catalog-sync-panel"><div><h2>{adminStore} 관리자 검수</h2><p>현재는 관리자가 검색한 후보를 검수해 연결합니다. 자동 대량 동기화와 실시간 가격 수집은 Store별 수집기 안정화 후 별도로 활성화합니다.</p></div></article></div>}
         {(adminSection === 'google-play' || adminSection === 'apple-app-store') && <div className="admin-store-workspace"><header><span className={`store-badge ${adminSection}`}>{adminSection === 'google-play' ? 'G' : 'A'}</span><div><h2>{adminStore}</h2><p>모바일 상품 후보 탐색, 검토, 연결과 가격 수집을 관리합니다.</p></div></header><article className="catalog-sync-panel">
           <div>
             <h2>{adminStore} 후보 자동 탐색</h2>
@@ -1504,11 +1526,12 @@ function App() {
           </div>
         </article>
         </div>}
-        {(adminSection === 'steam' || adminSection === 'google-play' || adminSection === 'apple-app-store') && <div className="admin-product-workspace"><h2>{adminStore} 상품 검색·연결</h2><p>게임 이름으로 상품을 찾고 canonical Game에 연결합니다.</p>
-        <div className="admin-search">
+        {(adminSection === 'steam' || adminSection === 'epic-games' || adminSection === 'nintendo-eshop' || adminSection === 'google-play' || adminSection === 'apple-app-store') && <div className="admin-product-workspace"><h2>{adminStore} 상품 검색·연결</h2><p>게임 이름으로 상품을 찾고 canonical Game에 연결합니다.</p>
+        {adminStore === 'Epic Games Store' && <div className="admin-feedback review-note"><strong>Epic 공식 검색에서 상품을 확인하세요.</strong><span>Epic Games Store가 서버 검색 요청을 제한하므로 공식 검색 결과에서 상품을 연 뒤 URL을 아래 입력란에 붙여넣습니다.</span><input aria-label="Epic 게임 이름" value={adminQuery} onChange={(event) => setAdminQuery(event.target.value)} placeholder="예: Hades" /><a href={`https://store.epicgames.com/ko/browse?q=${encodeURIComponent(adminQuery || 'Hades')}&category=Game&sortBy=relevancy&sortDir=DESC`} target="_blank" rel="noreferrer">Epic Games Store 검색 열기 ↗</a></div>}
+        {adminStore !== 'Epic Games Store' && <div className="admin-search">
           <input aria-label="Store 게임 이름" value={adminQuery} onChange={(event) => setAdminQuery(event.target.value)} placeholder="예: Sekiro" />
           <button disabled={!adminQuery.trim() || adminSearching} onClick={() => void searchCatalogCandidates()}>{adminSearching ? '검색 중…' : 'Store 검색'}</button>
-        </div>
+        </div>}
         {adminCandidates.length > 0 && <div className="candidate-list">{adminCandidates.map((candidate) => <button key={`${candidate.store}:${candidate.externalProductId}`} onClick={() => chooseCatalogCandidate(candidate)}><strong>{candidate.title}</strong><span>{candidate.store} · {candidate.platforms.join(' · ') || '플랫폼 확인 필요'}{candidate.developer ? ` · ${candidate.developer}` : ''}</span><small>상품 ID {candidate.externalProductId}{candidate.priceMinor !== undefined ? ` · ${candidate.priceMinor.toLocaleString('ko-KR')} ${candidate.currency}` : ''}</small></button>)}</div>}
         {pendingCandidate && !adminResult && <div className="candidate-confirmation">
           <div><strong>{pendingCandidate.title}</strong><span>상품 ID {pendingCandidate.externalProductId}</span></div>
@@ -1520,11 +1543,11 @@ function App() {
           {adminReviewNote && <div className="admin-feedback review-note" role="status"><strong>자동 탐색 결과</strong><span>{adminReviewNote.split('; ').map(matchReasonMessage).join(' ')}</span><small>아래 Preview를 눌러 Store 상품과 canonical Game을 비교하세요.</small></div>}
           {adminError && <p className="admin-feedback error" role="alert">{adminError}</p>}
         </div>}
-        <details className="advanced-admin"><summary>고급 입력: 상품 ID 직접 사용</summary>
+        <details className="advanced-admin" open={adminStore === 'Epic Games Store'}><summary>{adminStore === 'Epic Games Store' || adminStore === 'Nintendo eShop' ? '공식 상품 URL로 검수' : '고급 입력: 상품 ID 직접 사용'}</summary>
         <div className="admin-form">
-          <label>{adminStore === 'Google Play' ? 'Google Play Package Name' : adminStore === 'Apple App Store' ? 'Apple Track ID' : 'Steam App ID'}<input value={adminAppId} onChange={(event) => setAdminAppId(event.target.value)} placeholder={adminStore === 'Google Play' ? '예: com.example.game' : adminStore === 'Apple App Store' ? '예: 1406710800' : '예: 1245620'} inputMode={adminStore === 'Google Play' ? 'text' : 'numeric'} /></label>
+          <label>{adminStore === 'Google Play' ? 'Google Play Package Name' : adminStore === 'Apple App Store' ? 'Apple Track ID' : adminStore === 'Epic Games Store' || adminStore === 'Nintendo eShop' ? '공식 Store 상품 URL' : 'Steam App ID'}<input value={adminAppId} onChange={(event) => setAdminAppId(event.target.value)} placeholder={adminStore === 'Google Play' ? '예: com.example.game' : adminStore === 'Apple App Store' ? '예: 1406710800' : adminStore === 'Epic Games Store' ? '예: https://store.epicgames.com/ko/p/hades' : adminStore === 'Nintendo eShop' ? '예: https://store.nintendo.co.kr/...' : '예: 1245620'} inputMode={adminStore === 'Google Play' || adminStore === 'Epic Games Store' || adminStore === 'Nintendo eShop' ? 'text' : 'numeric'} /></label>
           <label>Canonical Game ID (선택)<input value={adminGameId} onChange={(event) => setAdminGameId(event.target.value)} placeholder="한글 제목이면 예: dave-the-diver" /></label>
-          <button disabled={!(adminStore === 'Google Play' ? /^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$/.test(adminAppId.trim()) : /^\d+$/.test(adminAppId.trim())) || adminImporting} onClick={() => void runCatalogImport(false)}>{adminImporting ? '확인 중…' : 'Preview'}</button>
+          <button disabled={!(adminStore === 'Google Play' ? /^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$/.test(adminAppId.trim()) : adminStore === 'Epic Games Store' || adminStore === 'Nintendo eShop' ? /^https:\/\//.test(adminAppId.trim()) : /^\d+$/.test(adminAppId.trim())) || adminImporting} onClick={() => void runCatalogImport(false)}>{adminImporting ? '확인 중…' : 'Preview'}</button>
         </div>
         {adminError && !pendingCandidate && <p className="admin-feedback error" role="alert">{adminError}</p>}
         </details>
@@ -1550,7 +1573,7 @@ function App() {
           </section>
           {!adminResult.applied && adminResult.game.matchDecision?.status !== 'Rejected' && <button disabled={adminImporting || (adminResult.game.matchDecision?.status === 'NeedsReview' && !reviewConfirmed)} onClick={() => void runCatalogImport(true)}>{adminImporting ? 'Store 상품 연결 중…' : adminResult.game.matchDecision?.status === 'NeedsReview' ? `확인 완료 후 ${adminResult.game.title}에 연결` : '검증된 Store 상품 연결'}</button>}
           {adminResult.applied && adminResult.game.matchedProduct && <button className="danger-action" disabled={adminImporting} onClick={() => void disconnectAdminProduct()}>{adminImporting ? '연결 해제 중…' : '잘못 연결된 상품 되돌리기'}</button>}
-          {adminResult.applied && <button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectCatalogPrices()}>{catalogJob?.status === 'RUNNING' ? '가격 수집 중…' : `${adminStore} 가격 수집 시작`}</button>}
+          {adminResult.applied && adminStore !== 'Epic Games Store' && adminStore !== 'Nintendo eShop' && <button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectCatalogPrices()}>{catalogJob?.status === 'RUNNING' ? '가격 수집 중…' : `${adminStore} 가격 수집 시작`}</button>}
         </article>}
         {catalogJob && catalogJob.status !== 'IDLE' && <div className={`admin-job ${catalogJob.status.toLowerCase()}`}><strong>{catalogJob.store ?? adminStore} 수집 상태: {catalogJob.status}</strong>{catalogJob.error && <span>{catalogJob.error}</span>}</div>}
         </div>}
