@@ -338,6 +338,17 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .metadata-diff { padding: 10px; background: #101f18; border-radius: 8px; }
 .metadata-diff p { display: grid; grid-template-columns: 120px 1fr; gap: 8px; margin: 5px 0; }
 .catalog-audit-panel { margin-top: 20px; padding: 20px; background: #0b1812; border: 1px solid #315141; border-radius: 14px; }
+.integrity-panel > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.integrity-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; margin: 18px 0; padding: 14px; background: #101f18; border-radius: 10px; }
+.integrity-summary small { margin-left: auto; color: #82968b; }
+.integrity-list { display: grid; gap: 10px; }
+.integrity-list section { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(240px, 2fr) auto; align-items: center; gap: 16px; padding: 14px; border: 1px solid #315141; border-radius: 10px; }
+.integrity-list section.error { border-color: #743b3b; }
+.integrity-list section.warning { border-color: #6e5829; }
+.integrity-list section > div:first-child { display: grid; gap: 4px; }
+.integrity-kind { width: fit-content; padding: 3px 7px; color: #f2d99b; background: #2b2414; border-radius: 6px; font-size: .7rem; font-weight: 900; }
+.integrity-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
+.integrity-actions a, .integrity-actions button { padding: 8px 10px; border-radius: 8px; }
 .admin-health-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 20px 0; }
 .admin-health-grid article { display: grid; gap: 8px; padding: 16px; background: #0b1812; border: 1px solid #315141; border-radius: 12px; }
 .admin-health-grid span { color: #79cda0; font-size: 1.25rem; }
@@ -401,6 +412,10 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
   .detailed-filters form { grid-template-columns: 1fr; }
   .sync-reviews > div { grid-template-columns: 1fr; }
   .admin-form { grid-template-columns: 1fr; }
+  .integrity-panel > header, .integrity-list section { grid-template-columns: 1fr; align-items: stretch; }
+  .integrity-panel > header { display: grid; }
+  .integrity-summary small { width: 100%; margin-left: 0; }
+  .integrity-actions { justify-content: flex-start; }
   .admin-search { grid-template-columns: 1fr; }
   .candidate-confirmation { grid-template-columns: 1fr; }
   .view-panel { padding: 24px 18px; }

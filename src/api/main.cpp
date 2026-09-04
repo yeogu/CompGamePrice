@@ -608,6 +608,18 @@ Json::Value runStoreSearch(const std::string& store, const std::string& query) {
     return result;
 }
 
+Json::Value runPriceIntegrityAudit() {
+    std::lock_guard<std::mutex> toolLock(catalogToolMutex());
+    const auto temporary = std::filesystem::temp_directory_path() /
+        "compgameprice-price-integrity.json";
+    const auto script = projectPath() /
+        "tools/audit_catalog_price_integrity.py";
+    std::string command = "python3 " + shellQuoted(script.string());
+    command += " --catalog " + shellQuoted(catalogPath());
+    command += " --database " + shellQuoted(databasePath());
+    return executeCatalogTool(std::move(command), temporary);
+}
+
 class CatalogCollectionJob {
 public:
     bool start(const std::string& store) {
@@ -619,6 +631,7 @@ public:
         store_ = store;
         status_ = "RUNNING";
         error_.clear();
+        integrityIssueCount_ = 0;
         const auto selectedStore = store_;
         std::thread([this, selectedStore]() { run(selectedStore); }).detach();
         return true;
@@ -633,6 +646,7 @@ public:
         if (!error_.empty()) {
             result["error"] = error_;
         }
+        result["integrityIssueCount"] = Json::UInt64(integrityIssueCount_);
         return result;
     }
 
@@ -661,7 +675,16 @@ private:
             " --output-dir " + shellQuoted(
                 (project / "snapshots/latest").string());
         const auto exitCode = std::system(command.c_str());
+        std::size_t integrityIssueCount = 0;
+        if (exitCode == 0) {
+            try {
+                integrityIssueCount = runPriceIntegrityAudit()["issueCount"].asUInt64();
+            } catch (const std::exception&) {
+                integrityIssueCount = 0;
+            }
+        }
         std::lock_guard<std::mutex> lock(mutex_);
+        integrityIssueCount_ = integrityIssueCount;
         status_ = exitCode == 0 ? "SUCCEEDED" : "FAILED";
         if (exitCode != 0) {
             error_ = store + " collection pipeline failed";
@@ -673,6 +696,7 @@ private:
     std::string status_{"IDLE"};
     std::string store_{"Steam"};
     std::string error_;
+    std::size_t integrityIssueCount_{};
 };
 
 Json::Value runCatalogSyncCommand(
@@ -1558,6 +1582,24 @@ int main() {
                 }
                 try {
                     callback(jsonResponse(adminHealthSummary()));
+                } catch (const std::exception& error) {
+                    callback(jsonError(
+                        drogon::k500InternalServerError,
+                        error.what()));
+                }
+            },
+            {drogon::Get});
+        drogon::app().registerHandler(
+            "/api/admin/catalog/integrity",
+            [&authService](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
+                    return;
+                }
+                try {
+                    callback(jsonResponse(runPriceIntegrityAudit()));
                 } catch (const std::exception& error) {
                     callback(jsonError(
                         drogon::k500InternalServerError,

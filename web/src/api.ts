@@ -109,6 +109,7 @@ export const getPreferences = (token: string) => requestJson<UserPreferences>('/
 export const updatePreferences = (token: string, preferences: UserPreferences) => requestJson<UserPreferences>('/api/account/preferences', { method: 'PATCH', body: JSON.stringify(preferences) }, token)
 export const getCatalogAdminStatus = () => requestJson<{ enabled: boolean }>('/api/admin/catalog/status')
 export const getAdminHealthSummary = () => requestJson<import('./types').AdminHealthSummary>('/api/admin/health')
+export const getCatalogPriceIntegrity = () => requestJson<import('./types').CatalogPriceIntegrity>('/api/admin/catalog/integrity')
 export const getMetadataSyncStatus = () => requestJson<import('./types').MetadataSyncStatus>('/api/admin/catalog/metadata-sync')
 export const startMetadataSync = () => requestJson<import('./types').MetadataSyncStatus>('/api/admin/catalog/metadata-sync', { method: 'POST' })
 export const resolveMetadataReview = (gameId: string, resolution: 'APPROVED' | 'REJECTED') => requestJson<import('./types').MetadataSyncStatus>(`/api/admin/catalog/metadata-sync/${encodeURIComponent(gameId)}`, { method: 'PATCH', body: JSON.stringify({ resolution }) })

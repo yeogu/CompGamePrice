@@ -1,7 +1,7 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react'
-import { addAlertRule, addFavorite, confirmPasswordReset, deleteAlertRule, deleteFavorite, disconnectCatalogProduct, getAdminHealthSummary, getAlertRules, getCatalogAdminStatus, getCatalogChangeAudits, getCatalogCollectionJob, getCatalogFilters, getCatalogSyncJob, getCollectionRuns, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getMetadataSyncStatus, getMobileCatalogSyncJob, getNotifications, getPreferences, importAppleCatalogGame, importGooglePlayCatalogGame, importSteamCatalogGame, importStorefrontCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, requestPasswordReset, resolveCatalogSyncReview, resolveMetadataReview, resolveMobileCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, startMetadataSync, startMobileCatalogSync, updateCatalogGameMetadata, updatePreferences } from './api'
+import { addAlertRule, addFavorite, confirmPasswordReset, deleteAlertRule, deleteFavorite, disconnectCatalogProduct, getAdminHealthSummary, getAlertRules, getCatalogAdminStatus, getCatalogChangeAudits, getCatalogCollectionJob, getCatalogFilters, getCatalogPriceIntegrity, getCatalogSyncJob, getCollectionRuns, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getMetadataSyncStatus, getMobileCatalogSyncJob, getNotifications, getPreferences, importAppleCatalogGame, importGooglePlayCatalogGame, importSteamCatalogGame, importStorefrontCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, requestPasswordReset, resolveCatalogSyncReview, resolveMetadataReview, resolveMobileCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, startMetadataSync, startMobileCatalogSync, updateCatalogGameMetadata, updatePreferences } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
-import type { AdminHealthSummary, AlertRule, AlertRuleType, CatalogAdminResult, CatalogChangeAudit, CatalogCollectionJob, CatalogFilterOptions, CatalogMetadataUpdateResult, CatalogSyncJob, CollectionRun, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSort, GameSummary, MetadataSyncStatus, MobileCatalogSyncJob, MobileCatalogSyncReview, Money, Notification, StoreProductCandidate, User, UserPreferences } from './types'
+import type { AdminHealthSummary, AlertRule, AlertRuleType, CatalogAdminResult, CatalogChangeAudit, CatalogCollectionJob, CatalogFilterOptions, CatalogMetadataUpdateResult, CatalogPriceIntegrity, CatalogPriceIntegrityIssue, CatalogSyncJob, CollectionRun, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSort, GameSummary, MetadataSyncStatus, MobileCatalogSyncJob, MobileCatalogSyncReview, Money, Notification, StoreProductCandidate, User, UserPreferences } from './types'
 
 const formatMoney = (money: Money) =>
   new Intl.NumberFormat('ko-KR', {
@@ -149,7 +149,7 @@ const matchDecisionGuide = {
 } as const
 
 type AppView = 'games' | 'favorites' | 'alerts' | 'notifications' | 'account' | 'collection' | 'admin'
-type AdminSection = 'dashboard' | 'steam' | 'epic-games' | 'nintendo-eshop' | 'google-play' | 'apple-app-store' | 'audit'
+type AdminSection = 'dashboard' | 'steam' | 'epic-games' | 'nintendo-eshop' | 'google-play' | 'apple-app-store' | 'integrity' | 'audit'
 
 const catalogProviderLabel = (provider: MobileCatalogSyncJob['provider']) => {
   if (provider === 'GooglePlay') {
@@ -169,6 +169,28 @@ const catalogProviderPlatforms = (provider: MobileCatalogSyncJob['provider']) =>
     return ['iOS', 'iPadOS']
   }
   return ['NintendoSwitch']
+}
+
+const collectionStoreName = (store: string) => {
+  const names: Record<string, string> = {
+    GooglePlay: 'Google Play',
+    AppleAppStore: 'Apple App Store',
+    EpicGamesStore: 'Epic Games Store',
+    NintendoEShop: 'Nintendo eShop',
+  }
+  return names[store] ?? store
+}
+
+const integrityIssueLabel = (issue: CatalogPriceIntegrityIssue) => {
+  const labels: Record<CatalogPriceIntegrityIssue['type'], string> = {
+    MISSING_PRICE: '가격 없음',
+    STALE_PRICE: '오래된 가격',
+    NOT_PURCHASABLE: '구매 불가',
+    PLATFORM_MISMATCH: '플랫폼 불일치',
+    GAME_MISMATCH: '게임 연결 불일치',
+    ORPHAN_PRICE: '카탈로그 없는 가격',
+  }
+  return labels[issue.type]
 }
 
 function App() {
@@ -222,6 +244,7 @@ function App() {
   const [metadataPreview, setMetadataPreview] = useState<CatalogMetadataUpdateResult | null>(null)
   const [catalogAudits, setCatalogAudits] = useState<CatalogChangeAudit[]>([])
   const [adminHealth, setAdminHealth] = useState<AdminHealthSummary | null>(null)
+  const [priceIntegrity, setPriceIntegrity] = useState<CatalogPriceIntegrity | null>(null)
   const [metadataSync, setMetadataSync] = useState<MetadataSyncStatus | null>(null)
   const [metadataSyncRunning, setMetadataSyncRunning] = useState(false)
   const [reviewConfirmed, setReviewConfirmed] = useState(false)
@@ -728,6 +751,7 @@ function App() {
       )
       setCatalogAudits(await getCatalogChangeAudits())
       setAdminHealth(await getAdminHealthSummary())
+      setPriceIntegrity(await getCatalogPriceIntegrity())
     } catch (reason) {
       setAdminError(reason instanceof Error ? reason.message : '상품 연결 해제에 실패했습니다.')
     } finally {
@@ -767,6 +791,25 @@ function App() {
       setCatalogJob(await startCatalogCollection(adminStore))
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '가격 수집을 시작하지 못했습니다.')
+    }
+  }
+
+  const collectIntegrityIssue = async (issue: CatalogPriceIntegrityIssue) => {
+    setAdminError('')
+    try {
+      setCatalogJob(await startCatalogCollection(collectionStoreName(issue.store)))
+      setActionMessage(`${collectionStoreName(issue.store)} 가격 재수집을 시작했습니다.`)
+    } catch (reason) {
+      setAdminError(reason instanceof Error ? reason.message : '가격 재수집을 시작하지 못했습니다.')
+    }
+  }
+
+  const refreshPriceIntegrity = async () => {
+    setAdminError('')
+    try {
+      setPriceIntegrity(await getCatalogPriceIntegrity())
+    } catch (reason) {
+      setAdminError(reason instanceof Error ? reason.message : '데이터 정합성을 검사하지 못했습니다.')
     }
   }
 
@@ -1033,6 +1076,7 @@ function App() {
           void refreshMobileSyncJobs()
           void getCatalogChangeAudits().then(setCatalogAudits)
           void getAdminHealthSummary().then(setAdminHealth)
+          void getCatalogPriceIntegrity().then(setPriceIntegrity)
           void getMetadataSyncStatus().then(setMetadataSync)
         }
       })
@@ -1049,8 +1093,10 @@ function App() {
       void getCatalogCollectionJob().then((job) => {
         setCatalogJob(job)
         if (job.status === 'SUCCEEDED') {
-          setActionMessage('Steam 가격 수집이 완료되었습니다. 새 게임을 바로 검색할 수 있습니다.')
+          setActionMessage(`${job.store ?? 'Store'} 가격 수집과 정합성 검사가 완료되었습니다.`)
           void getCollectionRuns().then(setCollectionRuns)
+          void getCatalogPriceIntegrity().then(setPriceIntegrity)
+          void getAdminHealthSummary().then(setAdminHealth)
         }
       })
     }, 1000)
@@ -1528,6 +1574,7 @@ function App() {
           <button className={adminSection === 'nintendo-eshop' ? 'active' : ''} onClick={() => selectAdminSection('nintendo-eshop')}>Nintendo eShop</button>
           <button className={adminSection === 'google-play' ? 'active' : ''} onClick={() => selectAdminSection('google-play')}>Google Play</button>
           <button className={adminSection === 'apple-app-store' ? 'active' : ''} onClick={() => selectAdminSection('apple-app-store')}>Apple App Store</button>
+          <button className={adminSection === 'integrity' ? 'active' : ''} onClick={() => selectAdminSection('integrity')}>데이터 정합성 {priceIntegrity?.issueCount ?? 0}</button>
           <button className={adminSection === 'audit' ? 'active' : ''} onClick={() => selectAdminSection('audit')}>변경 기록</button>
         </nav>
         {adminSection === 'dashboard' && <div className="admin-dashboard"><div><h2>운영 상태</h2><p>Store 작업을 시작하기 전에 데이터와 알림 상태를 확인합니다.</p></div>{adminHealth && <><section className="admin-health-grid" aria-label="운영 상태 요약"><article><strong>메타데이터 완성률</strong><span>{adminHealth.metadata.complete} / {adminHealth.metadata.total}</span><small>보완 필요 {adminHealth.metadata.incomplete}개</small></article><article><strong>최근 수집 실패</strong><span>{adminHealth.collection.recentFailures}건</span><small>{adminHealth.collection.lastFailure ? `${adminHealth.collection.lastFailure.store} · ${adminHealth.collection.lastFailure.error ?? '원인 없음'}` : '실패 없음'}</small></article><article><strong>가격 알림 메일</strong><span>대기 {adminHealth.notifications.pending} · 재시도 {adminHealth.notifications.retryable}</span><small>재시도 소진 {adminHealth.notifications.exhausted}건</small></article><article><strong>계정 이메일</strong><span>대기 {adminHealth.emails.pending} · 재시도 {adminHealth.emails.retryable}</span><small>{adminHealth.emails.lastError ? `최근 오류: ${adminHealth.emails.lastError}` : `발송 완료 ${adminHealth.emails.sent}건 · 실패 없음`}</small></article><article><strong>자동 가격 수집</strong><span>{jobStatusLabel[adminHealth.automation.collection.status] ?? adminHealth.automation.collection.status}</span><small>{adminHealth.automation.collection.status === 'DISABLED' ? '.env에서 COLLECTION_ENABLED=true로 재개할 수 있습니다.' : `마지막 완료 ${formatJobTime(adminHealth.automation.collection.lastFinishedAt)} · 다음 ${formatJobTime(adminHealth.automation.collection.nextRunAt)}`}</small><small>worker 확인 {formatJobTime(adminHealth.automation.collection.updatedAt)}</small>{adminHealth.automation.collection.failedSteps?.length ? <small className="warning">실패 단계 {adminHealth.automation.collection.failedSteps.join(', ')}</small> : null}</article><article><strong>자동 백업</strong><span>{jobStatusLabel[adminHealth.automation.backup.status] ?? adminHealth.automation.backup.status}</span><small>{adminHealth.automation.backup.lastBackup ? `최근 파일 ${adminHealth.automation.backup.lastBackup}` : `마지막 완료 ${formatJobTime(adminHealth.automation.backup.lastFinishedAt)}`}</small><small>worker 확인 {formatJobTime(adminHealth.automation.backup.updatedAt)}</small>{adminHealth.automation.backup.error ? <small className="warning">{adminHealth.automation.backup.error}</small> : null}</article></section><section className="store-quality-grid" aria-label="Store별 데이터 품질">{adminHealth.stores.filter((store) => store.registeredProducts > 0 || store.pendingReviews > 0 || store.catalogProcessed > 0).map((store) => <article key={store.store}><header><strong>{store.store}</strong><span>{store.registeredProducts}개 상품</span></header><div><span>최신 가격 <strong>{store.freshPrices}</strong></span><span className={store.stalePrices > 0 ? 'warning' : ''}>오래된 가격 <strong>{store.stalePrices}</strong></span><span>검토 대기 <strong>{store.pendingReviews}</strong></span></div><div><span>최근 탐색 <strong>{store.catalogProcessed}</strong></span><span>자동 등록 <strong>{store.catalogAccepted}</strong></span><span>최근 7일 추가 <strong>{store.catalogAddedLast7Days}</strong></span></div><small>검토 {store.catalogReview} · 제외/건너뜀 {store.catalogSkippedOrRejected} · 실패 {store.catalogFailed}</small><small>{store.lastCatalogSyncAt ? `마지막 카탈로그 동기화 ${new Date(store.lastCatalogSyncAt).toLocaleString('ko-KR')}` : '카탈로그 동기화 기록 없음'}</small><small>{store.lastSuccessfulCollectionAt ? `마지막 가격 수집 성공 ${new Date(store.lastSuccessfulCollectionAt).toLocaleString('ko-KR')}` : '성공한 가격 수집 기록 없음'}</small></article>)}</section></>}<div className="admin-store-shortcuts"><button onClick={() => selectAdminSection('steam')}>Steam 관리</button><button onClick={() => selectAdminSection('epic-games')}>Epic Games 관리</button><button onClick={() => selectAdminSection('nintendo-eshop')}>Nintendo eShop 관리</button><button onClick={() => selectAdminSection('google-play')}>Google Play 관리</button><button onClick={() => selectAdminSection('apple-app-store')}>Apple App Store 관리</button></div></div>}
@@ -1640,6 +1687,37 @@ function App() {
         </article>}
         {catalogJob && catalogJob.status !== 'IDLE' && <div className={`admin-job ${catalogJob.status.toLowerCase()}`}><strong>{catalogJob.store ?? adminStore} 수집 상태: {catalogJob.status}</strong>{catalogJob.error && <span>{catalogJob.error}</span>}</div>}
         </div>}
+        {adminSection === 'integrity' && <article className="catalog-audit-panel integrity-panel">
+          <header>
+            <div>
+              <h2>카탈로그–가격 데이터 정합성</h2>
+              <p>사용자에게 노출할 수 없는 Store 연결과 가격 상태를 확인합니다.</p>
+            </div>
+            <button disabled={adminImporting} onClick={() => void refreshPriceIntegrity()}>다시 검사</button>
+          </header>
+          {priceIntegrity && <div className="integrity-summary">
+            <strong>점검 상품 {priceIntegrity.catalogProductCount}개</strong>
+            <span className={priceIntegrity.issueCount > 0 ? 'warning' : ''}>문제 {priceIntegrity.issueCount}건</span>
+            <small>검사 시각 {new Date(priceIntegrity.checkedAt).toLocaleString('ko-KR')}</small>
+          </div>}
+          <div className="integrity-list">
+            {priceIntegrity?.issues.map((issue, index) => <section className={issue.severity.toLowerCase()} key={`${issue.type}-${issue.store}-${issue.productId}-${index}`}>
+              <div>
+                <span className="integrity-kind">{integrityIssueLabel(issue)}</span>
+                <strong>{issue.gameTitle}</strong>
+                <small>{collectionStoreName(issue.store)} · 상품 ID {issue.productId}</small>
+              </div>
+              <p>{issue.reason}</p>
+              <div className="integrity-actions">
+                {issue.productUrl && <a href={issue.productUrl} target="_blank" rel="noreferrer">Store 확인 ↗</a>}
+                <button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectIntegrityIssue(issue)}>가격 재수집</button>
+                {issue.type !== 'ORPHAN_PRICE' && <button className="danger" disabled={adminImporting} onClick={() => void disconnectAdminProduct(issue.store, issue.productId, issue.gameTitle)}>연결 해제</button>}
+              </div>
+            </section>)}
+            {priceIntegrity?.issues.length === 0 && <p>현재 발견된 데이터 정합성 문제가 없습니다.</p>}
+            {!priceIntegrity && <p>정합성 검사 결과를 불러오는 중입니다.</p>}
+          </div>
+        </article>}
         {adminSection === 'audit' && <article className="catalog-audit-panel">
           <h2>최근 관리자 변경 기록</h2>
           <p>누가 어떤 canonical Game 또는 Store 상품을 변경했는지 확인합니다.</p>

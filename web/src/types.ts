@@ -169,7 +169,9 @@ export interface CatalogAdminResult {
   applied: boolean
   requiresApiRestart: boolean
 }
-export interface CatalogCollectionJob { id: number; store?: string; status: 'IDLE' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'; error?: string }
+export interface CatalogCollectionJob { id: number; store?: string; status: 'IDLE' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'; error?: string; integrityIssueCount?: number }
+export interface CatalogPriceIntegrityIssue { type: 'MISSING_PRICE' | 'STALE_PRICE' | 'NOT_PURCHASABLE' | 'PLATFORM_MISMATCH' | 'GAME_MISMATCH' | 'ORPHAN_PRICE'; severity: 'ERROR' | 'WARNING'; store: string; productId: string; gameId: string; gameTitle: string; reason: string; productUrl?: string }
+export interface CatalogPriceIntegrity { checkedAt: string; catalogProductCount: number; issueCount: number; counts: Record<string, number>; issues: CatalogPriceIntegrityIssue[] }
 export interface StoreProductCandidate { store: string; externalProductId: string; title: string; productUrl: string; platforms: string[]; developer?: string; priceMinor?: number; currency?: string }
 export interface CatalogSyncReview { externalProductId: string; title: string; reason: string; status: 'PENDING' | 'APPROVED' | 'REJECTED'; createdAt: string }
 export interface MobileCatalogSyncReview extends CatalogSyncReview { gameId: string; decision: CatalogMatchStatus; productUrl?: string }

@@ -124,6 +124,10 @@ if(BUILD_TESTING)
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_admin_health_summary.py
         )
         add_test(
+            NAME catalog_price_integrity_tests
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_catalog_price_integrity.py
+        )
+        add_test(
             NAME steam_catalog_batch_import_tests
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_steam_catalog_batch_import.py
         )

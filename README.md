@@ -296,6 +296,13 @@ Preview 결과의 `잘못 연결된 상품 되돌리기`를 사용할 수 있습
 확인 절차 후 원자적으로 실행되고 변경 기록에 남으며, 마지막 Store 상품을 제거한
 경우 비어 있는 canonical Game도 함께 제거합니다.
 
+관리자 `데이터 정합성` 메뉴는 카탈로그 연결은 있지만 가격이 없는 상품, 48시간 이상
+확인되지 않은 가격, 구매 불가 상품, 게임·플랫폼 연결 불일치와 카탈로그에 없는 고아
+가격을 검사합니다. 문제 항목에서 Store 가격 재수집, 상품 페이지 확인, 잘못된 연결
+해제를 수행할 수 있습니다. Store 가격 수집이 성공하면 같은 검사가 자동으로 다시
+실행되며, 실제 최신 가격이 없는 Store·플랫폼 상품은 일반 게임 목록에 노출되지
+않습니다.
+
 ```bash
 python3 tools/sync_mobile_catalog.py --store GooglePlay --batch-size 10
 python3 tools/sync_mobile_catalog.py --store AppleAppStore --batch-size 10

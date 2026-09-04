@@ -361,6 +361,9 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/admin/health")
 [[ "${status}" == "401" ]]
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/admin/catalog/integrity")
+[[ "${status}" == "401" ]]
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/admin/catalog/metadata-sync")
 [[ "${status}" == "401" ]]
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
@@ -410,6 +413,12 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
 [[ "${status}" == "200" ]]
 grep -q '"metadata"' "${response_body}"
 grep -q '"notifications"' "${response_body}"
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -b "${cookie_jar}" "${api_base}/api/admin/catalog/integrity")
+[[ "${status}" == "200" ]]
+grep -q '"issueCount":' "${response_body}"
+grep -q '"type":"MISSING_PRICE"' "${response_body}"
+grep -q '"gameId":"unpriced-nintendo-game"' "${response_body}"
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     -b "${cookie_jar}" "${api_base}/api/admin/catalog/metadata-sync")
 [[ "${status}" == "200" ]]
