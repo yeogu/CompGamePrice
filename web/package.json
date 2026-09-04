@@ -10,6 +10,7 @@
     "test:e2e": "bash ../tests/web_ui_e2e.sh"
   },
   "dependencies": {
+    "lucide-react": "^0.468.0",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },

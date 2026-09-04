@@ -2,6 +2,7 @@ import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react'
 import { addAlertRule, addFavorite, confirmPasswordReset, deleteAlertRule, deleteFavorite, disconnectCatalogProduct, getAdminHealthSummary, getAlertRules, getCatalogAdminStatus, getCatalogChangeAudits, getCatalogCollectionJob, getCatalogFilters, getCatalogPriceIntegrity, getCatalogSyncJob, getCollectionRuns, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getMetadataSyncStatus, getMobileCatalogSyncJob, getNotifications, getPreferences, importAppleCatalogGame, importGooglePlayCatalogGame, importSteamCatalogGame, importStorefrontCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, requestPasswordReset, resolveCatalogSyncReview, resolveMetadataReview, resolveMobileCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, startMetadataSync, startMobileCatalogSync, updateCatalogGameMetadata, updatePreferences } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
 import { GameCatalogView, GameDetailView } from './GameViews'
+import { PlatformBadge, StoreBadge } from './VisualBadges'
 import { gameDetailPath, gameIdFromLocation } from './gameRoutes'
 import type { AdminHealthSummary, AlertRule, AlertRuleType, CatalogAdminResult, CatalogChangeAudit, CatalogCollectionJob, CatalogFilterOptions, CatalogMetadataUpdateResult, CatalogPriceIntegrity, CatalogPriceIntegrityIssue, CatalogSyncJob, CollectionRun, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSort, GameSummary, MetadataSyncStatus, MobileCatalogSyncJob, MobileCatalogSyncReview, Money, Notification, StoreProductCandidate, User, UserPreferences } from './types'
 
@@ -1391,7 +1392,7 @@ function App() {
               ['Nintendo Switch 2', 'Switch 2'],
               ['Android', 'Android'],
               ['iOS', 'iPhone'],
-            ].filter(([platform]) => catalogFilters.platforms.includes(platform)).map(([platform, label]) => <button className={browseMode && browsePlatform === platform && !selectedStore && !selectedGenre && !selectedTag ? 'active' : ''} key={platform} type="button" onClick={() => applyQuickPlatform(platform)}>{label}</button>)}
+            ].filter(([platform]) => catalogFilters.platforms.includes(platform)).map(([platform, label]) => <button className={browseMode && browsePlatform === platform && !selectedStore && !selectedGenre && !selectedTag ? 'active' : ''} key={platform} type="button" onClick={() => applyQuickPlatform(platform)}><PlatformBadge compact label={label} platform={platform} /></button>)}
           </div>
           <details className="detailed-filters"><summary>구매처·플랫폼·장르로 자세히 찾기</summary>
             <form onSubmit={applyDetailedFilters}>
@@ -1442,7 +1443,7 @@ function App() {
                 onClick={() => void selectGame(game)}
               >
                 <strong>{game.title}</strong>
-                <small>{game.platforms.join(' · ')}</small>
+                <small className="platform-badge-list">{game.platforms.map((platform) => <PlatformBadge compact key={platform} platform={platform} />)}</small>
                 <span>{game.genres.join(' · ') || '장르 정보 수집 중'}</span>
                 <em>{formatCatalogPrice(game)}</em>
               </button>
@@ -1495,9 +1496,10 @@ function App() {
             <div>
               <p className="eyebrow">CURRENT PRICES</p>
               <h2>{report.game.title}</h2>
-              <p className="game-platforms">
-                플레이 가능: {report.game.platforms.join(' · ')}
-              </p>
+              <div className="game-platforms platform-overview">
+                <span>플레이 가능</span>
+                <div className="platform-badge-list">{report.game.platforms.map((platform) => <PlatformBadge key={platform} platform={platform} />)}</div>
+              </div>
               {report.game.developers.length > 0 && <p className="game-platforms">개발: {report.game.developers.join(' · ')}</p>}
               {report.game.publishers.length > 0 && <p className="game-platforms">배급: {report.game.publishers.join(' · ')}</p>}
             </div>
@@ -1505,7 +1507,7 @@ function App() {
               <div className="best-summary">
                 <span>현재 최저가</span>
                 <strong>{formatMoney(report.cheapest.price)}</strong>
-                <small>{report.cheapest.store}</small>
+                <StoreBadge compact store={report.cheapest.store} />
               </div>
             )}
             <button className="favorite-button" onClick={() => void toggleFavorite()}>
@@ -1535,7 +1537,7 @@ function App() {
                 key={platform}
                 onClick={() => void selectGame(report.game, true, platform)}
               >
-                {platform}
+                <PlatformBadge compact platform={platform} />
               </button>
             ))}
           </div>
@@ -1546,7 +1548,7 @@ function App() {
               return (
                 <article className={`${cheapest ? 'price-card cheapest' : 'price-card'}${product.stale ? ' stale' : ''}`} key={`${product.store}-${product.productId}`}>
                   <div className="card-topline">
-                    <span className="store">{product.store}</span>
+                    <StoreBadge store={product.store} />
                     {cheapest ? <span className="badge">BEST</span> : product.stale && <span className="badge stale-badge">오래된 가격</span>}
                   </div>
                   <p className="offer-meta">
@@ -1559,7 +1561,7 @@ function App() {
                       <del>{formatMoney(product.regularPrice)}</del>
                     </div>
                   )}
-                  <p className="platforms">{product.platforms.join(' · ')}</p>
+                  <div className="platforms platform-badge-list">{product.platforms.map((platform) => <PlatformBadge compact key={platform} platform={platform} />)}</div>
                   <p className="freshness">
                     마지막 정상 확인: {product.lastSuccessfulCheckAt
                       ? new Date(product.lastSuccessfulCheckAt).toLocaleString('ko-KR')

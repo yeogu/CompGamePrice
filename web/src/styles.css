@@ -53,6 +53,23 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .quick-platforms { display: flex; flex-wrap: wrap; gap: 7px; }
 .quick-platforms button { padding: 9px 13px; color: #91a79b; background: #101f18; border: 1px solid #315141; border-radius: 999px; }
 .quick-platforms button.active { color: #07110d; background: #73e2a7; }
+.platform-badge-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.platform-badge, .visual-store-badge { display: inline-flex; align-items: center; width: fit-content; gap: 6px; padding: 6px 9px; color: #dcebe3; background: #17271f; border: 1px solid #315141; border-radius: 999px; font-size: .74rem; font-weight: 800; line-height: 1; white-space: nowrap; }
+.platform-badge.compact, .visual-store-badge.compact { padding: 5px 8px; font-size: .68rem; }
+.platform-badge svg, .visual-store-badge svg { flex: 0 0 auto; }
+.platform-badge.windows { color: #8bd3ff; border-color: #285c78; background: #102632; }
+.platform-badge.macos, .platform-badge.ios, .platform-badge.ipados { color: #e6e8ee; border-color: #555c66; background: #25292f; }
+.platform-badge.linux { color: #f4c86a; border-color: #665328; background: #2b2516; }
+.platform-badge.android { color: #8fe6a8; border-color: #2d6840; background: #142b1c; }
+.platform-badge.nintendo { color: #ffacae; border-color: #81393c; background: #351719; }
+.platform-badge.playstation { color: #8cbcff; border-color: #315a91; background: #14243c; }
+.platform-badge.xbox { color: #9ae586; border-color: #3e7332; background: #192d15; }
+.visual-store-badge.steam { color: #9dd8ff; border-color: #285c78; background: #102632; }
+.visual-store-badge.epic-games { color: #eeeeee; border-color: #555; background: #292929; }
+.visual-store-badge.nintendo-eshop { color: #ffb3b8; border-color: #81393c; background: #351719; }
+.visual-store-badge.google-play { color: #8fe6a8; border-color: #2d6840; background: #142b1c; }
+.visual-store-badge.apple-app-store { color: #c8bfff; border-color: #594e9d; background: #24203f; }
+.quick-platforms button .platform-badge, .platform-filter button .platform-badge { padding: 0; color: inherit; background: transparent; border: 0; }
 .detailed-filters { color: #91a79b; font-size: .86rem; }
 .detailed-filters summary { cursor: pointer; }
 .detailed-filters form { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)) auto; align-items: end; gap: 8px; margin-top: 12px; }
@@ -106,7 +123,7 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .error-text { color: #ffb4a8; }
 .game-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
 .game-list button { display: grid; gap: 6px; justify-items: start; padding: 16px; color: #eaf5ee; background: #0b1812; border: 1px solid #315141; text-align: left; }
-.game-list button small { font-size: 0.68rem; font-weight: 600; opacity: 0.7; }
+.game-list button small { font-size: 0.68rem; font-weight: 600; }
 .game-list button span { color: #91a79b; font-size: .72rem; }
 .game-list button em { color: #73e2a7; font-size: .8rem; font-style: normal; }
 .game-list button.selected { box-shadow: 0 0 0 3px rgba(115, 226, 167, 0.25); }
@@ -128,8 +145,9 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .game-summary strong { color: #eef8f2; }
 h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04em; }
 .game-platforms { margin: 8px 0 0; color: #91a79b; }
+.platform-overview { display: grid; gap: 7px; }
 .best-summary { display: grid; justify-items: end; }
-.best-summary span, .best-summary small { color: #91a79b; }
+.best-summary > span, .best-summary > small { color: #91a79b; }
 .best-summary strong { color: #73e2a7; font-size: 2rem; }
 .platform-filter { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 20px; }
 .platform-filter button { padding: 8px 13px; color: #91a79b; background: #101f18; border: 1px solid #2b4035; border-radius: 9px; }

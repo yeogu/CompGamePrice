@@ -50,6 +50,15 @@ test('quick platform discovery distinguishes Nintendo Switch 2', async ({ page }
   await expect(page.getByRole('button', { name: /Stardew Valley/ })).toHaveCount(0)
 })
 
+test('platform and store information uses readable visual badges', async ({ page }) => {
+  await page.goto('/games/stardew-valley')
+
+  await expect(page.locator('[data-platform="Windows"]').first()).toBeVisible()
+  await expect(page.locator('[data-platform="Android"]').first()).toBeVisible()
+  await expect(page.locator('[data-store="Steam"]').first()).toBeVisible()
+  await expect(page.locator('[data-store="Google Play"]').first()).toBeVisible()
+})
+
 test('platform filtering preserves the current scroll position', async ({ page }) => {
   await page.goto('/games/stardew-valley')
   const platformFilter = page.getByLabel('플랫폼 필터')
@@ -148,7 +157,9 @@ test('user can search, inspect prices, create an alert, and log out', async ({ p
   await page.getByRole('button', { name: /Hades/ }).click()
   await expect(page).toHaveURL(/\/games\/hades$/)
   await expect(page.getByRole('heading', { name: 'Hades' }).last()).toBeVisible()
-  await expect(page.getByText('플레이 가능:')).toContainText('Nintendo Switch 2')
+  const platformOverview = page.locator('.platform-overview')
+  await expect(platformOverview).toContainText('플레이 가능')
+  await expect(platformOverview).toContainText('Nintendo Switch 2')
   await expect(page.getByText('Epic Games Store').first()).toBeVisible()
   await expect(page.getByText('PRICE HISTORY')).toBeVisible()
 
