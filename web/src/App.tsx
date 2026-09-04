@@ -1,6 +1,8 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react'
 import { addAlertRule, addFavorite, confirmPasswordReset, deleteAlertRule, deleteFavorite, disconnectCatalogProduct, getAdminHealthSummary, getAlertRules, getCatalogAdminStatus, getCatalogChangeAudits, getCatalogCollectionJob, getCatalogFilters, getCatalogPriceIntegrity, getCatalogSyncJob, getCollectionRuns, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getMetadataSyncStatus, getMobileCatalogSyncJob, getNotifications, getPreferences, importAppleCatalogGame, importGooglePlayCatalogGame, importSteamCatalogGame, importStorefrontCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, requestPasswordReset, resolveCatalogSyncReview, resolveMetadataReview, resolveMobileCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, startMetadataSync, startMobileCatalogSync, updateCatalogGameMetadata, updatePreferences } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
+import { GameCatalogView, GameDetailView } from './GameViews'
+import { gameDetailPath, gameIdFromLocation } from './gameRoutes'
 import type { AdminHealthSummary, AlertRule, AlertRuleType, CatalogAdminResult, CatalogChangeAudit, CatalogCollectionJob, CatalogFilterOptions, CatalogMetadataUpdateResult, CatalogPriceIntegrity, CatalogPriceIntegrityIssue, CatalogSyncJob, CollectionRun, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSort, GameSummary, MetadataSyncStatus, MobileCatalogSyncJob, MobileCatalogSyncReview, Money, Notification, StoreProductCandidate, User, UserPreferences } from './types'
 
 const formatMoney = (money: Money) =>
@@ -204,6 +206,17 @@ const catalogPriceStatusLabel = (status?: string) => {
   return status ? labels[status] ?? status : ''
 }
 
+const routeGameSummary = (gameId: string): GameSummary => ({
+  id: gameId,
+  title: gameId,
+  platforms: [],
+  genres: [],
+  tags: [],
+  aliases: [],
+  developers: [],
+  publishers: [],
+})
+
 function App() {
   const [query, setQuery] = useState('')
   const [games, setGames] = useState<GameSummary[]>([])
@@ -215,6 +228,7 @@ function App() {
   const [collectionStatusError, setCollectionStatusError] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [detailError, setDetailError] = useState('')
   const requestSequence = useRef(0)
   const [token, setToken] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('oauth') === 'success' || localStorage.getItem('game-price-session') === '1' ? 'cookie' : '')
   const [user, setUser] = useState<User | null>(null)
@@ -279,7 +293,8 @@ function App() {
   const [selectedGenre, setSelectedGenre] = useState(initialParameters.get('genre') ?? '')
   const [selectedTag, setSelectedTag] = useState(initialParameters.get('tag') ?? '')
   const [gameSort, setGameSort] = useState<GameSort>((initialParameters.get('sort') as GameSort) || 'titleAsc')
-  const [catalogPage, setCatalogPage] = useState(1)
+  const initialCatalogPage = Number(initialParameters.get('page') ?? '1')
+  const [catalogPage, setCatalogPage] = useState(Number.isInteger(initialCatalogPage) && initialCatalogPage > 0 ? initialCatalogPage : 1)
   const [catalogTotal, setCatalogTotal] = useState(0)
   const [browseMode, setBrowseMode] = useState(false)
   const autocompleteRef = useRef<HTMLDivElement>(null)
@@ -404,6 +419,7 @@ function App() {
     setSelectedPlatform('')
     setReport(null)
     setHistory(null)
+    setDetailError('')
     setShowGameResults(false)
     setSuggestions([])
     setSuggestionsOpen(false)
@@ -412,10 +428,22 @@ function App() {
     setSelectedGenre('')
     setSelectedTag('')
     setBrowseMode(false)
-    const address = new URL(window.location.href)
-    address.searchParams.delete('game')
-    address.searchParams.delete('platform')
-    window.history.replaceState(null, '', address)
+    window.history.pushState({ dealQuestList: true, scrollY: 0 }, '', '/')
+    window.scrollTo({ top: 0 })
+  }
+
+  const closeGameDetail = () => {
+    if (window.history.state?.dealQuestDetail) {
+      window.history.back()
+      return
+    }
+    setSelectedGameId('')
+    setSelectedPlatform('')
+    setReport(null)
+    setHistory(null)
+    setDetailError('')
+    window.history.replaceState({ dealQuestList: true, scrollY: 0 }, '', '/')
+    window.scrollTo({ top: 0 })
   }
 
   const chooseSuggestion = (game: GameSummary) => {
@@ -490,6 +518,7 @@ function App() {
           genre: filters.genre,
           tag: filters.tag,
           sort: filters.sort === 'titleAsc' ? undefined : filters.sort,
+          page: filters.page && filters.page > 1 ? String(filters.page) : undefined,
         }
         Object.entries(urlValues).forEach(([name, value]) => {
           if (value) {
@@ -498,6 +527,7 @@ function App() {
             address.searchParams.delete(name)
           }
         })
+        address.pathname = '/'
         address.searchParams.delete('game')
         address.searchParams.delete('platform')
         window.history.replaceState(null, '', address)
@@ -969,6 +999,7 @@ function App() {
     const requestId = ++requestSequence.current
     setLoading(true)
     setError('')
+    setDetailError('')
     setSelectedGameId(game.id)
     setSelectedPlatform(platform)
     if (changingGame) {
@@ -976,11 +1007,37 @@ function App() {
       setHistory(null)
     }
     if (updateAddress) {
-      const address = new URL(window.location.href)
-      address.searchParams.set('game', game.id)
-      if (platform) address.searchParams.set('platform', platform)
-      else address.searchParams.delete('platform')
-      window.history.replaceState(null, '', address)
+      const target = gameDetailPath(game.id, platform)
+      const currentGameId = gameIdFromLocation(window.location)
+      if (currentGameId !== game.id) {
+        window.history.replaceState(
+          {
+            dealQuestList: true,
+            scrollY: window.scrollY,
+            catalog: {
+              query,
+              selectedStore,
+              browsePlatform,
+              selectedGenre,
+              selectedTag,
+              gameSort,
+              catalogPage,
+              browseMode,
+              showGameResults,
+            },
+          },
+          '',
+          window.location.href,
+        )
+        window.history.pushState({ dealQuestDetail: true }, '', target)
+        window.scrollTo({ top: 0 })
+      } else {
+        window.history.replaceState(
+          { ...window.history.state, dealQuestDetail: true },
+          '',
+          target,
+        )
+      }
     }
     try {
       const [priceReport, priceHistory] = await Promise.all([
@@ -1000,7 +1057,8 @@ function App() {
       }
     } catch (reason) {
       if (requestId === requestSequence.current) {
-        setError(reason instanceof Error ? reason.message : '가격을 불러오지 못했습니다.')
+        const message = reason instanceof Error ? reason.message : '가격을 불러오지 못했습니다.'
+        setDetailError(message.includes('not found') ? '존재하지 않는 게임입니다.' : message)
       }
     } finally {
       if (requestId === requestSequence.current) setLoading(false)
@@ -1024,7 +1082,6 @@ function App() {
       const matches = await getGames(query.trim())
       if (requestId !== requestSequence.current) return
       setGames(matches)
-      if (matches.length > 0) await selectGame(matches[0])
       if (matches.length === 0) setError('일치하는 게임이 없습니다.')
     } catch (reason) {
       if (requestId === requestSequence.current) {
@@ -1043,19 +1100,20 @@ function App() {
           setError('등록된 게임이 없습니다.')
           return
         }
-        const requestedGameId = new URLSearchParams(window.location.search).get('game')
+        const requestedGameId = gameIdFromLocation(window.location)
         const requestedPlatform = new URLSearchParams(window.location.search).get('platform') ?? ''
         const initialGame = catalogGames.find((game) => game.id === requestedGameId)
-        if (!initialGame) {
+        if (!requestedGameId) {
           return
         }
         setShowGameResults(true)
-        const initialPlatform = initialGame.platforms.includes(requestedPlatform)
+        const routeGame = initialGame ?? routeGameSummary(requestedGameId)
+        const initialPlatform = !initialGame || initialGame.platforms.includes(requestedPlatform)
           ? requestedPlatform
           : ''
         void selectGame(
-          initialGame,
-          requestedPlatform !== initialPlatform,
+          routeGame,
+          window.location.pathname === '/' || requestedPlatform !== initialPlatform,
           initialPlatform,
         )
       })
@@ -1072,7 +1130,7 @@ function App() {
             genre: selectedGenre || undefined,
             tag: selectedTag || undefined,
             sort: gameSort,
-            page: 1,
+            page: catalogPage,
           })
         }
       })
@@ -1095,6 +1153,42 @@ function App() {
     // Load the catalog and initial game once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    const restoreLocation = (event: PopStateEvent) => {
+      const routeGameId = gameIdFromLocation(window.location)
+      if (!routeGameId) {
+        requestSequence.current += 1
+        const catalog = event.state?.catalog
+        setSelectedGameId('')
+        setSelectedPlatform('')
+        setReport(null)
+        setHistory(null)
+        setDetailError('')
+        if (catalog) {
+          setQuery(catalog.query)
+          setSelectedStore(catalog.selectedStore)
+          setBrowsePlatform(catalog.browsePlatform)
+          setSelectedGenre(catalog.selectedGenre)
+          setSelectedTag(catalog.selectedTag)
+          setGameSort(catalog.gameSort)
+          setCatalogPage(catalog.catalogPage)
+          setBrowseMode(catalog.browseMode)
+          setShowGameResults(catalog.showGameResults)
+        }
+        window.requestAnimationFrame(() => {
+          window.scrollTo({ top: Number(event.state?.scrollY ?? 0) })
+        })
+        return
+      }
+      const platform = new URLSearchParams(window.location.search).get('platform') ?? ''
+      const game = games.find((candidate) => candidate.id === routeGameId) ?? routeGameSummary(routeGameId)
+      void selectGame(game, false, platform)
+      window.scrollTo({ top: 0 })
+    }
+    window.addEventListener('popstate', restoreLocation)
+    return () => window.removeEventListener('popstate', restoreLocation)
+  }, [games])
 
   useEffect(() => {
     if (catalogJob?.status !== 'RUNNING') {
@@ -1250,7 +1344,7 @@ function App() {
       <main className="app-main">
       {error && <p className="notice error">{error}</p>}
       {actionMessage && <p className="notice success">{actionMessage}</p>}
-      {activeView === 'games' && <>
+      {activeView === 'games' && !selectedGameId && <GameCatalogView>
       <header className="hero">
         <p className="eyebrow">DEAL QUEST · 딜퀘</p>
         <h1>어디서 사야 가장 저렴할까?</h1>
@@ -1310,12 +1404,6 @@ function App() {
           </details>
         </section>
       </header>
-
-      {showGameResults && selectedGameId && <section className="inline-alert-card">
-        <div><strong>{report?.game.title ?? selectedGameId} 가격 알림</strong><span>{selectedPlatform || '모든 플랫폼'}{report?.cheapest ? ` · 현재 ${formatMoney(report.cheapest.price)}` : ''}</span></div>
-        <input type="number" min="0" value={targetPrice} onChange={(event) => setTargetPrice(event.target.value)} placeholder="목표 가격(KRW)" />
-        {user ? <button onClick={() => void createRule('BelowTargetPrice')}>목표가 알림</button> : <button onClick={() => openAuth('login')}>로그인하고 알림 받기</button>}
-      </section>}
 
       {showGameResults && games.length > 0 && (
         <section className="panel">
@@ -1391,8 +1479,16 @@ function App() {
         </section>
       )}
       {showGameResults && games.length === 0 && browseMode && <section className="panel empty-catalog-result"><h2>조건에 맞는 게임이 없습니다.</h2><p>필터를 줄이거나 이름으로 검색해보세요.</p></section>}
+      </GameCatalogView>}
 
-      {showGameResults && report && (
+      {activeView === 'games' && selectedGameId && <GameDetailView error={detailError} loading={loading && !report} onBack={closeGameDetail}>
+      {report && <section className="inline-alert-card">
+        <div><strong>{report.game.title} 가격 알림</strong><span>{selectedPlatform || '모든 플랫폼'}{report.cheapest ? ` · 현재 ${formatMoney(report.cheapest.price)}` : ''}</span></div>
+        <input type="number" min="0" value={targetPrice} onChange={(event) => setTargetPrice(event.target.value)} placeholder="목표 가격(KRW)" />
+        {user ? <button onClick={() => void createRule('BelowTargetPrice')}>목표가 알림</button> : <button onClick={() => openAuth('login')}>로그인하고 알림 받기</button>}
+      </section>}
+
+      {report && (
         <>
         <section className="results">
           <div className="result-heading">
@@ -1521,7 +1617,7 @@ function App() {
         {history && <PriceHistoryChart histories={history.histories} />}
         </>
       )}
-      </>}
+      </GameDetailView>}
 
       {activeView === 'favorites' && user && <section className="view-panel">
         <p className="eyebrow">WATCHLIST</p>

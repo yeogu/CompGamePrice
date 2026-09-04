@@ -32,11 +32,12 @@ api_pid=$!
 
 VITE_API_URL="http://127.0.0.1:${api_port}" \
     "${project_directory}/web/node_modules/.bin/vite" \
+    "${project_directory}/web" \
     --host 127.0.0.1 --port "${web_port}" \
     >"${test_root}/web.log" 2>&1 &
 web_pid=$!
 
-for _ in {1..50}; do
+for _ in {1..300}; do
     if curl -fsS "http://127.0.0.1:${api_port}/health" >/dev/null 2>&1 && \
         curl -fsS "http://127.0.0.1:${web_port}" >/dev/null 2>&1; then
         WEB_E2E_BASE_URL="http://127.0.0.1:${web_port}" \
