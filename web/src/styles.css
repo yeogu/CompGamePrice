@@ -266,6 +266,7 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .admin-section-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 24px 0; padding-bottom: 16px; border-bottom: 1px solid #315141; }
 .admin-section-tabs button { color: #a9bdb2; background: #0b1812; border: 1px solid #315141; }
 .admin-section-tabs button.active { color: #07110d; background: #73e2a7; border-color: #73e2a7; }
+.admin-section-tabs button .visual-store-badge, .admin-store-shortcuts button .visual-store-badge { pointer-events: none; }
 .admin-dashboard { padding: 20px; background: #0b1812; border: 1px solid #315141; border-radius: 14px; }
 .admin-dashboard h2, .admin-dashboard p { margin: 0; }
 .admin-dashboard p, .admin-store-workspace > header p, .admin-product-workspace > p { margin-top: 6px; color: #91a79b; }
@@ -273,12 +274,10 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .admin-store-workspace { margin-top: 20px; }
 .admin-store-workspace > header { display: flex; align-items: center; gap: 14px; padding: 18px 20px; background: #0b1812; border: 1px solid #315141; border-radius: 14px; }
 .admin-store-workspace > header h2, .admin-store-workspace > header p { margin: 0; }
-.store-badge.epic-games { background: #2f2f2f; color: #fff; }
-.store-badge.nintendo-eshop { background: #e60012; color: #fff; }
-.store-badge { display: grid; place-items: center; width: 42px; height: 42px; color: white; background: #315141; border-radius: 12px; font-size: 1.2rem; font-weight: 900; }
-.store-badge.steam { background: #1b4e78; }
-.store-badge.google-play { background: #23865b; }
-.store-badge.apple-app-store { background: #6554c7; }
+.candidate-badges, .admin-preview-badges, .integrity-store { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.candidate-list button .candidate-badges { color: inherit; }
+.admin-preview-badges { margin: 12px 0; }
+.integrity-store { margin-top: 6px; }
 .admin-product-workspace { margin-top: 24px; padding: 20px; background: rgba(11, 24, 18, .6); border: 1px solid #294838; border-radius: 14px; }
 .admin-product-workspace > h2, .admin-product-workspace > p { margin: 0; }
 .profile-card { display: flex; align-items: center; gap: 16px; margin-top: 28px; padding: 20px; background: #0b1812; border-radius: 14px; }
