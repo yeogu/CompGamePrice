@@ -36,6 +36,7 @@ def verified_product(raw: bytes, package_name: str) -> dict:
     developer = author.get("name", "") if isinstance(author, dict) else ""
     return {
         "title": title.strip(),
+        "imageUrl": str(product.get("image", "")),
         "developer": developer,
         "priceMinor": price_minor,
         "currency": currency,

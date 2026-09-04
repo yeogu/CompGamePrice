@@ -240,7 +240,8 @@ GameCatalog::GameCatalog(const std::string& dataPath) {
                json_extract(value, '$.tags'), json_type(value, '$.tags'),
                json_extract(value, '$.aliases'), json_type(value, '$.aliases'),
                json_extract(value, '$.developers'), json_type(value, '$.developers'),
-               json_extract(value, '$.publishers'), json_type(value, '$.publishers')
+               json_extract(value, '$.publishers'), json_type(value, '$.publishers'),
+               json_extract(value, '$.imageUrl'), json_type(value, '$.imageUrl')
         FROM json_each(?1, '$.games');
     )sql");
     rows.bindJson(json);
@@ -265,6 +266,11 @@ GameCatalog::GameCatalog(const std::string& dataPath) {
             parser.handle(), rows.optionalText(14), rows.optionalText(15), "games[].developers");
         auto publishers = parseOptionalStringArray(
             parser.handle(), rows.optionalText(16), rows.optionalText(17), "games[].publishers");
+        const auto imageUrl = rows.optionalText(18);
+        const auto imageUrlType = rows.optionalText(19);
+        if (imageUrlType && imageUrlType != std::optional<std::string>{"text"}) {
+            throw std::runtime_error("Game Catalog games[].imageUrl must be a string");
+        }
         std::vector<std::string> normalizedAliases;
         normalizedAliases.reserve(aliases.size());
         for (const auto& alias : aliases) {
@@ -315,7 +321,8 @@ GameCatalog::GameCatalog(const std::string& dataPath) {
             std::move(aliases),
             std::move(normalizedAliases),
             std::move(developers),
-            std::move(publishers)});
+            std::move(publishers),
+            imageUrl.value_or("")});
 
         const auto productsJson = rows.optionalText(6);
         if (!productsJson || rows.optionalText(7) != std::optional<std::string>{"array"}) {

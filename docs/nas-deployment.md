@@ -94,7 +94,14 @@ Apple App Store의 카탈로그 탐색과 가격 수집을 실행한다. 기본 
 ```dotenv
 COLLECTION_INTERVAL_SECONDS=21600
 COLLECTION_INITIAL_DELAY_SECONDS=120
-COLLECTION_CATALOG_BATCH_SIZE=20
+COLLECTION_CATALOG_BATCH_SIZE=30
+COLLECTION_STEAM_DISCOVERY_LIMIT=75
+COLLECTION_STEAM_DISCOVERY_PAGES=4
+
+기본값은 한 주기마다 Store별 30개 후보를 처리하고, Steam은 소스별 75개씩
+4페이지를 탐색합니다. NAS 부하나 Store 제한이 보이면 배치 크기부터 낮추세요.
+관리자 대시보드의 `카탈로그 탐색 신뢰도`에서 자동 등록률과 실패율을 확인할 수
+있으며, 실패율이 발생한 Store는 수집 로그와 검토 대기를 먼저 확인합니다.
 COLLECTION_ENABLED=true
 ```
 

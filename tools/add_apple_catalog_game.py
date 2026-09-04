@@ -42,6 +42,7 @@ def apple_product(raw: bytes, track_id: str) -> dict:
     is_game = primary_genre in {"games", "게임"} or bool(genres & {"games", "게임"})
     return {
         "title": title.strip(),
+        "imageUrl": str(product.get("artworkUrl512") or product.get("artworkUrl100") or ""),
         "developer": str(product.get("sellerName") or product.get("artistName") or ""),
         "priceMinor": price_minor,
         "currency": str(product.get("currency", "")),

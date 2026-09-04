@@ -80,6 +80,20 @@ class SteamCatalogImportTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "canonical game id"):
             steam_catalog_import.canonical_id("제노니아 1: 기억의 실타래")
 
+    def test_preserves_store_header_image_url(self):
+        payload = json.loads(self.raw)
+        payload["413150"]["data"]["header_image"] = (
+            "https://cdn.example.test/stardew.jpg"
+        )
+        game = steam_catalog_import.catalog_game(
+            json.dumps(payload).encode(),
+            "413150",
+        )
+        self.assertEqual(
+            game["imageUrl"],
+            "https://cdn.example.test/stardew.jpg",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

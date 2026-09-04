@@ -26,7 +26,9 @@ def run_operations(
     database: Path,
     output_directory: Path,
     outbox_file: Path | None,
-    catalog_batch_size: int = 20,
+    catalog_batch_size: int = 30,
+    steam_discovery_limit: int = 75,
+    steam_discovery_pages: int = 4,
 ) -> list[dict]:
     python = sys.executable
     catalog = Path(
@@ -47,9 +49,9 @@ def run_operations(
                 "--database",
                 str(database),
                 "--per-source-limit",
-                "50",
+                str(steam_discovery_limit),
                 "--pages-per-source",
-                "3",
+                str(steam_discovery_pages),
             ],
         ),
         (
@@ -222,7 +224,9 @@ def main() -> int:
     parser.add_argument("--database", default=project / "build/game_prices.db", type=Path)
     parser.add_argument("--output-dir", default=project / "snapshots/latest", type=Path)
     parser.add_argument("--outbox-file", type=Path)
-    parser.add_argument("--catalog-batch-size", default=20, type=int)
+    parser.add_argument("--catalog-batch-size", default=30, type=int)
+    parser.add_argument("--steam-discovery-limit", default=75, type=int)
+    parser.add_argument("--steam-discovery-pages", default=4, type=int)
     arguments = parser.parse_args()
     results = run_operations(
         project,
@@ -231,6 +235,8 @@ def main() -> int:
         arguments.output_dir,
         arguments.outbox_file,
         arguments.catalog_batch_size,
+        arguments.steam_discovery_limit,
+        arguments.steam_discovery_pages,
     )
     print(json.dumps({"steps": results}, ensure_ascii=False, indent=2))
     return 0 if all(step["exitCode"] == 0 for step in results) else 1

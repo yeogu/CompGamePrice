@@ -125,10 +125,17 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .collection-run.failed .status-dot { background: #ff7b6b; }
 .error-text { color: #ffb4a8; }
 .game-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
-.game-list button { display: grid; gap: 6px; justify-items: start; padding: 16px; color: #eaf5ee; background: #0b1812; border: 1px solid #315141; text-align: left; }
+.game-list button { display: grid; gap: 8px; justify-items: start; overflow: hidden; padding: 0 16px 16px; color: #eaf5ee; background: #0b1812; border: 1px solid #315141; text-align: left; }
 .game-list button small { font-size: 0.68rem; font-weight: 600; }
 .game-list button span { color: #91a79b; font-size: .72rem; }
 .game-list button em { color: #73e2a7; font-size: .8rem; font-style: normal; }
+.game-artwork { display: grid; width: calc(100% + 32px); height: 112px; margin: 0 -16px 4px; place-items: center; overflow: hidden; color: #5b806c; background: linear-gradient(135deg, #173426, #0b1812); }
+.game-artwork img { width: 100%; height: 100%; object-fit: cover; }
+.game-artwork svg { width: 34px; height: 34px; }
+.game-artwork.compact { width: 72px; height: 72px; margin: 0; border: 1px solid #294838; border-radius: 9px; }
+.game-artwork.compact svg { width: 25px; height: 25px; }
+.catalog-price-row { display: flex; align-items: center; gap: 8px; }
+.catalog-price-row b { padding: 3px 7px; color: #07110d; background: #73e2a7; border-radius: 999px; font-size: .7rem; }
 .game-list button.selected { box-shadow: 0 0 0 3px rgba(115, 226, 167, 0.25); }
 .game-list button:disabled { cursor: wait; opacity: 0.72; }
 
@@ -326,7 +333,9 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .admin-search { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-top: 24px; }
 .admin-search input, .admin-search select { padding: 12px; color: #eef8f2; background: #0b1812; border: 1px solid #315141; border-radius: 9px; }
 .candidate-list { display: grid; gap: 8px; margin-top: 14px; }
-.candidate-list button { display: grid; gap: 4px; text-align: left; color: #eef8f2; background: #0b1812; border: 1px solid #315141; }
+.candidate-list button { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; text-align: left; color: #eef8f2; background: #0b1812; border: 1px solid #315141; }
+.candidate-list button .game-artwork { grid-row: 1 / span 4; }
+.identity-comparison > span { display: grid; gap: 7px; }
 .candidate-list span, .candidate-list small { color: #82968b; }
 .candidate-confirmation { display: grid; grid-template-columns: 1fr minmax(220px, 1fr) auto; align-items: end; gap: 12px; margin-top: 14px; padding: 16px; background: #0b1812; border: 1px solid #6f5b2f; border-radius: 12px; }
 .candidate-confirmation > div, .candidate-confirmation label { display: grid; gap: 5px; }
@@ -387,6 +396,11 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .store-quality-grid div { color: #91a79b; font-size: .78rem; }
 .store-quality-grid div strong { color: #73e2a7; }
 .store-quality-grid .warning, .store-quality-grid .warning strong { color: #f6c85f; }
+.catalog-reliability { display: grid; gap: 8px; margin: 0 0 20px; padding: 16px; background: #0b1812; border: 1px solid #294838; border-radius: 12px; }
+.catalog-reliability header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.catalog-reliability header p, .catalog-reliability small { color: #82968b; }
+.catalog-reliability > div { display: grid; grid-template-columns: minmax(150px, 1fr) repeat(2, minmax(120px, auto)) minmax(90px, auto); align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid #21382c; }
+.catalog-reliability .warning, .catalog-reliability .warning strong { color: #ff9d8f; }
 .audit-list { display: grid; gap: 8px; }
 .audit-list > div { display: grid; grid-template-columns: 1fr 2fr auto; gap: 12px; padding: 10px; border-top: 1px solid #213a2d; }
 .audit-list small { color: #82968b; }

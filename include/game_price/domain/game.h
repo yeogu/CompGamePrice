@@ -19,7 +19,8 @@ struct Game {
         std::vector<std::string> gameAliases = {},
         std::vector<std::string> normalizedGameAliases = {},
         std::vector<std::string> gameDevelopers = {},
-        std::vector<std::string> gamePublishers = {})
+        std::vector<std::string> gamePublishers = {},
+        std::string gameImageUrl = {})
         : id(std::move(gameId)),
           title(std::move(gameTitle)),
           normalizedTitle(std::move(normalizedGameTitle)),
@@ -29,7 +30,8 @@ struct Game {
           aliases(std::move(gameAliases)),
           normalizedAliases(std::move(normalizedGameAliases)),
           developers(std::move(gameDevelopers)),
-          publishers(std::move(gamePublishers)) {}
+          publishers(std::move(gamePublishers)),
+          imageUrl(std::move(gameImageUrl)) {}
 
     std::string id;
     std::string title;
@@ -41,6 +43,7 @@ struct Game {
     std::vector<std::string> normalizedAliases;
     std::vector<std::string> developers;
     std::vector<std::string> publishers;
+    std::string imageUrl;
 };
 
 }  // namespace game_price

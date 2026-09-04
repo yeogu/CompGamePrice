@@ -58,6 +58,16 @@ def run_once(
         output_directory,
         None,
         catalog_batch_size,
+        periodic_job_status.parse_integer(
+            os.environ.get("COLLECTION_STEAM_DISCOVERY_LIMIT", "75"),
+            "COLLECTION_STEAM_DISCOVERY_LIMIT",
+            1,
+        ),
+        periodic_job_status.parse_integer(
+            os.environ.get("COLLECTION_STEAM_DISCOVERY_PAGES", "4"),
+            "COLLECTION_STEAM_DISCOVERY_PAGES",
+            1,
+        ),
     )
     failed_steps = [result["name"] for result in results if result["exitCode"] != 0]
     summary = {
@@ -200,7 +210,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--catalog-batch-size",
-        default=os.environ.get("COLLECTION_CATALOG_BATCH_SIZE", "20"),
+        default=os.environ.get("COLLECTION_CATALOG_BATCH_SIZE", "30"),
     )
     parser.add_argument(
         "--once",

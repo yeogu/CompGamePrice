@@ -30,6 +30,7 @@ def parse_results(raw: bytes, limit: int = 10) -> list[dict]:
                 "store": "Apple App Store",
                 "externalProductId": str(track_id),
                 "title": title,
+                "imageUrl": product.get("artworkUrl512") or product.get("artworkUrl100", ""),
                 "developer": product.get("sellerName", ""),
                 "priceMinor": product.get("price"),
                 "currency": product.get("currency", ""),

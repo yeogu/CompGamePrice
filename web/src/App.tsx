@@ -2,6 +2,7 @@ import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react'
 import { addAlertRule, addFavorite, confirmPasswordReset, deleteAlertRule, deleteFavorite, disconnectCatalogProduct, getAdminHealthSummary, getAlertRules, getCatalogAdminStatus, getCatalogChangeAudits, getCatalogCollectionJob, getCatalogFilters, getCatalogPriceIntegrity, getCatalogSyncJob, getCollectionRuns, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getMetadataSyncStatus, getMobileCatalogSyncJob, getNotifications, getPreferences, importAppleCatalogGame, importGooglePlayCatalogGame, importSteamCatalogGame, importStorefrontCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, requestPasswordReset, resolveCatalogSyncReview, resolveMetadataReview, resolveMobileCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, startMetadataSync, startMobileCatalogSync, updateCatalogGameMetadata, updatePreferences } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
 import { GameCatalogView, GameDetailView } from './GameViews'
+import GameArtwork from './GameArtwork'
 import { PlatformBadge, StoreBadge } from './VisualBadges'
 import { gameDetailPath, gameIdFromLocation } from './gameRoutes'
 import type { AdminHealthSummary, AlertRule, AlertRuleType, CatalogAdminResult, CatalogChangeAudit, CatalogCollectionJob, CatalogFilterOptions, CatalogMetadataUpdateResult, CatalogPriceIntegrity, CatalogPriceIntegrityIssue, CatalogSyncJob, CollectionRun, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSort, GameSummary, MetadataSyncStatus, MobileCatalogSyncJob, MobileCatalogSyncReview, Money, Notification, StoreProductCandidate, User, UserPreferences } from './types'
@@ -13,17 +14,14 @@ const formatMoney = (money: Money) =>
     maximumFractionDigits: 0,
   }).format(money.minorAmount)
 
-const formatCatalogPrice = (game: GameSummary) => {
+const catalogPriceStatus = (game: GameSummary) => {
   if (game.priceStatus === 'Stale') {
     return '가격 갱신 필요'
   }
   if (game.priceStatus !== 'Available' || !game.lowestPrice) {
     return '가격 수집 중'
   }
-  const discount = game.maxDiscountPercent
-    ? `${game.maxDiscountPercent}% 할인`
-    : '할인 없음'
-  return `최저 ${formatMoney(game.lowestPrice)} · ${discount}`
+  return formatMoney(game.lowestPrice)
 }
 
 const recommendationLabel: Record<string, string> = {
@@ -51,6 +49,16 @@ const jobStatusLabel: Record<string, string> = {
   PARTIAL_FAILURE: '일부 실패',
   FAILED: '실패',
 }
+
+const percentage = (value: number, total: number) => {
+  if (total === 0) {
+    return '기록 없음'
+  }
+  return `${Math.round((value / total) * 100)}%`
+}
+
+const catalogAttemptCount = (store: AdminHealthSummary['stores'][number]) =>
+  store.catalogAccepted + store.catalogReview + store.catalogSkippedOrRejected + store.catalogFailed
 
 const formatJobTime = (value?: string | null) => value
   ? new Date(value).toLocaleString('ko-KR')
@@ -1374,6 +1382,7 @@ function App() {
                 role="option"
                 type="button"
               >
+                <GameArtwork imageUrl={game.imageUrl} title={game.title} />
                 <strong>{game.title}</strong>
                 <span>{game.platforms.join(' · ')}</span>
               </button>)}
@@ -1445,7 +1454,7 @@ function App() {
                 <strong>{game.title}</strong>
                 <small className="platform-badge-list catalog-platform-icons">{game.platforms.map((platform) => <PlatformBadge compact iconOnly key={platform} platform={platform} />)}</small>
                 <span>{game.genres.join(' · ') || '장르 정보 수집 중'}</span>
-                <em>{formatCatalogPrice(game)}</em>
+                <span className="catalog-price-row"><em>{catalogPriceStatus(game)}</em>{game.priceStatus === 'Available' && game.maxDiscountPercent !== undefined && game.maxDiscountPercent > 0 && <b>-{game.maxDiscountPercent}%</b>}</span>
               </button>
             ))}
           </div>
@@ -1687,6 +1696,7 @@ function App() {
           <button className={adminSection === 'audit' ? 'active' : ''} onClick={() => selectAdminSection('audit')}>변경 기록</button>
         </nav>
         {adminSection === 'dashboard' && <div className="admin-dashboard"><div><h2>운영 상태</h2><p>Store 작업을 시작하기 전에 데이터와 알림 상태를 확인합니다.</p></div>{adminHealth && <><section className="admin-health-grid" aria-label="운영 상태 요약"><article><strong>메타데이터 완성률</strong><span>{adminHealth.metadata.complete} / {adminHealth.metadata.total}</span><small>보완 필요 {adminHealth.metadata.incomplete}개</small></article><article><strong>최근 수집 실패</strong><span>{adminHealth.collection.recentFailures}건</span><small>{adminHealth.collection.lastFailure ? `${adminHealth.collection.lastFailure.store} · ${adminHealth.collection.lastFailure.error ?? '원인 없음'}` : '실패 없음'}</small></article><article><strong>가격 알림 메일</strong><span>대기 {adminHealth.notifications.pending} · 재시도 {adminHealth.notifications.retryable}</span><small>재시도 소진 {adminHealth.notifications.exhausted}건</small></article><article><strong>계정 이메일</strong><span>대기 {adminHealth.emails.pending} · 재시도 {adminHealth.emails.retryable}</span><small>{adminHealth.emails.lastError ? `최근 오류: ${adminHealth.emails.lastError}` : `발송 완료 ${adminHealth.emails.sent}건 · 실패 없음`}</small></article><article><strong>자동 가격 수집</strong><span>{jobStatusLabel[adminHealth.automation.collection.status] ?? adminHealth.automation.collection.status}</span><small>{adminHealth.automation.collection.status === 'DISABLED' ? '.env에서 COLLECTION_ENABLED=true로 재개할 수 있습니다.' : `마지막 완료 ${formatJobTime(adminHealth.automation.collection.lastFinishedAt)} · 다음 ${formatJobTime(adminHealth.automation.collection.nextRunAt)}`}</small><small>worker 확인 {formatJobTime(adminHealth.automation.collection.updatedAt)}</small>{adminHealth.automation.collection.failedSteps?.length ? <small className="warning">실패 단계 {adminHealth.automation.collection.failedSteps.join(', ')}</small> : null}</article><article><strong>자동 백업</strong><span>{jobStatusLabel[adminHealth.automation.backup.status] ?? adminHealth.automation.backup.status}</span><small>{adminHealth.automation.backup.lastBackup ? `최근 파일 ${adminHealth.automation.backup.lastBackup}` : `마지막 완료 ${formatJobTime(adminHealth.automation.backup.lastFinishedAt)}`}</small><small>worker 확인 {formatJobTime(adminHealth.automation.backup.updatedAt)}</small>{adminHealth.automation.backup.error ? <small className="warning">{adminHealth.automation.backup.error}</small> : null}</article></section><section className="store-quality-grid" aria-label="Store별 데이터 품질">{adminHealth.stores.filter((store) => store.registeredProducts > 0 || store.pendingReviews > 0 || store.catalogProcessed > 0).map((store) => <article key={store.store}><header><StoreBadge compact store={collectionStoreName(store.store)} /><span>{store.registeredProducts}개 상품</span></header><div><span>최신 가격 <strong>{store.freshPrices}</strong></span><span className={store.stalePrices > 0 ? 'warning' : ''}>오래된 가격 <strong>{store.stalePrices}</strong></span><span>검토 대기 <strong>{store.pendingReviews}</strong></span></div><div><span>최근 탐색 <strong>{store.catalogProcessed}</strong></span><span>자동 등록 <strong>{store.catalogAccepted}</strong></span><span>최근 7일 추가 <strong>{store.catalogAddedLast7Days}</strong></span></div><small>검토 {store.catalogReview} · 제외/건너뜀 {store.catalogSkippedOrRejected} · 실패 {store.catalogFailed}</small><small>{store.lastCatalogSyncAt ? `마지막 카탈로그 동기화 ${new Date(store.lastCatalogSyncAt).toLocaleString('ko-KR')}` : '카탈로그 동기화 기록 없음'}</small><small>{store.lastSuccessfulCollectionAt ? `마지막 가격 수집 성공 ${new Date(store.lastSuccessfulCollectionAt).toLocaleString('ko-KR')}` : '성공한 가격 수집 기록 없음'}</small></article>)}</section></>}<div className="admin-store-shortcuts"><button onClick={() => selectAdminSection('steam')}><StoreBadge compact label="Steam 관리" store="Steam" /></button><button onClick={() => selectAdminSection('epic-games')}><StoreBadge compact label="Epic Games 관리" store="Epic Games Store" /></button><button onClick={() => selectAdminSection('nintendo-eshop')}><StoreBadge compact label="Nintendo eShop 관리" store="Nintendo eShop" /></button><button onClick={() => selectAdminSection('google-play')}><StoreBadge compact label="Google Play 관리" store="Google Play" /></button><button onClick={() => selectAdminSection('apple-app-store')}><StoreBadge compact label="Apple App Store 관리" store="Apple App Store" /></button></div></div>}
+        {adminSection === 'dashboard' && adminHealth && <section className="catalog-reliability" aria-label="카탈로그 탐색 신뢰도"><header><h3>카탈로그 탐색 신뢰도</h3><p>실패율이 있는 Store부터 로그와 검토 대기를 확인하세요.</p></header>{adminHealth.stores.filter((store) => catalogAttemptCount(store) > 0).map((store) => <div key={store.store}><StoreBadge compact store={collectionStoreName(store.store)} /><span>자동 등록률 <strong>{percentage(store.catalogAccepted, catalogAttemptCount(store))}</strong></span><span className={store.catalogFailed > 0 ? 'warning' : ''}>실패율 <strong>{percentage(store.catalogFailed, catalogAttemptCount(store))}</strong></span><small>총 {catalogAttemptCount(store)}건 기준</small></div>)}</section>}
         {adminSection === 'steam' && <div className="admin-store-workspace"><header><StoreBadge store="Steam" /><div><h2>Steam</h2><p>PC 게임 발견, 메타데이터 보완, 상품 연결과 가격 수집을 관리합니다.</p></div></header>
         <article className="catalog-sync-panel">
           <div><h2>Steam 신원 메타데이터 보완</h2><p>비어 있는 개발사·퍼블리셔·장르는 자동 보완하고, 기존 신원 정보와 충돌하는 게임만 관리자에게 요청합니다.</p></div>
@@ -1751,7 +1761,7 @@ function App() {
           <input aria-label="Store 게임 이름" value={adminQuery} onChange={(event) => setAdminQuery(event.target.value)} placeholder="예: Sekiro" />
           <button disabled={!adminQuery.trim() || adminSearching} onClick={() => void searchCatalogCandidates()}>{adminSearching ? '검색 중…' : 'Store 검색'}</button>
         </div>}
-        {adminCandidates.length > 0 && <div className="candidate-list">{adminCandidates.map((candidate) => <button key={`${candidate.store}:${candidate.externalProductId}`} onClick={() => chooseCatalogCandidate(candidate)}><strong>{candidate.title}</strong><span className="candidate-badges"><StoreBadge compact store={candidate.store} />{candidate.platforms.map((platform) => <PlatformBadge compact key={platform} platform={platform} />)}</span>{candidate.platforms.length === 0 && <small>플랫폼 확인 필요</small>}{candidate.developer && <small>{candidate.developer}</small>}<small>상품 ID {candidate.externalProductId}{candidate.priceMinor !== undefined ? ` · ${candidate.priceMinor.toLocaleString('ko-KR')} ${candidate.currency}` : ''}</small></button>)}</div>}
+        {adminCandidates.length > 0 && <div className="candidate-list">{adminCandidates.map((candidate) => <button key={`${candidate.store}:${candidate.externalProductId}`} onClick={() => chooseCatalogCandidate(candidate)}><GameArtwork compact imageUrl={candidate.imageUrl} title={candidate.title} /><strong>{candidate.title}</strong><span className="candidate-badges"><StoreBadge compact store={candidate.store} />{candidate.platforms.map((platform) => <PlatformBadge compact key={platform} platform={platform} />)}</span>{candidate.platforms.length === 0 && <small>플랫폼 확인 필요</small>}{candidate.developer && <small>{candidate.developer}</small>}<small>상품 ID {candidate.externalProductId}{candidate.priceMinor !== undefined ? ` · ${candidate.priceMinor.toLocaleString('ko-KR')} ${candidate.currency}` : ''}</small></button>)}</div>}
         {pendingCandidate && !adminResult && <div className="candidate-confirmation">
           <div><strong>{pendingCandidate.title}</strong><span>상품 ID {pendingCandidate.externalProductId}</span></div>
           <label>영문 게임명 또는 Canonical Game ID
@@ -1782,7 +1792,7 @@ function App() {
           {adminImporting && <p className="admin-feedback progress" role="status">Store 상품을 확인하고 카탈로그에 연결하는 중입니다. 잠시만 기다려주세요.</p>}
           {adminError && <p className="admin-feedback error" role="alert"><strong>연결하지 못했습니다.</strong><span>{adminError}</span><small>Store 상품 페이지와 canonical Game ID를 확인한 뒤 다시 시도하세요.</small></p>}
           {adminResult.applied && !adminError && <p className="admin-feedback success" role="status"><strong>카탈로그 연결 완료</strong><span>{adminStore} 상품이 {adminResult.game.title}에 연결되었습니다.</span></p>}
-          {adminResult.game.matchDecision && <div className={`match-decision ${adminResult.game.matchDecision.status.toLowerCase()}`} role="status"><strong>{matchDecisionGuide[adminResult.game.matchDecision.status].title}</strong><p>{matchDecisionGuide[adminResult.game.matchDecision.status].summary}</p><div className="identity-comparison"><span>Canonical Game: {adminResult.game.title}<small>{adminResult.game.developers?.join(' · ') || '개발사 정보 없음'}</small></span><span>Store 상품: {adminResult.game.matchedProduct?.title || '상품명 정보 없음'}<small>{adminResult.game.matchedProduct?.developer || '개발사 정보 없음'}</small></span></div><h3>판정 근거</h3><ul>{adminResult.game.matchDecision.reasons.map((reason) => <li key={reason}>{matchReasonMessage(reason)}</li>)}</ul>{adminResult.game.matchDecision.status === 'NeedsReview' && <div className="admin-review-checklist"><h3>관리자가 확인할 항목</h3><ol><li>Store 링크에서 실제 게임 본편인지 확인</li><li>Standard Edition이며 DLC·Bundle·Demo가 아닌지 확인</li><li>개발사 또는 퍼블리셔가 공식 상품과 일치하는지 확인</li><li>확인이 끝났다면 아래 체크박스를 선택</li></ol><label><input type="checkbox" checked={reviewConfirmed} onChange={(event) => setReviewConfirmed(event.target.checked)} /> 위 항목을 직접 확인했으며 이 상품을 연결합니다.</label></div>}{adminResult.game.matchDecision.status === 'Rejected' && <p className="decision-action">이 후보를 제외하고 다른 Store 상품을 선택하세요.</p>}</div>}
+          {adminResult.game.matchDecision && <div className={`match-decision ${adminResult.game.matchDecision.status.toLowerCase()}`} role="status"><strong>{matchDecisionGuide[adminResult.game.matchDecision.status].title}</strong><p>{matchDecisionGuide[adminResult.game.matchDecision.status].summary}</p><div className="identity-comparison"><span><GameArtwork compact imageUrl={adminResult.game.imageUrl} title={adminResult.game.title} />Canonical Game: {adminResult.game.title}<small>{adminResult.game.developers?.join(' · ') || '개발사 정보 없음'}</small></span><span><GameArtwork compact imageUrl={adminResult.game.matchedProduct?.imageUrl ?? pendingCandidate?.imageUrl} title={adminResult.game.matchedProduct?.title || 'Store 상품'} />Store 상품: {adminResult.game.matchedProduct?.title || '상품명 정보 없음'}<small>{adminResult.game.matchedProduct?.developer || '개발사 정보 없음'}</small></span></div><h3>판정 근거</h3><ul>{adminResult.game.matchDecision.reasons.map((reason) => <li key={reason}>{matchReasonMessage(reason)}</li>)}</ul>{adminResult.game.matchDecision.status === 'NeedsReview' && <div className="admin-review-checklist"><h3>관리자가 확인할 항목</h3><ol><li>Store 링크에서 실제 게임 본편인지 확인</li><li>Standard Edition이며 DLC·Bundle·Demo가 아닌지 확인</li><li>개발사 또는 퍼블리셔가 공식 상품과 일치하는지 확인</li><li>확인이 끝났다면 아래 체크박스를 선택</li></ol><label><input type="checkbox" checked={reviewConfirmed} onChange={(event) => setReviewConfirmed(event.target.checked)} /> 위 항목을 직접 확인했으며 이 상품을 연결합니다.</label></div>}{adminResult.game.matchDecision.status === 'Rejected' && <p className="decision-action">이 후보를 제외하고 다른 Store 상품을 선택하세요.</p>}</div>}
           <section className="metadata-editor">
             <h3>Canonical Game 신원 정보</h3>
             <p>Store 상품의 개발사 또는 공식 퍼블리셔와 비교할 기준입니다. 쉼표로 여러 값을 구분하세요.</p>

@@ -129,6 +129,9 @@ Json::Value gameJson(const Game& game) {
     Json::Value json;
     json["id"] = game.id;
     json["title"] = game.title;
+    if (!game.imageUrl.empty()) {
+        json["imageUrl"] = game.imageUrl;
+    }
     json["platforms"] = Json::arrayValue;
     for (const auto platform : game.supportedPlatforms) {
         json["platforms"].append(toString(platform));

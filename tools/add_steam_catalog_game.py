@@ -109,6 +109,7 @@ def catalog_game(raw: bytes, app_id: str, game_id: str | None = None) -> dict:
     return {
         "id": resolved_game_id,
         "title": title.strip(),
+        "imageUrl": str(data.get("header_image", "")).strip(),
         "aliases": [],
         "developers": [
             value.strip()

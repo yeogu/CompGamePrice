@@ -23,7 +23,7 @@ class DailyOperationsTest(unittest.TestCase):
             self.assertIn("GAME_PRICE_CATALOG_PATH", environment)
             return {"name": name, "exitCode": next(exit_codes)}
 
-        with patch.object(daily_operations, "run_step", side_effect=fake_run):
+        with patch.object(daily_operations, "run_step", side_effect=fake_run) as run_step:
             results = daily_operations.run_operations(
                 ROOT,
                 ROOT / "build/game_price_tracker",
@@ -31,6 +31,14 @@ class DailyOperationsTest(unittest.TestCase):
                 ROOT / "snapshots/latest",
                 ROOT / "snapshots/outbox.jsonl",
             )
+
+        discovery = next(
+            command
+            for name, command, _ in [call.args for call in run_step.call_args_list]
+            if name == "steam-discovery"
+        )
+        self.assertIn("75", discovery)
+        self.assertIn("4", discovery)
 
         self.assertEqual(
             [result["name"] for result in results],

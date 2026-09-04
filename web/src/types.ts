@@ -1,6 +1,7 @@
 export interface GameSummary {
   id: string
   title: string
+  imageUrl?: string
   platforms: string[]
   genres: string[]
   tags: string[]
@@ -160,11 +161,12 @@ export interface CatalogAdminResult {
   game: {
     id: string
     title: string
+    imageUrl?: string
     platforms?: string[]
     developers?: string[]
     publishers?: string[]
     products: Array<{ store: string; productId: string; productUrl: string }>
-    matchedProduct?: { store: string; productId: string; productUrl?: string; title?: string; developer?: string; priceMinor?: number; currency?: string }
+    matchedProduct?: { store: string; productId: string; productUrl?: string; title?: string; developer?: string; priceMinor?: number; currency?: string; imageUrl?: string }
     matchDecision?: CatalogMatchDecision
   }
   applied: boolean
@@ -173,7 +175,7 @@ export interface CatalogAdminResult {
 export interface CatalogCollectionJob { id: number; store?: string; status: 'IDLE' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'; error?: string; integrityIssueCount?: number }
 export interface CatalogPriceIntegrityIssue { type: 'MISSING_PRICE' | 'STALE_PRICE' | 'NOT_PURCHASABLE' | 'PLATFORM_MISMATCH' | 'GAME_MISMATCH' | 'ORPHAN_PRICE'; severity: 'ERROR' | 'WARNING'; store: string; productId: string; gameId: string; gameTitle: string; reason: string; productUrl?: string }
 export interface CatalogPriceIntegrity { checkedAt: string; catalogProductCount: number; issueCount: number; counts: Record<string, number>; issues: CatalogPriceIntegrityIssue[] }
-export interface StoreProductCandidate { store: string; externalProductId: string; title: string; productUrl: string; platforms: string[]; developer?: string; priceMinor?: number; currency?: string }
+export interface StoreProductCandidate { store: string; externalProductId: string; title: string; productUrl: string; platforms: string[]; developer?: string; priceMinor?: number; currency?: string; imageUrl?: string }
 export interface CatalogSyncReview { externalProductId: string; title: string; reason: string; status: 'PENDING' | 'APPROVED' | 'REJECTED'; createdAt: string }
 export interface MobileCatalogSyncReview extends CatalogSyncReview { gameId: string; decision: CatalogMatchStatus; productUrl?: string }
 export interface MobileCatalogSyncFailure { gameId: string; title?: string; reason: string }
