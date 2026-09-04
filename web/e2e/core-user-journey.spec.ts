@@ -59,6 +59,17 @@ test('platform and store information uses readable visual badges', async ({ page
   await expect(page.locator('[data-store="Google Play"]').first()).toBeVisible()
 })
 
+test('catalog cards show accessible platform icons without platform text', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('빠른 플랫폼 탐색').getByRole('button', { name: 'Switch 2' }).click()
+
+  const hadesCard = page.getByRole('button', { name: /Hades/ })
+  const switchIcon = hadesCard.locator('[data-platform="Nintendo Switch 2"]')
+  await expect(switchIcon).toHaveAttribute('aria-label', 'Nintendo Switch 2')
+  await expect(switchIcon).toHaveClass(/icon-only/)
+  await expect(switchIcon.locator('span')).toHaveText('2')
+})
+
 test('platform filtering preserves the current scroll position', async ({ page }) => {
   await page.goto('/games/stardew-valley')
   const platformFilter = page.getByLabel('플랫폼 필터')

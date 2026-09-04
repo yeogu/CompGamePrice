@@ -57,6 +57,9 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .platform-badge, .visual-store-badge { display: inline-flex; align-items: center; width: fit-content; gap: 6px; padding: 6px 9px; color: #dcebe3; background: #17271f; border: 1px solid #315141; border-radius: 999px; font-size: .74rem; font-weight: 800; line-height: 1; white-space: nowrap; }
 .platform-badge.compact, .visual-store-badge.compact { padding: 5px 8px; font-size: .68rem; }
 .platform-badge svg, .visual-store-badge svg { flex: 0 0 auto; }
+.platform-badge.icon-only { position: relative; justify-content: center; width: 28px; height: 28px; padding: 0; }
+.platform-marker { position: absolute; right: -3px; bottom: -3px; display: grid; place-items: center; min-width: 14px; height: 14px; padding: 0 2px; color: #fff; background: #07110d; border: 1px solid currentColor; border-radius: 999px; font-size: .5rem; line-height: 1; }
+.catalog-platform-icons { min-height: 28px; }
 .platform-badge.windows { color: #8bd3ff; border-color: #285c78; background: #102632; }
 .platform-badge.macos, .platform-badge.ios, .platform-badge.ipados { color: #e6e8ee; border-color: #555c66; background: #25292f; }
 .platform-badge.linux { color: #f4c86a; border-color: #665328; background: #2b2516; }

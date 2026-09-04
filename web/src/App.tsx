@@ -1443,7 +1443,7 @@ function App() {
                 onClick={() => void selectGame(game)}
               >
                 <strong>{game.title}</strong>
-                <small className="platform-badge-list">{game.platforms.map((platform) => <PlatformBadge compact key={platform} platform={platform} />)}</small>
+                <small className="platform-badge-list catalog-platform-icons">{game.platforms.map((platform) => <PlatformBadge compact iconOnly key={platform} platform={platform} />)}</small>
                 <span>{game.genres.join(' · ') || '장르 정보 수집 중'}</span>
                 <em>{formatCatalogPrice(game)}</em>
               </button>
