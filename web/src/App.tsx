@@ -1626,7 +1626,7 @@ function App() {
         <h1 className="view-title">관심 게임</h1>
         <p className="view-description">자주 확인하는 게임을 모아두고 가격 상세로 바로 이동하세요.</p>
         {favorites.length === 0 && <p className="empty-state">아직 관심 게임이 없습니다.</p>}
-        <div className="game-list">{favorites.map((game) => <button key={game.id} onClick={() => { navigate('games'); setShowGameResults(true); setGames([game]); setQuery(game.title); void selectGame(game) }}><strong>{game.title}</strong><small>{game.platforms.join(' · ')}</small></button>)}</div>
+        <div className="game-list">{favorites.map((game) => <button key={game.id} onClick={() => { navigate('games'); setShowGameResults(true); setGames([game]); setQuery(game.title); void selectGame(game) }}><strong>{game.title}</strong><small className="platform-badge-list catalog-platform-icons">{game.platforms.map((platform) => <PlatformBadge compact iconOnly key={platform} platform={platform} />)}</small></button>)}</div>
       </section>}
 
       {activeView === 'alerts' && user && <section className="view-panel">

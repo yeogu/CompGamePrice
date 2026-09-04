@@ -181,6 +181,14 @@ test('user can search, inspect prices, create an alert, and log out', async ({ p
   await page.getByRole('button', { name: '가입하기' }).click()
   await expect(page.getByText('browser-flow@example.com').first()).toBeVisible()
 
+  await page.getByRole('button', { name: '☆ 관심 게임 추가' }).click()
+  await page.locator('.sidebar nav').getByRole('button', { name: /관심 게임/ }).click()
+  const favoriteCard = page.getByRole('button', { name: /Hades/ })
+  const favoritePlatform = favoriteCard.locator('[data-platform="Nintendo Switch 2"]')
+  await expect(favoritePlatform).toHaveClass(/icon-only/)
+  await expect(favoritePlatform).toHaveAttribute('aria-label', 'Nintendo Switch 2')
+  await favoriteCard.click()
+
   await page.getByPlaceholder('목표 가격(KRW)').fill('20000')
   await page.getByRole('button', { name: '목표가 알림' }).click()
   await expect(page.getByText('알림 규칙을 등록했습니다.')).toBeVisible()
