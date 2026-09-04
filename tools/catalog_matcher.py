@@ -52,23 +52,41 @@ def normalized_organization(value: str) -> str:
     return " ".join(words)
 
 
+def price_status(offer: dict) -> str:
+    price_minor = offer.get("priceMinor")
+    currency = offer.get("currency", "")
+    if price_minor is None and not currency:
+        return "PRICE_UNKNOWN"
+    if currency != "KRW" or not isinstance(price_minor, int) or price_minor < 0:
+        return "INVALID"
+    if price_minor == 0:
+        return "FREE"
+    return "PAID"
+
+
 def evaluate(game: dict, offer: dict) -> dict:
     reasons = []
     rejected = False
+    needs_review = False
     if not offer["isGame"]:
         reasons.append("Store category is not a game")
         rejected = True
     if not offer["supportsTargetPlatform"]:
         reasons.append("Product does not support the target platform")
         rejected = True
-    price_minor = offer.get("priceMinor")
-    currency = offer.get("currency", "")
-    price_missing = price_minor is None and not currency
-    if price_missing and offer.get("allowMissingPrice"):
+    offer_price_status = price_status(offer)
+    if offer_price_status == "PRICE_UNKNOWN" and offer.get("allowMissingPrice"):
         reasons.append("Price is unavailable during catalog review")
-    elif currency != "KRW" or not isinstance(price_minor, int) or price_minor <= 0:
-        reasons.append("Product is not a paid KRW purchase")
+    elif offer_price_status == "PRICE_UNKNOWN":
+        reasons.append("Price could not be verified")
+        needs_review = True
+    elif offer_price_status == "INVALID":
+        reasons.append("Product price or currency is invalid")
         rejected = True
+    elif offer_price_status == "FREE":
+        reasons.append("Store explicitly identifies this game as free")
+    else:
+        reasons.append("Store identifies this game as a paid KRW purchase")
     if offer["excludedWords"]:
         reasons.append("Title indicates guide, demo, companion, or media content")
         rejected = True
@@ -118,7 +136,7 @@ def evaluate(game: dict, offer: dict) -> dict:
 
     if rejected or not title_source:
         status = "Rejected"
-    elif title_source and (developer_matches or publisher_matches):
+    elif title_source and (developer_matches or publisher_matches) and not needs_review:
         status = "ApprovedCandidate"
     else:
         status = "NeedsReview"
@@ -128,4 +146,5 @@ def evaluate(game: dict, offer: dict) -> dict:
         "titleMatchSource": title_source,
         "developerMatched": developer_matches,
         "publisherMatched": publisher_matches,
+        "priceStatus": offer_price_status,
     }

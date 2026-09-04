@@ -44,6 +44,13 @@ class AppleCollectorTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "currency"):
             apple_collector.normalized_row(raw, "1406710800", "stardew-valley")
 
+    def test_preserves_explicit_free_price(self):
+        raw = b'{"resultCount":1,"results":[{"trackId":100,"currency":"KRW","price":0,"supportedDevices":["iPhone"]}]}'
+        self.assertEqual(
+            apple_collector.normalized_row(raw, "100", "free-game"),
+            "100,free-game,0,IPHONE,true",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

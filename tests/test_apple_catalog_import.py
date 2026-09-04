@@ -44,10 +44,19 @@ class AppleCatalogImportTest(unittest.TestCase):
         metadata = catalog_import.apple_product(json.dumps(document).encode(), "1406710800")
         self.assertEqual(metadata["platforms"], ["iOS"])
 
-    def test_rejects_free_wrong_currency_and_guide(self):
+    def test_accepts_explicit_free_game(self):
+        metadata = catalog_import.apple_product(self.raw, "1406710800")
+        metadata["priceMinor"] = 0
+        decision = catalog_import.catalog_matcher.evaluate(
+            self.catalog["games"][0],
+            metadata,
+        )
+        self.assertEqual(decision["status"], "ApprovedCandidate")
+        self.assertEqual(decision["priceStatus"], "FREE")
+
+    def test_rejects_wrong_currency_and_guide(self):
         metadata = catalog_import.apple_product(self.raw, "1406710800")
         for change in [
-            {"priceMinor": 0},
             {"currency": "USD"},
             {"title": "Stardew Valley Guide", "excludedWords": ["guide"]},
         ]:
@@ -56,6 +65,17 @@ class AppleCatalogImportTest(unittest.TestCase):
                 {**metadata, **change},
             )
             self.assertEqual(decision["status"], "Rejected")
+
+    def test_unknown_price_requires_review(self):
+        metadata = catalog_import.apple_product(self.raw, "1406710800")
+        metadata["priceMinor"] = None
+        metadata["currency"] = ""
+        decision = catalog_import.catalog_matcher.evaluate(
+            self.catalog["games"][0],
+            metadata,
+        )
+        self.assertEqual(decision["status"], "NeedsReview")
+        self.assertEqual(decision["priceStatus"], "PRICE_UNKNOWN")
 
     def test_rejects_developer_mismatch_and_cross_game_track_id(self):
         metadata = catalog_import.apple_product(self.raw, "1406710800")

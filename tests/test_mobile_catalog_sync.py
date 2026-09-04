@@ -110,6 +110,50 @@ class MobileCatalogSyncTest(unittest.TestCase):
         self.assertIn("iOS", game["platforms"])
         self.assertEqual(game["products"][0]["store"], "AppleAppStore")
 
+    def test_explicit_free_mobile_game_is_connected(self):
+        def free_metadata(raw, product_id):
+            result = approved_metadata(raw, product_id)
+            result["priceMinor"] = 0
+            return result
+
+        report = sync.synchronize_provider(
+            self.catalog,
+            self.database,
+            "GooglePlay",
+            10,
+            searcher=lambda query, limit, timeout: [{
+                "externalProductId": "com.example.freegame",
+                "title": query,
+            }],
+            fetcher=lambda product_id, timeout: b"product",
+            metadata_parser=free_metadata,
+        )
+
+        self.assertEqual(report["autoConnected"], 1)
+
+    def test_unknown_mobile_price_requires_manual_review(self):
+        def unknown_price_metadata(raw, product_id):
+            result = approved_metadata(raw, product_id)
+            result["priceMinor"] = None
+            result["currency"] = ""
+            return result
+
+        report = sync.synchronize_provider(
+            self.catalog,
+            self.database,
+            "AppleAppStore",
+            10,
+            searcher=lambda query, limit, timeout: [{
+                "externalProductId": "100",
+                "title": query,
+            }],
+            fetcher=lambda product_id, timeout: b"product",
+            metadata_parser=unknown_price_metadata,
+        )
+
+        self.assertEqual(report["autoConnected"], 0)
+        self.assertEqual(report["needsReview"], 1)
+
     def test_approved_nintendo_candidate_is_connected_to_korean_eshop(self):
         def nintendo_metadata(raw, product_id):
             del raw

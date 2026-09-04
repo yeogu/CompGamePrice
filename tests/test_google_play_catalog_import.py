@@ -119,6 +119,33 @@ class GooglePlayCatalogImportTest(unittest.TestCase):
         decision = catalog_import.catalog_matcher.evaluate(self.catalog["games"][0], metadata)
         self.assertEqual(decision["status"], "Rejected")
 
+    def test_accepts_explicit_free_game(self):
+        metadata = catalog_import.verified_product(
+            self.raw,
+            "com.chucklefish.stardewvalley",
+        )
+        metadata["priceMinor"] = 0
+        decision = catalog_import.catalog_matcher.evaluate(
+            self.catalog["games"][0],
+            metadata,
+        )
+        self.assertEqual(decision["status"], "ApprovedCandidate")
+        self.assertEqual(decision["priceStatus"], "FREE")
+
+    def test_unknown_price_is_not_connected_automatically(self):
+        metadata = catalog_import.verified_product(
+            self.raw,
+            "com.chucklefish.stardewvalley",
+        )
+        metadata["priceMinor"] = None
+        metadata["currency"] = ""
+        decision = catalog_import.catalog_matcher.evaluate(
+            self.catalog["games"][0],
+            metadata,
+        )
+        self.assertEqual(decision["status"], "NeedsReview")
+        self.assertEqual(decision["priceStatus"], "PRICE_UNKNOWN")
+
     def test_apply_preserves_backup(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "catalog.json"

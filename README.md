@@ -303,6 +303,12 @@ Preview 결과의 `잘못 연결된 상품 되돌리기`를 사용할 수 있습
 실행되며, 실제 최신 가격이 없는 Store·플랫폼 상품은 일반 게임 목록에 노출되지
 않습니다.
 
+모바일 Store 후보는 가격과 게임 정체성을 별도로 판정합니다. Store가 KRW 0원을
+명시하면 `FREE`인 정상 게임 상품으로 연결할 수 있고, 양수 가격은 `PAID`로
+처리합니다. 가격 필드를 확인하지 못한 `PRICE_UNKNOWN` 후보는 무료로 간주하지 않고
+관리자 검토 대상으로 남깁니다. 잘못된 통화·음수 등은 `INVALID`, 수집 후 판매 중지된
+상품은 기존 구매 가능 상태를 통해 `UNAVAILABLE`로 구분합니다.
+
 ```bash
 python3 tools/sync_mobile_catalog.py --store GooglePlay --batch-size 10
 python3 tools/sync_mobile_catalog.py --store AppleAppStore --batch-size 10

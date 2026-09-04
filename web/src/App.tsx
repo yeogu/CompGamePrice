@@ -193,6 +193,17 @@ const integrityIssueLabel = (issue: CatalogPriceIntegrityIssue) => {
   return labels[issue.type]
 }
 
+const catalogPriceStatusLabel = (status?: string) => {
+  const labels: Record<string, string> = {
+    PAID: '유료 구매',
+    FREE: '무료 게임',
+    PRICE_UNKNOWN: '가격 확인 필요',
+    UNAVAILABLE: '구매 불가',
+    INVALID: '가격 정보 오류',
+  }
+  return status ? labels[status] ?? status : ''
+}
+
 function App() {
   const [query, setQuery] = useState('')
   const [games, setGames] = useState<GameSummary[]>([])
@@ -1668,7 +1679,8 @@ function App() {
           <p><strong>{adminStore} 상품 ID</strong> {adminResult.game.matchedProduct?.productId ?? adminAppId}</p>
           {pendingCandidate?.productUrl && <p><a href={pendingCandidate.productUrl} target="_blank" rel="noreferrer">Store 상품 페이지에서 직접 확인 ↗</a></p>}
           {adminResult.game.matchedProduct?.developer && <p><strong>개발사</strong> {adminResult.game.matchedProduct.developer}</p>}
-          {adminResult.game.matchedProduct?.priceMinor !== undefined && <p><strong>현재 가격</strong> {adminResult.game.matchedProduct.priceMinor.toLocaleString('ko-KR')} {adminResult.game.matchedProduct.currency}</p>}
+          {adminResult.game.matchDecision?.priceStatus && <p><strong>가격 상태</strong> {catalogPriceStatusLabel(adminResult.game.matchDecision.priceStatus)}</p>}
+          {adminResult.game.matchedProduct?.priceMinor !== undefined && adminResult.game.matchedProduct.priceMinor !== null && <p><strong>현재 가격</strong> {adminResult.game.matchedProduct.priceMinor === 0 ? '무료' : `${adminResult.game.matchedProduct.priceMinor.toLocaleString('ko-KR')} ${adminResult.game.matchedProduct.currency}`}</p>}
           {adminImporting && <p className="admin-feedback progress" role="status">Store 상품을 확인하고 카탈로그에 연결하는 중입니다. 잠시만 기다려주세요.</p>}
           {adminError && <p className="admin-feedback error" role="alert"><strong>연결하지 못했습니다.</strong><span>{adminError}</span><small>Store 상품 페이지와 canonical Game ID를 확인한 뒤 다시 시도하세요.</small></p>}
           {adminResult.applied && !adminError && <p className="admin-feedback success" role="status"><strong>카탈로그 연결 완료</strong><span>{adminStore} 상품이 {adminResult.game.title}에 연결되었습니다.</span></p>}

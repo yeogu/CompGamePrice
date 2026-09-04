@@ -68,6 +68,12 @@ class GooglePlayCollectorTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "currency"):
             collector.normalized_block(raw, "package", "game")
 
+    def test_preserves_explicit_free_price(self):
+        raw = b'<script type="application/ld+json">{"@type":"SoftwareApplication","offers":{"price":"0","priceCurrency":"KRW"}}</script>'
+        result = collector.normalized_block(raw, "free.package", "free-game")
+        self.assertIn("price_micros=0", result)
+        self.assertIn("published=true", result)
+
 
 if __name__ == "__main__":
     unittest.main()
