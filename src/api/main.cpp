@@ -2502,30 +2502,39 @@ int main() {
                     Store::Steam,
                     Store::EpicGamesStore,
                     Store::NintendoEShop,
+                    Store::PlayStationStore,
+                    Store::MicrosoftStore,
                     Store::GooglePlay,
                     Store::AppleAppStore};
-                std::set<std::string> platforms;
+                const std::vector<Platform> supportedPlatforms{
+                    Platform::Windows,
+                    Platform::MacOS,
+                    Platform::Linux,
+                    Platform::Android,
+                    Platform::IOS,
+                    Platform::IPadOS,
+                    Platform::NintendoSwitch,
+                    Platform::NintendoSwitch2,
+                    Platform::PlayStation4,
+                    Platform::PlayStation5,
+                    Platform::XboxOne,
+                    Platform::XboxSeries};
                 std::set<std::string> genres;
                 std::set<std::string> tags;
                 Json::Value response;
                 response["stores"] = Json::arrayValue;
                 for (const auto store : supportedStores) {
-                    if (!catalog.storeProducts(store).empty()) {
-                        response["stores"].append(toString(store));
-                    }
+                    response["stores"].append(toString(store));
                 }
                 for (const auto& game : catalog.allGames()) {
-                    for (const auto platform : game.supportedPlatforms) {
-                        platforms.insert(toString(platform));
-                    }
                     genres.insert(game.genres.begin(), game.genres.end());
                     tags.insert(game.tags.begin(), game.tags.end());
                 }
                 response["platforms"] = Json::arrayValue;
                 response["genres"] = Json::arrayValue;
                 response["tags"] = Json::arrayValue;
-                for (const auto& platform : platforms) {
-                    response["platforms"].append(platform);
+                for (const auto platform : supportedPlatforms) {
+                    response["platforms"].append(toString(platform));
                 }
                 for (const auto& genre : genres) {
                     response["genres"].append(genre);

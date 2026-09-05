@@ -292,7 +292,13 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/catalog/filters")
 [[ "${status}" == "200" ]]
 grep -q '"stores":.*"Steam"' "${response_body}"
+grep -q '"stores":.*"PlayStation Store"' "${response_body}"
+grep -q '"stores":.*"Microsoft Store"' "${response_body}"
 grep -q '"platforms":.*"Nintendo Switch 2"' "${response_body}"
+grep -q '"platforms":.*"PlayStation 4"' "${response_body}"
+grep -q '"platforms":.*"PlayStation 5"' "${response_body}"
+grep -q '"platforms":.*"Xbox One"' "${response_body}"
+grep -q '"platforms":.*"Xbox Series X|S"' "${response_body}"
 grep -q '"genres":.*"Simulation"' "${response_body}"
 grep -q '"tags":.*"Farming"' "${response_body}"
 
