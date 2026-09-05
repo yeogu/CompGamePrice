@@ -225,6 +225,10 @@ if(BUILD_TESTING)
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_playstation_catalog_search.py
         )
         add_test(
+            NAME microsoft_catalog_search_tests
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_microsoft_catalog_search.py
+        )
+        add_test(
             NAME storefront_catalog_tests
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_storefront_catalog.py
         )

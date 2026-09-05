@@ -15,6 +15,7 @@ import add_google_play_catalog_game as google_import
 import add_storefront_catalog_game as storefront_import
 import search_apple_catalog as apple_search
 import search_google_play_catalog as google_search
+import search_microsoft_catalog as microsoft_search
 import search_playstation_catalog as playstation_search
 import sync_steam_catalog as catalog_sync
 import catalog_matcher
@@ -75,6 +76,21 @@ STORE_CONFIG = {
                 catalog,
                 "PlayStationStore",
                 f"https://store.playstation.com/ko-kr/product/{product_id}",
+                game_id,
+                metadata,
+            )
+        ),
+    },
+    "MicrosoftStore": {
+        "catalogStore": "MicrosoftStore",
+        "search": microsoft_search.search,
+        "fetch": microsoft_search.fetch_product,
+        "metadata": microsoft_search.verified_product,
+        "update": lambda catalog, game_id, product_id, metadata: (
+            storefront_import.updated_catalog(
+                catalog,
+                "MicrosoftStore",
+                microsoft_search.XBOX_PRODUCT_URL.format(product_id=product_id),
                 game_id,
                 metadata,
             )

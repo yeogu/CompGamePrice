@@ -688,7 +688,7 @@ Store별 최대 시도 횟수를 설정할 수 있고, 실패한 각 시도도 �
 
 관리자 카탈로그 화면은 Steam, Epic Games Store, Nintendo eShop,
 Google Play, Apple App Store, PlayStation Store, Microsoft Store를 Store별 탭으로
-구분한다. Nintendo와 PlayStation은 공식 Store 카탈로그에서 후보를 제한된 배치로
+구분한다. Nintendo, PlayStation, Microsoft Store는 공식 Store 카탈로그에서 후보를 제한된 배치로
 자동 탐색하고, Epic은 공식 검색에서 복사한 상품 URL을 입력한다. 이후
 상품 페이지의 구조화 데이터를 다시 읽어 canonical Game의 제목·개발사와
 비교한다. 외부 도메인의 임의 URL은 거부되며,
@@ -708,6 +708,9 @@ PlayStation 후보 탐색은 한국 Store의 PS4·PS5 카탈로그를 페이지�
 세대별 최대 10페이지까지만 읽는다. `FULL_GAME` 상품만 후보로 사용하고 번들·DLC와
 구독 전용 상품은 자동 연결하지 않는다. 첫 실행은 전체 색인을 만드는 데 약 1분이
 걸릴 수 있으며, 같은 실행 안의 다음 게임부터는 메모리 색인을 재사용한다.
+Microsoft Store 후보 탐색은 Xbox 공식 검색과 한국 Display Catalog를 사용한다.
+`Game` 상품 중 Xbox One 또는 Xbox Series X|S를 지원하고 KRW 구매 가격이 확인된
+상품만 자동 연결 대상으로 삼으며, DLC·소모품과 구독 라이선스는 제외한다.
 
 개별 파이프라인은 다음처럼 실행한다.
 

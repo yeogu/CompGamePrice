@@ -218,6 +218,35 @@ class MobileCatalogSyncTest(unittest.TestCase):
         self.assertIn("PlayStation5", game["platforms"])
         self.assertEqual(game["products"][0]["store"], "PlayStationStore")
 
+    def test_approved_microsoft_candidate_keeps_detected_generations(self):
+        def microsoft_metadata(raw, product_id):
+            del raw
+            return {
+                **approved_metadata(b"", product_id),
+                "productId": product_id,
+                "platforms": ["XboxOne", "XboxSeries"],
+            }
+
+        report = sync.synchronize_provider(
+            self.catalog,
+            self.database,
+            "MicrosoftStore",
+            10,
+            searcher=lambda query, limit, timeout: [{
+                "externalProductId": "9P8DL6W0JBB8",
+                "title": query,
+                "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9P8DL6W0JBB8",
+            }],
+            fetcher=lambda product_id, timeout: b"product",
+            metadata_parser=microsoft_metadata,
+        )
+
+        self.assertEqual(report["autoConnected"], 1)
+        game = json.loads(self.catalog.read_text(encoding="utf-8"))["games"][0]
+        self.assertIn("XboxOne", game["platforms"])
+        self.assertIn("XboxSeries", game["platforms"])
+        self.assertEqual(game["products"][0]["store"], "MicrosoftStore")
+
     def test_uncertain_candidate_remains_in_manual_review(self):
         def incomplete_metadata(raw, product_id):
             result = approved_metadata(raw, product_id)

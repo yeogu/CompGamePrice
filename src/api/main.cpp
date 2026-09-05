@@ -2155,7 +2155,8 @@ int main() {
                 const auto store = request->getParameter("store");
                 if (store != "GooglePlay" && store != "AppleAppStore" &&
                     store != "NintendoEShop" &&
-                    store != "PlayStationStore") {
+                    store != "PlayStationStore" &&
+                    store != "MicrosoftStore") {
                     callback(jsonError(
                         drogon::k400BadRequest,
                         "unsupported catalog discovery store"));
@@ -2188,7 +2189,8 @@ int main() {
                     : 10;
                 if ((store != "GooglePlay" && store != "AppleAppStore" &&
                      store != "NintendoEShop" &&
-                     store != "PlayStationStore") ||
+                     store != "PlayStationStore" &&
+                     store != "MicrosoftStore") ||
                     batchSize < 1 || batchSize > 100) {
                     callback(jsonError(
                         drogon::k400BadRequest,
@@ -2224,7 +2226,8 @@ int main() {
                     : std::string{};
                 if ((store != "GooglePlay" && store != "AppleAppStore" &&
                      store != "NintendoEShop" &&
-                     store != "PlayStationStore") ||
+                     store != "PlayStationStore" &&
+                     store != "MicrosoftStore") ||
                     (resolution != "APPROVED" && resolution != "REJECTED")) {
                     callback(jsonError(
                         drogon::k400BadRequest,

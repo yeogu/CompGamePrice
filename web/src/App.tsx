@@ -173,6 +173,9 @@ const catalogProviderLabel = (provider: MobileCatalogSyncJob['provider']) => {
   if (provider === 'PlayStationStore') {
     return 'PlayStation Store'
   }
+  if (provider === 'MicrosoftStore') {
+    return 'Microsoft Store'
+  }
   return 'Nintendo eShop'
 }
 
@@ -185,6 +188,9 @@ const catalogProviderPlatforms = (provider: MobileCatalogSyncJob['provider']) =>
   }
   if (provider === 'PlayStationStore') {
     return ['PlayStation4', 'PlayStation5']
+  }
+  if (provider === 'MicrosoftStore') {
+    return ['XboxOne', 'XboxSeries']
   }
   return ['NintendoSwitch']
 }
@@ -448,6 +454,7 @@ function App() {
       setMobileSyncStore('PlayStationStore')
     } else if (section === 'microsoft-store') {
       setAdminStore('Microsoft Store')
+      setMobileSyncStore('MicrosoftStore')
     }
     setAdminCandidates([])
     setPendingCandidate(null)
@@ -946,6 +953,7 @@ function App() {
       getMobileCatalogSyncJob('AppleAppStore'),
       getMobileCatalogSyncJob('NintendoEShop'),
       getMobileCatalogSyncJob('PlayStationStore'),
+      getMobileCatalogSyncJob('MicrosoftStore'),
     ])
     setMobileSyncJobs(jobs)
   }
@@ -1802,11 +1810,11 @@ function App() {
           </div>}
         </article>
         </div>}
-        {(adminSection === 'epic-games' || adminSection === 'microsoft-store') && <div className="admin-store-workspace"><header><StoreBadge store={adminStore} /><div><h2>{adminStore}</h2><p>공식 Store 상품을 canonical Game과 비교하고 검증된 상품만 연결합니다.</p></div></header><article className="catalog-sync-panel"><div><h2>{adminStore} 관리자 검수</h2><p>{adminSection === 'epic-games' ? '공식 상품 URL을 이용해 검수합니다.' : '상품 페이지에서 지원 콘솔 세대를 확인합니다. 같은 Store라도 상품별 지원 기기는 다를 수 있습니다.'}</p></div></article></div>}
-        {(adminSection === 'nintendo-eshop' || adminSection === 'playstation-store' || adminSection === 'google-play' || adminSection === 'apple-app-store') && <div className="admin-store-workspace"><header><StoreBadge store={adminStore} /><div><h2>{adminStore}</h2><p>Store 상품 후보 탐색, 검토, 연결과 가격 수집을 관리합니다.</p></div></header><article className="catalog-sync-panel">
+        {adminSection === 'epic-games' && <div className="admin-store-workspace"><header><StoreBadge store={adminStore} /><div><h2>{adminStore}</h2><p>공식 Store 상품을 canonical Game과 비교하고 검증된 상품만 연결합니다.</p></div></header><article className="catalog-sync-panel"><div><h2>{adminStore} 관리자 검수</h2><p>공식 상품 URL을 이용해 검수합니다.</p></div></article></div>}
+        {(adminSection === 'nintendo-eshop' || adminSection === 'playstation-store' || adminSection === 'microsoft-store' || adminSection === 'google-play' || adminSection === 'apple-app-store') && <div className="admin-store-workspace"><header><StoreBadge store={adminStore} /><div><h2>{adminStore}</h2><p>Store 상품 후보 탐색, 검토, 연결과 가격 수집을 관리합니다.</p></div></header><article className="catalog-sync-panel">
           <div>
             <h2>{adminStore} 후보 자동 탐색</h2>
-            <p>카탈로그 게임을 Store에서 찾아 매칭 신뢰도를 판정합니다. 제목과 공식 개발사·퍼블리셔가 일치하는 유료 게임은 자동 연결하고, 불확실한 후보만 검토 큐에 저장합니다.{mobileSyncStore === 'PlayStationStore' ? ' 첫 실행은 공식 PS4·PS5 전체 카탈로그를 읽으므로 약 1분 걸릴 수 있습니다.' : ''}</p>
+            <p>카탈로그 게임을 Store에서 찾아 매칭 신뢰도를 판정합니다. 제목과 공식 개발사·퍼블리셔가 일치하는 유료 게임은 자동 연결하고, 불확실한 후보만 검토 큐에 저장합니다.{mobileSyncStore === 'PlayStationStore' ? ' 첫 실행은 공식 PS4·PS5 전체 카탈로그를 읽으므로 약 1분 걸릴 수 있습니다.' : ''}{mobileSyncStore === 'MicrosoftStore' ? ' Xbox One과 Xbox Series 지원 여부를 상품별로 구분합니다.' : ''}</p>
           </div>
           <button disabled={Boolean(runningMobileSyncJob)} onClick={() => void synchronizeMobileCatalog()}>{mobileSyncButtonLabel}</button>
           {selectedMobileSyncRun && <div className="discovery-summary" aria-label="최근 탐색 결과">
