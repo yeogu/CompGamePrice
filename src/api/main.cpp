@@ -2154,10 +2154,11 @@ int main() {
                 }
                 const auto store = request->getParameter("store");
                 if (store != "GooglePlay" && store != "AppleAppStore" &&
-                    store != "NintendoEShop") {
+                    store != "NintendoEShop" &&
+                    store != "PlayStationStore") {
                     callback(jsonError(
                         drogon::k400BadRequest,
-                        "store must be GooglePlay, AppleAppStore or NintendoEShop"));
+                        "unsupported catalog discovery store"));
                     return;
                 }
                 try {
@@ -2186,7 +2187,8 @@ int main() {
                     ? (*body)["batchSize"].asInt()
                     : 10;
                 if ((store != "GooglePlay" && store != "AppleAppStore" &&
-                     store != "NintendoEShop") ||
+                     store != "NintendoEShop" &&
+                     store != "PlayStationStore") ||
                     batchSize < 1 || batchSize > 100) {
                     callback(jsonError(
                         drogon::k400BadRequest,
@@ -2221,7 +2223,8 @@ int main() {
                     ? (*body)["resolution"].asString()
                     : std::string{};
                 if ((store != "GooglePlay" && store != "AppleAppStore" &&
-                     store != "NintendoEShop") ||
+                     store != "NintendoEShop" &&
+                     store != "PlayStationStore") ||
                     (resolution != "APPROVED" && resolution != "REJECTED")) {
                     callback(jsonError(
                         drogon::k400BadRequest,

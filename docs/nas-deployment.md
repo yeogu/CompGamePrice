@@ -295,8 +295,10 @@ Microsoft Store 탭을 제공하며, 검수·연결한
 다시 확인한다. 상품 가격에서는 `final_price`, `regular_price`, 통화와 판매 가능 상태를
 검증하여 할인 가격을 저장한다.
 
-PlayStation Store와 Microsoft Store는 공식 상품 URL을 관리자가 canonical Game에
-연결한다. Store와 실제 실행 플랫폼은 별도로 보존하므로 PlayStation 상품은 PS4/PS5,
+PlayStation Store는 공식 한국 PS4·PS5 카탈로그에서 일반판 본편 후보를 자동 탐색하고,
+확실한 후보만 연결한다. 불확실한 후보는 Nintendo와 같은 관리자 검토 큐에 저장한다.
+Microsoft Store는 공식 상품 URL을 관리자가 canonical Game에 연결한다. Store와 실제
+실행 플랫폼은 별도로 보존하므로 PlayStation 상품은 PS4/PS5,
 Microsoft 상품은 Xbox One/Xbox Series X|S 중 공식 페이지에서 확인된 세대만 가진다.
 세대 표시를 읽지 못한 상품은 잘못된 호환성 노출을 막기 위해 수집 실패로 격리한다.
 
@@ -315,10 +317,10 @@ sudo /usr/local/bin/docker-compose -f compose.synology.yml ps
 sudo /usr/local/bin/docker-compose -f compose.synology.yml logs --tail 100 collector
 ```
 
-관리자 화면의 Nintendo eShop 탭에서 `후보 배치 탐색`을 한 번 실행한 뒤, 최근 실행의
+관리자 화면의 Nintendo eShop 또는 PlayStation Store 탭에서 `후보 배치 탐색`을 한 번 실행한 뒤, 최근 실행의
 처리·자동 등록·검토·실패 수가 표시되는지 확인한다. 운영 catalog를 직접 수정하지 않는
 사전 검증은 catalog와 DB 복사본에 `sync_mobile_catalog.py --store NintendoEShop`을
-실행하는 방식으로 수행한다.
+실행하는 방식으로 수행한다. PlayStation은 `--store PlayStationStore`를 사용한다.
 
 ## 공개 전 확인
 

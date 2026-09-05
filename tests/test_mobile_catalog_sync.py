@@ -186,6 +186,38 @@ class MobileCatalogSyncTest(unittest.TestCase):
             "https://store.nintendo.co.kr/70010000033128",
         )
 
+    def test_approved_playstation_candidate_keeps_detected_generations(self):
+        def playstation_metadata(raw, product_id):
+            del raw
+            return {
+                **approved_metadata(b"", product_id),
+                "productId": product_id,
+                "platforms": ["PlayStation4", "PlayStation5"],
+            }
+
+        report = sync.synchronize_provider(
+            self.catalog,
+            self.database,
+            "PlayStationStore",
+            10,
+            searcher=lambda query, limit, timeout: [{
+                "externalProductId": "UP0000-PPSA00000_00-STARDEWVALLEY000",
+                "title": query,
+                "productUrl": (
+                    "https://store.playstation.com/ko-kr/product/"
+                    "UP0000-PPSA00000_00-STARDEWVALLEY000"
+                ),
+            }],
+            fetcher=lambda product_id, timeout: b"product",
+            metadata_parser=playstation_metadata,
+        )
+
+        self.assertEqual(report["autoConnected"], 1)
+        game = json.loads(self.catalog.read_text(encoding="utf-8"))["games"][0]
+        self.assertIn("PlayStation4", game["platforms"])
+        self.assertIn("PlayStation5", game["platforms"])
+        self.assertEqual(game["products"][0]["store"], "PlayStationStore")
+
     def test_uncertain_candidate_remains_in_manual_review(self):
         def incomplete_metadata(raw, product_id):
             result = approved_metadata(raw, product_id)
