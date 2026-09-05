@@ -8,7 +8,8 @@ AI를 활용하여 개발하는 크로스 플랫폼 게임 가격 비교 Prototy
 가격 데이터의 identity, validation, history, freshness, collection reliability와
 잔여 위험은 [Data Reliability Audit](docs/data-reliability-audit.md)에 정리되어 있습니다.
 
-서로 다른 Steam, Epic Games Store, Google Play, Apple App Store, Nintendo eShop
+서로 다른 Steam, Epic Games Store, Google Play, Apple App Store, Nintendo eShop,
+PlayStation Store, Microsoft Store
 로컬 데이터 형식을 공통
 `StoreProduct` 모델로 정규화하고, 공통 Provider 인터페이스를 통해
 게임별 Store 최저가를 비교합니다.
@@ -686,23 +687,35 @@ Store별 최대 시도 횟수를 설정할 수 있고, 실패한 각 시도도 �
 ### 관리자 Store 검수 범위
 
 관리자 카탈로그 화면은 Steam, Epic Games Store, Nintendo eShop,
-Google Play, Apple App Store를 Store별 탭으로 구분한다. Nintendo는 공식 Store
+Google Play, Apple App Store, PlayStation Store, Microsoft Store를 Store별 탭으로
+구분한다. Nintendo는 공식 Store
 검색 결과를 선택하고, Epic은 공식 검색에서 복사한 상품 URL을 입력한다. 이후
 상품 페이지의 구조화 데이터를 다시 읽어 canonical Game의 제목·개발사와
 비교한다. 외부 도메인의 임의 URL은 거부되며,
 검증 결과가 불확실하면 관리자의 명시적 확인 없이는 연결되지 않는다.
 
-Epic과 Nintendo의 등록 상품 가격은 기존 C++ Provider와 같은 검증·SQLite 저장
+Epic, Nintendo, PlayStation, Microsoft Store의 등록 상품 가격은 기존 C++ Provider와
+같은 검증·SQLite 저장
 경로를 통해 수집한다. 관리자 화면에서 Store별 수집을 시작할 수 있고 정기 수집에도
 포함된다. Epic 공식 GraphQL은 Cloudflare 정책에 따라 서버 요청이 403으로 거절될
 수 있으므로, 이 경우 Epic만 실패 처리하고 마지막 정상 가격을 보존한다. Nintendo는
 한국 eShop URL과 한국 NSUID만 허용하며 다른 국가의 상품 ID는 등록하지 않는다.
+PlayStation과 Xbox는 구매처와 기기 세대를 별도 필드로 저장한다. 따라서 같은
+PlayStation Store 상품이라도 PS4/PS5, 같은 Microsoft Store 상품이라도 Xbox One/
+Xbox Series X|S 지원 여부가 서로 다를 수 있으며, 상품 페이지에서 세대를 확인하지
+못하면 양쪽 플랫폼으로 임의 확장하지 않고 해당 수집 레코드를 제외한다.
 
 개별 파이프라인은 다음처럼 실행한다.
 
 ```bash
 python3 tools/run_storefront_price_pipeline.py --store EpicGamesStore
 python3 tools/run_storefront_price_pipeline.py --store NintendoEShop
+
+# PlayStation Store에 연결된 상품만 수집
+python3 tools/run_storefront_price_pipeline.py --store PlayStationStore
+
+# Microsoft Store에 연결된 Xbox 상품만 수집
+python3 tools/run_storefront_price_pipeline.py --store MicrosoftStore
 ```
 
 ## HTTP API

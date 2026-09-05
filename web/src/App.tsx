@@ -160,7 +160,7 @@ const matchDecisionGuide = {
 } as const
 
 type AppView = 'games' | 'favorites' | 'alerts' | 'notifications' | 'account' | 'collection' | 'admin'
-type AdminSection = 'dashboard' | 'steam' | 'epic-games' | 'nintendo-eshop' | 'google-play' | 'apple-app-store' | 'integrity' | 'audit'
+type AdminSection = 'dashboard' | 'steam' | 'epic-games' | 'nintendo-eshop' | 'playstation-store' | 'microsoft-store' | 'google-play' | 'apple-app-store' | 'integrity' | 'audit'
 
 const catalogProviderLabel = (provider: MobileCatalogSyncJob['provider']) => {
   if (provider === 'GooglePlay') {
@@ -188,8 +188,30 @@ const collectionStoreName = (store: string) => {
     AppleAppStore: 'Apple App Store',
     EpicGamesStore: 'Epic Games Store',
     NintendoEShop: 'Nintendo eShop',
+    PlayStationStore: 'PlayStation Store',
+    MicrosoftStore: 'Microsoft Store',
   }
   return names[store] ?? store
+}
+
+const isOfficialUrlStore = (store: string) => [
+  'Epic Games Store',
+  'Nintendo eShop',
+  'PlayStation Store',
+  'Microsoft Store',
+].includes(store)
+
+const officialStoreUrlExample = (store: string) => {
+  if (store === 'Epic Games Store') {
+    return '예: https://store.epicgames.com/ko/p/hades'
+  }
+  if (store === 'Nintendo eShop') {
+    return '예: https://store.nintendo.co.kr/...'
+  }
+  if (store === 'PlayStation Store') {
+    return '예: https://store.playstation.com/ko-kr/product/...'
+  }
+  return '예: https://www.xbox.com/ko-KR/games/store/...'
 }
 
 const integrityIssueLabel = (issue: CatalogPriceIntegrityIssue) => {
@@ -414,6 +436,10 @@ function App() {
     } else if (section === 'nintendo-eshop') {
       setAdminStore('Nintendo eShop')
       setMobileSyncStore('NintendoEShop')
+    } else if (section === 'playstation-store') {
+      setAdminStore('PlayStation Store')
+    } else if (section === 'microsoft-store') {
+      setAdminStore('Microsoft Store')
     }
     setAdminCandidates([])
     setPendingCandidate(null)
@@ -663,9 +689,16 @@ function App() {
     try {
       const acknowledgeReview = apply && adminResult?.game.matchDecision?.status === 'NeedsReview'
       const productUrl = pendingCandidate?.productUrl || appId
-      const result = adminStore === 'Epic Games Store' || adminStore === 'Nintendo eShop'
+      const storefrontStores = {
+        'Epic Games Store': 'EpicGamesStore',
+        'Nintendo eShop': 'NintendoEShop',
+        'PlayStation Store': 'PlayStationStore',
+        'Microsoft Store': 'MicrosoftStore',
+      } as const
+      const storefrontStore = storefrontStores[adminStore as keyof typeof storefrontStores]
+      const result = storefrontStore
         ? await importStorefrontCatalogGame(
-            adminStore === 'Epic Games Store' ? 'EpicGamesStore' : 'NintendoEShop',
+            storefrontStore,
             productUrl,
             canonicalGameId,
             apply,
@@ -715,7 +748,7 @@ function App() {
           setAdminError(reason instanceof Error ? `게임은 등록됐지만 모바일 검토 상태를 갱신하지 못했습니다: ${reason.message}` : '게임은 등록됐지만 모바일 검토 상태를 갱신하지 못했습니다.')
         }
       }
-      if (apply && adminStore !== 'Epic Games Store' && adminStore !== 'Nintendo eShop') {
+      if (apply && !isOfficialUrlStore(adminStore)) {
         try {
           setCatalogJob(await startCatalogCollection(adminStore))
           setActionMessage(`카탈로그 등록을 완료했고 ${adminStore} 가격 수집을 시작했습니다.`)
@@ -1502,6 +1535,7 @@ function App() {
         <>
         <section className="results">
           <div className="result-heading">
+            <GameArtwork compact imageUrl={report.game.imageUrl} title={report.game.title} />
             <div>
               <p className="eyebrow">CURRENT PRICES</p>
               <h2>{report.game.title}</h2>
@@ -1690,6 +1724,8 @@ function App() {
           <button className={adminSection === 'steam' ? 'active' : ''} onClick={() => selectAdminSection('steam')}><StoreBadge compact store="Steam" /></button>
           <button className={adminSection === 'epic-games' ? 'active' : ''} onClick={() => selectAdminSection('epic-games')}><StoreBadge compact store="Epic Games Store" /></button>
           <button className={adminSection === 'nintendo-eshop' ? 'active' : ''} onClick={() => selectAdminSection('nintendo-eshop')}><StoreBadge compact store="Nintendo eShop" /></button>
+          <button className={adminSection === 'playstation-store' ? 'active' : ''} onClick={() => selectAdminSection('playstation-store')}><StoreBadge compact store="PlayStation Store" /></button>
+          <button className={adminSection === 'microsoft-store' ? 'active' : ''} onClick={() => selectAdminSection('microsoft-store')}><StoreBadge compact store="Microsoft Store" /></button>
           <button className={adminSection === 'google-play' ? 'active' : ''} onClick={() => selectAdminSection('google-play')}><StoreBadge compact store="Google Play" /></button>
           <button className={adminSection === 'apple-app-store' ? 'active' : ''} onClick={() => selectAdminSection('apple-app-store')}><StoreBadge compact store="Apple App Store" /></button>
           <button className={adminSection === 'integrity' ? 'active' : ''} onClick={() => selectAdminSection('integrity')}>데이터 정합성 {priceIntegrity?.issueCount ?? 0}</button>
@@ -1726,7 +1762,7 @@ function App() {
           </div>}
         </article>
         </div>}
-        {adminSection === 'epic-games' && <div className="admin-store-workspace"><header><StoreBadge store="Epic Games Store" /><div><h2>{adminStore}</h2><p>공식 Store 검색 결과를 canonical Game과 비교하고 검증된 상품만 연결합니다.</p></div></header><article className="catalog-sync-panel"><div><h2>{adminStore} 관리자 검수</h2><p>Epic의 자동 요청 제한 때문에 공식 상품 URL을 이용해 검수합니다. 실패해도 기존 가격은 보존되고 다른 Store 수집은 계속됩니다.</p></div></article></div>}
+        {(adminSection === 'epic-games' || adminSection === 'playstation-store' || adminSection === 'microsoft-store') && <div className="admin-store-workspace"><header><StoreBadge store={adminStore} /><div><h2>{adminStore}</h2><p>공식 Store 상품을 canonical Game과 비교하고 검증된 상품만 연결합니다.</p></div></header><article className="catalog-sync-panel"><div><h2>{adminStore} 관리자 검수</h2><p>{adminSection === 'epic-games' ? '공식 상품 URL을 이용해 검수합니다.' : '상품 페이지에서 지원 콘솔 세대를 확인합니다. 같은 Store라도 상품별 지원 기기는 다를 수 있습니다.'}</p></div></article></div>}
         {(adminSection === 'nintendo-eshop' || adminSection === 'google-play' || adminSection === 'apple-app-store') && <div className="admin-store-workspace"><header><StoreBadge store={adminStore} /><div><h2>{adminStore}</h2><p>Store 상품 후보 탐색, 검토, 연결과 가격 수집을 관리합니다.</p></div></header><article className="catalog-sync-panel">
           <div>
             <h2>{adminStore} 후보 자동 탐색</h2>
@@ -1755,9 +1791,9 @@ function App() {
           </div>
         </article>
         </div>}
-        {(adminSection === 'steam' || adminSection === 'epic-games' || adminSection === 'nintendo-eshop' || adminSection === 'google-play' || adminSection === 'apple-app-store') && <div className="admin-product-workspace"><h2>{adminStore} 상품 검색·연결</h2><p>게임 이름으로 상품을 찾고 canonical Game에 연결합니다.</p>
+        {(adminSection === 'steam' || adminSection === 'epic-games' || adminSection === 'nintendo-eshop' || adminSection === 'playstation-store' || adminSection === 'microsoft-store' || adminSection === 'google-play' || adminSection === 'apple-app-store') && <div className="admin-product-workspace"><h2>{adminStore} 상품 검색·연결</h2><p>게임 이름이나 공식 상품 URL로 canonical Game에 연결합니다.</p>
         {adminStore === 'Epic Games Store' && <div className="admin-feedback review-note"><strong>Epic 공식 검색에서 상품을 확인하세요.</strong><span>Epic Games Store가 서버 검색 요청을 제한하므로 공식 검색 결과에서 상품을 연 뒤 URL을 아래 입력란에 붙여넣습니다.</span><input aria-label="Epic 게임 이름" value={adminQuery} onChange={(event) => setAdminQuery(event.target.value)} placeholder="예: Hades" /><a href={`https://store.epicgames.com/ko/browse?q=${encodeURIComponent(adminQuery || 'Hades')}&category=Game&sortBy=relevancy&sortDir=DESC`} target="_blank" rel="noreferrer">Epic Games Store 검색 열기 ↗</a></div>}
-        {adminStore !== 'Epic Games Store' && <div className="admin-search">
+        {adminStore !== 'Epic Games Store' && adminStore !== 'PlayStation Store' && adminStore !== 'Microsoft Store' && <div className="admin-search">
           <input aria-label="Store 게임 이름" value={adminQuery} onChange={(event) => setAdminQuery(event.target.value)} placeholder="예: Sekiro" />
           <button disabled={!adminQuery.trim() || adminSearching} onClick={() => void searchCatalogCandidates()}>{adminSearching ? '검색 중…' : 'Store 검색'}</button>
         </div>}
@@ -1772,11 +1808,11 @@ function App() {
           {adminReviewNote && <div className="admin-feedback review-note" role="status"><strong>자동 탐색 결과</strong><span>{adminReviewNote.split('; ').map(matchReasonMessage).join(' ')}</span><small>아래 Preview를 눌러 Store 상품과 canonical Game을 비교하세요.</small></div>}
           {adminError && <p className="admin-feedback error" role="alert">{adminError}</p>}
         </div>}
-        <details className="advanced-admin" open={adminStore === 'Epic Games Store'}><summary>{adminStore === 'Epic Games Store' || adminStore === 'Nintendo eShop' ? '공식 상품 URL로 검수' : '고급 입력: 상품 ID 직접 사용'}</summary>
+        <details className="advanced-admin" open={isOfficialUrlStore(adminStore)}><summary>{isOfficialUrlStore(adminStore) ? '공식 상품 URL로 검수' : '고급 입력: 상품 ID 직접 사용'}</summary>
         <div className="admin-form">
-          <label>{adminStore === 'Google Play' ? 'Google Play Package Name' : adminStore === 'Apple App Store' ? 'Apple Track ID' : adminStore === 'Epic Games Store' || adminStore === 'Nintendo eShop' ? '공식 Store 상품 URL' : 'Steam App ID'}<input value={adminAppId} onChange={(event) => setAdminAppId(event.target.value)} placeholder={adminStore === 'Google Play' ? '예: com.example.game' : adminStore === 'Apple App Store' ? '예: 1406710800' : adminStore === 'Epic Games Store' ? '예: https://store.epicgames.com/ko/p/hades' : adminStore === 'Nintendo eShop' ? '예: https://store.nintendo.co.kr/...' : '예: 1245620'} inputMode={adminStore === 'Google Play' || adminStore === 'Epic Games Store' || adminStore === 'Nintendo eShop' ? 'text' : 'numeric'} /></label>
+          <label>{adminStore === 'Google Play' ? 'Google Play Package Name' : adminStore === 'Apple App Store' ? 'Apple Track ID' : isOfficialUrlStore(adminStore) ? '공식 Store 상품 URL' : 'Steam App ID'}<input value={adminAppId} onChange={(event) => setAdminAppId(event.target.value)} placeholder={adminStore === 'Google Play' ? '예: com.example.game' : adminStore === 'Apple App Store' ? '예: 1406710800' : isOfficialUrlStore(adminStore) ? officialStoreUrlExample(adminStore) : '예: 1245620'} inputMode={adminStore === 'Google Play' || isOfficialUrlStore(adminStore) ? 'text' : 'numeric'} /></label>
           <label>Canonical Game ID (선택)<input value={adminGameId} onChange={(event) => setAdminGameId(event.target.value)} placeholder="한글 제목이면 예: dave-the-diver" /></label>
-          <button disabled={!(adminStore === 'Google Play' ? /^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$/.test(adminAppId.trim()) : adminStore === 'Epic Games Store' || adminStore === 'Nintendo eShop' ? /^https:\/\//.test(adminAppId.trim()) : /^\d+$/.test(adminAppId.trim())) || adminImporting} onClick={() => void runCatalogImport(false)}>{adminImporting ? '확인 중…' : 'Preview'}</button>
+          <button disabled={!(adminStore === 'Google Play' ? /^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$/.test(adminAppId.trim()) : isOfficialUrlStore(adminStore) ? /^https:\/\//.test(adminAppId.trim()) : /^\d+$/.test(adminAppId.trim())) || adminImporting} onClick={() => void runCatalogImport(false)}>{adminImporting ? '확인 중…' : 'Preview'}</button>
         </div>
         {adminError && !pendingCandidate && <p className="admin-feedback error" role="alert">{adminError}</p>}
         </details>

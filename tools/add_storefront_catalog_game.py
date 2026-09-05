@@ -62,6 +62,8 @@ def updated_catalog(
     ):
         return catalog, preview
     updated_game = dict(game)
+    if not updated_game.get("imageUrl") and metadata.get("imageUrl"):
+        updated_game["imageUrl"] = metadata["imageUrl"]
     updated_game["platforms"] = list(dict.fromkeys([
         *game.get("platforms", []),
         *product["platforms"],

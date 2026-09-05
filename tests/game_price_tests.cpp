@@ -3,6 +3,7 @@
 #include "game_price/collection/apple_app_store_provider.h"
 #include "game_price/collection/collection_service.h"
 #include "game_price/collection/collection_error.h"
+#include "game_price/collection/console_store_provider.h"
 #include "game_price/collection/epic_games_provider.h"
 #include "game_price/persistence/database.h"
 #include "game_price/catalog/game_catalog.h"
@@ -106,6 +107,12 @@ void testProviderNormalization() {
     AppleAppStoreProvider apple(dataDirectory + "/apple_app_store_products.csv");
     EpicGamesProvider epic(dataDirectory + "/epic_games_products.txt");
     NintendoEShopProvider nintendo(dataDirectory + "/nintendo_eshop_products.csv");
+    ConsoleStoreProvider playStation(
+        Store::PlayStationStore,
+        dataDirectory + "/../tests/fixtures/playstation_store_products.csv");
+    ConsoleStoreProvider microsoft(
+        Store::MicrosoftStore,
+        dataDirectory + "/../tests/fixtures/microsoft_store_products.csv");
 
     const auto steamProducts = steam.findProducts("stardew-valley");
     expect(steamProducts.size() == 1, "Steam should return one product");
@@ -119,6 +126,26 @@ void testProviderNormalization() {
                steamProducts.front().edition == GameEdition::Standard &&
                steamProducts.front().offerType == OfferType::BaseGame,
            "Providers should normalize the default comparison identity");
+
+    const auto playStationProducts = playStation.findProducts("hades");
+    expect(playStationProducts.size() == 2,
+           "PlayStation Store should preserve separate PS4 and PS5 offers");
+    expect(
+        playStationProducts[0].supportedPlatforms ==
+            std::vector<Platform>{Platform::PlayStation4},
+        "A PS4 offer must not be broadened to PS5");
+    expect(
+        playStationProducts[1].supportedPlatforms ==
+            std::vector<Platform>{Platform::PlayStation5},
+        "A PS5 offer must not be broadened to PS4");
+
+    const auto microsoftProducts = microsoft.findProducts("hades");
+    expect(microsoftProducts.size() == 1,
+           "Microsoft Store should normalize its registered product");
+    expect(
+        microsoftProducts.front().supportedPlatforms ==
+            std::vector<Platform>{Platform::XboxOne, Platform::XboxSeries},
+        "One Microsoft offer may explicitly support both Xbox generations");
 
     SteamProvider discounted(
         std::string(TEST_SAMPLE_DATA_DIR) +

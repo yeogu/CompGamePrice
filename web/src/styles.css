@@ -72,6 +72,8 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .visual-store-badge.nintendo-eshop { color: #ffb3b8; border-color: #81393c; background: #351719; }
 .visual-store-badge.google-play { color: #8fe6a8; border-color: #2d6840; background: #142b1c; }
 .visual-store-badge.apple-app-store { color: #c8bfff; border-color: #594e9d; background: #24203f; }
+.visual-store-badge.playstation-store { color: #d8e9ff; border-color: #2868b2; background: #102a55; }
+.visual-store-badge.microsoft-store { color: #dff7d7; border-color: #4b9b45; background: #18391c; }
 .quick-platforms button .platform-badge, .platform-filter button .platform-badge { padding: 0; color: inherit; background: transparent; border: 0; }
 .detailed-filters { color: #91a79b; font-size: .86rem; }
 .detailed-filters summary { cursor: pointer; }
@@ -148,6 +150,7 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .detail-state p { color: #a9bcb1; }
 .detail-state.error { color: #ffb4a8; border-color: #633a34; }
 .result-heading { display: flex; align-items: end; justify-content: space-between; gap: 30px; margin-bottom: 28px; }
+.result-heading > .game-artwork { width: 132px; height: 132px; flex: 0 0 132px; border-radius: 16px; }
 .favorite-button { padding: 10px 13px; color: #b7f4d2; background: #13271d; border: 1px solid #315141; border-radius: 10px; font-weight: 800; white-space: nowrap; }
 .game-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: -8px 0 24px; }
 .game-summary div { display: grid; gap: 5px; padding: 14px; background: #0b1812; border: 1px solid #213a2d; border-radius: 11px; }
@@ -231,6 +234,7 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
   .collection-heading { align-items: flex-start; flex-direction: column; }
   .search-form button { padding: 16px; }
   .best-summary { justify-items: start; }
+  .result-heading > .game-artwork { width: 100%; height: 190px; flex-basis: auto; }
   .price-grid { grid-template-columns: 1fr; }
   .trend-panel { margin-top: 42px; padding: 20px 16px; }
   .trend-heading { align-items: flex-start; flex-direction: column; }

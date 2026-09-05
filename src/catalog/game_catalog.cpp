@@ -85,6 +85,10 @@ Platform platformFromString(const std::string& value) {
     if (value == "iPadOS") return Platform::IPadOS;
     if (value == "NintendoSwitch") return Platform::NintendoSwitch;
     if (value == "NintendoSwitch2") return Platform::NintendoSwitch2;
+    if (value == "PlayStation4") return Platform::PlayStation4;
+    if (value == "PlayStation5") return Platform::PlayStation5;
+    if (value == "XboxOne") return Platform::XboxOne;
+    if (value == "XboxSeries") return Platform::XboxSeries;
     throw std::runtime_error("Unsupported Game Catalog platform: " + value);
 }
 
@@ -92,6 +96,8 @@ Store storeFromString(const std::string& value) {
     if (value == "Steam") return Store::Steam;
     if (value == "EpicGamesStore") return Store::EpicGamesStore;
     if (value == "NintendoEShop") return Store::NintendoEShop;
+    if (value == "PlayStationStore") return Store::PlayStationStore;
+    if (value == "MicrosoftStore") return Store::MicrosoftStore;
     if (value == "GooglePlay") return Store::GooglePlay;
     if (value == "AppleAppStore") return Store::AppleAppStore;
     throw std::runtime_error("Unsupported Game Catalog Store: " + value);

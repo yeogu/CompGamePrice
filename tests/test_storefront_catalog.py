@@ -34,6 +34,23 @@ NINTENDO_SWITCH_2_PRODUCT = NINTENDO_PRODUCT.replace(
     b'"name":"Hades Nintendo Switch 2 Edition"',
 )
 
+PLAYSTATION_PRODUCT = b"""
+<html><head><meta property="og:image" content="https://image.example/hades.jpg" />
+<script type="application/ld+json">
+{"@type":"Product","name":"Hades","sku":"UP2125-CUSA27387_00-3466019145463410",
+ "brand":{"name":"Supergiant Games"},
+ "offers":{"price":"26000","priceCurrency":"KRW"}}
+</script></head><body>PS4</body></html>
+"""
+
+MICROSOFT_PRODUCT = b"""
+<script type="application/ld+json">
+{"@type":"Product","name":"Hades","productID":"9P8DL6W0JBB8",
+ "brand":{"name":"Supergiant Games"},
+ "offers":{"price":"26000","priceCurrency":"KRW"}}
+</script><div>Xbox Series X|S</div>
+"""
+
 
 class StorefrontCatalogTest(unittest.TestCase):
     def test_parses_epic_and_nintendo_search_results(self):
@@ -55,6 +72,35 @@ class StorefrontCatalogTest(unittest.TestCase):
             storefront_catalog.product_id_from_url(
                 "EpicGamesStore",
                 "https://example.com/p/hades",
+            )
+
+    def test_distinguishes_playstation_console_generation(self):
+        metadata = storefront_catalog.verified_product(
+            PLAYSTATION_PRODUCT,
+            "PlayStationStore",
+            "https://store.playstation.com/ko-kr/product/UP2125-CUSA27387_00-3466019145463410",
+        )
+        self.assertEqual(metadata["platforms"], ["PlayStation4"])
+        self.assertEqual(
+            metadata["imageUrl"],
+            "https://image.example/hades.jpg",
+        )
+
+    def test_distinguishes_xbox_console_generation(self):
+        metadata = storefront_catalog.verified_product(
+            MICROSOFT_PRODUCT,
+            "MicrosoftStore",
+            "https://www.xbox.com/ko-KR/games/store/hades/9P8DL6W0JBB8",
+        )
+        self.assertEqual(metadata["platforms"], ["XboxSeries"])
+
+    def test_rejects_console_product_without_generation_metadata(self):
+        raw = PLAYSTATION_PRODUCT.replace(b"PS4", b"console")
+        with self.assertRaisesRegex(ValueError, "console generation"):
+            storefront_catalog.verified_product(
+                raw,
+                "PlayStationStore",
+                "https://store.playstation.com/ko-kr/product/UP2125-CUSA27387_00-3466019145463410",
             )
 
     def test_rejects_global_nintendo_product_for_kr_catalog(self):

@@ -8,6 +8,8 @@ enum class Store {
     Steam,
     EpicGamesStore,
     NintendoEShop,
+    PlayStationStore,
+    MicrosoftStore,
     GooglePlay,
     AppleAppStore
 };
@@ -20,7 +22,11 @@ enum class Platform {
     IOS,
     IPadOS,
     NintendoSwitch,
-    NintendoSwitch2
+    NintendoSwitch2,
+    PlayStation4,
+    PlayStation5,
+    XboxOne,
+    XboxSeries
 };
 
 enum class Currency {

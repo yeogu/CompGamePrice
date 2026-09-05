@@ -84,6 +84,8 @@ Store parseStore(const std::string& value) {
     if (value == "Steam") return Store::Steam;
     if (value == "Epic Games Store") return Store::EpicGamesStore;
     if (value == "Nintendo eShop") return Store::NintendoEShop;
+    if (value == "PlayStation Store") return Store::PlayStationStore;
+    if (value == "Microsoft Store") return Store::MicrosoftStore;
     if (value == "Google Play") return Store::GooglePlay;
     if (value == "Apple App Store") return Store::AppleAppStore;
     throw std::runtime_error("Unknown Store value in database: " + value);
@@ -98,6 +100,10 @@ Platform parsePlatform(const std::string& value) {
     if (value == "iPadOS") return Platform::IPadOS;
     if (value == "Nintendo Switch") return Platform::NintendoSwitch;
     if (value == "Nintendo Switch 2") return Platform::NintendoSwitch2;
+    if (value == "PlayStation 4") return Platform::PlayStation4;
+    if (value == "PlayStation 5") return Platform::PlayStation5;
+    if (value == "Xbox One") return Platform::XboxOne;
+    if (value == "Xbox Series X|S") return Platform::XboxSeries;
     throw std::runtime_error("Unknown Platform value in database: " + value);
 }
 

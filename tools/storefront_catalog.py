@@ -35,6 +35,22 @@ STORE_CONFIG = {
         "productPath": "/",
         "platforms": ["NintendoSwitch"],
     },
+    "PlayStationStore": {
+        "display": "PlayStation Store",
+        "hosts": ["store.playstation.com"],
+        "search": "https://store.playstation.com/ko-kr/search/",
+        "searchParameters": {},
+        "productPath": "/product/",
+        "platforms": ["PlayStation4", "PlayStation5"],
+    },
+    "MicrosoftStore": {
+        "display": "Microsoft Store",
+        "hosts": ["www.xbox.com", "apps.microsoft.com"],
+        "search": "https://www.xbox.com/ko-KR/search/results",
+        "searchParameters": {},
+        "productPath": "/games/store/",
+        "platforms": ["XboxOne", "XboxSeries"],
+    },
 }
 
 
@@ -59,6 +75,16 @@ def product_id_from_url(store: str, product_url: str) -> str:
             return parts[marker + 1]
         except (ValueError, IndexError) as error:
             raise ValueError("invalid Epic Games product URL") from error
+    if store == "PlayStationStore":
+        try:
+            marker = parts.index("product")
+            return parts[marker + 1]
+        except (ValueError, IndexError) as error:
+            raise ValueError("invalid PlayStation Store product URL") from error
+    if store == "MicrosoftStore":
+        if len(parts) < 2:
+            raise ValueError("invalid Microsoft Store product URL")
+        return parts[-1]
     if not parts:
         raise ValueError("invalid Nintendo eShop product URL")
     identifier = parts[-1].removesuffix(".html")
@@ -311,6 +337,29 @@ def verified_product(raw: bytes, store: str, product_url: str) -> dict:
     platforms = config(store)["platforms"]
     if store == "NintendoEShop" and "nintendo switch 2" in title.lower():
         platforms = ["NintendoSwitch2"]
+    normalized_document = html_document.casefold()
+    if store == "PlayStationStore":
+        platforms = []
+        if "ps4" in normalized_document:
+            platforms.append("PlayStation4")
+        if "ps5" in normalized_document:
+            platforms.append("PlayStation5")
+    if store == "MicrosoftStore":
+        platforms = []
+        if "xbox one" in normalized_document:
+            platforms.append("XboxOne")
+        if "series x|s" in normalized_document or "series x/s" in normalized_document:
+            platforms.append("XboxSeries")
+    if not platforms and store in {"PlayStationStore", "MicrosoftStore"}:
+        raise ValueError(
+            f"{config(store)['display']} product page does not identify "
+            "a supported console generation",
+        )
+    if not platforms:
+        platforms = config(store)["platforms"]
+    image_url = named_value(product.get("image"))
+    if not image_url:
+        image_url = parser.meta.get("og:image", "").strip()
     return {
         "productId": product_id,
         "title": title,
@@ -321,6 +370,7 @@ def verified_product(raw: bytes, store: str, product_url: str) -> dict:
         "isGame": True,
         "supportsTargetPlatform": True,
         "platforms": platforms,
+        "imageUrl": image_url,
         "excludedWords": sorted(
             catalog_matcher.normalized_words(title) &
             catalog_matcher.EXCLUDED_TITLE_WORDS

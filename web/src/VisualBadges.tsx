@@ -44,7 +44,11 @@ const platformVisuals: Record<string, PlatformVisual> = {
   'PlayStation 4': { icon: Gamepad2, marker: '4', tone: 'playstation' },
   'PlayStation 5': { icon: Gamepad2, marker: '5', tone: 'playstation' },
   'Xbox One': { icon: Gamepad2, marker: '1', tone: 'xbox' },
-  'Xbox Series': { icon: Gamepad2, marker: 'X|S', tone: 'xbox' },
+  'Xbox Series X|S': { icon: Gamepad2, marker: 'X|S', tone: 'xbox' },
+  PlayStation4: { icon: Gamepad2, label: 'PlayStation 4', marker: '4', tone: 'playstation' },
+  PlayStation5: { icon: Gamepad2, label: 'PlayStation 5', marker: '5', tone: 'playstation' },
+  XboxOne: { icon: Gamepad2, label: 'Xbox One', marker: '1', tone: 'xbox' },
+  XboxSeries: { icon: Gamepad2, label: 'Xbox Series X|S', marker: 'X|S', tone: 'xbox' },
 }
 
 const storeVisuals: Record<string, { label?: string, tone: string }> = {
@@ -57,6 +61,10 @@ const storeVisuals: Record<string, { label?: string, tone: string }> = {
   GooglePlay: { label: 'Google Play', tone: 'google-play' },
   'Apple App Store': { tone: 'apple-app-store' },
   AppleAppStore: { label: 'Apple App Store', tone: 'apple-app-store' },
+  'PlayStation Store': { tone: 'playstation-store' },
+  PlayStationStore: { label: 'PlayStation Store', tone: 'playstation-store' },
+  'Microsoft Store': { tone: 'microsoft-store' },
+  MicrosoftStore: { label: 'Microsoft Store', tone: 'microsoft-store' },
 }
 
 export const PlatformBadge = ({ compact = false, iconOnly = false, label, platform }: PlatformBadgeProps) => {

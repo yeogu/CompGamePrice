@@ -97,6 +97,30 @@ CommandLineOptions parseCommandLine(const std::vector<std::string>& arguments) {
             std::nullopt,
             arguments[2]};
     }
+    if (command == "collect-playstation-all") {
+        if (arguments.size() != 3 || arguments[1] != "--data-dir" ||
+            arguments[2].empty()) {
+            throw std::invalid_argument(
+                "collect-playstation-all requires --data-dir PATH");
+        }
+        return CommandLineOptions{
+            AppCommand::CollectPlayStationAll,
+            "",
+            std::nullopt,
+            arguments[2]};
+    }
+    if (command == "collect-microsoft-all") {
+        if (arguments.size() != 3 || arguments[1] != "--data-dir" ||
+            arguments[2].empty()) {
+            throw std::invalid_argument(
+                "collect-microsoft-all requires --data-dir PATH");
+        }
+        return CommandLineOptions{
+            AppCommand::CollectMicrosoftAll,
+            "",
+            std::nullopt,
+            arguments[2]};
+    }
     if (command == "collect-apple-all") {
         if (arguments.size() != 3 || arguments[1] != "--data-dir" ||
             arguments[2].empty()) {
@@ -173,6 +197,10 @@ std::string commandLineHelp() {
         "            Required: collect-epic-all --data-dir PATH\n"
         "  collect-nintendo-all  Collect Nintendo snapshots for every catalog game\n"
         "            Required: collect-nintendo-all --data-dir PATH\n"
+        "  collect-playstation-all  Collect PlayStation snapshots for every catalog game\n"
+        "            Required: collect-playstation-all --data-dir PATH\n"
+        "  collect-microsoft-all  Collect Microsoft Store snapshots for every catalog game\n"
+        "            Required: collect-microsoft-all --data-dir PATH\n"
         "  collect-apple-all  Collect Apple snapshots for every catalog game\n"
         "            Required: collect-apple-all --data-dir PATH\n"
         "  collect-google-play-all  Collect Google Play snapshots for every catalog game\n"

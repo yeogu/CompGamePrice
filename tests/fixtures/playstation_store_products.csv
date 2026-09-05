@@ -1,0 +1,3 @@
+product_id,game_id,regular_price_krw,current_price_krw,discount_percent,platforms,country,availability
+UP2125-CUSA27387_00-3466019145463410,hades,26000,13000,50,PS4,KR,AVAILABLE
+UP2125-PPSA03355_00-3466019145463410,hades,26000,26000,0,PS5,KR,AVAILABLE

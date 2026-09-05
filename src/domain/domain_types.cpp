@@ -7,6 +7,8 @@ std::string toString(Store store) {
         case Store::Steam: return "Steam";
         case Store::EpicGamesStore: return "Epic Games Store";
         case Store::NintendoEShop: return "Nintendo eShop";
+        case Store::PlayStationStore: return "PlayStation Store";
+        case Store::MicrosoftStore: return "Microsoft Store";
         case Store::GooglePlay: return "Google Play";
         case Store::AppleAppStore: return "Apple App Store";
     }
@@ -23,6 +25,10 @@ std::string toString(Platform platform) {
         case Platform::IPadOS: return "iPadOS";
         case Platform::NintendoSwitch: return "Nintendo Switch";
         case Platform::NintendoSwitch2: return "Nintendo Switch 2";
+        case Platform::PlayStation4: return "PlayStation 4";
+        case Platform::PlayStation5: return "PlayStation 5";
+        case Platform::XboxOne: return "Xbox One";
+        case Platform::XboxSeries: return "Xbox Series X|S";
     }
     return "Unknown Platform";
 }

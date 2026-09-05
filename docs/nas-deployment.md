@@ -286,13 +286,19 @@ NAS 관리자와 함께 수행한다.
 
 ### 관리자 Store 검수
 
-관리자 카탈로그 메뉴에서 Epic Games와 Nintendo eShop 탭을 제공하며, 검수·연결한
+관리자 카탈로그 메뉴에서 Epic Games, Nintendo eShop, PlayStation Store,
+Microsoft Store 탭을 제공하며, 검수·연결한
 상품은 관리자 가격 수집 버튼과 `collector` 정기 작업의 대상이 된다. Nintendo는
 한국 eShop 상품 URL과 NSUID를 사용한다. 정기 작업은 canonical Game 중 Nintendo
 상품이 없는 게임을 제한된 배치로 검색하며, 제목과 메이커가 모두 일치하는 본편만
 자동 연결한다. 애매한 후보는 기존 관리자 검토 큐에 남기고, 제외된 게임은 7일 뒤에
 다시 확인한다. 상품 가격에서는 `final_price`, `regular_price`, 통화와 판매 가능 상태를
 검증하여 할인 가격을 저장한다.
+
+PlayStation Store와 Microsoft Store는 공식 상품 URL을 관리자가 canonical Game에
+연결한다. Store와 실제 실행 플랫폼은 별도로 보존하므로 PlayStation 상품은 PS4/PS5,
+Microsoft 상품은 Xbox One/Xbox Series X|S 중 공식 페이지에서 확인된 세대만 가진다.
+세대 표시를 읽지 못한 상품은 잘못된 호환성 노출을 막기 위해 수집 실패로 격리한다.
 
 Epic은 2026-09-03 현재 공식 개발자 문서에서 일반 소비자용 Store 가격 조회 API를
 확인할 수 없었고, Store 웹 GraphQL 요청은 실행 환경에 따라 HTTP 403으로 제한된다.

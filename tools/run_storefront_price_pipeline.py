@@ -10,6 +10,7 @@ import subprocess
 
 import collect_epic_snapshot
 import collect_nintendo_snapshot
+import collect_console_snapshot
 
 
 COLLECTORS = {
@@ -23,6 +24,16 @@ COLLECTORS = {
         "nintendo_eshop_products.csv",
         "collect-nintendo-all",
     ),
+    "PlayStationStore": (
+        collect_console_snapshot,
+        "playstation_store_products.csv",
+        "collect-playstation-all",
+    ),
+    "MicrosoftStore": (
+        collect_console_snapshot,
+        "microsoft_store_products.csv",
+        "collect-microsoft-all",
+    ),
 }
 
 
@@ -35,7 +46,10 @@ def run_pipeline(
 ) -> int:
     collector, filename, command = COLLECTORS[store]
     output = output_directory / filename
-    collected, failures = collector.collect(catalog, output)
+    if collector is collect_console_snapshot:
+        collected, failures = collector.collect(store, catalog, output)
+    else:
+        collected, failures = collector.collect(catalog, output)
     if collected == 0:
         return 1
     environment = dict(os.environ)

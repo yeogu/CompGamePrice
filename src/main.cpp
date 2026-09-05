@@ -3,6 +3,7 @@
 #include "game_price/catalog/game_catalog.h"
 #include "game_price/collection/apple_app_store_provider.h"
 #include "game_price/collection/collection_service.h"
+#include "game_price/collection/console_store_provider.h"
 #include "game_price/collection/epic_games_provider.h"
 #include "game_price/collection/google_play_provider.h"
 #include "game_price/collection/nintendo_eshop_provider.h"
@@ -218,6 +219,16 @@ CollectionResult collectAllNintendoProducts(
     NintendoEShopProvider nintendo(
         dataDirectory + "/nintendo_eshop_products.csv");
     return collectAllStoreProducts(catalog, repository, nintendo, "Nintendo");
+}
+
+CollectionResult collectAllConsoleProducts(
+    const GameCatalog& catalog,
+    StoreProductRepository& repository,
+    Store store,
+    const std::string& dataPath,
+    const std::string& label) {
+    ConsoleStoreProvider provider(store, dataPath);
+    return collectAllStoreProducts(catalog, repository, provider, label);
 }
 
 bool collectionCompletedSuccessfully(const CollectionResult& result) {
@@ -471,6 +482,38 @@ int main(int argc, char* argv[]) {
                 options.dataDirectory.value());
             std::cout << "Saved " << result.totalProducts
                       << " normalized Nintendo products to SQLite.\n";
+            return static_cast<int>(
+                collectionCompletedSuccessfully(result)
+                    ? AppExitCode::Success
+                    : AppExitCode::CollectionFailed);
+        }
+        if (options.command == AppCommand::CollectPlayStationAll) {
+            std::cout << "PlayStation catalog collection:\n";
+            const auto result = collectAllConsoleProducts(
+                catalog,
+                repository,
+                Store::PlayStationStore,
+                options.dataDirectory.value() +
+                    "/playstation_store_products.csv",
+                "PlayStation");
+            std::cout << "Saved " << result.totalProducts
+                      << " normalized PlayStation products to SQLite.\n";
+            return static_cast<int>(
+                collectionCompletedSuccessfully(result)
+                    ? AppExitCode::Success
+                    : AppExitCode::CollectionFailed);
+        }
+        if (options.command == AppCommand::CollectMicrosoftAll) {
+            std::cout << "Microsoft Store catalog collection:\n";
+            const auto result = collectAllConsoleProducts(
+                catalog,
+                repository,
+                Store::MicrosoftStore,
+                options.dataDirectory.value() +
+                    "/microsoft_store_products.csv",
+                "Microsoft Store");
+            std::cout << "Saved " << result.totalProducts
+                      << " normalized Microsoft Store products to SQLite.\n";
             return static_cast<int>(
                 collectionCompletedSuccessfully(result)
                     ? AppExitCode::Success

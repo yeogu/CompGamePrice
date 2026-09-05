@@ -22,6 +22,7 @@ add_library(game_price_core
     src/catalog/game_catalog.cpp
     src/collection/apple_app_store_provider.cpp
     src/collection/collection_service.cpp
+    src/collection/console_store_provider.cpp
     src/collection/crawl_run.cpp
     src/collection/epic_games_provider.cpp
     src/collection/google_play_provider.cpp
@@ -98,6 +99,10 @@ if(BUILD_TESTING)
         add_test(
             NAME steam_collector_tests
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_steam_collector.py
+        )
+        add_test(
+            NAME console_collector_tests
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_console_collector.py
         )
         add_test(
             NAME steam_catalog_import_tests

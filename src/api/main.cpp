@@ -668,6 +668,12 @@ private:
         } else if (store == "Nintendo eShop") {
             pipeline = "tools/run_storefront_price_pipeline.py";
             pipelineArguments = " --store NintendoEShop";
+        } else if (store == "PlayStation Store") {
+            pipeline = "tools/run_storefront_price_pipeline.py";
+            pipelineArguments = " --store PlayStationStore";
+        } else if (store == "Microsoft Store") {
+            pipeline = "tools/run_storefront_price_pipeline.py";
+            pipelineArguments = " --store MicrosoftStore";
         } else {
             pipeline = "tools/run_steam_pipeline.py";
         }
@@ -999,6 +1005,18 @@ std::optional<Platform> platformFromParameter(const std::string& value) {
     if (value == "Nintendo Switch 2") {
         return Platform::NintendoSwitch2;
     }
+    if (value == "PlayStation 4") {
+        return Platform::PlayStation4;
+    }
+    if (value == "PlayStation 5") {
+        return Platform::PlayStation5;
+    }
+    if (value == "Xbox One") {
+        return Platform::XboxOne;
+    }
+    if (value == "Xbox Series X|S") {
+        return Platform::XboxSeries;
+    }
     throw std::invalid_argument("unsupported platform");
 }
 
@@ -1014,6 +1032,12 @@ std::optional<Store> storeFromParameter(const std::string& value) {
     }
     if (value == "Nintendo eShop") {
         return Store::NintendoEShop;
+    }
+    if (value == "PlayStation Store") {
+        return Store::PlayStationStore;
+    }
+    if (value == "Microsoft Store") {
+        return Store::MicrosoftStore;
     }
     if (value == "Google Play") {
         return Store::GooglePlay;
@@ -1518,8 +1542,8 @@ int main() {
                     std::optional<Platform> platform;
                     if((*body).isMember("platform")){
                         if(!(*body)["platform"].isString()){callback(jsonError(drogon::k400BadRequest,"platform must be a string"));return;}
-                        const auto value=(*body)["platform"].asString();
-                        if(value=="Windows")platform=Platform::Windows;else if(value=="macOS")platform=Platform::MacOS;else if(value=="Linux")platform=Platform::Linux;else if(value=="Android")platform=Platform::Android;else if(value=="iOS")platform=Platform::IOS;else if(value=="iPadOS")platform=Platform::IPadOS;else if(value=="Nintendo Switch")platform=Platform::NintendoSwitch;else if(value=="Nintendo Switch 2")platform=Platform::NintendoSwitch2;else{callback(jsonError(drogon::k400BadRequest,"unsupported platform"));return;}
+                        platform = platformFromParameter(
+                            (*body)["platform"].asString());
                         if(std::find(game->supportedPlatforms.begin(),game->supportedPlatforms.end(),*platform)==game->supportedPlatforms.end()){callback(jsonError(drogon::k400BadRequest,"platform is not supported by game"));return;}
                     }
                     const auto rule = accountRepository.addRule(user->id, (*body)["gameId"].asString(), type, target,platform);
@@ -1744,6 +1768,8 @@ int main() {
                     "AppleAppStore",
                     "EpicGamesStore",
                     "NintendoEShop",
+                    "PlayStationStore",
+                    "MicrosoftStore",
                 };
                 if (supportedStores.count(store) == 0 || productId.empty()) {
                     callback(jsonError(
@@ -1998,7 +2024,9 @@ int main() {
                 const auto productUrl = (*body)["productUrl"].asString();
                 const auto gameId = (*body)["gameId"].asString();
                 if ((store != "EpicGamesStore" &&
-                     store != "NintendoEShop") ||
+                     store != "NintendoEShop" &&
+                     store != "PlayStationStore" &&
+                     store != "MicrosoftStore") ||
                     productUrl.empty() ||
                     !validCanonicalGameId(gameId)) {
                     callback(jsonError(
@@ -2061,7 +2089,9 @@ int main() {
                     : std::string{"Steam"};
                 if (store != "Steam" && store != "Epic Games Store" &&
                     store != "Nintendo eShop" && store != "Google Play" &&
-                    store != "Apple App Store") {
+                    store != "Apple App Store" &&
+                    store != "PlayStation Store" &&
+                    store != "Microsoft Store") {
                     callback(jsonError(
                         drogon::k400BadRequest,
                         "unsupported collection store"));

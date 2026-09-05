@@ -48,19 +48,43 @@ std::string sessionTokenHash(const std::string& token) {
     return output.str();
 }
 AlertRule readRule(sqlite3_stmt* row) {
-    const auto platformName=sqlite3_column_type(row,5)==SQLITE_NULL?std::string{}:text(row,5);
+    const auto platformName = sqlite3_column_type(row, 5) == SQLITE_NULL
+        ? std::string{}
+        : text(row, 5);
     std::optional<Platform> platform;
-    if(platformName=="Windows")platform=Platform::Windows;else if(platformName=="macOS")platform=Platform::MacOS;
-    else if(platformName=="Linux")platform=Platform::Linux;else if(platformName=="Android")platform=Platform::Android;
-    else if(platformName=="iOS")platform=Platform::IOS;else if(platformName=="iPadOS")platform=Platform::IPadOS;
-    else if(platformName=="Nintendo Switch")platform=Platform::NintendoSwitch;
-    else if(platformName=="Nintendo Switch 2")platform=Platform::NintendoSwitch2;
-    else if(!platformName.empty())throw std::runtime_error("Unknown alert platform in database");
+    if (platformName == "Windows") {
+        platform = Platform::Windows;
+    } else if (platformName == "macOS") {
+        platform = Platform::MacOS;
+    } else if (platformName == "Linux") {
+        platform = Platform::Linux;
+    } else if (platformName == "Android") {
+        platform = Platform::Android;
+    } else if (platformName == "iOS") {
+        platform = Platform::IOS;
+    } else if (platformName == "iPadOS") {
+        platform = Platform::IPadOS;
+    } else if (platformName == "Nintendo Switch") {
+        platform = Platform::NintendoSwitch;
+    } else if (platformName == "Nintendo Switch 2") {
+        platform = Platform::NintendoSwitch2;
+    } else if (platformName == "PlayStation 4") {
+        platform = Platform::PlayStation4;
+    } else if (platformName == "PlayStation 5") {
+        platform = Platform::PlayStation5;
+    } else if (platformName == "Xbox One") {
+        platform = Platform::XboxOne;
+    } else if (platformName == "Xbox Series X|S") {
+        platform = Platform::XboxSeries;
+    } else if (!platformName.empty()) {
+        throw std::runtime_error("Unknown alert platform in database");
+    }
     return AlertRule{sqlite3_column_int64(row, 0), sqlite3_column_int64(row, 1),
         text(row, 2), alertRuleTypeFromString(text(row, 3)),
         sqlite3_column_type(row, 4) == SQLITE_NULL ? std::nullopt :
             std::optional<std::int64_t>{sqlite3_column_int64(row, 4)},
-        platform,sqlite3_column_int(row, 6) != 0};
+        platform,
+        sqlite3_column_int(row, 6) != 0};
 }
 }  // namespace
 
