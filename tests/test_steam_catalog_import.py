@@ -94,6 +94,21 @@ class SteamCatalogImportTest(unittest.TestCase):
             "https://cdn.example.test/stardew.jpg",
         )
 
+    def test_existing_game_without_image_is_enriched(self):
+        payload = json.loads(self.raw)
+        payload["413150"]["data"]["header_image"] = (
+            "https://cdn.example.test/stardew.jpg"
+        )
+        game = steam_catalog_import.catalog_game(
+            json.dumps(payload).encode(),
+            "413150",
+        )
+        existing = copy.deepcopy(game)
+        existing.pop("imageUrl")
+        catalog = {"schemaVersion": 4, "games": [existing]}
+        updated = steam_catalog_import.updated_catalog(catalog, game)
+        self.assertEqual(updated["games"][0]["imageUrl"], game["imageUrl"])
+
 
 if __name__ == "__main__":
     unittest.main()

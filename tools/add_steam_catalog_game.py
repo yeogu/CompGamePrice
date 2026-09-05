@@ -146,7 +146,11 @@ def updated_catalog(catalog: dict, game: dict) -> dict:
             if product.get("store") != "Steam" or product.get("productId") != game["products"][0]["productId"]:
                 continue
             if existing.get("id") == game["id"]:
-                return catalog
+                if existing.get("imageUrl") or not game.get("imageUrl"):
+                    return catalog
+                enriched = {**existing, "imageUrl": game["imageUrl"]}
+                games = [enriched if item is existing else item for item in catalog["games"]]
+                return {**catalog, "games": games}
             raise CatalogImportError(
                 f"Steam product already belongs to {existing.get('id')}: {game['products'][0]['productId']}"
             )
