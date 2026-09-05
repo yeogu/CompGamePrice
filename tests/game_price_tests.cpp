@@ -1679,6 +1679,13 @@ void testFavoriteGamesAndPreferences() {
         !updated.emailNotificationsEnabled &&
             !accounts.findPreferences(user.id).emailNotificationsEnabled,
         "Email notification preference should persist");
+    expect(accounts.deleteUser(user.id), "An existing account should be deleted");
+    expect(
+        !accounts.findUserByEmail("preferences@example.com"),
+        "Deleted account credentials must no longer be available");
+    expect(
+        accounts.findFavoriteGameIds(user.id).empty(),
+        "Account deletion should cascade to user-owned data");
 }
 
 }  // namespace

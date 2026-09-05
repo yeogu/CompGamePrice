@@ -1502,6 +1502,41 @@ int main() {
             {drogon::Patch});
 
         drogon::app().registerHandler(
+            "/api/account",
+            [&authService, &accountRepository](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                const auto user = authenticatedUser(request, authService);
+                if (!user) {
+                    callback(jsonError(
+                        drogon::k401Unauthorized,
+                        "authentication required"));
+                    return;
+                }
+                const auto body = request->getJsonObject();
+                const auto confirmation =
+                    body && (*body)["confirmation"].isString()
+                    ? (*body)["confirmation"].asString()
+                    : std::string{};
+                if (confirmation != user->email) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "account email confirmation does not match"));
+                    return;
+                }
+                if (!accountRepository.deleteUser(user->id)) {
+                    callback(jsonError(
+                        drogon::k404NotFound,
+                        "account not found"));
+                    return;
+                }
+                auto response = jsonResponse(Json::Value{});
+                clearSessionCookie(response);
+                callback(response);
+            },
+            {drogon::Delete});
+
+        drogon::app().registerHandler(
             "/api/alert-rules",
             [&authService, &accountRepository,&catalog](const drogon::HttpRequestPtr& request,
                 std::function<void(const HttpResponsePtr&)>&& callback) {

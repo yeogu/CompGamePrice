@@ -723,6 +723,10 @@ python3 tools/run_storefront_price_pipeline.py --store MicrosoftStore
 Web과 Mobile client가 같은 Core 로직을 사용하도록 Drogon 기반 API를
 제공합니다. macOS에서는 Drogon을 설치한 뒤 기존 빌드 명령을 실행합니다.
 
+로그인한 사용자는 계정 설정에서 현재 이메일을 다시 입력한 뒤 계정을 삭제할 수
+있습니다. 삭제 시 사용자 레코드와 함께 관심 게임, 가격 알림, 알림 기록, 세션 등
+사용자 소유 데이터가 SQLite 외래 키 규칙에 따라 함께 제거됩니다.
+
 ```sh
 brew install drogon
 cmake -S . -B build

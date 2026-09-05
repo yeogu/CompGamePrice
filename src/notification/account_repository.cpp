@@ -471,6 +471,16 @@ UserPreferences AccountRepository::updatePreferences(
     statement.execute();
     return preferences;
 }
+
+bool AccountRepository::deleteUser(std::int64_t userId) {
+    Statement statement(
+        database_.handle(),
+        "DELETE FROM users WHERE id=?;");
+    sqlite3_bind_int64(statement.get(), 1, userId);
+    statement.execute();
+    return sqlite3_changes(database_.handle()) > 0;
+}
+
 Database& AccountRepository::database() const noexcept { return database_; }
 
 }  // namespace game_price

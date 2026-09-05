@@ -107,6 +107,7 @@ export const addFavorite = (token: string, gameId: string) => requestJson<{ game
 export const deleteFavorite = (token: string, gameId: string) => requestJson<object>(`/api/favorites/${encodeURIComponent(gameId)}`, { method: 'DELETE' }, token)
 export const getPreferences = (token: string) => requestJson<UserPreferences>('/api/account/preferences', {}, token)
 export const updatePreferences = (token: string, preferences: UserPreferences) => requestJson<UserPreferences>('/api/account/preferences', { method: 'PATCH', body: JSON.stringify(preferences) }, token)
+export const deleteAccount = (token: string, confirmation: string) => requestJson<object>('/api/account', { method: 'DELETE', body: JSON.stringify({ confirmation }) }, token)
 export const getCatalogAdminStatus = () => requestJson<{ enabled: boolean }>('/api/admin/catalog/status')
 export const getAdminHealthSummary = () => requestJson<import('./types').AdminHealthSummary>('/api/admin/health')
 export const getCatalogPriceIntegrity = () => requestJson<import('./types').CatalogPriceIntegrity>('/api/admin/catalog/integrity')

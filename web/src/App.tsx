@@ -1,4 +1,5 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react'
+import { deleteAccount } from './api'
 import { addAlertRule, addFavorite, confirmPasswordReset, deleteAlertRule, deleteFavorite, disconnectCatalogProduct, getAdminHealthSummary, getAlertRules, getCatalogAdminStatus, getCatalogChangeAudits, getCatalogCollectionJob, getCatalogFilters, getCatalogPriceIntegrity, getCatalogSyncJob, getCollectionRuns, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getMetadataSyncStatus, getMobileCatalogSyncJob, getNotifications, getPreferences, importAppleCatalogGame, importGooglePlayCatalogGame, importSteamCatalogGame, importStorefrontCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, requestPasswordReset, resolveCatalogSyncReview, resolveMetadataReview, resolveMobileCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, startMetadataSync, startMobileCatalogSync, updateCatalogGameMetadata, updatePreferences } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
 import { GameCatalogView, GameDetailView } from './GameViews'
@@ -631,6 +632,33 @@ function App() {
     setFavorites([])
     setCatalogAdminEnabled(false)
     navigate('games')
+  }
+
+  const removeAccount = async () => {
+    if (!user) {
+      return
+    }
+    const confirmation = window.prompt(
+      `계정과 알림 데이터를 영구 삭제하려면 ${user.email} 을(를) 입력해주세요.`,
+    )
+    if (confirmation === null) {
+      return
+    }
+    if (confirmation !== user.email) {
+      setError('입력한 이메일이 현재 계정과 일치하지 않습니다.')
+      return
+    }
+    await runAccountAction(async () => {
+      await deleteAccount(token, confirmation)
+      localStorage.removeItem('game-price-session')
+      setToken('')
+      setUser(null)
+      setRules([])
+      setNotifications([])
+      setFavorites([])
+      navigate('games')
+      setActionMessage('계정과 관련 데이터를 삭제했습니다.')
+    }, '계정을 삭제하지 못했습니다.')
   }
 
   const createRule = async (type: AlertRuleType) => {
@@ -1700,6 +1728,10 @@ function App() {
           <div><h3>이메일 가격 알림</h3><p>목표 가격 도달 알림을 이메일 발송 대기열에 추가합니다.</p></div>
           <label className="toggle"><input type="checkbox" checked={preferences.emailNotificationsEnabled} onChange={(event) => void savePreferences(event.target.checked)} /><span>{preferences.emailNotificationsEnabled ? '사용' : '사용 안 함'}</span></label>
           <div className="preference-meta"><span>지역 <strong>{preferences.region}</strong></span><span>통화 <strong>{preferences.currency}</strong></span></div>
+        </div>
+        <div className="account-danger-zone">
+          <div><h3>계정 삭제</h3><p>계정, 관심 게임, 가격 알림과 알림 기록을 영구 삭제합니다.</p></div>
+          <button className="danger" onClick={() => void removeAccount()}>계정 삭제</button>
         </div>
       </section>}
 

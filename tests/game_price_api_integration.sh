@@ -491,3 +491,17 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     -b "${cookie_jar}" \
     "${api_base}/api/collection-runs?limit=invalid")
 [[ "${status}" == "400" ]]
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -b "${cookie_jar}" -H 'Content-Type: application/json' -X DELETE \
+    -d '{"confirmation":"wrong@example.com"}' \
+    "${api_base}/api/account")
+[[ "${status}" == "400" ]]
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -b "${cookie_jar}" -H 'Content-Type: application/json' -X DELETE \
+    -d '{"confirmation":"test@example.com"}' \
+    "${api_base}/api/account")
+[[ "${status}" == "200" ]]
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -b "${cookie_jar}" "${api_base}/api/auth/me")
+[[ "${status}" == "401" ]]

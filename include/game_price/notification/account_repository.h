@@ -49,6 +49,7 @@ public:
     UserPreferences updatePreferences(
         std::int64_t userId,
         const UserPreferences& preferences);
+    bool deleteUser(std::int64_t userId);
     Database& database() const noexcept;
 private:
     Database& database_;
