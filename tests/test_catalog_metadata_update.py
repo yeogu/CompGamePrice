@@ -83,6 +83,19 @@ class CatalogMetadataUpdateTest(unittest.TestCase):
             metadata_update.validated_changes({"products": []})
         with self.assertRaisesRegex(ValueError, "non-empty"):
             metadata_update.validated_changes({"developers": [""]})
+        with self.assertRaisesRegex(ValueError, "HTTP or HTTPS"):
+            metadata_update.validated_changes({"imageUrl": "file:///tmp/game.jpg"})
+
+    def test_accepts_https_artwork_and_allows_clearing_it(self):
+        image_url = "https://cdn.example.com/game.jpg"
+        self.assertEqual(
+            metadata_update.validated_changes({"imageUrl": image_url}),
+            {"imageUrl": image_url},
+        )
+        self.assertEqual(
+            metadata_update.validated_changes({"imageUrl": "  "}),
+            {"imageUrl": ""},
+        )
 
 
 if __name__ == "__main__":

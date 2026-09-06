@@ -55,6 +55,7 @@ def proposed_metadata(raw: bytes, app_id: str) -> dict:
     if not isinstance(data, dict) or data.get("type") != "game":
         raise ValueError(f"Steam product {app_id} is not a base game")
     return {
+        "imageUrl": str(data.get("header_image", "")).strip(),
         "developers": [
             value.strip()
             for value in data.get("developers", [])
@@ -136,7 +137,11 @@ def synchronize(
             for game in document["games"]
             if game["id"] not in existing
             and steam_product(game) is not None
-            and (not game.get("developers") or not game.get("publishers"))
+            and (
+                not game.get("developers")
+                or not game.get("publishers")
+                or not game.get("imageUrl")
+            )
         ][:limit]
         for game in candidates:
             product = steam_product(game)

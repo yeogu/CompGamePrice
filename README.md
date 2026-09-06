@@ -270,14 +270,20 @@ python3 tools/audit_catalog_metadata.py
 안전하게 보존하면서 관리자가 검증된 정보부터 단계적으로 보완하기 위해서입니다.
 
 연결된 Steam 본편에서 누락 메타데이터 제안을 생성하려면 다음 명령을 사용합니다.
-기존 값이 없는 필드는 자동 반영되고 감사 기록에 `steam-metadata-sync` actor로
-남습니다. 기존 개발사·퍼블리셔와 Steam 값이 충돌하는 경우에만 Admin의
+대표 이미지, 개발사, 퍼블리셔, 장르 중 기존 값이 없는 필드는 자동 반영되고 감사
+기록에 `steam-metadata-sync` actor로 남습니다. 기존 개발사·퍼블리셔와 Steam 값이
+충돌하는 경우에만 Admin의
 `Steam 신원 메타데이터 보완` 검토 큐에 저장됩니다.
 
 ```bash
 python3 tools/sync_steam_metadata.py
 python3 tools/sync_steam_metadata.py --status
 ```
+
+게임 찾기와 관심 게임 목록은 canonical Game의 `imageUrl`을 고정 크기 썸네일로
+표시합니다. 이미지가 없거나 외부 이미지 로딩에 실패하면 게임패드 placeholder를
+사용하므로 카드 배치가 달라지지 않습니다. 관리자는 카탈로그 상품 화면에서 대표
+이미지 URL을 직접 교체하거나 비워서 placeholder로 되돌릴 수 있습니다.
 
 Admin 대시보드는 canonical 메타데이터 완성률, 최근 가격 수집 실패, 이메일 알림의
 대기·재시도·재시도 소진 건수를 함께 보여줍니다. 세부 Store 연결 및 메타데이터

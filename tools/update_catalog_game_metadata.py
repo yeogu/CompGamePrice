@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from urllib.parse import urlparse
 
 import catalog_storage
 
@@ -18,6 +19,7 @@ EDITABLE_FIELDS = (
     "genres",
     "tags",
     "platforms",
+    "imageUrl",
 )
 
 
@@ -38,6 +40,18 @@ def normalized_string_list(value: object, field: str) -> list[str]:
     return result
 
 
+def normalized_image_url(value: object) -> str:
+    if not isinstance(value, str):
+        raise MetadataUpdateError("imageUrl must be a string")
+    normalized = value.strip()
+    if not normalized:
+        return ""
+    parsed = urlparse(normalized)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise MetadataUpdateError("imageUrl must be an HTTP or HTTPS URL")
+    return normalized
+
+
 def validated_changes(payload: dict) -> dict:
     unknown = set(payload) - set(EDITABLE_FIELDS)
     if unknown:
@@ -50,6 +64,8 @@ def validated_changes(payload: dict) -> dict:
             if not isinstance(value, str) or not value.strip():
                 raise MetadataUpdateError("title must be a non-empty string")
             changes[field] = value.strip()
+        elif field == "imageUrl":
+            changes[field] = normalized_image_url(value)
         else:
             changes[field] = normalized_string_list(value, field)
     if not changes:

@@ -11,9 +11,20 @@ sys.path.insert(0, str(ROOT / "tools"))
 import sync_steam_metadata
 
 
+STEAM_ARTWORK_URL = "https://cdn.example.com/steam/413150/header.jpg"
+
+
+def steam_fixture_with_artwork() -> bytes:
+    document = json.loads(
+        (ROOT / "tests/fixtures/steam_appdetails_413150.json").read_bytes()
+    )
+    document["413150"]["data"]["header_image"] = STEAM_ARTWORK_URL
+    return json.dumps(document).encode()
+
+
 class SteamMetadataSyncTest(unittest.TestCase):
     def test_automatically_fills_only_missing_verified_fields(self):
-        raw = (ROOT / "tests/fixtures/steam_appdetails_413150.json").read_bytes()
+        raw = steam_fixture_with_artwork()
         catalog = {
             "schemaVersion": 4,
             "games": [{
@@ -38,6 +49,10 @@ class SteamMetadataSyncTest(unittest.TestCase):
             updated = json.loads(catalog_path.read_text(encoding="utf-8"))
             self.assertEqual(updated["games"][0]["developers"], ["ConcernedApe"])
             self.assertEqual(updated["games"][0]["publishers"], ["ConcernedApe"])
+            self.assertEqual(
+                updated["games"][0]["imageUrl"],
+                STEAM_ARTWORK_URL,
+            )
             with sqlite3.connect(database) as connection:
                 audit = connection.execute(
                     """
@@ -125,6 +140,32 @@ class SteamMetadataSyncTest(unittest.TestCase):
             self.assertEqual(result["autoApplied"], 1)
             self.assertEqual(result["discovered"], 0)
             self.assertEqual(result["failed"][0]["gameId"], "two")
+
+    def test_backfills_image_when_identity_metadata_is_complete(self):
+        raw = steam_fixture_with_artwork()
+        catalog = {
+            "schemaVersion": 4,
+            "games": [{
+                "id": "stardew-valley",
+                "title": "Stardew Valley",
+                "developers": ["ConcernedApe"],
+                "publishers": ["ConcernedApe"],
+                "products": [{"store": "Steam", "productId": "413150"}],
+            }],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            catalog_path = root / "catalog.json"
+            database = root / "prices.db"
+            catalog_path.write_text(json.dumps(catalog), encoding="utf-8")
+            result = sync_steam_metadata.synchronize(
+                catalog_path,
+                database,
+                fetcher=lambda app_id: raw,
+            )
+            self.assertEqual(result["autoApplied"], 1)
+            updated = json.loads(catalog_path.read_text(encoding="utf-8"))
+            self.assertTrue(updated["games"][0]["imageUrl"].startswith("https://"))
 
 
 if __name__ == "__main__":

@@ -310,6 +310,7 @@ function App() {
   const [adminReviewNote, setAdminReviewNote] = useState('')
   const [metadataDevelopers, setMetadataDevelopers] = useState('')
   const [metadataPublishers, setMetadataPublishers] = useState('')
+  const [metadataImageUrl, setMetadataImageUrl] = useState('')
   const [metadataPreview, setMetadataPreview] = useState<CatalogMetadataUpdateResult | null>(null)
   const [catalogAudits, setCatalogAudits] = useState<CatalogChangeAudit[]>([])
   const [adminHealth, setAdminHealth] = useState<AdminHealthSummary | null>(null)
@@ -765,6 +766,7 @@ function App() {
       setAdminResult(result)
       setMetadataDevelopers(result.game.developers?.join(', ') ?? '')
       setMetadataPublishers(result.game.publishers?.join(', ') ?? '')
+      setMetadataImageUrl(result.game.imageUrl ?? '')
       setMetadataPreview(null)
       if (apply && reviewingAppId === appId) {
         try {
@@ -819,6 +821,7 @@ function App() {
       const metadata = {
         developers: metadataDevelopers.split(',').map((value) => value.trim()).filter(Boolean),
         publishers: metadataPublishers.split(',').map((value) => value.trim()).filter(Boolean),
+        imageUrl: metadataImageUrl.trim(),
       }
       const response = await updateCatalogGameMetadata(
         adminResult.game.id,
@@ -833,6 +836,7 @@ function App() {
             ...adminResult.game,
             developers: response.result.game.developers,
             publishers: response.result.game.publishers,
+            imageUrl: response.result.game.imageUrl,
           },
         })
         setCatalogAudits(await getCatalogChangeAudits())
@@ -1528,6 +1532,7 @@ function App() {
                 key={game.id}
                 onClick={() => void selectGame(game)}
               >
+                <GameArtwork imageUrl={game.imageUrl} title={game.title} />
                 <strong>{game.title}</strong>
                 <small className="platform-badge-list catalog-platform-icons">{game.platforms.map((platform) => <PlatformBadge compact iconOnly key={platform} platform={platform} />)}</small>
                 <span>{game.genres.join(' · ') || '장르 정보 수집 중'}</span>
@@ -1713,7 +1718,7 @@ function App() {
         <h1 className="view-title">관심 게임</h1>
         <p className="view-description">자주 확인하는 게임을 모아두고 가격 상세로 바로 이동하세요.</p>
         {favorites.length === 0 && <p className="empty-state">아직 관심 게임이 없습니다.</p>}
-        <div className="game-list">{favorites.map((game) => <button key={game.id} onClick={() => { navigate('games'); setShowGameResults(true); setGames([game]); setQuery(game.title); void selectGame(game) }}><strong>{game.title}</strong><small className="platform-badge-list catalog-platform-icons">{game.platforms.map((platform) => <PlatformBadge compact iconOnly key={platform} platform={platform} />)}</small></button>)}</div>
+        <div className="game-list">{favorites.map((game) => <button key={game.id} onClick={() => { navigate('games'); setShowGameResults(true); setGames([game]); setQuery(game.title); void selectGame(game) }}><GameArtwork imageUrl={game.imageUrl} title={game.title} /><strong>{game.title}</strong><small className="platform-badge-list catalog-platform-icons">{game.platforms.map((platform) => <PlatformBadge compact iconOnly key={platform} platform={platform} />)}</small></button>)}</div>
       </section>}
 
       {activeView === 'alerts' && user && <section className="view-panel">
@@ -1783,9 +1788,9 @@ function App() {
         {adminSection === 'dashboard' && adminHealth && <section className="catalog-reliability" aria-label="카탈로그 탐색 신뢰도"><header><h3>카탈로그 탐색 신뢰도</h3><p>실패율이 있는 Store부터 로그와 검토 대기를 확인하세요.</p></header>{adminHealth.stores.filter((store) => catalogAttemptCount(store) > 0).map((store) => <div key={store.store}><StoreBadge compact store={collectionStoreName(store.store)} /><span>자동 등록률 <strong>{percentage(store.catalogAccepted, catalogAttemptCount(store))}</strong></span><span className={store.catalogFailed > 0 ? 'warning' : ''}>실패율 <strong>{percentage(store.catalogFailed, catalogAttemptCount(store))}</strong></span><small>총 {catalogAttemptCount(store)}건 기준</small></div>)}</section>}
         {adminSection === 'steam' && <div className="admin-store-workspace"><header><StoreBadge store="Steam" /><div><h2>Steam</h2><p>PC 게임 발견, 메타데이터 보완, 상품 연결과 가격 수집을 관리합니다.</p></div></header>
         <article className="catalog-sync-panel">
-          <div><h2>Steam 신원 메타데이터 보완</h2><p>비어 있는 개발사·퍼블리셔·장르는 자동 보완하고, 기존 신원 정보와 충돌하는 게임만 관리자에게 요청합니다.</p></div>
+          <div><h2>Steam 신원 메타데이터 보완</h2><p>비어 있는 대표 이미지·개발사·퍼블리셔·장르는 자동 보완하고, 기존 신원 정보와 충돌하는 게임만 관리자에게 요청합니다.</p></div>
           <button disabled={metadataSyncRunning} onClick={() => void discoverMetadata()}>{metadataSyncRunning ? '확인 중…' : '누락 메타데이터 찾기'}</button>
-          <div className="sync-reviews">{metadataSync?.pendingReviews.map((review) => <div key={review.gameId}><strong>{review.gameId}</strong><span>개발사 {review.proposed.developers.join(' · ') || '없음'}<br />퍼블리셔 {review.proposed.publishers.join(' · ') || '없음'}<br />장르 {review.proposed.genres.join(' · ') || '없음'}</span><a href={`https://store.steampowered.com/app/${review.externalProductId}`} target="_blank" rel="noreferrer">Steam 확인 ↗</a><div className="review-actions"><button onClick={() => void decideMetadata(review.gameId, 'APPROVED')}>승인</button><button className="danger" onClick={() => void decideMetadata(review.gameId, 'REJECTED')}>거절</button></div></div>)}{metadataSync && metadataSync.pendingReviews.length === 0 && <p>메타데이터 검토 대기 항목이 없습니다.</p>}</div>
+          <div className="sync-reviews">{metadataSync?.pendingReviews.map((review) => <div key={review.gameId}><GameArtwork compact imageUrl={review.proposed.imageUrl} title={review.gameId} /><strong>{review.gameId}</strong><span>개발사 {review.proposed.developers.join(' · ') || '없음'}<br />퍼블리셔 {review.proposed.publishers.join(' · ') || '없음'}<br />장르 {review.proposed.genres.join(' · ') || '없음'}</span><a href={`https://store.steampowered.com/app/${review.externalProductId}`} target="_blank" rel="noreferrer">Steam 확인 ↗</a><div className="review-actions"><button onClick={() => void decideMetadata(review.gameId, 'APPROVED')}>승인</button><button className="danger" onClick={() => void decideMetadata(review.gameId, 'REJECTED')}>거절</button></div></div>)}{metadataSync && metadataSync.pendingReviews.length === 0 && <p>메타데이터 검토 대기 항목이 없습니다.</p>}</div>
         </article>
         <article className="catalog-sync-panel">
           <div>
@@ -1882,6 +1887,7 @@ function App() {
             <p>Store 상품의 개발사 또는 공식 퍼블리셔와 비교할 기준입니다. 쉼표로 여러 값을 구분하세요.</p>
             <label>개발사<input value={metadataDevelopers} onChange={(event) => setMetadataDevelopers(event.target.value)} placeholder="예: Re-Logic" /></label>
             <label>퍼블리셔<input value={metadataPublishers} onChange={(event) => setMetadataPublishers(event.target.value)} placeholder="예: 505 Games" /></label>
+            <label>대표 이미지 URL<input value={metadataImageUrl} onChange={(event) => setMetadataImageUrl(event.target.value)} placeholder="https://..." /></label>
             <div className="review-actions"><button disabled={adminImporting} onClick={() => void editCatalogMetadata(false)}>변경 내용 확인</button>{metadataPreview?.changed && <button disabled={adminImporting} onClick={() => void editCatalogMetadata(true)}>메타데이터 저장</button>}</div>
             {metadataPreview && <div className="metadata-diff">{Object.entries(metadataPreview.diff).map(([field, change]) => <p key={field}><strong>{field}</strong><span>{Array.isArray(change.before) ? change.before.join(', ') : change.before || '없음'} → {Array.isArray(change.after) ? change.after.join(', ') : change.after || '없음'}</span></p>)}{!metadataPreview.changed && <p>변경할 내용이 없습니다.</p>}</div>}
           </section>

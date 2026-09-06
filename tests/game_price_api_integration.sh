@@ -221,15 +221,37 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/games?pageSize=100")
 [[ "${status}" == "200" ]]
-grep -q '"id":"stardew-valley"' "${response_body}"
-grep -q '"id":"terraria"' "${response_body}"
-grep -q '"id":"hollow-knight"' "${response_body}"
-grep -q '"id":"hades"' "${response_body}"
-grep -q '"platforms":\["Windows","macOS","Linux"\]' "${response_body}"
-grep -q '"genres":\["Simulation","RPG"\]' "${response_body}"
-grep -q '"aliases":\[' "${response_body}"
-grep -q '"developers":\["ConcernedApe"\]' "${response_body}"
-grep -q '"publishers":\["ConcernedApe"\]' "${response_body}"
+grep -q '"games":\[' "${response_body}"
+grep -q '"total":' "${response_body}"
+
+while IFS='|' read -r query game_id; do
+    status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+        "${api_base}/api/games?query=${query}")
+    [[ "${status}" == "200" ]]
+    grep -q "\"id\":\"${game_id}\"" "${response_body}"
+done <<'EOF'
+Stardew%20Valley|stardew-valley
+Terraria|terraria
+Hollow%20Knight|hollow-knight
+Hades|hades
+EOF
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/games?query=Stardew%20Valley")
+[[ "${status}" == "200" ]]
+python3 - "${response_body}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as source:
+    game = json.load(source)["games"][0]
+
+assert {"Windows", "macOS", "Linux"}.issubset(game["platforms"])
+assert {"Simulation", "RPG"}.issubset(game["genres"])
+assert isinstance(game["aliases"], list)
+assert "ConcernedApe" in game["developers"]
+assert "ConcernedApe" in game["publishers"]
+PY
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/games?query=DAVE%20THE%20DIVER")
