@@ -82,6 +82,19 @@ def run_operations(
             ],
         ),
         (
+            "store-artwork-backfill",
+            [
+                python,
+                str(project / "tools" / "backfill_catalog_artwork.py"),
+                "--catalog",
+                str(catalog),
+                "--database",
+                str(database),
+                "--limit",
+                str(metadata_batch_size),
+            ],
+        ),
+        (
             "google-play-catalog-discovery",
             [
                 python,

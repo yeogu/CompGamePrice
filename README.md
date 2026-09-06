@@ -288,6 +288,12 @@ python3 tools/sync_steam_metadata.py --status
 처리량은 `COLLECTION_METADATA_BATCH_SIZE`로 조정합니다. 관리자 Steam 화면에는 대표
 이미지 완료 수와 남은 수가 표시됩니다.
 
+Steam에서 이미지를 얻지 못한 게임은 이어서 연결된 PlayStation, Microsoft,
+Nintendo, Epic Games, Google Play, Apple App Store 상품 순으로 대표 이미지를
+확인합니다. 이미 지정된 이미지는 자동 작업이 덮어쓰지 않습니다. 웹 서버는 새
+배포를 즉시 반영하도록 HTML을 캐시하지 않고, 파일명에 해시가 포함된 정적 asset만
+장기 캐시합니다.
+
 Admin 대시보드는 canonical 메타데이터 완성률, 최근 가격 수집 실패, 이메일 알림의
 대기·재시도·재시도 소진 건수를 함께 보여줍니다. 세부 Store 연결 및 메타데이터
 변경 이력은 같은 화면의 관리자 변경 기록에서 확인할 수 있습니다.
