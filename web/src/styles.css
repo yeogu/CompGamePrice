@@ -127,8 +127,9 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .collection-run.failed .status-dot { background: #ff7b6b; }
 .error-text { color: #ffb4a8; }
 .game-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
-.game-list button { display: grid; align-content: start; gap: 10px; justify-items: start; overflow: hidden; padding: 18px 16px 16px; color: #eaf5ee; background: #0b1812; border: 1px solid #315141; text-align: left; }
-.game-list button > .game-artwork { width: calc(100% + 32px); height: 120px; margin: -18px -16px 2px; }
+.game-list button { display: grid; grid-template-rows: auto minmax(2.5em, auto) auto auto auto; align-content: start; gap: 10px; min-height: 302px; justify-items: start; overflow: hidden; padding: 18px 16px 16px; color: #eaf5ee; background: #0b1812; border: 1px solid #315141; text-align: left; }
+.game-list button > .game-artwork { width: calc(100% + 32px); height: auto; aspect-ratio: 16 / 7; margin: -18px -16px 2px; }
+.game-list button > strong { display: -webkit-box; overflow: hidden; line-height: 1.25; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .game-list button small { font-size: 0.68rem; font-weight: 600; }
 .game-list button span { color: #91a79b; font-size: .72rem; }
 .game-list button em { color: #73e2a7; font-size: .8rem; font-style: normal; }
@@ -473,4 +474,11 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
   .admin-search { grid-template-columns: 1fr; }
   .candidate-confirmation { grid-template-columns: 1fr; }
   .view-panel { padding: 24px 18px; }
+  .game-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .game-list button { min-height: 260px; padding: 14px 12px; }
+  .game-list button > .game-artwork { width: calc(100% + 24px); margin: -14px -12px 0; }
+}
+
+@media (max-width: 420px) {
+  .game-list { grid-template-columns: 1fr; }
 }

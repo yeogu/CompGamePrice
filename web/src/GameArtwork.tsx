@@ -1,5 +1,5 @@
 import { Gamepad2 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 interface GameArtworkProps {
   imageUrl?: string
@@ -11,10 +11,14 @@ export default function GameArtwork({ imageUrl, title, compact = false }: GameAr
   const [failed, setFailed] = useState(false)
   const showImage = Boolean(imageUrl) && !failed
 
+  useEffect(() => {
+    setFailed(false)
+  }, [imageUrl])
+
   return (
     <span className={`game-artwork ${compact ? 'compact' : ''}`} aria-label={`${title} 대표 이미지`}>
       {showImage
-        ? <img alt="" loading="lazy" src={imageUrl} onError={() => setFailed(true)} />
+        ? <img alt="" decoding="async" loading="lazy" src={imageUrl} onError={() => setFailed(true)} />
         : <Gamepad2 aria-hidden="true" />}
     </span>
   )
