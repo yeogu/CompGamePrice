@@ -127,7 +127,7 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .collection-run.failed .status-dot { background: #ff7b6b; }
 .error-text { color: #ffb4a8; }
 .game-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
-.game-list button { display: grid; gap: 8px; justify-items: start; overflow: hidden; padding: 0 16px 16px; color: #eaf5ee; background: #0b1812; border: 1px solid #315141; text-align: left; }
+.game-list button { display: grid; align-content: start; gap: 10px; justify-items: start; overflow: hidden; padding: 18px 16px 16px; color: #eaf5ee; background: #0b1812; border: 1px solid #315141; text-align: left; }
 .game-list button small { font-size: 0.68rem; font-weight: 600; }
 .game-list button span { color: #91a79b; font-size: .72rem; }
 .game-list button em { color: #73e2a7; font-size: .8rem; font-style: normal; }
