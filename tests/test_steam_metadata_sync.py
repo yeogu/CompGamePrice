@@ -46,6 +46,10 @@ class SteamMetadataSyncTest(unittest.TestCase):
             self.assertEqual(result["autoApplied"], 1)
             self.assertEqual(result["discovered"], 0)
             self.assertEqual(result["pendingReviews"], [])
+            self.assertEqual(
+                result["artwork"],
+                {"total": 1, "complete": 1, "missing": 0},
+            )
             updated = json.loads(catalog_path.read_text(encoding="utf-8"))
             self.assertEqual(updated["games"][0]["developers"], ["ConcernedApe"])
             self.assertEqual(updated["games"][0]["publishers"], ["ConcernedApe"])
@@ -166,6 +170,38 @@ class SteamMetadataSyncTest(unittest.TestCase):
             self.assertEqual(result["autoApplied"], 1)
             updated = json.loads(catalog_path.read_text(encoding="utf-8"))
             self.assertTrue(updated["games"][0]["imageUrl"].startswith("https://"))
+
+    def test_status_reports_artwork_progress(self):
+        catalog = {
+            "schemaVersion": 4,
+            "games": [
+                {
+                    "id": "with-image",
+                    "title": "With Image",
+                    "imageUrl": "https://cdn.example.com/with-image.jpg",
+                    "products": [{"store": "Steam", "productId": "1"}],
+                },
+                {
+                    "id": "without-image",
+                    "title": "Without Image",
+                    "products": [{"store": "Steam", "productId": "2"}],
+                },
+                {
+                    "id": "mobile-only",
+                    "title": "Mobile Only",
+                    "products": [{"store": "GooglePlay", "productId": "mobile"}],
+                },
+            ],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            catalog_path = root / "catalog.json"
+            catalog_path.write_text(json.dumps(catalog), encoding="utf-8")
+            result = sync_steam_metadata.status(root / "missing.db", catalog_path)
+        self.assertEqual(
+            result["artwork"],
+            {"total": 2, "complete": 1, "missing": 1},
+        )
 
 
 if __name__ == "__main__":

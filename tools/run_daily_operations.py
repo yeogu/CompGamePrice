@@ -27,6 +27,7 @@ def run_operations(
     output_directory: Path,
     outbox_file: Path | None,
     catalog_batch_size: int = 30,
+    metadata_batch_size: int = 20,
     steam_discovery_limit: int = 75,
     steam_discovery_pages: int = 4,
 ) -> list[dict]:
@@ -65,6 +66,19 @@ def run_operations(
                 str(database),
                 "--batch-size",
                 str(catalog_batch_size),
+            ],
+        ),
+        (
+            "steam-metadata-sync",
+            [
+                python,
+                str(project / "tools" / "sync_steam_metadata.py"),
+                "--catalog",
+                str(catalog),
+                "--database",
+                str(database),
+                "--limit",
+                str(metadata_batch_size),
             ],
         ),
         (
@@ -259,6 +273,7 @@ def main() -> int:
     parser.add_argument("--output-dir", default=project / "snapshots/latest", type=Path)
     parser.add_argument("--outbox-file", type=Path)
     parser.add_argument("--catalog-batch-size", default=30, type=int)
+    parser.add_argument("--metadata-batch-size", default=20, type=int)
     parser.add_argument("--steam-discovery-limit", default=75, type=int)
     parser.add_argument("--steam-discovery-pages", default=4, type=int)
     arguments = parser.parse_args()
@@ -269,6 +284,7 @@ def main() -> int:
         arguments.output_dir,
         arguments.outbox_file,
         arguments.catalog_batch_size,
+        arguments.metadata_batch_size,
         arguments.steam_discovery_limit,
         arguments.steam_discovery_pages,
     )

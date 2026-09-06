@@ -59,6 +59,11 @@ def run_once(
         None,
         catalog_batch_size,
         periodic_job_status.parse_integer(
+            os.environ.get("COLLECTION_METADATA_BATCH_SIZE", "20"),
+            "COLLECTION_METADATA_BATCH_SIZE",
+            1,
+        ),
+        periodic_job_status.parse_integer(
             os.environ.get("COLLECTION_STEAM_DISCOVERY_LIMIT", "75"),
             "COLLECTION_STEAM_DISCOVERY_LIMIT",
             1,

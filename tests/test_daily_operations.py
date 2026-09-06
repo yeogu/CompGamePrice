@@ -15,7 +15,7 @@ SPEC.loader.exec_module(daily_operations)
 
 class DailyOperationsTest(unittest.TestCase):
     def test_runs_provider_jobs_independently_and_continues_after_failure(self):
-        exit_codes = iter([1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0])
+        exit_codes = iter([1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0])
 
         def fake_run(name, command, environment):
             self.assertTrue(command)
@@ -39,12 +39,19 @@ class DailyOperationsTest(unittest.TestCase):
         )
         self.assertIn("75", discovery)
         self.assertIn("4", discovery)
+        metadata = next(
+            command
+            for name, command, _ in [call.args for call in run_step.call_args_list]
+            if name == "steam-metadata-sync"
+        )
+        self.assertIn("20", metadata)
 
         self.assertEqual(
             [result["name"] for result in results],
             [
                 "steam-discovery",
                 "steam-catalog-sync",
+                "steam-metadata-sync",
                 "google-play-catalog-discovery",
                 "apple-catalog-discovery",
                 "nintendo-catalog-discovery",
@@ -60,7 +67,7 @@ class DailyOperationsTest(unittest.TestCase):
             ],
         )
         self.assertEqual(results[0]["exitCode"], 1)
-        self.assertEqual(len(results), 14)
+        self.assertEqual(len(results), 15)
 
 
 if __name__ == "__main__":

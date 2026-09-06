@@ -185,13 +185,35 @@ def synchronize(
         "discovered": discovered,
         "autoApplied": auto_applied,
         "failed": failed,
-        **status(database_path),
+        **status(database_path, catalog_path),
     }
 
 
-def status(database_path: Path) -> dict:
+def artwork_status(catalog_path: Path | None) -> dict:
+    if catalog_path is None or not catalog_path.exists():
+        return {"total": 0, "complete": 0, "missing": 0}
+    document = json.loads(catalog_path.read_text(encoding="utf-8"))
+    catalog_storage.validate_catalog(document)
+    steam_games = [
+        game
+        for game in document["games"]
+        if steam_product(game) is not None
+    ]
+    complete = sum(bool(game.get("imageUrl")) for game in steam_games)
+    return {
+        "total": len(steam_games),
+        "complete": complete,
+        "missing": len(steam_games) - complete,
+    }
+
+
+def status(database_path: Path, catalog_path: Path | None = None) -> dict:
     if not database_path.exists():
-        return {"pendingReviews": [], "reviewHistory": []}
+        return {
+            "artwork": artwork_status(catalog_path),
+            "pendingReviews": [],
+            "reviewHistory": [],
+        }
     with sqlite3.connect(database_path) as connection:
         initialize(connection)
         rows = connection.execute(
@@ -213,6 +235,7 @@ def status(database_path: Path) -> dict:
         "resolvedAt": row[7],
     } for row in rows]
     return {
+        "artwork": artwork_status(catalog_path),
         "pendingReviews": [item for item in reviews if item["status"] == "PENDING"],
         "reviewHistory": [item for item in reviews if item["status"] != "PENDING"],
     }
@@ -255,7 +278,7 @@ def resolve(
             (resolution, utc_now(), game_id),
         )
         connection.commit()
-    return status(database_path)
+    return status(database_path, catalog_path)
 
 
 def main() -> int:
@@ -276,7 +299,7 @@ def main() -> int:
             arguments.resolution or "",
         )
     elif arguments.status:
-        result = status(arguments.database)
+        result = status(arguments.database, arguments.catalog)
     else:
         result = synchronize(
             arguments.catalog,

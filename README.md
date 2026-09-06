@@ -284,6 +284,9 @@ python3 tools/sync_steam_metadata.py --status
 표시합니다. 이미지가 없거나 외부 이미지 로딩에 실패하면 게임패드 placeholder를
 사용하므로 카드 배치가 달라지지 않습니다. 관리자는 카탈로그 상품 화면에서 대표
 이미지 URL을 직접 교체하거나 비워서 placeholder로 되돌릴 수 있습니다.
+자동 수집 scheduler는 매 주기마다 누락된 Steam 대표 이미지를 기본 20개씩 보완하며,
+처리량은 `COLLECTION_METADATA_BATCH_SIZE`로 조정합니다. 관리자 Steam 화면에는 대표
+이미지 완료 수와 남은 수가 표시됩니다.
 
 Admin 대시보드는 canonical 메타데이터 완성률, 최근 가격 수집 실패, 이메일 알림의
 대기·재시도·재시도 소진 건수를 함께 보여줍니다. 세부 Store 연결 및 메타데이터

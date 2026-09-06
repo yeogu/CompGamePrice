@@ -156,7 +156,7 @@ export interface AdminHealthSummary {
   automation: { collection: PeriodicJobStatus; backup: PeriodicJobStatus }
 }
 export interface MetadataReview { gameId: string; sourceStore: string; externalProductId: string; proposed: { imageUrl?: string; developers: string[]; publishers: string[]; genres: string[] }; diff: Record<string, CatalogMetadataDiff>; status: 'PENDING' | 'APPROVED' | 'REJECTED'; createdAt: string; resolvedAt?: string }
-export interface MetadataSyncStatus { autoApplied?: number; discovered?: number; failed?: Array<{ gameId: string; error: string }>; pendingReviews: MetadataReview[]; reviewHistory: MetadataReview[] }
+export interface MetadataSyncStatus { artwork: { total: number; complete: number; missing: number }; autoApplied?: number; discovered?: number; failed?: Array<{ gameId: string; error: string }>; pendingReviews: MetadataReview[]; reviewHistory: MetadataReview[] }
 export interface CatalogAdminResult {
   game: {
     id: string

@@ -95,21 +95,25 @@ Apple App Store의 카탈로그 탐색과 가격 수집을 실행한다. 기본 
 COLLECTION_INTERVAL_SECONDS=21600
 COLLECTION_INITIAL_DELAY_SECONDS=120
 COLLECTION_CATALOG_BATCH_SIZE=30
+COLLECTION_METADATA_BATCH_SIZE=20
 COLLECTION_STEAM_DISCOVERY_LIMIT=75
 COLLECTION_STEAM_DISCOVERY_PAGES=4
-
-기본값은 한 주기마다 Store별 30개 후보를 처리하고, Steam은 소스별 75개씩
-4페이지를 탐색합니다. NAS 부하나 Store 제한이 보이면 배치 크기부터 낮추세요.
-관리자 대시보드의 `카탈로그 탐색 신뢰도`에서 자동 등록률과 실패율을 확인할 수
-있으며, 실패율이 발생한 Store는 수집 로그와 검토 대기를 먼저 확인합니다.
 COLLECTION_ENABLED=true
 ```
+
+기본값은 한 주기마다 Store별 30개 후보를 처리하고, Steam은 소스별 75개씩
+4페이지를 탐색합니다. 이 주기에는 대표 이미지와 신원 메타데이터가 없는 Steam
+게임을 최대 20개씩 보완하는 단계도 포함됩니다. NAS 부하나 Store 제한이 보이면
+배치 크기부터 낮추세요.
+관리자 대시보드의 `카탈로그 탐색 신뢰도`에서 자동 등록률과 실패율을 확인할 수
+있으며, 실패율이 발생한 Store는 수집 로그와 검토 대기를 먼저 확인합니다.
 
 - 한 Store의 수집 실패는 다른 Store 수집을 중단하지 않는다.
 - 동일 volume에서는 OS 파일 잠금으로 scheduler 중복 실행을 차단한다.
 - 실패한 실행을 무한 재시도하지 않고 다음 정기 주기에 다시 시도한다.
 - Store 요청 과부하를 방지하기 위해 주기는 300초 미만으로 설정할 수 없다.
 - 세부 수집 결과는 기존 collection run과 관리자 운영 상태 화면에서 확인한다.
+- 관리자 Steam 화면에서 대표 이미지 완료·전체·남은 게임 수를 확인한다.
 - Steam 후보는 인기·할인·신작 공개 목록을 각각 3페이지까지 탐색한다. 폐기된
   `ISteamApps/GetAppList/v2`는 사용하지 않으므로 별도 Steam Web API key가 필요 없다.
 - Google Play와 Apple App Store의 검색 결과 없음·거절 항목은 7일 후 다시 검사한다.
