@@ -1,5 +1,16 @@
 # NAS 비공개 베타 배포 준비
 
+배포 스크립트는 매 실행마다 Synology용 Web 이미지에 새로운 revision을 기록합니다.
+따라서 구형 Docker build cache가 이전 Nginx 설정이나 frontend 이미지를 다시 사용하는
+문제를 방지합니다. 배포 뒤 화면이 이전 버전이라면 아래 명령으로 실제 컨테이너의
+revision과 HTML asset 이름을 확인합니다.
+
+```bash
+sudo docker inspect compgameprice_web_1 \
+  --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
+curl -s http://127.0.0.1:8088/ | grep -Eo 'assets/index-[^" ]+'
+```
+
 이 문서는 Docker Compose를 실행할 수 있는 NAS에서 비공개 베타를 준비하는 절차다.
 Synology, QNAP, TrueNAS별 화면 설정은 NAS 모델과 운영체제를 확인한 뒤 보완한다.
 

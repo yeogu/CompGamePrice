@@ -1,2 +1,4 @@
 FROM compgameprice_web:latest
+ARG DEPLOY_REVISION=development
+LABEL org.opencontainers.image.revision=${DEPLOY_REVISION}
 COPY deploy/nginx.synology.conf /etc/nginx/conf.d/default.conf
