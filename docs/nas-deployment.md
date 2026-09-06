@@ -1,7 +1,8 @@
 # NAS 비공개 베타 배포 준비
 
-배포 스크립트는 매 실행마다 Synology용 Web 이미지에 새로운 revision을 기록합니다.
-따라서 구형 Docker build cache가 이전 Nginx 설정이나 frontend 이미지를 다시 사용하는
+배포 스크립트는 매 실행마다 React build stage와 Synology용 Web 이미지에 새로운
+revision을 전달합니다. npm dependency layer는 재사용하지만 frontend bundle과 Nginx
+설정은 반드시 다시 생성되므로, 구형 Docker build cache가 이전 화면을 재사용하는
 문제를 방지합니다. 배포 뒤 화면이 이전 버전이라면 아래 명령으로 실제 컨테이너의
 revision과 HTML asset 이름을 확인합니다.
 

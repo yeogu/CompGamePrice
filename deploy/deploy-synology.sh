@@ -53,6 +53,7 @@ echo "[4/6] Web 이미지를 빌드합니다."
 deploy_revision=$(date -u +%Y%m%dT%H%M%SZ)
 sudo "${docker_binary}" build \
     --network host \
+    --build-arg "WEB_BUILD_REVISION=${deploy_revision}" \
     -f deploy/Dockerfile.web \
     -t compgameprice_web:latest \
     .
