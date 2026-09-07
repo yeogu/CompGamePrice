@@ -10,11 +10,12 @@ response_body="/tmp/game_price_api_response_$$.json"
 test_database="/tmp/game_price_api_test_$$.db"
 test_catalog="/tmp/game_price_api_catalog_$$.json"
 cookie_jar="/tmp/game_price_api_cookie_$$.txt"
+member_cookie_jar="/tmp/game_price_api_member_cookie_$$.txt"
 project_directory=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 
 cleanup() {
     if [[ -n "${api_pid:-}" ]]; then kill "${api_pid}" 2>/dev/null || true; fi
-    rm -f "${response_body}" "${cookie_jar}" "${test_catalog}" "${test_database}" "${test_database}-shm" "${test_database}-wal"
+    rm -f "${response_body}" "${cookie_jar}" "${member_cookie_jar}" "${test_catalog}" "${test_database}" "${test_database}-shm" "${test_database}-wal"
 }
 trap cleanup EXIT
 
@@ -433,6 +434,42 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     -b "${cookie_jar}" "${api_base}/api/admin/catalog/status")
 [[ "${status}" == "200" ]]
 grep -q '"enabled":true' "${response_body}"
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -c "${member_cookie_jar}" \
+    -H 'Content-Type: application/json' \
+    -d '{"email":"member@example.com","password":"member-password-123"}' \
+    "${api_base}/api/auth/register")
+[[ "${status}" == "201" ]]
+member_id=$(grep -o '"id":[0-9]*' "${response_body}" | head -1 | cut -d ':' -f 2)
+[[ -n "${member_id}" ]]
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -b "${cookie_jar}" "${api_base}/api/admin/users?q=member%40example.com")
+[[ "${status}" == "200" ]]
+grep -q '"email":"member@example.com"' "${response_body}"
+grep -q '"status":"ACTIVE"' "${response_body}"
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -b "${cookie_jar}" \
+    -X PATCH -H 'Content-Type: application/json' -d '{"active":false}' \
+    "${api_base}/api/admin/users/${member_id}/status")
+[[ "${status}" == "200" ]]
+grep -q '"status":"SUSPENDED"' "${response_body}"
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -b "${member_cookie_jar}" "${api_base}/api/auth/me")
+[[ "${status}" == "401" ]]
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -b "${cookie_jar}" \
+    -X PATCH -H 'Content-Type: application/json' -d '{"active":true}' \
+    "${api_base}/api/admin/users/${member_id}/status")
+[[ "${status}" == "200" ]]
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -b "${cookie_jar}" -X POST \
+    "${api_base}/api/admin/users/${member_id}/password-reset")
+[[ "${status}" == "202" ]]
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -b "${cookie_jar}" "${api_base}/api/admin/users/audits")
+[[ "${status}" == "200" ]]
+grep -q '"action":"SUSPEND_USER"' "${response_body}"
+grep -q '"action":"SEND_PASSWORD_RESET"' "${response_body}"
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     -b "${cookie_jar}" "${api_base}/api/admin/catalog/collection")
 [[ "${status}" == "200" ]]

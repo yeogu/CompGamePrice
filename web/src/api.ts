@@ -1,4 +1,4 @@
-import type { AlertRule, AlertRuleType, AuthResult, CatalogAdminResult, CatalogCollectionJob, CatalogFilterOptions, CatalogSyncJob, CollectionRun, ExternalIdentity, GameCatalogFilters, GameCatalogPage, GamePriceHistoryResponse, GamePriceResponse, GameSummary, MobileCatalogSyncJob, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
+import type { AdminUser, AdminUserAudit, AlertRule, AlertRuleType, AuthResult, CatalogAdminResult, CatalogCollectionJob, CatalogFilterOptions, CatalogSyncJob, CollectionRun, ExternalIdentity, GameCatalogFilters, GameCatalogPage, GamePriceHistoryResponse, GamePriceResponse, GameSummary, MobileCatalogSyncJob, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
 
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8080'
 
@@ -110,6 +110,11 @@ export const updatePreferences = (token: string, preferences: UserPreferences) =
 export const deleteAccount = (token: string, confirmation: string) => requestJson<object>('/api/account', { method: 'DELETE', body: JSON.stringify({ confirmation }) }, token)
 export const getCatalogAdminStatus = () => requestJson<{ enabled: boolean }>('/api/admin/catalog/status')
 export const getAdminHealthSummary = () => requestJson<import('./types').AdminHealthSummary>('/api/admin/health')
+export const getAdminUsers = async (query = '') => (await requestJson<{ users: AdminUser[] }>(`/api/admin/users?q=${encodeURIComponent(query)}`)).users
+export const getAdminUser = (userId: number) => requestJson<AdminUser>(`/api/admin/users/${userId}`)
+export const updateAdminUserStatus = (userId: number, active: boolean) => requestJson<AdminUser>(`/api/admin/users/${userId}/status`, { method: 'PATCH', body: JSON.stringify({ active }) })
+export const sendAdminPasswordReset = (userId: number) => requestJson<{ message: string }>(`/api/admin/users/${userId}/password-reset`, { method: 'POST' })
+export const getAdminUserAudits = async () => (await requestJson<{ audits: AdminUserAudit[] }>('/api/admin/users/audits')).audits
 export const getCatalogPriceIntegrity = () => requestJson<import('./types').CatalogPriceIntegrity>('/api/admin/catalog/integrity')
 export const getMetadataSyncStatus = () => requestJson<import('./types').MetadataSyncStatus>('/api/admin/catalog/metadata-sync')
 export const startMetadataSync = () => requestJson<import('./types').MetadataSyncStatus>('/api/admin/catalog/metadata-sync', { method: 'POST' })

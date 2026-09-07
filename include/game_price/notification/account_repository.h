@@ -50,6 +50,21 @@ public:
         std::int64_t userId,
         const UserPreferences& preferences);
     bool deleteUser(std::int64_t userId);
+    std::vector<AdminUserSummary> findUsers(
+        const std::string& query,
+        int limit) const;
+    std::optional<AdminUserSummary> findUserForAdministration(
+        std::int64_t userId) const;
+    bool setUserActive(
+        std::int64_t actorUserId,
+        std::int64_t targetUserId,
+        bool active);
+    void recordAdminUserAction(
+        std::int64_t actorUserId,
+        std::int64_t targetUserId,
+        const std::string& action,
+        const std::optional<std::string>& detail = std::nullopt);
+    std::vector<AdminUserAudit> findAdminUserAudits(int limit) const;
     Database& database() const noexcept;
 private:
     Database& database_;

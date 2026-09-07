@@ -1,12 +1,12 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react'
 import { deleteAccount } from './api'
-import { addAlertRule, addFavorite, confirmPasswordReset, deleteAlertRule, deleteFavorite, disconnectCatalogProduct, getAdminHealthSummary, getAlertRules, getCatalogAdminStatus, getCatalogChangeAudits, getCatalogCollectionJob, getCatalogFilters, getCatalogPriceIntegrity, getCatalogSyncJob, getCollectionRuns, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getMetadataSyncStatus, getMobileCatalogSyncJob, getNotifications, getPreferences, importAppleCatalogGame, importGooglePlayCatalogGame, importSteamCatalogGame, importStorefrontCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, requestPasswordReset, resolveCatalogSyncReview, resolveMetadataReview, resolveMobileCatalogSyncReview, searchStoreCandidates, startCatalogCollection, startCatalogSync, startMetadataSync, startMobileCatalogSync, updateCatalogGameMetadata, updatePreferences } from './api'
+import { addAlertRule, addFavorite, confirmPasswordReset, deleteAlertRule, deleteFavorite, disconnectCatalogProduct, getAdminHealthSummary, getAdminUser, getAdminUserAudits, getAdminUsers, getAlertRules, getCatalogAdminStatus, getCatalogChangeAudits, getCatalogCollectionJob, getCatalogFilters, getCatalogPriceIntegrity, getCatalogSyncJob, getCollectionRuns, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getMetadataSyncStatus, getMobileCatalogSyncJob, getNotifications, getPreferences, importAppleCatalogGame, importGooglePlayCatalogGame, importSteamCatalogGame, importStorefrontCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, requestPasswordReset, resolveCatalogSyncReview, resolveMetadataReview, resolveMobileCatalogSyncReview, searchStoreCandidates, sendAdminPasswordReset, startCatalogCollection, startCatalogSync, startMetadataSync, startMobileCatalogSync, updateAdminUserStatus, updateCatalogGameMetadata, updatePreferences } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
 import { GameCatalogView, GameDetailView } from './GameViews'
 import GameArtwork from './GameArtwork'
 import { PlatformBadge, StoreBadge } from './VisualBadges'
 import { gameDetailPath, gameIdFromLocation } from './gameRoutes'
-import type { AdminHealthSummary, AlertRule, AlertRuleType, CatalogAdminResult, CatalogChangeAudit, CatalogCollectionJob, CatalogFilterOptions, CatalogMetadataUpdateResult, CatalogPriceIntegrity, CatalogPriceIntegrityIssue, CatalogSyncJob, CollectionRun, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSort, GameSummary, MetadataSyncStatus, MobileCatalogSyncJob, MobileCatalogSyncReview, Money, Notification, StoreProductCandidate, User, UserPreferences } from './types'
+import type { AdminHealthSummary, AdminUser, AdminUserAudit, AlertRule, AlertRuleType, CatalogAdminResult, CatalogChangeAudit, CatalogCollectionJob, CatalogFilterOptions, CatalogMetadataUpdateResult, CatalogPriceIntegrity, CatalogPriceIntegrityIssue, CatalogSyncJob, CollectionRun, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSort, GameSummary, MetadataSyncStatus, MobileCatalogSyncJob, MobileCatalogSyncReview, Money, Notification, StoreProductCandidate, User, UserPreferences } from './types'
 
 const formatMoney = (money: Money) =>
   new Intl.NumberFormat('ko-KR', {
@@ -160,7 +160,7 @@ const matchDecisionGuide = {
   },
 } as const
 
-type AppView = 'games' | 'favorites' | 'alerts' | 'notifications' | 'account' | 'collection' | 'admin'
+type AppView = 'games' | 'favorites' | 'alerts' | 'notifications' | 'account' | 'collection' | 'members' | 'admin'
 type AdminSection = 'dashboard' | 'steam' | 'epic-games' | 'nintendo-eshop' | 'playstation-store' | 'microsoft-store' | 'google-play' | 'apple-app-store' | 'integrity' | 'audit'
 
 const catalogProviderLabel = (provider: MobileCatalogSyncJob['provider']) => {
@@ -314,6 +314,13 @@ function App() {
   const [metadataPreview, setMetadataPreview] = useState<CatalogMetadataUpdateResult | null>(null)
   const [catalogAudits, setCatalogAudits] = useState<CatalogChangeAudit[]>([])
   const [adminHealth, setAdminHealth] = useState<AdminHealthSummary | null>(null)
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([])
+  const [selectedAdminUser, setSelectedAdminUser] = useState<AdminUser | null>(null)
+  const [adminUserAudits, setAdminUserAudits] = useState<AdminUserAudit[]>([])
+  const [adminUserQuery, setAdminUserQuery] = useState('')
+  const [adminUserLoading, setAdminUserLoading] = useState(false)
+  const [adminUserError, setAdminUserError] = useState('')
+  const [adminUserMessage, setAdminUserMessage] = useState('')
   const [priceIntegrity, setPriceIntegrity] = useState<CatalogPriceIntegrity | null>(null)
   const [metadataSync, setMetadataSync] = useState<MetadataSyncStatus | null>(null)
   const [metadataSyncRunning, setMetadataSyncRunning] = useState(false)
@@ -343,6 +350,7 @@ function App() {
   const [catalogTotal, setCatalogTotal] = useState(0)
   const [browseMode, setBrowseMode] = useState(false)
   const autocompleteRef = useRef<HTMLDivElement>(null)
+  const adminPanelRef = useRef<HTMLElement>(null)
   const suggestionSequence = useRef(0)
 
   const refreshAccount = async (activeToken: string) => {
@@ -461,6 +469,9 @@ function App() {
     setPendingCandidate(null)
     setAdminResult(null)
     setAdminError('')
+    window.requestAnimationFrame(() => {
+      adminPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
   }
 
   const openGameFinder = () => {
@@ -1374,6 +1385,66 @@ function App() {
     })
   }, [token])
 
+  const loadAdminUsers = async (query = adminUserQuery) => {
+    setAdminUserLoading(true)
+    setAdminUserError('')
+    try {
+      const [users, audits] = await Promise.all([
+        getAdminUsers(query.trim()),
+        getAdminUserAudits(),
+      ])
+      setAdminUsers(users)
+      setAdminUserAudits(audits)
+      if (selectedAdminUser) {
+        setSelectedAdminUser(users.find((item) => item.id === selectedAdminUser.id) ?? null)
+      }
+    } catch (reason) {
+      setAdminUserError(reason instanceof Error ? reason.message : '회원 정보를 불러오지 못했습니다.')
+    } finally {
+      setAdminUserLoading(false)
+    }
+  }
+
+  const openAdminUser = async (userId: number) => {
+    setAdminUserError('')
+    try {
+      setSelectedAdminUser(await getAdminUser(userId))
+    } catch (reason) {
+      setAdminUserError(reason instanceof Error ? reason.message : '회원 상세 정보를 불러오지 못했습니다.')
+    }
+  }
+
+  const changeAdminUserStatus = async (member: AdminUser) => {
+    setAdminUserError('')
+    setAdminUserMessage('')
+    try {
+      const updated = await updateAdminUserStatus(member.id, member.status !== 'ACTIVE')
+      setSelectedAdminUser(updated)
+      setAdminUserMessage(updated.status === 'ACTIVE' ? '계정 정지를 해제했습니다.' : '계정을 정지하고 기존 세션을 종료했습니다.')
+      await loadAdminUsers()
+    } catch (reason) {
+      setAdminUserError(reason instanceof Error ? reason.message : '회원 상태를 변경하지 못했습니다.')
+    }
+  }
+
+  const resetAdminUserPassword = async (member: AdminUser) => {
+    setAdminUserError('')
+    setAdminUserMessage('')
+    try {
+      await sendAdminPasswordReset(member.id)
+      setAdminUserMessage(`${member.email}로 비밀번호 재설정 메일을 요청했습니다.`)
+      await loadAdminUsers()
+    } catch (reason) {
+      setAdminUserError(reason instanceof Error ? reason.message : '재설정 메일을 요청하지 못했습니다.')
+    }
+  }
+
+  useEffect(() => {
+    if (activeView === 'members' && catalogAdminEnabled && user?.role === 'ADMIN') {
+      void loadAdminUsers('')
+    }
+  }, [activeView, catalogAdminEnabled, user?.role])
+
   const groupedMobileReviews = Object.entries(
     mobileSyncJobs.reduce<Record<string, Array<{ provider: MobileCatalogSyncJob['provider']; review: MobileCatalogSyncReview }>>>((groups, job) => {
       if (job.provider !== mobileSyncStore) {
@@ -1413,6 +1484,7 @@ function App() {
             알림함 {notifications.filter((item) => !item.read).length > 0 && <span className="nav-count">{notifications.filter((item) => !item.read).length}</span>}
           </button>
           {catalogAdminEnabled && user?.role === 'ADMIN' && <button className={activeView === 'collection' ? 'active' : ''} onClick={() => navigate('collection')}>수집 상태</button>}
+          {catalogAdminEnabled && user?.role === 'ADMIN' && <button className={activeView === 'members' ? 'active' : ''} onClick={() => navigate('members')}>회원 관리</button>}
           {catalogAdminEnabled && user?.role === 'ADMIN' && <button className={activeView === 'admin' ? 'active' : ''} onClick={() => navigate('admin')}>카탈로그 관리</button>}
         </nav>
         <div className="sidebar-user">
@@ -1756,6 +1828,36 @@ function App() {
         </div>
       </section>}
 
+      {activeView === 'members' && catalogAdminEnabled && user?.role === 'ADMIN' && <section className="view-panel member-admin-panel">
+        <p className="eyebrow">MEMBER ADMIN</p>
+        <h1 className="view-title">회원 관리</h1>
+        <p className="view-description">회원 상태를 확인하고 계정을 정지하거나 비밀번호 재설정 메일을 보냅니다. 비밀번호는 관리자에게 표시되지 않습니다.</p>
+        <form className="member-search" onSubmit={(event) => { event.preventDefault(); void loadAdminUsers() }}>
+          <input aria-label="회원 이메일 검색" value={adminUserQuery} onChange={(event) => setAdminUserQuery(event.target.value)} placeholder="이메일로 검색" />
+          <button disabled={adminUserLoading} type="submit">{adminUserLoading ? '조회 중…' : '검색'}</button>
+        </form>
+        {adminUserError && <p className="admin-feedback error" role="alert">{adminUserError}</p>}
+        {adminUserMessage && <p className="admin-feedback success" role="status">{adminUserMessage}</p>}
+        <div className="member-admin-layout">
+          <div className="member-list" aria-label="회원 목록">
+            {adminUsers.map((member) => <button className={selectedAdminUser?.id === member.id ? 'active' : ''} key={member.id} onClick={() => void openAdminUser(member.id)}>
+              <span><strong>{member.email}</strong><small>{member.role}</small></span>
+              <span className={member.status === 'ACTIVE' ? 'member-active' : 'member-suspended'}>{member.status === 'ACTIVE' ? '정상' : '정지'}</span>
+            </button>)}
+            {!adminUserLoading && adminUsers.length === 0 && <p className="empty-state">조건에 맞는 회원이 없습니다.</p>}
+          </div>
+          <div className="member-detail">
+            {selectedAdminUser ? <>
+              <header><div><h2>{selectedAdminUser.email}</h2><p>회원 #{selectedAdminUser.id} · {selectedAdminUser.role}</p></div><span className={selectedAdminUser.status === 'ACTIVE' ? 'member-active' : 'member-suspended'}>{selectedAdminUser.status === 'ACTIVE' ? '정상 계정' : '정지 계정'}</span></header>
+              <dl><div><dt>가입일</dt><dd>{new Date(selectedAdminUser.createdAt).toLocaleString('ko-KR')}</dd></div><div><dt>마지막 로그인</dt><dd>{selectedAdminUser.lastLoginAt ? new Date(selectedAdminUser.lastLoginAt).toLocaleString('ko-KR') : '로그인 기록 없음'}</dd></div><div><dt>관심 게임</dt><dd>{selectedAdminUser.favoriteCount}개</dd></div><div><dt>활성 가격 알림</dt><dd>{selectedAdminUser.alertCount}개</dd></div></dl>
+              <div className="member-actions"><button onClick={() => void resetAdminUserPassword(selectedAdminUser)}>재설정 메일 보내기</button><button className="danger" disabled={selectedAdminUser.role === 'ADMIN'} onClick={() => void changeAdminUserStatus(selectedAdminUser)}>{selectedAdminUser.status === 'ACTIVE' ? '계정 정지' : '정지 해제'}</button></div>
+              {selectedAdminUser.role === 'ADMIN' && <small>관리자 계정의 정지와 권한 변경은 이 화면에서 허용하지 않습니다.</small>}
+            </> : <p className="empty-state">목록에서 회원을 선택하세요.</p>}
+          </div>
+        </div>
+        <section className="member-audit"><h2>최근 관리자 조치</h2>{adminUserAudits.map((audit) => <div key={audit.id}><strong>{audit.action === 'SUSPEND_USER' ? '계정 정지' : audit.action === 'ACTIVATE_USER' ? '정지 해제' : '재설정 메일 요청'}</strong><span>대상 회원 #{audit.targetUserId}</span><small>{new Date(audit.createdAt).toLocaleString('ko-KR')} · 관리자 #{audit.actorUserId}</small></div>)}{adminUserAudits.length === 0 && <p>아직 회원 관리 기록이 없습니다.</p>}</section>
+      </section>}
+
       {activeView === 'collection' && catalogAdminEnabled && user?.role === 'ADMIN' && <section className="view-panel collection-panel" aria-label="최근 가격 수집 상태">
         <p className="eyebrow">COLLECTION STATUS</p>
         <h1 className="view-title">최근 수집 실행</h1>
@@ -1768,7 +1870,7 @@ function App() {
         </article>)}</div>
       </section>}
 
-      {activeView === 'admin' && catalogAdminEnabled && user?.role === 'ADMIN' && <section className="view-panel">
+      {activeView === 'admin' && catalogAdminEnabled && user?.role === 'ADMIN' && <section className="view-panel" ref={adminPanelRef}>
         <p className="eyebrow">LOCAL ADMIN</p>
         <h1 className="view-title">카탈로그 관리</h1>
         <p className="view-description">Store별 수집과 상품 연결 작업을 독립된 공간에서 관리하세요.</p>
@@ -1784,7 +1886,7 @@ function App() {
           <button className={adminSection === 'integrity' ? 'active' : ''} onClick={() => selectAdminSection('integrity')}>데이터 정합성 {priceIntegrity?.issueCount ?? 0}</button>
           <button className={adminSection === 'audit' ? 'active' : ''} onClick={() => selectAdminSection('audit')}>변경 기록</button>
         </nav>
-        {adminSection === 'dashboard' && <div className="admin-dashboard"><div><h2>운영 상태</h2><p>Store 작업을 시작하기 전에 데이터와 알림 상태를 확인합니다.</p></div>{adminHealth && <><section className="admin-health-grid" aria-label="운영 상태 요약"><article><strong>메타데이터 완성률</strong><span>{adminHealth.metadata.complete} / {adminHealth.metadata.total}</span><small>보완 필요 {adminHealth.metadata.incomplete}개</small></article><article><strong>최근 수집 실패</strong><span>{adminHealth.collection.recentFailures}건</span><small>{adminHealth.collection.lastFailure ? `${adminHealth.collection.lastFailure.store} · ${adminHealth.collection.lastFailure.error ?? '원인 없음'}` : '실패 없음'}</small></article><article><strong>가격 알림 메일</strong><span>대기 {adminHealth.notifications.pending} · 재시도 {adminHealth.notifications.retryable}</span><small>재시도 소진 {adminHealth.notifications.exhausted}건</small></article><article><strong>계정 이메일</strong><span>대기 {adminHealth.emails.pending} · 재시도 {adminHealth.emails.retryable}</span><small>{adminHealth.emails.lastError ? `최근 오류: ${adminHealth.emails.lastError}` : `발송 완료 ${adminHealth.emails.sent}건 · 실패 없음`}</small></article><article><strong>자동 가격 수집</strong><span>{jobStatusLabel[adminHealth.automation.collection.status] ?? adminHealth.automation.collection.status}</span><small>{adminHealth.automation.collection.status === 'DISABLED' ? '.env에서 COLLECTION_ENABLED=true로 재개할 수 있습니다.' : `마지막 완료 ${formatJobTime(adminHealth.automation.collection.lastFinishedAt)} · 다음 ${formatJobTime(adminHealth.automation.collection.nextRunAt)}`}</small><small>worker 확인 {formatJobTime(adminHealth.automation.collection.updatedAt)}</small>{adminHealth.automation.collection.failedSteps?.length ? <small className="warning">실패 단계 {adminHealth.automation.collection.failedSteps.join(', ')}</small> : null}</article><article><strong>자동 백업</strong><span>{jobStatusLabel[adminHealth.automation.backup.status] ?? adminHealth.automation.backup.status}</span><small>{adminHealth.automation.backup.lastBackup ? `최근 파일 ${adminHealth.automation.backup.lastBackup}` : `마지막 완료 ${formatJobTime(adminHealth.automation.backup.lastFinishedAt)}`}</small><small>worker 확인 {formatJobTime(adminHealth.automation.backup.updatedAt)}</small>{adminHealth.automation.backup.error ? <small className="warning">{adminHealth.automation.backup.error}</small> : null}</article></section><section className="store-quality-grid" aria-label="Store별 데이터 품질">{adminHealth.stores.filter((store) => store.registeredProducts > 0 || store.pendingReviews > 0 || store.catalogProcessed > 0).map((store) => <article key={store.store}><header><StoreBadge compact store={collectionStoreName(store.store)} /><span>{store.registeredProducts}개 상품</span></header><div><span>최신 가격 <strong>{store.freshPrices}</strong></span><span className={store.stalePrices > 0 ? 'warning' : ''}>오래된 가격 <strong>{store.stalePrices}</strong></span><span>검토 대기 <strong>{store.pendingReviews}</strong></span></div><div><span>최근 탐색 <strong>{store.catalogProcessed}</strong></span><span>자동 등록 <strong>{store.catalogAccepted}</strong></span><span>최근 7일 추가 <strong>{store.catalogAddedLast7Days}</strong></span></div><small>검토 {store.catalogReview} · 제외/건너뜀 {store.catalogSkippedOrRejected} · 실패 {store.catalogFailed}</small><small>{store.lastCatalogSyncAt ? `마지막 카탈로그 동기화 ${new Date(store.lastCatalogSyncAt).toLocaleString('ko-KR')}` : '카탈로그 동기화 기록 없음'}</small><small>{store.lastSuccessfulCollectionAt ? `마지막 가격 수집 성공 ${new Date(store.lastSuccessfulCollectionAt).toLocaleString('ko-KR')}` : '성공한 가격 수집 기록 없음'}</small></article>)}</section></>}<div className="admin-store-shortcuts"><button onClick={() => selectAdminSection('steam')}><StoreBadge compact label="Steam 관리" store="Steam" /></button><button onClick={() => selectAdminSection('epic-games')}><StoreBadge compact label="Epic Games 관리" store="Epic Games Store" /></button><button onClick={() => selectAdminSection('nintendo-eshop')}><StoreBadge compact label="Nintendo eShop 관리" store="Nintendo eShop" /></button><button onClick={() => selectAdminSection('playstation-store')}><StoreBadge compact label="PlayStation Store 관리" store="PlayStation Store" /></button><button onClick={() => selectAdminSection('google-play')}><StoreBadge compact label="Google Play 관리" store="Google Play" /></button><button onClick={() => selectAdminSection('apple-app-store')}><StoreBadge compact label="Apple App Store 관리" store="Apple App Store" /></button></div></div>}
+        {adminSection === 'dashboard' && <div className="admin-dashboard"><div><h2>운영 상태</h2><p>Store 작업을 시작하기 전에 데이터와 알림 상태를 확인합니다.</p></div>{adminHealth && <><section className="admin-health-grid" aria-label="운영 상태 요약"><article><strong>메타데이터 완성률</strong><span>{adminHealth.metadata.complete} / {adminHealth.metadata.total}</span><small>보완 필요 {adminHealth.metadata.incomplete}개</small></article><article><strong>최근 수집 실패</strong><span>{adminHealth.collection.recentFailures}건</span><small>{adminHealth.collection.lastFailure ? `${adminHealth.collection.lastFailure.store} · ${adminHealth.collection.lastFailure.error ?? '원인 없음'}` : '실패 없음'}</small></article><article><strong>가격 알림 메일</strong><span>대기 {adminHealth.notifications.pending} · 재시도 {adminHealth.notifications.retryable}</span><small>재시도 소진 {adminHealth.notifications.exhausted}건</small></article><article><strong>계정 이메일</strong><span>대기 {adminHealth.emails.pending} · 재시도 {adminHealth.emails.retryable}</span><small>{adminHealth.emails.lastError ? `최근 오류: ${adminHealth.emails.lastError}` : `발송 완료 ${adminHealth.emails.sent}건 · 실패 없음`}</small></article><article><strong>자동 가격 수집</strong><span>{jobStatusLabel[adminHealth.automation.collection.status] ?? adminHealth.automation.collection.status}</span><small>{adminHealth.automation.collection.status === 'DISABLED' ? '.env에서 COLLECTION_ENABLED=true로 재개할 수 있습니다.' : `마지막 완료 ${formatJobTime(adminHealth.automation.collection.lastFinishedAt)} · 다음 ${formatJobTime(adminHealth.automation.collection.nextRunAt)}`}</small><small>worker 확인 {formatJobTime(adminHealth.automation.collection.updatedAt)}</small>{adminHealth.automation.collection.failedSteps?.length ? <small className="warning">실패 단계 {adminHealth.automation.collection.failedSteps.join(', ')}</small> : null}</article><article><strong>자동 백업</strong><span>{jobStatusLabel[adminHealth.automation.backup.status] ?? adminHealth.automation.backup.status}</span><small>{adminHealth.automation.backup.lastBackup ? `최근 파일 ${adminHealth.automation.backup.lastBackup}` : `마지막 완료 ${formatJobTime(adminHealth.automation.backup.lastFinishedAt)}`}</small><small>worker 확인 {formatJobTime(adminHealth.automation.backup.updatedAt)}</small>{adminHealth.automation.backup.error ? <small className="warning">{adminHealth.automation.backup.error}</small> : null}</article></section><section className="store-quality-grid" aria-label="Store별 데이터 품질">{adminHealth.stores.filter((store) => store.registeredProducts > 0 || store.pendingReviews > 0 || store.catalogProcessed > 0).map((store) => <article key={store.store}><header><StoreBadge compact store={collectionStoreName(store.store)} /><span>{store.registeredProducts}개 상품</span></header><div><span>최신 가격 <strong>{store.freshPrices}</strong></span><span className={store.stalePrices > 0 ? 'warning' : ''}>오래된 가격 <strong>{store.stalePrices}</strong></span><span>검토 대기 <strong>{store.pendingReviews}</strong></span></div><div><span>최근 탐색 <strong>{store.catalogProcessed}</strong></span><span>자동 등록 <strong>{store.catalogAccepted}</strong></span><span>최근 7일 추가 <strong>{store.catalogAddedLast7Days}</strong></span></div><small>검토 {store.catalogReview} · 제외/건너뜀 {store.catalogSkippedOrRejected} · 실패 {store.catalogFailed}</small><small>{store.lastCatalogSyncAt ? `마지막 카탈로그 동기화 ${new Date(store.lastCatalogSyncAt).toLocaleString('ko-KR')}` : '카탈로그 동기화 기록 없음'}</small><small>{store.lastSuccessfulCollectionAt ? `마지막 가격 수집 성공 ${new Date(store.lastSuccessfulCollectionAt).toLocaleString('ko-KR')}` : '성공한 가격 수집 기록 없음'}</small></article>)}</section></>}<section className="admin-store-shortcuts" aria-label="Store별 관리 바로가기"><div><h3>Store별 관리</h3><p>Store를 선택해 후보 탐색, 검토, 상품 연결과 가격 수집을 관리합니다.</p></div><div><button onClick={() => selectAdminSection('steam')}><StoreBadge compact label="Steam 관리" store="Steam" /></button><button onClick={() => selectAdminSection('epic-games')}><StoreBadge compact label="Epic Games 관리" store="Epic Games Store" /></button><button onClick={() => selectAdminSection('nintendo-eshop')}><StoreBadge compact label="Nintendo eShop 관리" store="Nintendo eShop" /></button><button onClick={() => selectAdminSection('playstation-store')}><StoreBadge compact label="PlayStation Store 관리" store="PlayStation Store" /></button><button onClick={() => selectAdminSection('microsoft-store')}><StoreBadge compact label="Microsoft Store 관리" store="Microsoft Store" /></button><button onClick={() => selectAdminSection('google-play')}><StoreBadge compact label="Google Play 관리" store="Google Play" /></button><button onClick={() => selectAdminSection('apple-app-store')}><StoreBadge compact label="Apple App Store 관리" store="Apple App Store" /></button></div></section></div>}
         {adminSection === 'dashboard' && adminHealth && <section className="catalog-reliability" aria-label="카탈로그 탐색 신뢰도"><header><h3>카탈로그 탐색 신뢰도</h3><p>실패율이 있는 Store부터 로그와 검토 대기를 확인하세요.</p></header>{adminHealth.stores.filter((store) => catalogAttemptCount(store) > 0).map((store) => <div key={store.store}><StoreBadge compact store={collectionStoreName(store.store)} /><span>자동 등록률 <strong>{percentage(store.catalogAccepted, catalogAttemptCount(store))}</strong></span><span className={store.catalogFailed > 0 ? 'warning' : ''}>실패율 <strong>{percentage(store.catalogFailed, catalogAttemptCount(store))}</strong></span><small>총 {catalogAttemptCount(store)}건 기준</small></div>)}</section>}
         {adminSection === 'steam' && <div className="admin-store-workspace"><header><StoreBadge store="Steam" /><div><h2>Steam</h2><p>PC 게임 발견, 메타데이터 보완, 상품 연결과 가격 수집을 관리합니다.</p></div></header>
         <article className="catalog-sync-panel">

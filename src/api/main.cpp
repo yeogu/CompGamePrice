@@ -1143,6 +1143,21 @@ Json::Value authJson(const AuthResult& result) {
     return json;
 }
 
+Json::Value adminUserJson(const AdminUserSummary& user) {
+    Json::Value json;
+    json["id"] = Json::Int64(user.id);
+    json["email"] = user.email;
+    json["role"] = toString(user.role);
+    json["status"] = user.active ? "ACTIVE" : "SUSPENDED";
+    json["createdAt"] = user.createdAt;
+    if (user.lastLoginAt) {
+        json["lastLoginAt"] = *user.lastLoginAt;
+    }
+    json["favoriteCount"] = Json::Int64(user.favoriteCount);
+    json["alertCount"] = Json::Int64(user.alertCount);
+    return json;
+}
+
 Json::Value preferencesJson(const UserPreferences& preferences) {
     Json::Value json;
     json["emailNotificationsEnabled"] = preferences.emailNotificationsEnabled;
@@ -1649,6 +1664,129 @@ int main() {
                         drogon::k500InternalServerError,
                         error.what()));
                 }
+            },
+            {drogon::Get});
+        drogon::app().registerHandler(
+            "/api/admin/users",
+            [&authService, &accountRepository](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
+                    return;
+                }
+                const auto query = request->getParameter("q");
+                if (query.size() > 254) {
+                    callback(jsonError(drogon::k400BadRequest, "query is too long"));
+                    return;
+                }
+                Json::Value response;
+                response["users"] = Json::arrayValue;
+                for (const auto& user : accountRepository.findUsers(query, 100)) {
+                    response["users"].append(adminUserJson(user));
+                }
+                callback(jsonResponse(response));
+            },
+            {drogon::Get});
+        drogon::app().registerHandler(
+            "/api/admin/users/{1}",
+            [&authService, &accountRepository](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback,
+                std::int64_t userId) {
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
+                    return;
+                }
+                const auto user = accountRepository.findUserForAdministration(userId);
+                if (!user) {
+                    callback(jsonError(drogon::k404NotFound, "user not found"));
+                    return;
+                }
+                callback(jsonResponse(adminUserJson(*user)));
+            },
+            {drogon::Get});
+        drogon::app().registerHandler(
+            "/api/admin/users/{1}/status",
+            [&authService, &accountRepository](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback,
+                std::int64_t userId) {
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
+                    return;
+                }
+                const auto actor = authenticatedUser(request, authService);
+                const auto body = request->getJsonObject();
+                if (!actor || !body || !(*body)["active"].isBool()) {
+                    callback(jsonError(drogon::k400BadRequest, "active is required"));
+                    return;
+                }
+                try {
+                    if (!accountRepository.setUserActive(
+                            actor->id,
+                            userId,
+                            (*body)["active"].asBool())) {
+                        callback(jsonError(drogon::k404NotFound, "user not found"));
+                        return;
+                    }
+                    callback(jsonResponse(adminUserJson(
+                        *accountRepository.findUserForAdministration(userId))));
+                } catch (const std::invalid_argument& error) {
+                    callback(jsonError(drogon::k400BadRequest, error.what()));
+                }
+            },
+            {drogon::Patch});
+        drogon::app().registerHandler(
+            "/api/admin/users/{1}/password-reset",
+            [&authService, &accountRepository](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback,
+                std::int64_t userId) {
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
+                    return;
+                }
+                const auto actor = authenticatedUser(request, authService);
+                const auto user = accountRepository.findUserForAdministration(userId);
+                if (!actor || !user) {
+                    callback(jsonError(drogon::k404NotFound, "user not found"));
+                    return;
+                }
+                authService.requestPasswordReset(user->email, webAppUrl());
+                accountRepository.recordAdminUserAction(
+                    actor->id,
+                    userId,
+                    "SEND_PASSWORD_RESET");
+                Json::Value response;
+                response["message"] = "password reset email was queued";
+                callback(jsonResponse(response, drogon::k202Accepted));
+            },
+            {drogon::Post});
+        drogon::app().registerHandler(
+            "/api/admin/users/audits",
+            [&authService, &accountRepository](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
+                    return;
+                }
+                Json::Value response;
+                response["audits"] = Json::arrayValue;
+                for (const auto& audit : accountRepository.findAdminUserAudits(100)) {
+                    Json::Value item;
+                    item["id"] = Json::Int64(audit.id);
+                    item["actorUserId"] = Json::Int64(audit.actorUserId);
+                    item["targetUserId"] = Json::Int64(audit.targetUserId);
+                    item["action"] = audit.action;
+                    item["createdAt"] = audit.createdAt;
+                    if (audit.detail) {
+                        item["detail"] = *audit.detail;
+                    }
+                    response["audits"].append(std::move(item));
+                }
+                callback(jsonResponse(response));
             },
             {drogon::Get});
         drogon::app().registerHandler(

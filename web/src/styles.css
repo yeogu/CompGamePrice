@@ -287,10 +287,34 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .admin-dashboard { padding: 20px; background: #0b1812; border: 1px solid #315141; border-radius: 14px; }
 .admin-dashboard h2, .admin-dashboard p { margin: 0; }
 .admin-dashboard p, .admin-store-workspace > header p, .admin-product-workspace > p { margin-top: 6px; color: #91a79b; }
-.admin-store-shortcuts { display: flex; flex-wrap: wrap; gap: 8px; }
+.admin-store-shortcuts { margin-top: 24px; }
+.admin-store-shortcuts > div:first-child { margin-bottom: 12px; }
+.admin-store-shortcuts h3, .admin-store-shortcuts p { margin: 0; }
+.admin-store-shortcuts > div:last-child { display: flex; flex-wrap: wrap; gap: 8px; }
 .admin-store-workspace { margin-top: 20px; }
 .admin-store-workspace > header { display: flex; align-items: center; gap: 14px; padding: 18px 20px; background: #0b1812; border: 1px solid #315141; border-radius: 14px; }
 .admin-store-workspace > header h2, .admin-store-workspace > header p { margin: 0; }
+.member-search { display: flex; gap: 10px; margin: 24px 0; }
+.member-search input { flex: 1; min-width: 0; padding: 13px 15px; color: #edf8f2; background: #0b1812; border: 1px solid #315141; border-radius: 10px; }
+.member-admin-layout { display: grid; grid-template-columns: minmax(240px, .8fr) minmax(320px, 1.2fr); gap: 18px; }
+.member-list, .member-detail, .member-audit { padding: 16px; background: #0b1812; border: 1px solid #315141; border-radius: 14px; }
+.member-list { display: flex; flex-direction: column; gap: 8px; max-height: 560px; overflow-y: auto; }
+.member-list > button { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #edf8f2; background: #10251b; border: 1px solid transparent; text-align: left; }
+.member-list > button.active { border-color: #73e2a7; }
+.member-list > button span:first-child { display: flex; min-width: 0; flex-direction: column; }
+.member-list > button strong { overflow: hidden; text-overflow: ellipsis; }
+.member-list small, .member-detail small, .member-audit small { color: #91a79b; }
+.member-active, .member-suspended { padding: 4px 8px; border-radius: 999px; font-size: .8rem; font-weight: 800; white-space: nowrap; }
+.member-active { color: #73e2a7; background: #123524; }
+.member-suspended { color: #ff9a8f; background: #3a1c18; }
+.member-detail > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.member-detail h2, .member-detail p { margin: 0; }
+.member-detail dl > div { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid #263c31; }
+.member-detail dt { color: #91a79b; }
+.member-detail dd { margin: 0; text-align: right; }
+.member-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0 10px; }
+.member-audit { margin-top: 18px; }
+.member-audit > div { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; padding: 10px 0; border-top: 1px solid #263c31; }
 .candidate-badges, .admin-preview-badges, .integrity-store { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .candidate-list button .candidate-badges { color: inherit; }
 .admin-preview-badges { margin: 12px 0; }
@@ -474,6 +498,8 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
   .admin-search { grid-template-columns: 1fr; }
   .candidate-confirmation { grid-template-columns: 1fr; }
   .view-panel { padding: 24px 18px; }
+  .member-admin-layout { grid-template-columns: 1fr; }
+  .member-audit > div { grid-template-columns: 1fr; gap: 3px; }
   .game-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .game-list button { min-height: 260px; padding: 14px 12px; }
   .game-list button > .game-artwork { width: calc(100% + 24px); margin: -14px -12px 0; }

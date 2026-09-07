@@ -346,6 +346,8 @@ sudo /usr/local/bin/docker-compose -f compose.synology.yml logs --tail 100 colle
 - 일반 사용자와 관리자 계정의 권한 분리
 - 외부 HTTPS에서 login cookie 유지
 - 관리자 API의 `401`/`403` 응답
+- 회원 관리에서 일반 계정 정지 후 기존 세션과 신규 로그인이 모두 차단되는지 확인
+- 정지 해제와 비밀번호 재설정 메일 요청이 관리자 감사 기록에 남는지 확인
 - 게임 검색, 가격 조회, 알림 생성 흐름
 - Store 수집 1회와 관리자 품질 대시보드
 - DB·카탈로그 backup 생성과 새 경로 복원

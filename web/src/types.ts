@@ -105,6 +105,24 @@ export interface CollectionRun {
 }
 
 export interface User { id: number; email: string; role: 'USER' | 'ADMIN' }
+export interface AdminUser {
+  id: number
+  email: string
+  role: 'USER' | 'ADMIN'
+  status: 'ACTIVE' | 'SUSPENDED'
+  createdAt: string
+  lastLoginAt?: string
+  favoriteCount: number
+  alertCount: number
+}
+export interface AdminUserAudit {
+  id: number
+  actorUserId: number
+  targetUserId: number
+  action: 'ACTIVATE_USER' | 'SUSPEND_USER' | 'SEND_PASSWORD_RESET'
+  detail?: string
+  createdAt: string
+}
 export interface AuthResult { user: User; token: string }
 export type AlertRuleType = 'PriceDrop' | 'BelowTargetPrice' | 'NewHistoricalLow' | 'BelowAverage'
 export interface AlertRule { id: number; gameId: string; gameTitle?: string; type: AlertRuleType; targetPriceMinor?: number; platform?: string; active: boolean }

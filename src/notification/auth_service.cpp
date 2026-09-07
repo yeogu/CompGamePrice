@@ -65,7 +65,9 @@ AuthResult AuthService::registerUser(const std::string& email,const std::string&
 }
 std::optional<AuthResult> AuthService::login(const std::string& email,const std::string& password) const {
     const auto found=repository_.findUserByEmail(normalizeEmail(email));
-    if (!found || !verifyPassword(password,found->second)) return std::nullopt;
+    if (!found || !found->first.active || !verifyPassword(password,found->second)) {
+        return std::nullopt;
+    }
     return AuthResult{found->first,repository_.createSession(found->first.id)};
 }
 std::optional<UserAccount> AuthService::authenticate(const std::string& token) const { return repository_.findUserBySession(token); }

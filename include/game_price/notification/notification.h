@@ -15,6 +15,25 @@ struct UserAccount {
     std::int64_t id{};
     std::string email;
     UserRole role{UserRole::User};
+    bool active{true};
+};
+struct AdminUserSummary {
+    std::int64_t id{};
+    std::string email;
+    UserRole role{UserRole::User};
+    bool active{true};
+    std::string createdAt;
+    std::optional<std::string> lastLoginAt;
+    std::int64_t favoriteCount{};
+    std::int64_t alertCount{};
+};
+struct AdminUserAudit {
+    std::int64_t id{};
+    std::int64_t actorUserId{};
+    std::int64_t targetUserId{};
+    std::string action;
+    std::optional<std::string> detail;
+    std::string createdAt;
 };
 struct UserPreferences {
     bool emailNotificationsEnabled{true};

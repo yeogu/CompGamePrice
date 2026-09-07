@@ -86,6 +86,21 @@ AlertRule readRule(sqlite3_stmt* row) {
         platform,
         sqlite3_column_int(row, 6) != 0};
 }
+AdminUserSummary readAdminUser(sqlite3_stmt* row) {
+    const auto lastLoginAt = sqlite3_column_type(row, 5) == SQLITE_NULL
+        ? std::nullopt
+        : std::optional<std::string>{text(row, 5)};
+    return AdminUserSummary{
+        sqlite3_column_int64(row, 0),
+        text(row, 1),
+        userRoleFromString(text(row, 2)),
+        text(row, 3) == "ACTIVE",
+        text(row, 4),
+        lastLoginAt,
+        sqlite3_column_int64(row, 6),
+        sqlite3_column_int64(row, 7),
+    };
+}
 }  // namespace
 
 AccountRepository::AccountRepository(Database& database) : database_(database) {}
@@ -99,12 +114,13 @@ UserAccount AccountRepository::createUser(const std::string& email, const std::s
         sqlite3_last_insert_rowid(database_.handle()),
         email,
         UserRole::User,
+        true,
     };
 }
 std::optional<std::pair<UserAccount, std::string>> AccountRepository::findUserByEmail(
     const std::string& email) const {
     Statement statement(database_.handle(),
-        "SELECT id,email,password_hash,role FROM users WHERE email=?;");
+        "SELECT id,email,password_hash,role,status FROM users WHERE email=?;");
     bindText(statement.get(), 1, email);
     if (!statement.next()) return std::nullopt;
     return std::pair<UserAccount, std::string>{
@@ -112,6 +128,7 @@ std::optional<std::pair<UserAccount, std::string>> AccountRepository::findUserBy
             sqlite3_column_int64(statement.get(), 0),
             text(statement.get(), 1),
             userRoleFromString(text(statement.get(), 3)),
+            text(statement.get(), 4) == "ACTIVE",
         },
         text(statement.get(), 2)};
 }
@@ -123,12 +140,22 @@ std::string AccountRepository::createSession(std::int64_t userId) {
                   strftime('%Y-%m-%dT%H:%M:%fZ','now','+30 days'));
     )sql");
     bindText(statement.get(), 1, sessionTokenHash(token)); sqlite3_bind_int64(statement.get(), 2, userId);
-    statement.execute(); return token;
+    statement.execute();
+    Statement login(database_.handle(), R"sql(
+        UPDATE users
+        SET last_login_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
+        WHERE id=?;
+    )sql");
+    sqlite3_bind_int64(login.get(), 1, userId);
+    login.execute();
+    return token;
 }
 std::optional<UserAccount> AccountRepository::findUserBySession(const std::string& token) const {
     Statement statement(database_.handle(), R"sql(
-        SELECT u.id,u.email,u.role FROM user_sessions s JOIN users u ON u.id=s.user_id
-        WHERE s.token=? AND s.expires_at > strftime('%Y-%m-%dT%H:%M:%fZ','now');
+        SELECT u.id,u.email,u.role,u.status
+        FROM user_sessions s JOIN users u ON u.id=s.user_id
+        WHERE s.token=? AND s.expires_at > strftime('%Y-%m-%dT%H:%M:%fZ','now')
+          AND u.status='ACTIVE';
     )sql");
     bindText(statement.get(), 1, sessionTokenHash(token));
     if (!statement.next()) return std::nullopt;
@@ -136,6 +163,7 @@ std::optional<UserAccount> AccountRepository::findUserBySession(const std::strin
         sqlite3_column_int64(statement.get(), 0),
         text(statement.get(), 1),
         userRoleFromString(text(statement.get(), 2)),
+        text(statement.get(), 3) == "ACTIVE",
     };
 }
 void AccountRepository::deleteSession(const std::string& token) {
@@ -285,7 +313,7 @@ std::optional<std::int64_t> AccountRepository::consumeOAuthState(
 std::optional<UserAccount> AccountRepository::findUserByExternalIdentity(
     OAuthProvider provider, const std::string& providerUserId) const {
     Statement statement(database_.handle(), R"sql(
-        SELECT u.id,u.email,u.role FROM external_identities e JOIN users u ON u.id=e.user_id
+        SELECT u.id,u.email,u.role,u.status FROM external_identities e JOIN users u ON u.id=e.user_id
         WHERE e.provider=? AND e.provider_user_id=?;
     )sql");
     bindText(statement.get(),1,toString(provider)); bindText(statement.get(),2,providerUserId);
@@ -294,6 +322,7 @@ std::optional<UserAccount> AccountRepository::findUserByExternalIdentity(
         sqlite3_column_int64(statement.get(), 0),
         text(statement.get(), 1),
         userRoleFromString(text(statement.get(), 2)),
+        text(statement.get(), 3) == "ACTIVE",
     };
 }
 ExternalIdentity AccountRepository::addExternalIdentity(
@@ -479,6 +508,126 @@ bool AccountRepository::deleteUser(std::int64_t userId) {
     sqlite3_bind_int64(statement.get(), 1, userId);
     statement.execute();
     return sqlite3_changes(database_.handle()) > 0;
+}
+
+std::vector<AdminUserSummary> AccountRepository::findUsers(
+    const std::string& query,
+    int limit) const {
+    Statement statement(database_.handle(), R"sql(
+        SELECT u.id,u.email,u.role,u.status,u.created_at,u.last_login_at,
+               (SELECT COUNT(*) FROM favorite_games f WHERE f.user_id=u.id),
+               (SELECT COUNT(*) FROM alert_rules a WHERE a.user_id=u.id AND a.active=1)
+        FROM users u
+        WHERE ?='' OR u.email LIKE ? ESCAPE '\'
+        ORDER BY u.created_at DESC,u.id DESC
+        LIMIT ?;
+    )sql");
+    bindText(statement.get(), 1, query);
+    bindText(statement.get(), 2, "%" + query + "%");
+    sqlite3_bind_int(statement.get(), 3, limit);
+    std::vector<AdminUserSummary> users;
+    while (statement.next()) {
+        users.push_back(readAdminUser(statement.get()));
+    }
+    return users;
+}
+
+std::optional<AdminUserSummary> AccountRepository::findUserForAdministration(
+    std::int64_t userId) const {
+    Statement statement(database_.handle(), R"sql(
+        SELECT u.id,u.email,u.role,u.status,u.created_at,u.last_login_at,
+               (SELECT COUNT(*) FROM favorite_games f WHERE f.user_id=u.id),
+               (SELECT COUNT(*) FROM alert_rules a WHERE a.user_id=u.id AND a.active=1)
+        FROM users u
+        WHERE u.id=?;
+    )sql");
+    sqlite3_bind_int64(statement.get(), 1, userId);
+    if (!statement.next()) {
+        return std::nullopt;
+    }
+    return readAdminUser(statement.get());
+}
+
+void AccountRepository::recordAdminUserAction(
+    std::int64_t actorUserId,
+    std::int64_t targetUserId,
+    const std::string& action,
+    const std::optional<std::string>& detail) {
+    Statement statement(database_.handle(), R"sql(
+        INSERT INTO admin_user_audit(actor_user_id,target_user_id,action,detail)
+        VALUES(?,?,?,?);
+    )sql");
+    sqlite3_bind_int64(statement.get(), 1, actorUserId);
+    sqlite3_bind_int64(statement.get(), 2, targetUserId);
+    bindText(statement.get(), 3, action);
+    if (detail) {
+        bindText(statement.get(), 4, *detail);
+    } else {
+        sqlite3_bind_null(statement.get(), 4);
+    }
+    statement.execute();
+}
+
+bool AccountRepository::setUserActive(
+    std::int64_t actorUserId,
+    std::int64_t targetUserId,
+    bool active) {
+    const auto target = findUserForAdministration(targetUserId);
+    if (!target) {
+        return false;
+    }
+    if (target->role == UserRole::Admin) {
+        throw std::invalid_argument("administrator accounts cannot be suspended here");
+    }
+    database_.execute("BEGIN IMMEDIATE;");
+    try {
+        Statement update(database_.handle(), "UPDATE users SET status=? WHERE id=?;");
+        bindText(update.get(), 1, active ? "ACTIVE" : "SUSPENDED");
+        sqlite3_bind_int64(update.get(), 2, targetUserId);
+        update.execute();
+        if (!active) {
+            Statement sessions(database_.handle(), "DELETE FROM user_sessions WHERE user_id=?;");
+            sqlite3_bind_int64(sessions.get(), 1, targetUserId);
+            sessions.execute();
+        }
+        recordAdminUserAction(
+            actorUserId,
+            targetUserId,
+            active ? "ACTIVATE_USER" : "SUSPEND_USER");
+        database_.execute("COMMIT;");
+        return true;
+    } catch (...) {
+        try {
+            database_.execute("ROLLBACK;");
+        } catch (...) {
+        }
+        throw;
+    }
+}
+
+std::vector<AdminUserAudit> AccountRepository::findAdminUserAudits(int limit) const {
+    Statement statement(database_.handle(), R"sql(
+        SELECT id,actor_user_id,target_user_id,action,detail,created_at
+        FROM admin_user_audit
+        ORDER BY id DESC
+        LIMIT ?;
+    )sql");
+    sqlite3_bind_int(statement.get(), 1, limit);
+    std::vector<AdminUserAudit> audits;
+    while (statement.next()) {
+        const auto detail = sqlite3_column_type(statement.get(), 4) == SQLITE_NULL
+            ? std::nullopt
+            : std::optional<std::string>{text(statement.get(), 4)};
+        audits.push_back(AdminUserAudit{
+            sqlite3_column_int64(statement.get(), 0),
+            sqlite3_column_int64(statement.get(), 1),
+            sqlite3_column_int64(statement.get(), 2),
+            text(statement.get(), 3),
+            detail,
+            text(statement.get(), 5),
+        });
+    }
+    return audits;
 }
 
 Database& AccountRepository::database() const noexcept { return database_; }

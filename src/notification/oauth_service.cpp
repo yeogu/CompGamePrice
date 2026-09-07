@@ -13,6 +13,9 @@ AuthResult OAuthService::completeLogin(const OAuthProfile& profile) const {
         user=repository_.createUser(synthetic,"!social");
         repository_.addExternalIdentity(user->id,profile);
     }
+    if (!user->active) {
+        throw std::invalid_argument("account is suspended");
+    }
     return AuthResult{*user,repository_.createSession(user->id)};
 }
 ExternalIdentity OAuthService::linkIdentity(std::int64_t userId,const OAuthProfile& profile) const {

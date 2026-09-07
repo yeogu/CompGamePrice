@@ -1051,6 +1051,33 @@ void testAuthenticationAndPriceAlerts() {
     const auto administrator = auth.authenticate(registration.token);
     expect(administrator && administrator->role == UserRole::Admin,
            "Existing sessions should observe an administrator role assignment");
+    const auto managedMember = auth.registerUser(
+        "member@example.com",
+        "member-password-123");
+    const auto listedMembers = accounts.findUsers("member@", 10);
+    expect(
+        listedMembers.size() == 1 && listedMembers.front().active,
+        "Administrators should be able to search active members");
+    expect(
+        accounts.setUserActive(administrator->id, managedMember.user.id, false),
+        "Administrators should be able to suspend a member");
+    expect(
+        !auth.authenticate(managedMember.token).has_value(),
+        "Suspending a member should invalidate existing sessions immediately");
+    expect(
+        !auth.login("member@example.com", "member-password-123").has_value(),
+        "Suspended members should not be able to create new sessions");
+    expect(
+        accounts.setUserActive(administrator->id, managedMember.user.id, true),
+        "Administrators should be able to reactivate a member");
+    expect(
+        auth.login("member@example.com", "member-password-123").has_value(),
+        "Reactivated members should be able to log in");
+    const auto memberAudits = accounts.findAdminUserAudits(10);
+    expect(
+        memberAudits.size() == 2 &&
+            memberAudits.front().action == "ACTIVATE_USER",
+        "Member status changes should be recorded in the administrator audit log");
     expect(!auth.login("buyer@example.com", "wrong-password").has_value(),
            "Wrong password should be rejected");
     expect(auth.login("buyer@example.com", "safe-password-123").has_value(),

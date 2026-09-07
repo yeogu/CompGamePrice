@@ -393,6 +393,17 @@ void StoreProductRepository::initializeSchema() const {
             email TEXT NOT NULL UNIQUE COLLATE NOCASE,
             password_hash TEXT NOT NULL,
             role TEXT NOT NULL DEFAULT 'USER' CHECK(role IN ('USER','ADMIN')),
+            status TEXT NOT NULL DEFAULT 'ACTIVE'
+                CHECK(status IN ('ACTIVE','SUSPENDED')),
+            last_login_at TEXT,
+            created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+        );
+        CREATE TABLE IF NOT EXISTS admin_user_audit (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            actor_user_id INTEGER NOT NULL,
+            target_user_id INTEGER NOT NULL,
+            action TEXT NOT NULL,
+            detail TEXT,
             created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
         );
         CREATE TABLE IF NOT EXISTS user_sessions (
@@ -637,6 +648,16 @@ void StoreProductRepository::initializeSchema() const {
                     CHECK(role IN ('USER','ADMIN'));
             )sql");
         }
+        if (usersExisted && !tableHasColumn(database_.handle(), "users", "status")) {
+            database_.execute(R"sql(
+                ALTER TABLE users
+                    ADD COLUMN status TEXT NOT NULL DEFAULT 'ACTIVE'
+                    CHECK(status IN ('ACTIVE','SUSPENDED'));
+            )sql");
+        }
+        if (usersExisted && !tableHasColumn(database_.handle(), "users", "last_login_at")) {
+            database_.execute("ALTER TABLE users ADD COLUMN last_login_at TEXT;");
+        }
         if (existingVersion < 14 && existingVersion > 0) {
             if (!tableHasColumn(
                     database_.handle(),
@@ -676,7 +697,7 @@ void StoreProductRepository::initializeSchema() const {
                     "ALTER TABLE notification_outbox ADD COLUMN sent_at TEXT;");
             }
         }
-        database_.execute("PRAGMA user_version = 15;");
+        database_.execute("PRAGMA user_version = 16;");
         database_.execute("COMMIT;");
     } catch (...) {
         try {
