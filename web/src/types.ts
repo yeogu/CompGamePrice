@@ -112,6 +112,7 @@ export interface AdminUser {
   status: 'ACTIVE' | 'SUSPENDED'
   createdAt: string
   lastLoginAt?: string
+  suspensionReason?: string
   favoriteCount: number
   alertCount: number
 }
@@ -119,9 +120,17 @@ export interface AdminUserAudit {
   id: number
   actorUserId: number
   targetUserId: number
+  actorEmail: string
+  targetEmail: string
   action: 'ACTIVATE_USER' | 'SUSPEND_USER' | 'SEND_PASSWORD_RESET'
   detail?: string
   createdAt: string
+}
+export interface AdminUserPage {
+  users: AdminUser[]
+  page: number
+  pageSize: number
+  total: number
 }
 export interface AuthResult { user: User; token: string }
 export type AlertRuleType = 'PriceDrop' | 'BelowTargetPrice' | 'NewHistoricalLow' | 'BelowAverage'

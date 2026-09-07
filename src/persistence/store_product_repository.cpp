@@ -396,6 +396,7 @@ void StoreProductRepository::initializeSchema() const {
             status TEXT NOT NULL DEFAULT 'ACTIVE'
                 CHECK(status IN ('ACTIVE','SUSPENDED')),
             last_login_at TEXT,
+            suspension_reason TEXT,
             created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
         );
         CREATE TABLE IF NOT EXISTS admin_user_audit (
@@ -658,6 +659,9 @@ void StoreProductRepository::initializeSchema() const {
         if (usersExisted && !tableHasColumn(database_.handle(), "users", "last_login_at")) {
             database_.execute("ALTER TABLE users ADD COLUMN last_login_at TEXT;");
         }
+        if (usersExisted && !tableHasColumn(database_.handle(), "users", "suspension_reason")) {
+            database_.execute("ALTER TABLE users ADD COLUMN suspension_reason TEXT;");
+        }
         if (existingVersion < 14 && existingVersion > 0) {
             if (!tableHasColumn(
                     database_.handle(),
@@ -697,7 +701,7 @@ void StoreProductRepository::initializeSchema() const {
                     "ALTER TABLE notification_outbox ADD COLUMN sent_at TEXT;");
             }
         }
-        database_.execute("PRAGMA user_version = 16;");
+        database_.execute("PRAGMA user_version = 17;");
         database_.execute("COMMIT;");
     } catch (...) {
         try {

@@ -1153,6 +1153,9 @@ Json::Value adminUserJson(const AdminUserSummary& user) {
     if (user.lastLoginAt) {
         json["lastLoginAt"] = *user.lastLoginAt;
     }
+    if (user.suspensionReason) {
+        json["suspensionReason"] = *user.suspensionReason;
+    }
     json["favoriteCount"] = Json::Int64(user.favoriteCount);
     json["alertCount"] = Json::Int64(user.alertCount);
     return json;
@@ -1676,15 +1679,58 @@ int main() {
                     return;
                 }
                 const auto query = request->getParameter("q");
+                const auto status = request->getParameter("status");
+                const auto role = request->getParameter("role");
+                const auto sort = request->getParameter("sort");
                 if (query.size() > 254) {
                     callback(jsonError(drogon::k400BadRequest, "query is too long"));
                     return;
                 }
+                if (!status.empty() && status != "ACTIVE" && status != "SUSPENDED") {
+                    callback(jsonError(drogon::k400BadRequest, "unsupported status"));
+                    return;
+                }
+                if (!role.empty() && role != "USER" && role != "ADMIN") {
+                    callback(jsonError(drogon::k400BadRequest, "unsupported role"));
+                    return;
+                }
+                if (!sort.empty() && sort != "NEWEST" && sort != "OLDEST" &&
+                    sort != "EMAIL_ASC" && sort != "EMAIL_DESC") {
+                    callback(jsonError(drogon::k400BadRequest, "unsupported sort"));
+                    return;
+                }
+                int page = 1;
+                int pageSize = 20;
+                try {
+                    if (!request->getParameter("page").empty()) {
+                        page = std::stoi(request->getParameter("page"));
+                    }
+                    if (!request->getParameter("pageSize").empty()) {
+                        pageSize = std::stoi(request->getParameter("pageSize"));
+                    }
+                } catch (const std::exception&) {
+                    callback(jsonError(drogon::k400BadRequest, "invalid pagination"));
+                    return;
+                }
+                if (page < 1 || pageSize < 1 || pageSize > 100) {
+                    callback(jsonError(drogon::k400BadRequest, "invalid pagination"));
+                    return;
+                }
                 Json::Value response;
                 response["users"] = Json::arrayValue;
-                for (const auto& user : accountRepository.findUsers(query, 100)) {
+                for (const auto& user : accountRepository.findUsers(
+                         query,
+                         status,
+                         role,
+                         sort,
+                         pageSize,
+                         (page - 1) * pageSize)) {
                     response["users"].append(adminUserJson(user));
                 }
+                response["page"] = page;
+                response["pageSize"] = pageSize;
+                response["total"] = Json::Int64(
+                    accountRepository.countUsers(query, status, role));
                 callback(jsonResponse(response));
             },
             {drogon::Get});
@@ -1722,11 +1768,29 @@ int main() {
                     callback(jsonError(drogon::k400BadRequest, "active is required"));
                     return;
                 }
+                const bool active = (*body)["active"].asBool();
+                std::optional<std::string> reason;
+                if (!active) {
+                    if (!(*body)["reason"].isString()) {
+                        callback(jsonError(
+                            drogon::k400BadRequest,
+                            "suspension reason is required"));
+                        return;
+                    }
+                    reason = (*body)["reason"].asString();
+                    if (reason->empty() || reason->size() > 500) {
+                        callback(jsonError(
+                            drogon::k400BadRequest,
+                            "suspension reason must be between 1 and 500 characters"));
+                        return;
+                    }
+                }
                 try {
                     if (!accountRepository.setUserActive(
                             actor->id,
                             userId,
-                            (*body)["active"].asBool())) {
+                            active,
+                            reason)) {
                         callback(jsonError(drogon::k404NotFound, "user not found"));
                         return;
                     }
@@ -1779,6 +1843,8 @@ int main() {
                     item["id"] = Json::Int64(audit.id);
                     item["actorUserId"] = Json::Int64(audit.actorUserId);
                     item["targetUserId"] = Json::Int64(audit.targetUserId);
+                    item["actorEmail"] = audit.actorEmail;
+                    item["targetEmail"] = audit.targetEmail;
                     item["action"] = audit.action;
                     item["createdAt"] = audit.createdAt;
                     if (audit.detail) {

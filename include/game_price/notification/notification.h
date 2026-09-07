@@ -24,6 +24,7 @@ struct AdminUserSummary {
     bool active{true};
     std::string createdAt;
     std::optional<std::string> lastLoginAt;
+    std::optional<std::string> suspensionReason;
     std::int64_t favoriteCount{};
     std::int64_t alertCount{};
 };
@@ -31,6 +32,8 @@ struct AdminUserAudit {
     std::int64_t id{};
     std::int64_t actorUserId{};
     std::int64_t targetUserId{};
+    std::string actorEmail;
+    std::string targetEmail;
     std::string action;
     std::optional<std::string> detail;
     std::string createdAt;

@@ -52,13 +52,22 @@ public:
     bool deleteUser(std::int64_t userId);
     std::vector<AdminUserSummary> findUsers(
         const std::string& query,
-        int limit) const;
+        const std::string& status,
+        const std::string& role,
+        const std::string& sort,
+        int limit,
+        int offset) const;
+    std::int64_t countUsers(
+        const std::string& query,
+        const std::string& status,
+        const std::string& role) const;
     std::optional<AdminUserSummary> findUserForAdministration(
         std::int64_t userId) const;
     bool setUserActive(
         std::int64_t actorUserId,
         std::int64_t targetUserId,
-        bool active);
+        bool active,
+        const std::optional<std::string>& reason = std::nullopt);
     void recordAdminUserAction(
         std::int64_t actorUserId,
         std::int64_t targetUserId,

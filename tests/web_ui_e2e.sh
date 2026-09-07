@@ -26,6 +26,7 @@ GAME_PRICE_DATABASE_PATH="${database}" "${tracker_binary}" collect \
     --data-dir "${project_directory}/data" Hades >/dev/null
 
 GAME_PRICE_DATABASE_PATH="${database}" GAME_PRICE_API_PORT="${api_port}" \
+    CATALOG_ADMIN_ENABLED=true \
     WEB_APP_URL="http://127.0.0.1:${web_port}" "${api_binary}" \
     >"${test_root}/api.log" 2>&1 &
 api_pid=$!
@@ -40,6 +41,18 @@ web_pid=$!
 for _ in {1..300}; do
     if curl -fsS "http://127.0.0.1:${api_port}/health" >/dev/null 2>&1 && \
         curl -fsS "http://127.0.0.1:${web_port}" >/dev/null 2>&1; then
+        curl -fsS \
+            -H 'Content-Type: application/json' \
+            -d '{"email":"browser-admin@example.com","password":"browser-admin-password"}' \
+            "http://127.0.0.1:${api_port}/api/auth/register" >/dev/null
+        curl -fsS \
+            -H 'Content-Type: application/json' \
+            -d '{"email":"managed-member@example.com","password":"managed-member-password"}' \
+            "http://127.0.0.1:${api_port}/api/auth/register" >/dev/null
+        python3 "${project_directory}/tools/set_user_role.py" \
+            --database "${database}" \
+            --email browser-admin@example.com \
+            --role ADMIN >/dev/null
         WEB_E2E_BASE_URL="http://127.0.0.1:${web_port}" \
             "${project_directory}/web/node_modules/.bin/playwright" test \
             --config "${project_directory}/web/playwright.config.ts"

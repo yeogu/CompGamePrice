@@ -1054,12 +1054,22 @@ void testAuthenticationAndPriceAlerts() {
     const auto managedMember = auth.registerUser(
         "member@example.com",
         "member-password-123");
-    const auto listedMembers = accounts.findUsers("member@", 10);
+    const auto listedMembers = accounts.findUsers(
+        "member@",
+        "ACTIVE",
+        "USER",
+        "EMAIL_ASC",
+        10,
+        0);
     expect(
         listedMembers.size() == 1 && listedMembers.front().active,
         "Administrators should be able to search active members");
     expect(
-        accounts.setUserActive(administrator->id, managedMember.user.id, false),
+        accounts.setUserActive(
+            administrator->id,
+            managedMember.user.id,
+            false,
+            "Repeated abuse"),
         "Administrators should be able to suspend a member");
     expect(
         !auth.authenticate(managedMember.token).has_value(),
@@ -1067,6 +1077,12 @@ void testAuthenticationAndPriceAlerts() {
     expect(
         !auth.login("member@example.com", "member-password-123").has_value(),
         "Suspended members should not be able to create new sessions");
+    const auto suspendedMember = accounts.findUserForAdministration(
+        managedMember.user.id);
+    expect(
+        suspendedMember &&
+            suspendedMember->suspensionReason == "Repeated abuse",
+        "Member details should expose the recorded suspension reason");
     expect(
         accounts.setUserActive(administrator->id, managedMember.user.id, true),
         "Administrators should be able to reactivate a member");
@@ -1078,6 +1094,14 @@ void testAuthenticationAndPriceAlerts() {
         memberAudits.size() == 2 &&
             memberAudits.front().action == "ACTIVATE_USER",
         "Member status changes should be recorded in the administrator audit log");
+    expect(
+        memberAudits.back().detail == "Repeated abuse" &&
+            memberAudits.back().targetEmail == "member@example.com" &&
+            memberAudits.back().actorEmail == "buyer@example.com",
+        "Member audit logs should explain the action using readable emails");
+    expect(
+        accounts.countUsers("", "ACTIVE", "USER") == 1,
+        "Member list filters should report a matching total");
     expect(!auth.login("buyer@example.com", "wrong-password").has_value(),
            "Wrong password should be rejected");
     expect(auth.login("buyer@example.com", "safe-password-123").has_value(),

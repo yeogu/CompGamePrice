@@ -198,3 +198,27 @@ test('user can search, inspect prices, create an alert, and log out', async ({ p
   await page.getByRole('button', { name: '로그아웃' }).click()
   await expect(page.getByRole('button', { name: '로그인', exact: true })).toBeVisible()
 })
+
+test('administrator can search, suspend, and reactivate a member', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: '로그인', exact: true }).click()
+  await page.getByPlaceholder('email@example.com').fill('browser-admin@example.com')
+  await page.getByPlaceholder('8자 이상 비밀번호').fill('browser-admin-password')
+  await page.getByRole('button', { name: '로그인', exact: true }).last().click()
+
+  await page.locator('.sidebar nav').getByRole('button', { name: '회원 관리' }).click()
+  await expect(page.getByRole('heading', { name: '회원 관리' })).toBeVisible()
+  await page.getByLabel('회원 이메일 검색').fill('managed-member@example.com')
+  await page.getByRole('button', { name: '검색' }).click()
+  await page.getByRole('button', { name: /managed-member@example.com/ }).click()
+
+  await page.getByPlaceholder('회원에게 조치한 이유를 기록하세요.').fill('E2E 운영 정책 확인')
+  await page.getByRole('button', { name: '계정 정지' }).click()
+  await expect(page.getByText('계정을 정지하고 기존 세션을 종료했습니다.')).toBeVisible()
+  await expect(page.getByText('E2E 운영 정책 확인')).toBeVisible()
+  await expect(page.getByText('managed-member@example.com · E2E 운영 정책 확인')).toBeVisible()
+
+  await page.getByRole('button', { name: '정지 해제' }).click()
+  await expect(page.getByText('계정 정지를 해제했습니다.')).toBeVisible()
+  await expect(page.getByText('정상 계정')).toBeVisible()
+})

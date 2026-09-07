@@ -318,6 +318,12 @@ function App() {
   const [selectedAdminUser, setSelectedAdminUser] = useState<AdminUser | null>(null)
   const [adminUserAudits, setAdminUserAudits] = useState<AdminUserAudit[]>([])
   const [adminUserQuery, setAdminUserQuery] = useState('')
+  const [adminUserStatus, setAdminUserStatus] = useState('')
+  const [adminUserRole, setAdminUserRole] = useState('')
+  const [adminUserSort, setAdminUserSort] = useState('NEWEST')
+  const [adminUserPage, setAdminUserPage] = useState(1)
+  const [adminUserTotal, setAdminUserTotal] = useState(0)
+  const [adminSuspensionReason, setAdminSuspensionReason] = useState('')
   const [adminUserLoading, setAdminUserLoading] = useState(false)
   const [adminUserError, setAdminUserError] = useState('')
   const [adminUserMessage, setAdminUserMessage] = useState('')
@@ -1385,18 +1391,28 @@ function App() {
     })
   }, [token])
 
-  const loadAdminUsers = async (query = adminUserQuery) => {
+  const loadAdminUsers = async (page = adminUserPage) => {
     setAdminUserLoading(true)
     setAdminUserError('')
     try {
-      const [users, audits] = await Promise.all([
-        getAdminUsers(query.trim()),
+      const [userPage, audits] = await Promise.all([
+        getAdminUsers(
+          adminUserQuery.trim(),
+          adminUserStatus,
+          adminUserRole,
+          adminUserSort,
+          page,
+        ),
         getAdminUserAudits(),
       ])
-      setAdminUsers(users)
+      setAdminUsers(userPage.users)
+      setAdminUserPage(userPage.page)
+      setAdminUserTotal(userPage.total)
       setAdminUserAudits(audits)
       if (selectedAdminUser) {
-        setSelectedAdminUser(users.find((item) => item.id === selectedAdminUser.id) ?? null)
+        setSelectedAdminUser(
+          userPage.users.find((item) => item.id === selectedAdminUser.id) ?? null,
+        )
       }
     } catch (reason) {
       setAdminUserError(reason instanceof Error ? reason.message : '회원 정보를 불러오지 못했습니다.')
@@ -1409,6 +1425,7 @@ function App() {
     setAdminUserError('')
     try {
       setSelectedAdminUser(await getAdminUser(userId))
+      setAdminSuspensionReason('')
     } catch (reason) {
       setAdminUserError(reason instanceof Error ? reason.message : '회원 상세 정보를 불러오지 못했습니다.')
     }
@@ -1418,10 +1435,17 @@ function App() {
     setAdminUserError('')
     setAdminUserMessage('')
     try {
-      const updated = await updateAdminUserStatus(member.id, member.status !== 'ACTIVE')
+      const activating = member.status !== 'ACTIVE'
+      const reason = adminSuspensionReason.trim()
+      if (!activating && !reason) {
+        setAdminUserError('계정을 정지하는 이유를 입력하세요.')
+        return
+      }
+      const updated = await updateAdminUserStatus(member.id, activating, reason)
       setSelectedAdminUser(updated)
+      setAdminSuspensionReason('')
       setAdminUserMessage(updated.status === 'ACTIVE' ? '계정 정지를 해제했습니다.' : '계정을 정지하고 기존 세션을 종료했습니다.')
-      await loadAdminUsers()
+      await loadAdminUsers(adminUserPage)
     } catch (reason) {
       setAdminUserError(reason instanceof Error ? reason.message : '회원 상태를 변경하지 못했습니다.')
     }
@@ -1433,7 +1457,7 @@ function App() {
     try {
       await sendAdminPasswordReset(member.id)
       setAdminUserMessage(`${member.email}로 비밀번호 재설정 메일을 요청했습니다.`)
-      await loadAdminUsers()
+      await loadAdminUsers(adminUserPage)
     } catch (reason) {
       setAdminUserError(reason instanceof Error ? reason.message : '재설정 메일을 요청하지 못했습니다.')
     }
@@ -1441,7 +1465,8 @@ function App() {
 
   useEffect(() => {
     if (activeView === 'members' && catalogAdminEnabled && user?.role === 'ADMIN') {
-      void loadAdminUsers('')
+      setAdminUserPage(1)
+      void loadAdminUsers(1)
     }
   }, [activeView, catalogAdminEnabled, user?.role])
 
@@ -1832,30 +1857,37 @@ function App() {
         <p className="eyebrow">MEMBER ADMIN</p>
         <h1 className="view-title">회원 관리</h1>
         <p className="view-description">회원 상태를 확인하고 계정을 정지하거나 비밀번호 재설정 메일을 보냅니다. 비밀번호는 관리자에게 표시되지 않습니다.</p>
-        <form className="member-search" onSubmit={(event) => { event.preventDefault(); void loadAdminUsers() }}>
+        <form className="member-search" onSubmit={(event) => { event.preventDefault(); void loadAdminUsers(1) }}>
           <input aria-label="회원 이메일 검색" value={adminUserQuery} onChange={(event) => setAdminUserQuery(event.target.value)} placeholder="이메일로 검색" />
+          <select aria-label="회원 상태 필터" value={adminUserStatus} onChange={(event) => setAdminUserStatus(event.target.value)}><option value="">모든 상태</option><option value="ACTIVE">정상</option><option value="SUSPENDED">정지</option></select>
+          <select aria-label="회원 권한 필터" value={adminUserRole} onChange={(event) => setAdminUserRole(event.target.value)}><option value="">모든 권한</option><option value="USER">일반 회원</option><option value="ADMIN">관리자</option></select>
+          <select aria-label="회원 정렬" value={adminUserSort} onChange={(event) => setAdminUserSort(event.target.value)}><option value="NEWEST">최근 가입순</option><option value="OLDEST">오래된 가입순</option><option value="EMAIL_ASC">이메일 A → Z</option><option value="EMAIL_DESC">이메일 Z → A</option></select>
           <button disabled={adminUserLoading} type="submit">{adminUserLoading ? '조회 중…' : '검색'}</button>
         </form>
         {adminUserError && <p className="admin-feedback error" role="alert">{adminUserError}</p>}
         {adminUserMessage && <p className="admin-feedback success" role="status">{adminUserMessage}</p>}
         <div className="member-admin-layout">
           <div className="member-list" aria-label="회원 목록">
+            <p className="member-list-summary">전체 {adminUserTotal}명 · {adminUserPage}페이지</p>
             {adminUsers.map((member) => <button className={selectedAdminUser?.id === member.id ? 'active' : ''} key={member.id} onClick={() => void openAdminUser(member.id)}>
               <span><strong>{member.email}</strong><small>{member.role}</small></span>
               <span className={member.status === 'ACTIVE' ? 'member-active' : 'member-suspended'}>{member.status === 'ACTIVE' ? '정상' : '정지'}</span>
             </button>)}
             {!adminUserLoading && adminUsers.length === 0 && <p className="empty-state">조건에 맞는 회원이 없습니다.</p>}
+            <div className="member-pagination"><button disabled={adminUserPage <= 1 || adminUserLoading} onClick={() => void loadAdminUsers(adminUserPage - 1)}>이전</button><button disabled={adminUserPage * 20 >= adminUserTotal || adminUserLoading} onClick={() => void loadAdminUsers(adminUserPage + 1)}>다음</button></div>
           </div>
           <div className="member-detail">
             {selectedAdminUser ? <>
               <header><div><h2>{selectedAdminUser.email}</h2><p>회원 #{selectedAdminUser.id} · {selectedAdminUser.role}</p></div><span className={selectedAdminUser.status === 'ACTIVE' ? 'member-active' : 'member-suspended'}>{selectedAdminUser.status === 'ACTIVE' ? '정상 계정' : '정지 계정'}</span></header>
               <dl><div><dt>가입일</dt><dd>{new Date(selectedAdminUser.createdAt).toLocaleString('ko-KR')}</dd></div><div><dt>마지막 로그인</dt><dd>{selectedAdminUser.lastLoginAt ? new Date(selectedAdminUser.lastLoginAt).toLocaleString('ko-KR') : '로그인 기록 없음'}</dd></div><div><dt>관심 게임</dt><dd>{selectedAdminUser.favoriteCount}개</dd></div><div><dt>활성 가격 알림</dt><dd>{selectedAdminUser.alertCount}개</dd></div></dl>
+              {selectedAdminUser.status === 'SUSPENDED' && <p className="suspension-reason"><strong>정지 사유</strong>{selectedAdminUser.suspensionReason ?? '기록 없음'}</p>}
+              {selectedAdminUser.status === 'ACTIVE' && selectedAdminUser.role !== 'ADMIN' && <label className="suspension-reason-input">정지 사유<textarea maxLength={500} value={adminSuspensionReason} onChange={(event) => setAdminSuspensionReason(event.target.value)} placeholder="회원에게 조치한 이유를 기록하세요." /></label>}
               <div className="member-actions"><button onClick={() => void resetAdminUserPassword(selectedAdminUser)}>재설정 메일 보내기</button><button className="danger" disabled={selectedAdminUser.role === 'ADMIN'} onClick={() => void changeAdminUserStatus(selectedAdminUser)}>{selectedAdminUser.status === 'ACTIVE' ? '계정 정지' : '정지 해제'}</button></div>
               {selectedAdminUser.role === 'ADMIN' && <small>관리자 계정의 정지와 권한 변경은 이 화면에서 허용하지 않습니다.</small>}
             </> : <p className="empty-state">목록에서 회원을 선택하세요.</p>}
           </div>
         </div>
-        <section className="member-audit"><h2>최근 관리자 조치</h2>{adminUserAudits.map((audit) => <div key={audit.id}><strong>{audit.action === 'SUSPEND_USER' ? '계정 정지' : audit.action === 'ACTIVATE_USER' ? '정지 해제' : '재설정 메일 요청'}</strong><span>대상 회원 #{audit.targetUserId}</span><small>{new Date(audit.createdAt).toLocaleString('ko-KR')} · 관리자 #{audit.actorUserId}</small></div>)}{adminUserAudits.length === 0 && <p>아직 회원 관리 기록이 없습니다.</p>}</section>
+        <section className="member-audit"><h2>최근 관리자 조치</h2>{adminUserAudits.map((audit) => <div key={audit.id}><strong>{audit.action === 'SUSPEND_USER' ? '계정 정지' : audit.action === 'ACTIVATE_USER' ? '정지 해제' : '재설정 메일 요청'}</strong><span>{audit.targetEmail}{audit.detail ? ` · ${audit.detail}` : ''}</span><small>{new Date(audit.createdAt).toLocaleString('ko-KR')} · {audit.actorEmail}</small></div>)}{adminUserAudits.length === 0 && <p>아직 회원 관리 기록이 없습니다.</p>}</section>
       </section>}
 
       {activeView === 'collection' && catalogAdminEnabled && user?.role === 'ADMIN' && <section className="view-panel collection-panel" aria-label="최근 가격 수집 상태">

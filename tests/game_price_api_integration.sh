@@ -447,12 +447,21 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
 [[ "${status}" == "200" ]]
 grep -q '"email":"member@example.com"' "${response_body}"
 grep -q '"status":"ACTIVE"' "${response_body}"
+grep -q '"total":1' "${response_body}"
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     -b "${cookie_jar}" \
     -X PATCH -H 'Content-Type: application/json' -d '{"active":false}' \
     "${api_base}/api/admin/users/${member_id}/status")
+[[ "${status}" == "400" ]]
+grep -q 'suspension reason is required' "${response_body}"
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    -b "${cookie_jar}" \
+    -X PATCH -H 'Content-Type: application/json' \
+    -d '{"active":false,"reason":"Integration test policy violation"}' \
+    "${api_base}/api/admin/users/${member_id}/status")
 [[ "${status}" == "200" ]]
 grep -q '"status":"SUSPENDED"' "${response_body}"
+grep -q '"suspensionReason":"Integration test policy violation"' "${response_body}"
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     -b "${member_cookie_jar}" "${api_base}/api/auth/me")
 [[ "${status}" == "401" ]]
@@ -470,6 +479,8 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
 [[ "${status}" == "200" ]]
 grep -q '"action":"SUSPEND_USER"' "${response_body}"
 grep -q '"action":"SEND_PASSWORD_RESET"' "${response_body}"
+grep -q '"targetEmail":"member@example.com"' "${response_body}"
+grep -q '"actorEmail":"test@example.com"' "${response_body}"
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     -b "${cookie_jar}" "${api_base}/api/admin/catalog/collection")
 [[ "${status}" == "200" ]]
