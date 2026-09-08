@@ -134,7 +134,7 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .game-list button span { color: #91a79b; font-size: .72rem; }
 .game-list button em { color: #73e2a7; font-size: .8rem; font-style: normal; }
 .game-artwork { display: grid; width: calc(100% + 32px); height: 112px; margin: 0 -16px 4px; place-items: center; overflow: hidden; color: #5b806c; background: linear-gradient(135deg, #173426, #0b1812); }
-.game-artwork img { width: 100%; height: 100%; object-fit: cover; }
+.game-artwork img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; }
 .game-artwork svg { width: 34px; height: 34px; }
 .game-artwork.compact { width: 72px; height: 72px; margin: 0; border: 1px solid #294838; border-radius: 9px; }
 .game-artwork.compact svg { width: 25px; height: 25px; }
