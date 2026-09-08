@@ -287,7 +287,7 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .admin-dashboard { padding: 20px; background: #0b1812; border: 1px solid #315141; border-radius: 14px; }
 .admin-dashboard h2, .admin-dashboard p { margin: 0; }
 .admin-dashboard p, .admin-store-workspace > header p, .admin-product-workspace > p { margin-top: 6px; color: #91a79b; }
-.admin-store-shortcuts { margin-top: 24px; }
+.admin-store-shortcuts { display: none; }
 .admin-store-shortcuts > div:first-child { margin-bottom: 12px; }
 .admin-store-shortcuts h3, .admin-store-shortcuts p { margin: 0; }
 .admin-store-shortcuts > div:last-child { display: flex; flex-wrap: wrap; gap: 8px; }
