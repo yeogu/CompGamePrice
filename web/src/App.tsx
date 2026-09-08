@@ -425,7 +425,7 @@ function App() {
       setPassword('')
       await refreshAccount('cookie')
       setAuthOpen(false)
-      setActionMessage(authMode === 'login' ? '로그인했습니다.' : '회원가입과 로그인이 완료되었습니다.')
+      setActionMessage('')
     } catch (reason) {
       if (authMode === 'reset') {
         setAuthError('재설정 링크가 만료되었거나 올바르지 않습니다. 다시 요청해주세요.')
