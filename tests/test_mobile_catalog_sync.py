@@ -333,6 +333,42 @@ class MobileCatalogSyncTest(unittest.TestCase):
         self.assertEqual([game["id"] for game in old_rejection], ["stardew-valley"])
         self.assertEqual(recent_rejection, [])
 
+    def test_rechecks_failed_game_after_shorter_delay(self):
+        with sqlite3.connect(self.database) as connection:
+            sync.initialize_state(connection)
+            connection.execute(
+                """
+                INSERT INTO catalog_sync_seen(
+                    provider, external_product_id, outcome, checked_at
+                ) VALUES('GooglePlay:game', 'stardew-valley', 'FAILED', ?)
+                """,
+                (sync.utc_now(),),
+            )
+            connection.commit()
+            recent_failure = sync.pending_games(
+                connection,
+                catalog_document(),
+                "GooglePlay",
+                10,
+            )
+            connection.execute(
+                """
+                UPDATE catalog_sync_seen
+                SET checked_at = ?
+                WHERE provider = 'GooglePlay:game'
+                """,
+                ("2020-01-01T00:00:00Z",),
+            )
+            old_failure = sync.pending_games(
+                connection,
+                catalog_document(),
+                "GooglePlay",
+                10,
+            )
+
+        self.assertEqual(recent_failure, [])
+        self.assertEqual([game["id"] for game in old_failure], ["stardew-valley"])
+
     def test_rerun_does_not_duplicate_processed_game(self):
         arguments = {
             "searcher": lambda query, limit, timeout: [
@@ -465,6 +501,52 @@ class MobileCatalogSyncTest(unittest.TestCase):
         self.assertEqual(failures[0]["gameId"], "stardew-valley")
         self.assertEqual(failures[0]["title"], "Stardew Valley")
         self.assertEqual(failures[0]["reason"], "malformed response")
+
+    def test_failed_game_does_not_starve_later_game_in_next_batch(self):
+        document = catalog_document()
+        document["games"].append(
+            {
+                **document["games"][0],
+                "id": "second-game",
+                "title": "Second Game",
+            }
+        )
+        self.catalog.write_text(json.dumps(document), encoding="utf-8")
+
+        def fail_search(query, limit, timeout):
+            del query
+            del limit
+            del timeout
+            raise ValueError("malformed response")
+
+        first = sync.synchronize_provider(
+            self.catalog,
+            self.database,
+            "GooglePlay",
+            1,
+            searcher=fail_search,
+        )
+        second = sync.synchronize_provider(
+            self.catalog,
+            self.database,
+            "GooglePlay",
+            1,
+            searcher=lambda query, limit, timeout: [],
+        )
+
+        self.assertEqual(first["failed"], 1)
+        self.assertEqual(second["processed"], 1)
+        self.assertEqual(second["exclusions"][0]["gameId"], "second-game")
+        with sqlite3.connect(self.database) as connection:
+            outcome = connection.execute(
+                """
+                SELECT outcome
+                FROM catalog_sync_seen
+                WHERE provider = 'GooglePlay:game'
+                  AND external_product_id = 'stardew-valley'
+                """
+            ).fetchone()[0]
+        self.assertEqual(outcome, "FAILED")
 
 
 if __name__ == "__main__":

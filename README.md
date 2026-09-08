@@ -246,11 +246,14 @@ python3 tools/sync_steam_catalog.py --batch-size 20
 python3 tools/sync_steam_catalog.py --status
 ```
 
-Google Play과 Apple App Store의 canonical Game 후보도 제한된 배치로 자동
-탐색할 수 있습니다. 검증된 후보는 자동 연결하고 불확실한 후보만 Admin 검토 큐에
+Google Play, Apple App Store, Nintendo eShop, PlayStation Store,
+Microsoft Store의 canonical Game 후보도 제한된 배치로 자동 탐색할 수 있습니다.
+검증된 후보는 자동 연결하고 불확실한 후보만 Admin 검토 큐에
 저장합니다. 자동 승인 또는 검토 대기인 game/store 조합은 중복 탐색하지 않습니다.
 검색 결과 없음과 거절 결과는 Store 정보 변경을 반영할 수 있도록 7일 후 다시
-검사하며, 일시적인 네트워크 실패는 최대 3회만 시도합니다.
+검사합니다. 일시적인 실패는 최대 3회만 시도하고 실패 상태를 기록한 뒤 1일 후 다시
+탐색합니다. 최근 실패 게임은 다음 제한 배치에서 건너뛰므로 뒤쪽 게임도 계속
+처리됩니다.
 
 Admin 화면의 모바일 검토 큐는 canonical Game별로 Google Play와 Apple App Store
 후보를 묶어 보여줍니다. 자동 승인은 제목과 유효한 KRW 본편 구매 조건에 더해

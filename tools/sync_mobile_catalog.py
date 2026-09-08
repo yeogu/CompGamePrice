@@ -98,6 +98,7 @@ STORE_CONFIG = {
     },
 }
 REJECTED_GAME_RECHECK_DAYS = 7
+FAILED_GAME_RECHECK_DAYS = 1
 
 
 def utc_now() -> str:
@@ -167,15 +168,18 @@ def should_process_game(previous: tuple[str, str] | None) -> bool:
     if previous is None:
         return True
     outcome, checked_at = previous
-    if outcome not in {"NO_MATCH", "Rejected"}:
+    recheck_days = {
+        "FAILED": FAILED_GAME_RECHECK_DAYS,
+        "NO_MATCH": REJECTED_GAME_RECHECK_DAYS,
+        "Rejected": REJECTED_GAME_RECHECK_DAYS,
+    }.get(outcome)
+    if recheck_days is None:
         return False
     try:
         checked = datetime.fromisoformat(checked_at.replace("Z", "+00:00"))
     except ValueError:
         return True
-    return checked <= datetime.now(timezone.utc) - timedelta(
-        days=REJECTED_GAME_RECHECK_DAYS
-    )
+    return checked <= datetime.now(timezone.utc) - timedelta(days=recheck_days)
 
 
 def call_with_retry(operation, max_attempts: int, retry_counter: list[int]):
@@ -515,6 +519,7 @@ def synchronize_provider(
                         "productUrl": candidate.get("productUrl"),
                     })
             except Exception as error:
+                record_game_processed(connection, provider, game["id"], "FAILED")
                 report["failed"] += 1
                 report["errors"].append({
                     "gameId": game.get("id"),

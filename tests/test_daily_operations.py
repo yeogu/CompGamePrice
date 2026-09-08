@@ -15,7 +15,9 @@ SPEC.loader.exec_module(daily_operations)
 
 class DailyOperationsTest(unittest.TestCase):
     def test_runs_provider_jobs_independently_and_continues_after_failure(self):
-        exit_codes = iter([1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0])
+        exit_codes = iter(
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0]
+        )
 
         def fake_run(name, command, environment):
             self.assertTrue(command)
@@ -56,6 +58,8 @@ class DailyOperationsTest(unittest.TestCase):
                 "google-play-catalog-discovery",
                 "apple-catalog-discovery",
                 "nintendo-catalog-discovery",
+                "playstation-catalog-discovery",
+                "microsoft-catalog-discovery",
                 "steam",
                 "epic-games",
                 "nintendo-eshop",
@@ -68,7 +72,7 @@ class DailyOperationsTest(unittest.TestCase):
             ],
         )
         self.assertEqual(results[0]["exitCode"], 1)
-        self.assertEqual(len(results), 16)
+        self.assertEqual(len(results), 18)
 
 
 if __name__ == "__main__":

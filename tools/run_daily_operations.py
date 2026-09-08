@@ -140,6 +140,36 @@ def run_operations(
             ],
         ),
         (
+            "playstation-catalog-discovery",
+            [
+                python,
+                str(project / "tools" / "sync_mobile_catalog.py"),
+                "--store",
+                "PlayStationStore",
+                "--catalog",
+                str(catalog),
+                "--database",
+                str(database),
+                "--batch-size",
+                str(catalog_batch_size),
+            ],
+        ),
+        (
+            "microsoft-catalog-discovery",
+            [
+                python,
+                str(project / "tools" / "sync_mobile_catalog.py"),
+                "--store",
+                "MicrosoftStore",
+                "--catalog",
+                str(catalog),
+                "--database",
+                str(database),
+                "--batch-size",
+                str(catalog_batch_size),
+            ],
+        ),
+        (
             "steam",
             [
                 python,

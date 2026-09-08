@@ -100,7 +100,8 @@ EMAIL_DISPATCH_INTERVAL_SECONDS=30
 ## 가격 수집 자동화
 
 Compose의 `collector` 서비스는 API가 정상 상태가 된 뒤 Steam, Google Play,
-Apple App Store의 카탈로그 탐색과 가격 수집을 실행한다. 기본 주기는 6시간이며
+Apple App Store, Nintendo eShop, PlayStation Store, Microsoft Store의 카탈로그
+탐색과 가격 수집을 실행한다. 기본 주기는 6시간이며
 `.env`에서 조정할 수 있다.
 
 ```dotenv
@@ -122,13 +123,14 @@ COLLECTION_ENABLED=true
 
 - 한 Store의 수집 실패는 다른 Store 수집을 중단하지 않는다.
 - 동일 volume에서는 OS 파일 잠금으로 scheduler 중복 실행을 차단한다.
-- 실패한 실행을 무한 재시도하지 않고 다음 정기 주기에 다시 시도한다.
+- 실패한 게임은 실패 상태와 원인을 기록하고 1일 후 다시 시도한다. 최근 실패 항목은
+  다음 제한 배치에서 건너뛰므로 뒤쪽 게임의 탐색을 막지 않는다.
 - Store 요청 과부하를 방지하기 위해 주기는 300초 미만으로 설정할 수 없다.
 - 세부 수집 결과는 기존 collection run과 관리자 운영 상태 화면에서 확인한다.
 - 관리자 Steam 화면에서 대표 이미지 완료·전체·남은 게임 수를 확인한다.
 - Steam 후보는 인기·할인·신작 공개 목록을 각각 3페이지까지 탐색한다. 폐기된
   `ISteamApps/GetAppList/v2`는 사용하지 않으므로 별도 Steam Web API key가 필요 없다.
-- Google Play와 Apple App Store의 검색 결과 없음·거절 항목은 7일 후 다시 검사한다.
+- 각 Store의 검색 결과 없음·거절 항목은 7일 후 다시 검사한다.
   자동 연결 또는 검토 대기 항목은 중복 탐색하지 않는다.
 - 관리자 대시보드는 Store별 최근 처리·자동 등록·검토·제외·실패 건수와 최근 7일
   카탈로그 증가량을 표시한다.
