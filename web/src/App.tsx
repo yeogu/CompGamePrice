@@ -1681,9 +1681,8 @@ function App() {
         <>
         <section className="results">
           <div className="result-heading">
-            <GameArtwork compact imageUrl={report.game.imageUrl} title={report.game.title} />
+            <GameArtwork imageUrl={report.game.imageUrl} title={report.game.title} />
             <div>
-              <p className="eyebrow">CURRENT PRICES</p>
               <h2>{report.game.title}</h2>
               <div className="game-platforms platform-overview">
                 <span>플레이 가능</span>
