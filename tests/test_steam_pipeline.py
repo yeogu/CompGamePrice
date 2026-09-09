@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+import sqlite3
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -24,6 +25,34 @@ class Completed:
 
 
 class SteamPipelineTest(unittest.TestCase):
+    def test_prioritizes_never_collected_then_oldest_products(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database = Path(directory) / "prices.db"
+            with sqlite3.connect(database) as connection:
+                connection.execute(
+                    """
+                    CREATE TABLE store_products(
+                        store TEXT,
+                        external_product_id TEXT,
+                        last_successful_check_at TEXT
+                    )
+                    """
+                )
+                connection.executemany(
+                    "INSERT INTO store_products VALUES('Steam', ?, ?)",
+                    [
+                        ("2", "2026-01-02T00:00:00Z"),
+                        ("3", "2026-01-01T00:00:00Z"),
+                    ],
+                )
+            selected = steam_pipeline.prioritized_targets(
+                [("1", "new"), ("2", "recent"), ("3", "old")],
+                database,
+                2,
+            )
+
+            self.assertEqual(selected, [("1", "new"), ("3", "old")])
+
     def test_rejects_a_second_pipeline_using_the_same_directory(self):
         with tempfile.TemporaryDirectory() as directory:
             lock = Path(directory) / "pipeline.lock"

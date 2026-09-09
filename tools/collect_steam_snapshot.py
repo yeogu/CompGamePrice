@@ -362,6 +362,7 @@ def collect_targets(
     fetcher=fetch,
     sleeper=time.sleep,
     archive_directory: Path | None = None,
+    statistics: dict | None = None,
 ) -> tuple[int, list[tuple[str, str]]]:
     if request_delay < 0 or retry_delay < 0 or max_attempts < 1:
         raise ValueError("Delays must be non-negative and max attempts must be positive")
@@ -376,6 +377,8 @@ def collect_targets(
         attempts_used = 0
         for attempt in range(1, max_attempts + 1):
             attempts_used = attempt
+            if attempt > 1 and statistics is not None:
+                statistics["retryCount"] = statistics.get("retryCount", 0) + 1
             try:
                 raw, status, source_url = fetcher(
                     app_id, country, language, timeout

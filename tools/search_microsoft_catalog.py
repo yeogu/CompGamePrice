@@ -52,6 +52,9 @@ def fetch_json(url: str, timeout: float) -> dict:
 
 def platform_names(values: list[str]) -> list[str]:
     platforms = []
+    normalized = {str(value).lower() for value in values}
+    if normalized & {"pc", "windows", "desktop"}:
+        platforms.append("Windows")
     if "XboxOne" in values:
         platforms.append("XboxOne")
     if "XboxSeriesX" in values:
@@ -122,6 +125,12 @@ def product_platforms(product: dict) -> list[str]:
     generations = set(properties.get("XboxConsoleGenCompatible", []))
     generations.update(properties.get("XboxConsoleGenOptimized", []))
     platforms = []
+    platform_values = {
+        str(value).lower()
+        for value in properties.get("Platforms", [])
+    }
+    if platform_values & {"pc", "windows", "desktop"}:
+        platforms.append("Windows")
     if "ConsoleGen8" in generations:
         platforms.append("XboxOne")
     if "ConsoleGen9" in generations:

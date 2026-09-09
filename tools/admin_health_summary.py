@@ -169,8 +169,9 @@ def store_quality(document: dict, database: Path) -> list[dict]:
 
 
 def collection_summary(database: Path) -> dict:
+    pipeline = steam_pipeline_summary(database)
     if not database.exists():
-        return {"recentFailures": 0, "lastFailure": None}
+        return {"recentFailures": 0, "lastFailure": None, "steamPipeline": pipeline}
     with sqlite3.connect(database) as connection:
         table = connection.execute(
             """
@@ -179,7 +180,7 @@ def collection_summary(database: Path) -> dict:
             """
         ).fetchone()
         if table is None:
-            return {"recentFailures": 0, "lastFailure": None}
+            return {"recentFailures": 0, "lastFailure": None, "steamPipeline": pipeline}
         failures = connection.execute(
             """
             SELECT store, error_message, started_at
@@ -196,6 +197,26 @@ def collection_summary(database: Path) -> dict:
             "error": failures[0][1],
             "startedAt": failures[0][2],
         },
+        "steamPipeline": pipeline,
+    }
+
+
+def steam_pipeline_summary(database: Path) -> dict | None:
+    report_path = database.parent / "collection-snapshots" / "steam_pipeline_run.json"
+    try:
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, TypeError):
+        return None
+    failures = report.get("failures", [])
+    return {
+        "startedAt": report.get("startedAt"),
+        "finishedAt": report.get("finishedAt"),
+        "catalogTargets": report.get("catalogTargets", report.get("targets", 0)),
+        "targets": report.get("targets", 0),
+        "collected": report.get("collected", 0),
+        "failed": len(failures),
+        "retryCount": report.get("retryCount", 0),
+        "lastError": failures[-1].get("error") if failures else None,
     }
 
 

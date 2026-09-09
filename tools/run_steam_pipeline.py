@@ -8,6 +8,7 @@ from contextlib import contextmanager
 import fcntl
 import json
 from pathlib import Path
+import sqlite3
 import subprocess
 import sys
 import os
@@ -55,6 +56,45 @@ def os_getpid() -> int:
     return os.getpid()
 
 
+def prioritized_targets(
+    targets: list[tuple[str, str]],
+    database_path: Path | None,
+    batch_size: int | None,
+) -> list[tuple[str, str]]:
+    if batch_size is None or batch_size >= len(targets):
+        return targets
+    if batch_size < 1:
+        raise ValueError("Steam batch size must be positive")
+    if database_path is None or not database_path.exists():
+        return targets[:batch_size]
+    checked_at: dict[str, str] = {}
+    try:
+        with sqlite3.connect(database_path, timeout=5) as connection:
+            rows = connection.execute(
+                """
+                SELECT external_product_id,
+                       COALESCE(last_successful_check_at, '')
+                FROM store_products
+                WHERE store = 'Steam'
+                """
+            ).fetchall()
+            checked_at = {str(product_id): value for product_id, value in rows}
+    except sqlite3.Error:
+        return targets[:batch_size]
+    catalog_order = {
+        app_id: index
+        for index, (app_id, _game_id) in enumerate(targets)
+    }
+    ordered = sorted(
+        targets,
+        key=lambda target: (
+            checked_at.get(target[0], ""),
+            catalog_order[target[0]],
+        ),
+    )
+    return ordered[:batch_size]
+
+
 def run_pipeline(
     tracker: Path,
     catalog_path: Path,
@@ -73,12 +113,15 @@ def run_pipeline(
     database_path: Path | None = None,
     database_backup_directory: Path | None = None,
     database_backup_retention_days: int = 30,
+    batch_size: int | None = None,
     fetcher=None,
     command_runner=subprocess.run,
 ) -> int:
     started_at = timestamp()
     with exclusive_lock(output_directory / ".steam_pipeline.lock"):
-        targets = collector.load_steam_targets(catalog_path)
+        all_targets = collector.load_steam_targets(catalog_path)
+        targets = prioritized_targets(all_targets, database_path, batch_size)
+        statistics = {"retryCount": 0}
         collection_arguments = {
             "targets": targets,
             "output_directory": output_directory,
@@ -89,6 +132,7 @@ def run_pipeline(
             "max_attempts": max_attempts,
             "retry_delay": retry_delay,
             "archive_directory": archive_directory,
+            "statistics": statistics,
         }
         if fetcher is not None:
             collection_arguments["fetcher"] = fetcher
@@ -142,7 +186,10 @@ def run_pipeline(
             "startedAt": started_at,
             "finishedAt": timestamp(),
             "targets": len(targets),
+            "catalogTargets": len(all_targets),
+            "batchSize": batch_size,
             "collected": success_count,
+            "retryCount": statistics["retryCount"],
             "failures": [
                 {"appId": app_id, "error": error} for app_id, error in failures
             ],
@@ -182,6 +229,7 @@ def main() -> int:
     parser.add_argument("--database", type=Path)
     parser.add_argument("--database-backup-dir", type=Path)
     parser.add_argument("--database-backup-retention-days", default=30, type=int)
+    parser.add_argument("--batch-size", type=int)
     parser.add_argument(
         "--input",
         type=Path,
@@ -231,6 +279,7 @@ def main() -> int:
             database_path,
             arguments.database_backup_dir or arguments.output_dir.parent / "db-backups",
             arguments.database_backup_retention_days,
+            arguments.batch_size,
             fetcher,
         )
     except PipelineAlreadyRunning as error:

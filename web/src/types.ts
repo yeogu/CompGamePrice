@@ -177,7 +177,20 @@ export interface PeriodicJobStatus {
 }
 export interface AdminHealthSummary {
   metadata: { complete: number; incomplete: number; total: number }
-  collection: { recentFailures: number; lastFailure?: { store: string; error?: string; startedAt: string } }
+  collection: {
+    recentFailures: number
+    lastFailure?: { store: string; error?: string; startedAt: string }
+    steamPipeline?: {
+      startedAt?: string
+      finishedAt?: string
+      catalogTargets: number
+      targets: number
+      collected: number
+      failed: number
+      retryCount: number
+      lastError?: string
+    } | null
+  }
   stores: AdminStoreQuality[]
   notifications: { pending: number; retryable: number; exhausted: number; sent: number }
   emails: { pending: number; retryable: number; exhausted: number; sent: number; lastError?: string | null; lastAttemptAt?: string | null }

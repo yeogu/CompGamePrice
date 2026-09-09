@@ -70,7 +70,7 @@ def product_document(
 
 
 class MicrosoftCatalogSearchTest(unittest.TestCase):
-    def test_search_keeps_xbox_games_and_excludes_addons_and_pc_only(self):
+    def test_search_keeps_xbox_and_pc_games_and_excludes_addons(self):
         response = {
             "productSummaries": [
                 summary("GAME", "Stardew Valley", "Game", ["XboxOne", "XboxSeriesX"]),
@@ -81,9 +81,23 @@ class MicrosoftCatalogSearchTest(unittest.TestCase):
         with patch.object(search, "fetch_json", return_value=response):
             results = search.search("Stardew Valley", 10, 1.0)
 
-        self.assertEqual(len(results), 1)
+        self.assertEqual(len(results), 2)
         self.assertEqual(results[0]["externalProductId"], "GAME")
         self.assertEqual(results[0]["platforms"], ["XboxOne", "XboxSeries"])
+        self.assertEqual(results[1]["externalProductId"], "PC")
+        self.assertEqual(results[1]["platforms"], ["Windows"])
+
+    def test_verified_product_reads_windows_platform(self):
+        document = json.loads(product_document())
+        document["Products"][0]["Properties"] = {"Platforms": ["Windows"]}
+
+        metadata = search.verified_product(
+            json.dumps(document).encode("utf-8"),
+            "GAME-1",
+        )
+
+        self.assertEqual(metadata["platforms"], ["Windows"])
+        self.assertTrue(metadata["supportsTargetPlatform"])
 
     def test_verified_product_reads_purchase_price_and_console_generations(self):
         metadata = search.verified_product(product_document(), "GAME-1")

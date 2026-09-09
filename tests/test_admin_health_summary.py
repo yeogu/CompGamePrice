@@ -60,6 +60,22 @@ class AdminHealthSummaryTest(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
+            snapshots = root / "collection-snapshots"
+            snapshots.mkdir()
+            (snapshots / "steam_pipeline_run.json").write_text(
+                json.dumps(
+                    {
+                        "startedAt": "2026-01-02T00:00:00Z",
+                        "finishedAt": "2026-01-02T00:01:00Z",
+                        "catalogTargets": 120,
+                        "targets": 40,
+                        "collected": 39,
+                        "retryCount": 2,
+                        "failures": [{"appId": "1", "error": "Steam HTTP 429"}],
+                    }
+                ),
+                encoding="utf-8",
+            )
             catalog.write_text(json.dumps({
                 "schemaVersion": 4,
                 "games": [
@@ -111,6 +127,12 @@ class AdminHealthSummaryTest(unittest.TestCase):
             result = admin_health_summary.summary(catalog, database)
             self.assertEqual(result["metadata"], {"complete": 1, "incomplete": 1, "total": 2})
             self.assertEqual(result["collection"]["recentFailures"], 1)
+            self.assertEqual(result["collection"]["steamPipeline"]["targets"], 40)
+            self.assertEqual(result["collection"]["steamPipeline"]["failed"], 1)
+            self.assertEqual(
+                result["collection"]["steamPipeline"]["lastError"],
+                "Steam HTTP 429",
+            )
             self.assertEqual(result["notifications"]["pending"], 1)
             self.assertEqual(result["emails"]["pending"], 0)
             self.assertEqual(result["automation"]["collection"]["status"], "DISABLED")

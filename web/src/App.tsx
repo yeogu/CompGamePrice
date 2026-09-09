@@ -1996,6 +1996,7 @@ function App() {
         <p className="view-description">Store별 최신 상태를 확인하고 실패·검증 거부가 발생한 실행을 추적합니다.</p>
         {collectionStatusError && <p className="status-message error-text">{collectionStatusError}</p>}
         {!collectionStatusError && collectionRuns.length === 0 && <p className="empty-state">아직 저장된 수집 실행이 없습니다.</p>}
+        {adminHealth?.collection.steamPipeline && <section className="collection-section"><h2>Steam 최근 배치</h2><div className="collection-summary-grid"><article><strong>처리 범위</strong><span>{adminHealth.collection.steamPipeline.targets} / {adminHealth.collection.steamPipeline.catalogTargets}</span></article><article><strong>성공</strong><span>{adminHealth.collection.steamPipeline.collected}건</span></article><article><strong>실패</strong><span>{adminHealth.collection.steamPipeline.failed}건</span></article><article><strong>재시도</strong><span>{adminHealth.collection.steamPipeline.retryCount}회</span></article></div>{adminHealth.collection.steamPipeline.lastError && <p className="status-message error-text">최근 오류: {adminHealth.collection.steamPipeline.lastError}</p>}</section>}
         {collectionRuns.length > 0 && <>
           <section className="collection-section"><h2>Store별 최신 상태</h2><div className="collection-latest-grid">{latestCollectionRuns.map((run) => <article key={run.id} className={`collection-run ${run.status.toLowerCase()}`}>
             <span className="status-dot" /><StoreBadge compact store={collectionStoreName(run.store)} /><span>{run.status === 'SUCCEEDED' ? '성공' : run.status === 'FAILED' ? '실패' : '실행 중'}</span>

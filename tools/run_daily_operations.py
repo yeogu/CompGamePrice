@@ -184,6 +184,8 @@ def run_operations(
                 str(output_directory),
                 "--database",
                 str(database),
+                "--batch-size",
+                os.environ.get("COLLECTION_STEAM_PRICE_BATCH_SIZE", "40"),
             ],
         ),
         (
