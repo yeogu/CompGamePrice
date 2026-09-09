@@ -21,7 +21,7 @@ body::before {
 }
 
 main { width: min(1120px, calc(100% - 40px)); margin: 0 auto; padding: 72px 0; }
-.hero { max-width: 760px; padding: 48px 0 70px; }
+.hero { max-width: none; padding: 48px 0 70px; }
 .eyebrow { color: #73e2a7; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.18em; }
 h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; letter-spacing: -0.055em; }
 .intro { color: #9eb2a7; font-size: 1.08rem; }
@@ -125,6 +125,21 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .status-dot { width: 9px; height: 9px; background: #f6c85f; border-radius: 50%; }
 .collection-run.succeeded .status-dot { background: #73e2a7; }
 .collection-run.failed .status-dot { background: #ff7b6b; }
+.collection-section { margin-top: 28px; }
+.collection-section > h2, .collection-history-heading h2 { margin: 0 0 14px; font-size: 1.15rem; }
+.collection-latest-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+.collection-summary-grid { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 10px; }
+.collection-summary-grid article { display: grid; gap: 7px; padding: 16px; background: #0c1912; border: 1px solid #263c31; border-radius: 11px; }
+.collection-summary-grid strong { color: #91a79b; font-size: .78rem; }
+.collection-summary-grid span { color: #eaf5ee; font-size: 1.3rem; font-weight: 800; }
+.collection-history-heading { display: flex; align-items: end; justify-content: space-between; gap: 18px; }
+.collection-filters { display: flex; gap: 8px; }
+.collection-filters label { display: grid; gap: 4px; color: #82968b; font-size: .7rem; }
+.collection-filters select { padding: 8px 10px; color: #eaf5ee; background: #0c1912; border: 1px solid #315141; border-radius: 8px; }
+.collection-history-list { display: grid; gap: 7px; }
+.collection-history-row { display: grid; grid-template-columns: auto auto minmax(120px, 1fr) minmax(220px, auto) auto; align-items: center; gap: 10px; padding: 11px 12px; background: #0c1912; border-radius: 9px; }
+.collection-history-row > span:nth-of-type(2), .collection-history-row time { color: #82968b; font-size: .75rem; }
+.collection-history-row p { grid-column: 2 / -1; margin: 0; color: #ffb4a8; font-size: .76rem; }
 .error-text { color: #ffb4a8; }
 .game-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
 .game-list button { display: grid; grid-template-rows: auto minmax(2.5em, auto) auto auto auto; align-content: start; gap: 10px; min-height: 302px; justify-items: start; overflow: hidden; padding: 18px 16px 16px; color: #eaf5ee; background: #0b1812; border: 1px solid #315141; text-align: left; }
@@ -138,6 +153,18 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .game-artwork svg { width: 34px; height: 34px; }
 .game-artwork.compact { width: 72px; height: 72px; margin: 0; border: 1px solid #294838; border-radius: 9px; }
 .game-artwork.compact svg { width: 25px; height: 25px; }
+.artwork-admin-panel { display: grid; gap: 16px; margin-top: 28px; padding: 20px; background: #101f18; border: 1px solid #315141; border-radius: 16px; }
+.artwork-admin-panel h2, .artwork-admin-panel p { margin: 0; }
+.artwork-admin-panel p { color: #91a79b; }
+.artwork-admin-search { display: flex; gap: 8px; }
+.artwork-admin-search input, .artwork-admin-editor input { min-width: 0; padding: 11px 12px; color: #eef8f2; background: #0b1812; border: 1px solid #315141; border-radius: 9px; }
+.artwork-admin-search input { flex: 1; }
+.artwork-admin-panel button { padding: 10px 14px; color: #07110d; font-weight: 800; background: #73e2a7; border: 0; border-radius: 9px; }
+.artwork-admin-editor { display: grid; grid-template-columns: minmax(220px, 360px) 1fr; align-items: start; gap: 18px; }
+.artwork-admin-editor > .game-artwork { width: 100%; height: auto; aspect-ratio: 16 / 9; margin: 0; border-radius: 12px; }
+.artwork-admin-editor > div { display: grid; gap: 9px; }
+.artwork-admin-editor small { color: #82968b; }
+.artwork-admin-editor label { display: grid; gap: 5px; color: #91a79b; font-size: .75rem; }
 .catalog-price-row { display: flex; align-items: center; gap: 8px; }
 .catalog-price-row b { padding: 3px 7px; color: #07110d; background: #73e2a7; border-radius: 999px; font-size: .7rem; }
 .game-list button.selected { box-shadow: 0 0 0 3px rgba(115, 226, 167, 0.25); }
@@ -235,6 +262,11 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
   .auth-form .text-button { grid-column: 1; }
   .social-login { grid-column: 1; justify-content: stretch; }
   .collection-heading { align-items: flex-start; flex-direction: column; }
+  .collection-summary-grid { grid-template-columns: 1fr 1fr; }
+  .collection-history-heading, .collection-filters { align-items: stretch; flex-direction: column; }
+  .collection-history-row { grid-template-columns: auto auto 1fr; }
+  .collection-history-row > span:nth-of-type(2), .collection-history-row time { grid-column: 2 / -1; }
+  .artwork-admin-editor { grid-template-columns: 1fr; }
   .search-form button { padding: 16px; }
   .best-summary { justify-items: start; }
   .result-heading > .game-artwork { width: 100%; height: auto; flex-basis: auto; }
@@ -248,7 +280,7 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 }
 
 .app-shell { min-height: 100vh; }
-.app-main { width: min(1180px, calc(100% - 320px)); margin: 0 40px 0 280px; padding: 46px 0 72px; }
+.app-main { width: min(1500px, calc(100% - 320px)); margin: 0 40px 0 280px; padding: 46px 0 72px; }
 .sidebar { position: fixed; inset: 0 auto 0 0; z-index: 20; display: flex; flex-direction: column; width: 248px; padding: 26px 18px 20px; background: rgba(7, 17, 13, .97); border-right: 1px solid #20372b; backdrop-filter: blur(18px); }
 .brand { display: flex; align-items: center; gap: 11px; padding: 8px; color: #edf8f1; background: transparent; border: 0; text-align: left; }
 .brand span { display: grid; place-items: center; width: 38px; height: 38px; color: #07110d; background: #73e2a7; border-radius: 11px; font-size: .72rem; font-weight: 950; }

@@ -2886,6 +2886,9 @@ int main() {
                     item["productsFailed"] = Json::UInt64(run->productsFailed);
                     item["retryCount"] = Json::UInt64(run->retryCount);
                     item["startedAt"] = run->startedAt;
+                    if (!run->gameId.empty()) {
+                        item["gameId"] = run->gameId;
+                    }
                     if (!run->finishedAt.empty()) item["finishedAt"] = run->finishedAt;
                     if (!run->errorMessage.empty()) {
                         item["errorMessage"] = run->errorMessage;

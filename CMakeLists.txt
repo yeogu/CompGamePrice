@@ -256,6 +256,10 @@ if(BUILD_TESTING)
             NAME catalog_artwork_backfill_tests
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_catalog_artwork_backfill.py
         )
+        add_test(
+            NAME image_quality_tests
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_image_quality.py
+        )
         if(APPLE)
             add_test(
                 NAME macos_schedule_script_syntax

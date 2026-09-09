@@ -370,6 +370,7 @@ void StoreProductRepository::initializeSchema() const {
         CREATE TABLE IF NOT EXISTS crawl_runs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             store TEXT NOT NULL,
+            game_id TEXT,
             started_at TEXT NOT NULL,
             finished_at TEXT,
             status TEXT NOT NULL CHECK (status IN ('RUNNING', 'SUCCEEDED', 'FAILED')),
@@ -701,7 +702,11 @@ void StoreProductRepository::initializeSchema() const {
                     "ALTER TABLE notification_outbox ADD COLUMN sent_at TEXT;");
             }
         }
-        database_.execute("PRAGMA user_version = 17;");
+        if (existingVersion > 0 && existingVersion < 18 &&
+            !tableHasColumn(database_.handle(), "crawl_runs", "game_id")) {
+            database_.execute("ALTER TABLE crawl_runs ADD COLUMN game_id TEXT;");
+        }
+        database_.execute("PRAGMA user_version = 18;");
         database_.execute("COMMIT;");
     } catch (...) {
         try {
@@ -1168,12 +1173,15 @@ void StoreProductRepository::replacePriceHistory(
     }
 }
 
-std::int64_t StoreProductRepository::startCrawlRun(Store store) const {
+std::int64_t StoreProductRepository::startCrawlRun(
+    Store store,
+    const std::string& gameId) const {
     Statement statement(database_.handle(), R"sql(
-        INSERT INTO crawl_runs(store, started_at, status)
-        VALUES(?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'RUNNING');
+        INSERT INTO crawl_runs(store, game_id, started_at, status)
+        VALUES(?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'RUNNING');
     )sql");
     bindText(statement.get(), 1, toString(store));
+    bindText(statement.get(), 2, gameId);
     statement.execute();
     return sqlite3_last_insert_rowid(database_.handle());
 }
@@ -1245,7 +1253,8 @@ std::vector<CrawlRunRecord> StoreProductRepository::findCrawlRuns() const {
     Statement statement(database_.handle(), R"sql(
         SELECT id, store, status, products_found, products_rejected,
                products_failed, retry_count, started_at,
-               COALESCE(finished_at, ''), error_message
+               COALESCE(finished_at, ''), error_message,
+               COALESCE(game_id, '')
         FROM crawl_runs
         ORDER BY id;
     )sql");
@@ -1262,7 +1271,8 @@ std::vector<CrawlRunRecord> StoreProductRepository::findCrawlRuns() const {
             static_cast<std::size_t>(sqlite3_column_int64(statement.get(), 6)),
             columnText(statement.get(), 7),
             columnText(statement.get(), 8),
-            columnText(statement.get(), 9)});
+            columnText(statement.get(), 9),
+            columnText(statement.get(), 10)});
     }
     return runs;
 }

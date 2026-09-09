@@ -82,7 +82,7 @@ CollectionResult CollectionService::collect(const Game& game) const {
     for (const auto& providerReference : providers_) {
         const auto& provider = providerReference.get();
         for (std::size_t attempt = 1; attempt <= maxAttemptsPerStore_; ++attempt) {
-            const auto runId = repository_.startCrawlRun(provider.store());
+            const auto runId = repository_.startCrawlRun(provider.store(), game.id);
             try {
                 const auto products = provider.findProducts(game.id);
                 const auto providerRejections = provider.findRejections(game.id);

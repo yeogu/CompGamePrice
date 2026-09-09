@@ -102,6 +102,7 @@ export interface CollectionRun {
   startedAt: string
   finishedAt?: string
   errorMessage?: string
+  gameId?: string
 }
 
 export interface User { id: number; email: string; role: 'USER' | 'ADMIN' }

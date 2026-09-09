@@ -9,14 +9,17 @@ from pathlib import Path
 
 import storefront_catalog
 import sync_mobile_catalog
+import sync_steam_metadata
 import update_catalog_game_metadata as metadata_update
+import image_quality
 
 
 STORE_PRIORITY = (
+    "Steam",
+    "EpicGamesStore",
     "PlayStationStore",
     "MicrosoftStore",
     "NintendoEShop",
-    "EpicGamesStore",
     "GooglePlay",
     "AppleAppStore",
 )
@@ -26,7 +29,10 @@ def product_image(product: dict, timeout: float) -> str:
     store = product.get("store")
     product_id = str(product.get("productId", ""))
     product_url = str(product.get("productUrl", ""))
-    if store == "EpicGamesStore":
+    if store == "Steam":
+        raw = sync_steam_metadata.fetch_steam_metadata(product_id)
+        metadata = sync_steam_metadata.proposed_metadata(raw, product_id)
+    elif store == "EpicGamesStore":
         raw = storefront_catalog.fetch_product(store, product_url, timeout)
         metadata = storefront_catalog.verified_product(raw, store, product_url)
     else:
@@ -54,13 +60,23 @@ def backfill(
     limit: int = 20,
     timeout: float = 15.0,
     image_fetcher=product_image,
+    image_inspector=image_quality.inspect,
 ) -> dict:
     document = json.loads(catalog_path.read_text(encoding="utf-8"))
-    missing = [game for game in document["games"] if not game.get("imageUrl")]
+    candidates = []
+    for game in document["games"]:
+        current_url = str(game.get("imageUrl", ""))
+        try:
+            current_quality = image_inspector(current_url, timeout) if current_url else None
+        except Exception:
+            current_quality = None
+        if current_quality is None or current_quality.score < 65:
+            candidates.append((game, current_quality))
     attempted = 0
     updated = 0
     failures = []
-    for game in missing:
+    quality_rejected = 0
+    for game, current_quality in candidates:
         if attempted >= limit:
             break
         products = ordered_products(game)
@@ -68,29 +84,43 @@ def backfill(
             continue
         attempted += 1
         errors = []
+        best_url = ""
+        best_quality = current_quality
         for product in products:
             try:
                 image_url = image_fetcher(product, timeout)
                 if not image_url:
                     continue
-                metadata_update.update_metadata(
-                    catalog_path,
-                    game["id"],
-                    {"imageUrl": image_url},
-                    True,
-                    database_path,
-                    "artwork-backfill",
-                )
-                updated += 1
-                break
+                candidate_quality = image_inspector(image_url, timeout)
+                store_bonus = max(0, 6 - STORE_PRIORITY.index(product["store"]))
+                candidate_score = candidate_quality.score + store_bonus
+                best_score = best_quality.score if best_quality is not None else float("-inf")
+                if candidate_score > best_score + 5:
+                    best_url = image_url
+                    best_quality = candidate_quality
+                if candidate_score >= 90:
+                    break
             except Exception as error:
                 errors.append(f"{product['store']}: {error}")
-        else:
+        if best_url:
+            metadata_update.update_metadata(
+                catalog_path,
+                game["id"],
+                {"imageUrl": best_url},
+                True,
+                database_path,
+                "artwork-quality-backfill",
+            )
+            updated += 1
+        elif errors and current_quality is None:
             failures.append({"gameId": game["id"], "errors": errors})
+        else:
+            quality_rejected += 1
     return {
-        "missing": len(missing),
+        "candidates": len(candidates),
         "attempted": attempted,
         "updated": updated,
+        "qualityRejected": quality_rejected,
         "failed": failures,
     }
 

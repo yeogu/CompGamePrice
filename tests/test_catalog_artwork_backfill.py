@@ -5,6 +5,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +20,12 @@ SPEC.loader.exec_module(backfill)
 
 
 class CatalogArtworkBackfillTest(unittest.TestCase):
+    @staticmethod
+    def inspect(url, timeout):
+        del timeout
+        score = 95 if "store.test" in url or "mobile.test" in url else 20
+        return SimpleNamespace(score=score)
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         directory = Path(self.temporary.name)
@@ -84,6 +91,7 @@ class CatalogArtworkBackfillTest(unittest.TestCase):
             limit=10,
             timeout=3.0,
             image_fetcher=fetch,
+            image_inspector=self.inspect,
         )
 
         document = json.loads(self.catalog.read_text(encoding="utf-8"))
@@ -106,11 +114,36 @@ class CatalogArtworkBackfillTest(unittest.TestCase):
             self.catalog,
             self.database,
             image_fetcher=fetch,
+            image_inspector=self.inspect,
         )
 
         self.assertEqual(calls, ["PlayStationStore", "GooglePlay"])
         self.assertEqual(result["updated"], 1)
         self.assertEqual(result["failed"], [])
+
+    def test_prefers_wide_store_artwork_over_low_quality_existing_image(self):
+        document = json.loads(self.catalog.read_text(encoding="utf-8"))
+        document["games"][0]["imageUrl"] = "https://nintendo.test/boxed.jpg"
+        self.catalog.write_text(json.dumps(document), encoding="utf-8")
+
+        def inspect(url, timeout):
+            del timeout
+            score = 25 if "nintendo.test" in url else 90
+            return SimpleNamespace(score=score)
+
+        result = backfill.backfill(
+            self.catalog,
+            self.database,
+            image_fetcher=lambda product, timeout: "https://steam.test/header.jpg",
+            image_inspector=inspect,
+        )
+
+        updated = json.loads(self.catalog.read_text(encoding="utf-8"))
+        self.assertEqual(result["updated"], 1)
+        self.assertEqual(
+            updated["games"][0]["imageUrl"],
+            "https://steam.test/header.jpg",
+        )
 
 
 if __name__ == "__main__":

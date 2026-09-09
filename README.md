@@ -287,13 +287,18 @@ python3 tools/sync_steam_metadata.py --status
 표시합니다. 이미지가 없거나 외부 이미지 로딩에 실패하면 게임패드 placeholder를
 사용하므로 카드 배치가 달라지지 않습니다. 관리자는 카탈로그 상품 화면에서 대표
 이미지 URL을 직접 교체하거나 비워서 placeholder로 되돌릴 수 있습니다.
-자동 수집 scheduler는 매 주기마다 누락된 Steam 대표 이미지를 기본 20개씩 보완하며,
+자동 수집 scheduler는 매 주기마다 대표 이미지 품질이 낮은 게임을 기본 20개씩 보완하며,
 처리량은 `COLLECTION_METADATA_BATCH_SIZE`로 조정합니다. 관리자 Steam 화면에는 대표
 이미지 완료 수와 남은 수가 표시됩니다.
 
-Steam에서 이미지를 얻지 못한 게임은 이어서 연결된 PlayStation, Microsoft,
-Nintendo, Epic Games, Google Play, Apple App Store 상품 순으로 대표 이미지를
-확인합니다. 이미 지정된 이미지는 자동 작업이 덮어쓰지 않습니다. 웹 서버는 새
+자동 이미지 보완은 Steam과 Epic Games의 가로형 이미지를 우선 검사하고,
+이미지 비율·해상도·가장자리의
+단색 여백을 점수화합니다. Nintendo, Google Play, Apple App Store의 정사각형 상품
+이미지는 더 좋은 후보가 없을 때 사용합니다. 관리자 대시보드의 `대표 이미지 직접 교체`
+영역에서는 게임 이름 또는 canonical ID로 게임을 찾아 공식 이미지 URL을 직접 지정할 수
+있습니다. 카드에서는 가로형 이미지를 채워 표시하고 상세 화면에서는 원본 비율을
+유지합니다. 현재 이미지보다 품질 점수가 충분히 높은 후보가 있을 때만 자동으로
+교체합니다. 웹 서버는 새
 배포를 즉시 반영하도록 HTML을 캐시하지 않고, 파일명에 해시가 포함된 정적 asset만
 장기 캐시합니다.
 

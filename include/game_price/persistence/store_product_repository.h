@@ -13,7 +13,7 @@ namespace game_price {
 
 class StoreProductRepository {
 public:
-    static constexpr int CurrentSchemaVersion = 17;
+    static constexpr int CurrentSchemaVersion = 18;
     static constexpr int StaleAfterHours = PriceStaleAfterHours;
 
     explicit StoreProductRepository(Database& database);
@@ -34,7 +34,7 @@ public:
         Store store,
         const std::string& productId,
         const std::vector<PriceObservation>& observations) const;
-    std::int64_t startCrawlRun(Store store) const;
+    std::int64_t startCrawlRun(Store store, const std::string& gameId) const;
     void finishCrawlRun(
         std::int64_t runId,
         CrawlRunStatus status,

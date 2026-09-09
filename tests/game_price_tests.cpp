@@ -1449,6 +1449,9 @@ void testCollectionRunTrackingAndFailureIsolation() {
 
     const auto persistedRuns = repository.findCrawlRuns();
     expect(persistedRuns.size() == 2, "Both crawl runs should be persisted");
+    expect(persistedRuns[0].gameId == game.id &&
+               persistedRuns[1].gameId == game.id,
+           "Crawl runs should identify the game that was collected");
     expect(persistedRuns[0].productsFound == 1,
            "Successful crawl run should record its product count");
     expect(persistedRuns[1].errorMessage == "simulated collection failure",

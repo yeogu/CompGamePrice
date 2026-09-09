@@ -81,7 +81,7 @@ export function getGamePriceHistory(
   )
 }
 
-export async function getCollectionRuns(limit = 6): Promise<CollectionRun[]> {
+export async function getCollectionRuns(limit = 100): Promise<CollectionRun[]> {
   const result = await getJson<{ runs: CollectionRun[] }>(
     `/api/collection-runs?limit=${limit}`,
   )

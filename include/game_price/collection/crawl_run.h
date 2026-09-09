@@ -26,6 +26,7 @@ struct CrawlRunRecord {
     std::string startedAt;
     std::string finishedAt;
     std::string errorMessage;
+    std::string gameId;
 };
 
 struct CollectionRunResult {
