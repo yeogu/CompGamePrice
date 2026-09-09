@@ -160,11 +160,16 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .artwork-admin-search input, .artwork-admin-editor input { min-width: 0; padding: 11px 12px; color: #eef8f2; background: #0b1812; border: 1px solid #315141; border-radius: 9px; }
 .artwork-admin-search input { flex: 1; }
 .artwork-admin-panel button { padding: 10px 14px; color: #07110d; font-weight: 800; background: #73e2a7; border: 0; border-radius: 9px; }
-.artwork-admin-editor { display: grid; grid-template-columns: minmax(220px, 360px) 1fr; align-items: start; gap: 18px; }
-.artwork-admin-editor > .game-artwork { width: 100%; height: auto; aspect-ratio: 16 / 9; margin: 0; border-radius: 12px; }
+.artwork-admin-editor { display: grid; grid-template-columns: minmax(420px, 1.4fr) 1fr; align-items: start; gap: 18px; }
+.artwork-comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.artwork-comparison figure { display: grid; gap: 6px; margin: 0; }
+.artwork-comparison figcaption { color: #91a79b; font-size: .72rem; }
+.artwork-comparison .game-artwork { width: 100%; height: auto; aspect-ratio: 16 / 9; margin: 0; border-radius: 12px; }
 .artwork-admin-editor > div { display: grid; gap: 9px; }
 .artwork-admin-editor small { color: #82968b; }
 .artwork-admin-editor label { display: grid; gap: 5px; color: #91a79b; font-size: .75rem; }
+.artwork-admin-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.artwork-admin-panel button.secondary { color: #b8cbbf; background: #172a20; border: 1px solid #315141; }
 .catalog-price-row { display: flex; align-items: center; gap: 8px; }
 .catalog-price-row b { padding: 3px 7px; color: #07110d; background: #73e2a7; border-radius: 999px; font-size: .7rem; }
 .game-list button.selected { box-shadow: 0 0 0 3px rgba(115, 226, 167, 0.25); }
@@ -267,6 +272,7 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
   .collection-history-row { grid-template-columns: auto auto 1fr; }
   .collection-history-row > span:nth-of-type(2), .collection-history-row time { grid-column: 2 / -1; }
   .artwork-admin-editor { grid-template-columns: 1fr; }
+  .artwork-comparison { grid-template-columns: 1fr; }
   .search-form button { padding: 16px; }
   .best-summary { justify-items: start; }
   .result-heading > .game-artwork { width: 100%; height: auto; flex-basis: auto; }
@@ -477,6 +483,14 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .catalog-reliability header p, .catalog-reliability small { color: #82968b; }
 .catalog-reliability > div { display: grid; grid-template-columns: minmax(150px, 1fr) repeat(2, minmax(120px, auto)) minmax(90px, auto); align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid #21382c; }
 .catalog-reliability .warning, .catalog-reliability .warning strong { color: #ff9d8f; }
+.artwork-health { display: grid; gap: 14px; margin: 0 0 20px; padding: 16px; background: #0b1812; border: 1px solid #294838; border-radius: 12px; }
+.artwork-health header, .artwork-health > div { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 18px; }
+.artwork-health header small, .artwork-health li small { color: #82968b; }
+.artwork-health > div span { color: #91a79b; }
+.artwork-health > div strong { color: #73e2a7; }
+.artwork-health .warning, .artwork-health .warning strong { color: #ff9d8f; }
+.artwork-health details ul { display: grid; gap: 7px; padding: 10px 0 0; list-style: none; }
+.artwork-health details li { display: grid; grid-template-columns: minmax(160px, 1fr) auto minmax(180px, 1fr); gap: 10px; padding-top: 7px; border-top: 1px solid #21382c; }
 .audit-list { display: grid; gap: 8px; }
 .audit-list > div { display: grid; grid-template-columns: 1fr 2fr auto; gap: 12px; padding: 10px; border-top: 1px solid #213a2d; }
 .audit-list small { color: #82968b; }

@@ -79,6 +79,8 @@ def run_operations(
                 str(database),
                 "--limit",
                 str(metadata_batch_size),
+                "--report",
+                str(database.parent / "artwork-quality-status.json"),
             ],
         ),
         (

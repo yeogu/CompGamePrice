@@ -14,6 +14,7 @@ services:
       GAME_PRICE_TRACKER_PATH: /app/game_price_tracker
       COLLECTION_STATUS_PATH: /data/collection-scheduler-status.json
       BACKUP_STATUS_PATH: /data/backup-scheduler-status.json
+      ARTWORK_STATUS_PATH: /data/artwork-quality-status.json
       GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
       GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
       KAKAO_OAUTH_CLIENT_ID: ${KAKAO_OAUTH_CLIENT_ID:-}

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 
@@ -54,6 +55,11 @@ def ordered_products(game: dict) -> list[dict]:
     return sorted(products, key=lambda product: priority[product["store"]])
 
 
+def quality_reasons(quality: object | None) -> list[str]:
+    reasons = getattr(quality, "reasons", None)
+    return reasons() if callable(reasons) else []
+
+
 def backfill(
     catalog_path: Path,
     database_path: Path,
@@ -76,6 +82,7 @@ def backfill(
     updated = 0
     failures = []
     quality_rejected = 0
+    decisions = []
     for game, current_quality in candidates:
         if attempted >= limit:
             break
@@ -103,6 +110,7 @@ def backfill(
             except Exception as error:
                 errors.append(f"{product['store']}: {error}")
         if best_url:
+            previous_url = str(game.get("imageUrl", ""))
             metadata_update.update_metadata(
                 catalog_path,
                 game["id"],
@@ -112,16 +120,37 @@ def backfill(
                 "artwork-quality-backfill",
             )
             updated += 1
+            decisions.append({
+                "gameId": game["id"],
+                "status": "UPDATED",
+                "previousUrl": previous_url,
+                "selectedUrl": best_url,
+                "score": round(best_quality.score, 1),
+                "reasons": quality_reasons(best_quality),
+            })
         elif errors and current_quality is None:
             failures.append({"gameId": game["id"], "errors": errors})
+            decisions.append({
+                "gameId": game["id"],
+                "status": "BROKEN",
+                "errors": errors,
+            })
         else:
             quality_rejected += 1
+            decisions.append({
+                "gameId": game["id"],
+                "status": "KEPT",
+                "score": None if current_quality is None else round(current_quality.score, 1),
+                "reasons": quality_reasons(current_quality),
+            })
     return {
+        "checkedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "candidates": len(candidates),
         "attempted": attempted,
         "updated": updated,
         "qualityRejected": quality_rejected,
         "failed": failures,
+        "decisions": decisions,
     }
 
 
@@ -140,6 +169,7 @@ def main() -> int:
     )
     parser.add_argument("--limit", default=20, type=int)
     parser.add_argument("--timeout", default=15.0, type=float)
+    parser.add_argument("--report", type=Path)
     arguments = parser.parse_args()
     if arguments.limit < 1:
         parser.error("--limit must be at least 1")
@@ -149,6 +179,14 @@ def main() -> int:
         arguments.limit,
         arguments.timeout,
     )
+    if arguments.report is not None:
+        arguments.report.parent.mkdir(parents=True, exist_ok=True)
+        temporary = arguments.report.with_suffix(arguments.report.suffix + ".tmp")
+        temporary.write_text(
+            json.dumps(result, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        temporary.replace(arguments.report)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if not result["failed"] else 1
 

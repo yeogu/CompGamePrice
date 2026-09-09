@@ -267,6 +267,10 @@ if(BUILD_TESTING)
             )
         endif()
         add_test(
+            NAME synology_deploy_script_syntax
+            COMMAND bash -n ${CMAKE_CURRENT_SOURCE_DIR}/deploy/deploy-synology.sh
+        )
+        add_test(
             NAME steam_collection_integration
             COMMAND ${Python3_EXECUTABLE}
                 ${CMAKE_CURRENT_SOURCE_DIR}/tests/steam_collection_integration.py

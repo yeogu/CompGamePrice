@@ -132,7 +132,7 @@ verify_authentication_and_validation() {
     expect_status 400 \
         -b "${primary_cookies}" \
         -H 'Content-Type: application/json' \
-        -d '{"gameId":"hades","type":"BelowTargetPrice","targetPriceMinor":26000,"platform":"PlayStation 5"}' \
+        -d '{"gameId":"hades","type":"BelowTargetPrice","targetPriceMinor":26000,"platform":"UnsupportedPlatform"}' \
         "${api_base}/api/alert-rules"
     expect_status 404 \
         -b "${primary_cookies}" \

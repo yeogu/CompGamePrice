@@ -16,6 +16,19 @@ class ImageQualityTest(unittest.TestCase):
 
         self.assertGreater(wide_score, padded_square_score)
 
+    def test_reports_actionable_low_quality_reasons(self):
+        quality = image_quality.ImageQuality(300, 300, 0.75, 20.0)
+
+        self.assertEqual(
+            quality.reasons(),
+            [
+                "LOW_RESOLUTION",
+                "NOT_LANDSCAPE",
+                "SOLID_EDGE_WHITESPACE",
+                "LOW_SCORE",
+            ],
+        )
+
     def test_rejects_invalid_dimensions(self):
         with self.assertRaises(ValueError):
             image_quality.score_metrics(0, 400, 0.0)

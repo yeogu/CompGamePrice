@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from io import BytesIO
+import json
+import sys
 from urllib.request import Request, urlopen
 
 
@@ -13,6 +15,30 @@ class ImageQuality:
     height: int
     edge_whitespace: float
     score: float
+
+    def reasons(self) -> list[str]:
+        result = []
+        ratio = self.width / self.height
+        if self.width < 640 or self.height < 360:
+            result.append("LOW_RESOLUTION")
+        if ratio < 1.35:
+            result.append("NOT_LANDSCAPE")
+        if self.edge_whitespace >= 0.5:
+            result.append("SOLID_EDGE_WHITESPACE")
+        if self.score < 65:
+            result.append("LOW_SCORE")
+        return result
+
+    def to_json(self) -> dict:
+        return {
+            "width": self.width,
+            "height": self.height,
+            "aspectRatio": round(self.width / self.height, 3),
+            "edgeWhitespace": round(self.edge_whitespace, 3),
+            "score": round(self.score, 1),
+            "quality": "GOOD" if self.score >= 65 else "LOW",
+            "reasons": self.reasons(),
+        }
 
 
 def score_metrics(width: int, height: int, edge_whitespace: float) -> float:
@@ -66,3 +92,20 @@ def inspect(url: str, timeout: float = 15.0) -> ImageQuality:
         edge_whitespace = uniform_edge_ratio(image)
         score = score_metrics(width, height, edge_whitespace)
         return ImageQuality(width, height, edge_whitespace, score)
+
+
+def main() -> int:
+    if len(sys.argv) != 2:
+        print("usage: image_quality.py IMAGE_URL", file=sys.stderr)
+        return 2
+    try:
+        result = inspect(sys.argv[1])
+        print(json.dumps(result.to_json(), ensure_ascii=False))
+        return 0
+    except Exception as error:
+        print(json.dumps({"quality": "BROKEN", "error": str(error)}, ensure_ascii=False))
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

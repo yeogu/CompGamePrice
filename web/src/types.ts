@@ -182,6 +182,15 @@ export interface AdminHealthSummary {
   notifications: { pending: number; retryable: number; exhausted: number; sent: number }
   emails: { pending: number; retryable: number; exhausted: number; sent: number; lastError?: string | null; lastAttemptAt?: string | null }
   automation: { collection: PeriodicJobStatus; backup: PeriodicJobStatus }
+  artwork: {
+    checkedAt?: string | null
+    candidates: number
+    attempted: number
+    updated: number
+    qualityRejected: number
+    broken: number
+    decisions: Array<{ gameId: string; status: 'UPDATED' | 'KEPT' | 'BROKEN'; score?: number | null; reasons?: string[] }>
+  }
 }
 export interface MetadataReview { gameId: string; sourceStore: string; externalProductId: string; proposed: { imageUrl?: string; developers: string[]; publishers: string[]; genres: string[] }; diff: Record<string, CatalogMetadataDiff>; status: 'PENDING' | 'APPROVED' | 'REJECTED'; createdAt: string; resolvedAt?: string }
 export interface MetadataSyncStatus { artwork: { total: number; complete: number; missing: number }; autoApplied?: number; discovered?: number; failed?: Array<{ gameId: string; error: string }>; pendingReviews: MetadataReview[]; reviewHistory: MetadataReview[] }

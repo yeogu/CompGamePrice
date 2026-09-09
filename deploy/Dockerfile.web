@@ -8,6 +8,7 @@ COPY web/ ./
 ARG VITE_API_URL=""
 ENV VITE_API_URL=${VITE_API_URL}
 RUN npm run build
+RUN printf '%s\n' "${WEB_BUILD_REVISION}" > /src/dist/deploy-revision.txt
 
 FROM nginx:1.27-alpine
 COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf

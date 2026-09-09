@@ -40,6 +40,26 @@ class AdminHealthSummaryTest(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
+            (root / "artwork-quality-status.json").write_text(
+                json.dumps(
+                    {
+                        "checkedAt": "2026-01-02T00:00:00Z",
+                        "candidates": 4,
+                        "attempted": 3,
+                        "updated": 2,
+                        "qualityRejected": 1,
+                        "failed": [{"gameId": "broken"}],
+                        "decisions": [
+                            {
+                                "gameId": "ok",
+                                "status": "UPDATED",
+                                "score": 92.0,
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
             catalog.write_text(json.dumps({
                 "schemaVersion": 4,
                 "games": [
@@ -95,6 +115,9 @@ class AdminHealthSummaryTest(unittest.TestCase):
             self.assertEqual(result["emails"]["pending"], 0)
             self.assertEqual(result["automation"]["collection"]["status"], "DISABLED")
             self.assertEqual(result["automation"]["backup"]["status"], "SUCCEEDED")
+            self.assertEqual(result["artwork"]["updated"], 2)
+            self.assertEqual(result["artwork"]["broken"], 1)
+            self.assertEqual(result["artwork"]["decisions"][0]["gameId"], "ok")
             steam = next(store for store in result["stores"] if store["store"] == "Steam")
             self.assertEqual(steam["stalePrices"], 1)
             self.assertEqual(steam["pendingReviews"], 1)

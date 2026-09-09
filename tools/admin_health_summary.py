@@ -232,6 +232,28 @@ def summary(catalog: Path, database: Path) -> dict:
             database.parent / "backup-scheduler-status.json",
         )
     )
+    artwork_status_path = Path(
+        os.environ.get(
+            "ARTWORK_STATUS_PATH",
+            database.parent / "artwork-quality-status.json",
+        )
+    )
+    artwork = {
+        "checkedAt": None,
+        "candidates": 0,
+        "attempted": 0,
+        "updated": 0,
+        "qualityRejected": 0,
+        "broken": 0,
+        "decisions": [],
+    }
+    try:
+        loaded_artwork = json.loads(artwork_status_path.read_text(encoding="utf-8"))
+        artwork.update(loaded_artwork)
+        artwork["broken"] = len(loaded_artwork.get("failed", []))
+        artwork["decisions"] = loaded_artwork.get("decisions", [])[-20:]
+    except (OSError, json.JSONDecodeError, TypeError):
+        pass
     return {
         "metadata": {
             "complete": metadata["completeCount"],
@@ -252,6 +274,7 @@ def summary(catalog: Path, database: Path) -> dict:
                 "backup",
             ),
         },
+        "artwork": artwork,
     }
 
 

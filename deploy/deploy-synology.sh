@@ -29,10 +29,10 @@ fi
 cd "${project_directory}"
 mkdir -p "${backup_directory}"
 
-echo "[1/6] Compose 설정을 검증합니다."
+echo "[1/7] Compose 설정을 검증합니다."
 sudo "${compose_binary}" -f "${compose_file}" config >/dev/null
 
-echo "[2/6] 현재 SQLite DB와 카탈로그를 백업합니다."
+echo "[2/7] 현재 SQLite DB와 카탈로그를 백업합니다."
 sudo "${docker_binary}" run --rm \
     -v "${data_volume}:/data:ro" \
     -v "${backup_directory}:/backups" \
@@ -42,14 +42,28 @@ sudo "${docker_binary}" run --rm \
     --catalog /data/game_catalog.json \
     --output-dir /backups
 
-echo "[3/6] API 이미지를 빌드합니다."
+echo "[3/7] 방금 만든 백업의 복원 가능성을 검사합니다."
+latest_backup=$(find "${backup_directory}" -maxdepth 1 -type f -name '*.db' -print | sort | tail -n 1)
+if [[ -z "${latest_backup}" ]]; then
+    echo "검증할 SQLite 백업을 찾을 수 없습니다." >&2
+    exit 1
+fi
+latest_backup_name=$(basename "${latest_backup}")
+sudo "${docker_binary}" run --rm \
+    -v "${backup_directory}:/backups:ro" \
+    compgameprice_api:latest \
+    python3 /app/tools/database_backup.py restore \
+    --backup "/backups/${latest_backup_name}" \
+    --output /tmp/restore-test.db
+
+echo "[4/7] API 이미지를 빌드합니다."
 sudo "${docker_binary}" build \
     --network host \
     -f deploy/Dockerfile.api \
     -t compgameprice_api:latest \
     .
 
-echo "[4/6] Web 이미지를 빌드합니다."
+echo "[5/7] Web 이미지를 빌드합니다."
 deploy_revision=$(date -u +%Y%m%dT%H%M%SZ)
 sudo "${docker_binary}" build \
     --network host \
@@ -63,16 +77,21 @@ sudo "${docker_binary}" build \
     -t compgameprice_web_synology:latest \
     .
 
-echo "[5/6] 기존 volume을 보존한 채 컨테이너를 다시 만듭니다."
+echo "[6/7] 기존 volume을 보존한 채 컨테이너를 다시 만듭니다."
 sudo "${compose_binary}" \
     -f "${compose_file}" \
     up -d --no-build --force-recreate
 
-echo "[6/6] 서비스 상태와 health endpoint를 확인합니다."
+echo "[7/7] 서비스 상태, API health와 Web revision을 확인합니다."
 for _attempt in $(seq 1 30); do
     if curl -fsS http://127.0.0.1:8088/health >/dev/null 2>&1; then
+        served_revision=$(curl -fsS http://127.0.0.1:8088/deploy-revision.txt)
+        if [[ "${served_revision}" != "${deploy_revision}" ]]; then
+            echo "Web revision 불일치: expected=${deploy_revision}, served=${served_revision}" >&2
+            exit 1
+        fi
         sudo "${compose_binary}" -f "${compose_file}" ps
-        echo "배포가 완료되었습니다: http://127.0.0.1:8088/health"
+        echo "배포가 완료되었습니다: revision=${deploy_revision}"
         exit 0
     fi
     sleep 2
