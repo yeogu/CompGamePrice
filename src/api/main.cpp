@@ -2635,11 +2635,13 @@ int main() {
                     std::optional<Money> lowestPrice;
                     std::optional<int> maxDiscountPercent;
                     std::string lastUpdatedAt;
+                    bool hasMatchingProduct = false;
                     for (const auto& product : report->comparison.products) {
-                        if (product.freshness != PriceFreshness::Fresh) {
+                        if (filter.store && product.store != *filter.store) {
                             continue;
                         }
-                        if (filter.store && product.store != *filter.store) {
+                        hasMatchingProduct = true;
+                        if (product.freshness != PriceFreshness::Fresh) {
                             continue;
                         }
                         if (!lowestPrice ||
@@ -2664,7 +2666,7 @@ int main() {
                             "Available"});
                         continue;
                     }
-                    if (filter.store || filter.platform) {
+                    if ((filter.store || filter.platform) && !hasMatchingProduct) {
                         continue;
                     }
                     summaries.push_back(CatalogGameSummary{

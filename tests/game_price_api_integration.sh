@@ -343,6 +343,32 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
 grep -q '"id":"hades"' "${response_body}"
 ! grep -q '"id":"unpriced-nintendo-game"' "${response_body}"
 
+python3 - "${test_database}" <<'PY'
+import sqlite3
+import sys
+
+with sqlite3.connect(sys.argv[1], timeout=5) as connection:
+    connection.execute(
+        "UPDATE store_products SET last_successful_check_at = ? "
+        "WHERE game_id = ? AND store IN ('Steam', 'Epic Games Store')",
+        ("2000-01-01T00:00:00.000Z", "hades"),
+    )
+PY
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/games?platform=Windows&pageSize=100")
+[[ "${status}" == "200" ]]
+python3 - "${response_body}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as source:
+    games = json.load(source)["games"]
+
+hades = next(game for game in games if game["id"] == "hades")
+assert hades["priceStatus"] == "Stale"
+assert "lowestPrice" not in hades
+PY
+
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/games?store=Unknown")
 [[ "${status}" == "400" ]]
