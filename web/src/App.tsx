@@ -207,6 +207,25 @@ const collectionStoreName = (store: string) => {
   return names[store] ?? store
 }
 
+const adminSectionForStore = (store: string): AdminSection | null => {
+  const sections: Record<string, AdminSection> = {
+    Steam: 'steam',
+    'Epic Games Store': 'epic-games',
+    EpicGamesStore: 'epic-games',
+    'Nintendo eShop': 'nintendo-eshop',
+    NintendoEShop: 'nintendo-eshop',
+    'PlayStation Store': 'playstation-store',
+    PlayStationStore: 'playstation-store',
+    'Microsoft Store': 'microsoft-store',
+    MicrosoftStore: 'microsoft-store',
+    'Google Play': 'google-play',
+    GooglePlay: 'google-play',
+    'Apple App Store': 'apple-app-store',
+    AppleAppStore: 'apple-app-store',
+  }
+  return sections[store] ?? null
+}
+
 const isOfficialUrlStore = (store: string) => [
   'Epic Games Store',
   'Nintendo eShop',
@@ -237,6 +256,43 @@ const integrityIssueLabel = (issue: CatalogPriceIntegrityIssue) => {
     ORPHAN_PRICE: '카탈로그 없는 가격',
   }
   return labels[issue.type]
+}
+
+const integrityIssueGuidance: Record<CatalogPriceIntegrityIssue['type'], {
+  cause: string
+  action: string
+  canRecollect: boolean
+}> = {
+  MISSING_PRICE: {
+    cause: '카탈로그에는 Store 상품이 연결되어 있지만 성공한 가격 수집 기록이 없습니다.',
+    action: 'Store 상품 페이지가 유효한지 확인한 뒤 가격을 재수집하세요. 계속 실패하면 잘못된 연결을 해제하고 올바른 상품을 다시 연결하세요.',
+    canRecollect: true,
+  },
+  STALE_PRICE: {
+    cause: '마지막 성공 확인 이후 48시간 이상 지나 현재 가격으로 신뢰할 수 없습니다.',
+    action: '가격을 재수집하세요. Store에서 판매가 종료되었거나 URL이 바뀌었다면 연결 상태를 다시 검토하세요.',
+    canRecollect: true,
+  },
+  NOT_PURCHASABLE: {
+    cause: '마지막 수집에서 해당 상품을 현재 구매할 수 없는 것으로 확인했습니다.',
+    action: '일시적인 판매 중단인지 Store에서 확인하고 재수집하세요. 영구 판매 종료라면 연결을 해제하세요.',
+    canRecollect: true,
+  },
+  PLATFORM_MISMATCH: {
+    cause: '카탈로그에 등록된 플랫폼과 수집 결과의 실제 지원 플랫폼이 겹치지 않습니다.',
+    action: 'Store 페이지에서 지원 기기를 확인하세요. 잘못된 상품이면 연결을 해제한 뒤 해당 Store 관리 화면에서 올바른 상품을 연결하세요.',
+    canRecollect: false,
+  },
+  GAME_MISMATCH: {
+    cause: '같은 Store 상품 ID가 카탈로그와 가격 DB에서 서로 다른 게임에 연결되어 있습니다.',
+    action: 'Store 페이지에서 실제 게임을 확인하고 잘못된 연결을 해제한 뒤 올바른 canonical Game에 다시 연결하세요.',
+    canRecollect: false,
+  },
+  ORPHAN_PRICE: {
+    cause: '가격 DB에는 남아 있지만 현재 카탈로그에는 대응하는 Store 상품 연결이 없습니다.',
+    action: '사용자 가격 비교에는 노출되지 않습니다. 연결이 필요하면 Store 관리 화면에서 올바른 게임에 다시 등록하세요.',
+    canRecollect: false,
+  },
 }
 
 const catalogPriceStatusLabel = (status?: string) => {
@@ -1592,6 +1648,34 @@ function App() {
     ),
     [collectionRuns],
   )
+  const groupedIntegrityIssues = useMemo(() => {
+    const stores = new Map<
+      string,
+      Map<CatalogPriceIntegrityIssue['type'], CatalogPriceIntegrityIssue[]>
+    >()
+    for (const issue of priceIntegrity?.issues ?? []) {
+      const storeName = collectionStoreName(issue.store)
+      const reasons = stores.get(storeName) ?? new Map()
+      const issues = reasons.get(issue.type) ?? []
+      issues.push(issue)
+      reasons.set(issue.type, issues)
+      stores.set(storeName, reasons)
+    }
+    return Array.from(stores.entries())
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([store, reasons]) => ({
+        store,
+        issueCount: Array.from(reasons.values()).reduce(
+          (total, issues) => total + issues.length,
+          0,
+        ),
+        reasons: Array.from(reasons.entries()).sort(([, left], [, right]) => {
+          const severityDifference = Number(right[0].severity === 'ERROR') -
+            Number(left[0].severity === 'ERROR')
+          return severityDifference || right.length - left.length
+        }),
+      }))
+  }, [priceIntegrity])
 
   return (
     <div className="app-shell">
@@ -2157,19 +2241,43 @@ function App() {
             <span className={priceIntegrity.issueCount > 0 ? 'warning' : ''}>문제 {priceIntegrity.issueCount}건</span>
             <small>검사 시각 {new Date(priceIntegrity.checkedAt).toLocaleString('ko-KR')}</small>
           </div>}
-          <div className="integrity-list">
-            {priceIntegrity?.issues.map((issue, index) => <section className={issue.severity.toLowerCase()} key={`${issue.type}-${issue.store}-${issue.productId}-${index}`}>
-              <div>
-                <span className="integrity-kind">{integrityIssueLabel(issue)}</span>
-                <strong>{issue.gameTitle}</strong>
-                <small className="integrity-store"><StoreBadge compact store={collectionStoreName(issue.store)} /><span>상품 ID {issue.productId}</span></small>
-              </div>
-              <p>{issue.reason}</p>
-              <div className="integrity-actions">
-                {issue.productUrl && <a href={issue.productUrl} target="_blank" rel="noreferrer">Store 확인 ↗</a>}
-                <button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectIntegrityIssue(issue)}>가격 재수집</button>
-                {issue.type !== 'ORPHAN_PRICE' && <button className="danger" disabled={adminImporting} onClick={() => void disconnectAdminProduct(issue.store, issue.productId, issue.gameTitle)}>연결 해제</button>}
-              </div>
+          <div className="integrity-groups">
+            {groupedIntegrityIssues.map((storeGroup) => <section className="integrity-store-group" key={storeGroup.store}>
+              <header>
+                <StoreBadge store={storeGroup.store} />
+                <strong>{storeGroup.issueCount}건</strong>
+              </header>
+              {storeGroup.reasons.map(([issueType, issues]) => {
+                const guidance = integrityIssueGuidance[issueType]
+                const sample = issues[0]
+                return <details className={`integrity-reason-group ${sample.severity.toLowerCase()}`} key={issueType}>
+                  <summary>
+                    <span className="integrity-kind">{integrityIssueLabel(sample)}</span>
+                    <span>{issues.length}건</span>
+                    <small>{guidance.cause}</small>
+                  </summary>
+                  <div className="integrity-resolution">
+                    <strong>관리자가 할 일</strong>
+                    <p>{guidance.action}</p>
+                    {adminSectionForStore(storeGroup.store) && <button onClick={() => selectAdminSection(adminSectionForStore(storeGroup.store)!)}>{storeGroup.store} 관리로 이동</button>}
+                  </div>
+                  <div className="integrity-list">
+                    {issues.map((issue, index) => <article key={`${issue.productId}-${issue.gameId}-${index}`}>
+                      <div>
+                        <strong>{issue.gameTitle}</strong>
+                        <small>게임 ID {issue.gameId}</small>
+                        <small>상품 ID {issue.productId}</small>
+                      </div>
+                      <p>{issue.reason}</p>
+                      <div className="integrity-actions">
+                        {issue.productUrl && <a href={issue.productUrl} target="_blank" rel="noreferrer">Store 확인 ↗</a>}
+                        {guidance.canRecollect && <button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectIntegrityIssue(issue)}>가격 재수집</button>}
+                        {issue.type !== 'ORPHAN_PRICE' && <button className="danger" disabled={adminImporting} onClick={() => void disconnectAdminProduct(issue.store, issue.productId, issue.gameTitle)}>연결 해제</button>}
+                      </div>
+                    </article>)}
+                  </div>
+                </details>
+              })}
             </section>)}
             {priceIntegrity?.issues.length === 0 && <p>현재 발견된 데이터 정합성 문제가 없습니다.</p>}
             {!priceIntegrity && <p>정합성 검사 결과를 불러오는 중입니다.</p>}

@@ -459,11 +459,22 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .integrity-panel > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .integrity-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; margin: 18px 0; padding: 14px; background: #101f18; border-radius: 10px; }
 .integrity-summary small { margin-left: auto; color: #82968b; }
-.integrity-list { display: grid; gap: 10px; }
-.integrity-list section { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(240px, 2fr) auto; align-items: center; gap: 16px; padding: 14px; border: 1px solid #315141; border-radius: 10px; }
-.integrity-list section.error { border-color: #743b3b; }
-.integrity-list section.warning { border-color: #6e5829; }
-.integrity-list section > div:first-child { display: grid; gap: 4px; }
+.integrity-groups { display: grid; gap: 18px; }
+.integrity-store-group { overflow: hidden; border: 1px solid #315141; border-radius: 14px; }
+.integrity-store-group > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; background: #101f18; }
+.integrity-store-group > header > strong { color: #f2d99b; }
+.integrity-reason-group { border-top: 1px solid #294838; }
+.integrity-reason-group.error { border-left: 4px solid #b85b5b; }
+.integrity-reason-group.warning { border-left: 4px solid #a8863d; }
+.integrity-reason-group > summary { display: grid; grid-template-columns: auto auto 1fr; align-items: center; gap: 12px; padding: 15px 18px; cursor: pointer; list-style-position: outside; }
+.integrity-reason-group > summary small { color: #91a79b; }
+.integrity-resolution { display: grid; grid-template-columns: auto minmax(240px, 1fr) auto; align-items: center; gap: 12px 18px; margin: 0 18px 14px; padding: 14px; color: #d7e7de; background: #16271e; border-radius: 10px; }
+.integrity-resolution p { margin: 0; color: #a9bdb2; }
+.integrity-resolution button { white-space: nowrap; }
+.integrity-list { display: grid; gap: 8px; padding: 0 18px 18px; }
+.integrity-list article { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(240px, 2fr) auto; align-items: center; gap: 16px; padding: 14px; border: 1px solid #315141; border-radius: 10px; }
+.integrity-list article > div:first-child { display: grid; gap: 4px; }
+.integrity-list article small { color: #82968b; }
 .integrity-kind { width: fit-content; padding: 3px 7px; color: #f2d99b; background: #2b2414; border-radius: 6px; font-size: .7rem; font-weight: 900; }
 .integrity-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
 .integrity-actions a, .integrity-actions button { padding: 8px 10px; border-radius: 8px; }
@@ -545,8 +556,9 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
   .detail-state { min-height: 45vh; padding: 28px 18px; }
   .sync-reviews > div { grid-template-columns: 1fr; }
   .admin-form { grid-template-columns: 1fr; }
-  .integrity-panel > header, .integrity-list section { grid-template-columns: 1fr; align-items: stretch; }
+  .integrity-panel > header, .integrity-list article { grid-template-columns: 1fr; align-items: stretch; }
   .integrity-panel > header { display: grid; }
+  .integrity-reason-group > summary, .integrity-resolution { grid-template-columns: 1fr; }
   .integrity-summary small { width: 100%; margin-left: 0; }
   .integrity-actions { justify-content: flex-start; }
   .admin-search { grid-template-columns: 1fr; }
