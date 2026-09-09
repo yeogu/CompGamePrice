@@ -16,7 +16,18 @@ Database::Database(const std::string& path) {
         }
         throw std::runtime_error("Cannot open SQLite database: " + message);
     }
+    if (sqlite3_busy_timeout(handle_, 5000) != SQLITE_OK) {
+        const std::string message = sqlite3_errmsg(handle_);
+        sqlite3_close(handle_);
+        handle_ = nullptr;
+        throw std::runtime_error(
+            "Cannot configure SQLite busy timeout: " + message);
+    }
     execute("PRAGMA foreign_keys = ON;");
+    if (path != ":memory:") {
+        execute("PRAGMA journal_mode = WAL;");
+        execute("PRAGMA synchronous = NORMAL;");
+    }
 }
 
 Database::~Database() {

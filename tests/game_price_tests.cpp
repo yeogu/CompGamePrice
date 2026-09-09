@@ -24,6 +24,7 @@
 #include <chrono>
 #include <sqlite3.h>
 #include <functional>
+#include <filesystem>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -632,6 +633,43 @@ void testDatabaseSchemaVersion() {
                deduplicated.front().price.minorAmount == 12000 &&
                conflictCount == 1,
            "Version 9 migration should retain the latest duplicate and quarantine the other");
+}
+
+void testDatabaseAllowsReadsDuringWriteTransaction() {
+    const auto databasePath = std::filesystem::temp_directory_path() /
+        "dealquest-database-concurrency-test.db";
+    std::error_code ignored;
+    std::filesystem::remove(databasePath, ignored);
+    std::filesystem::remove(databasePath.string() + "-shm", ignored);
+    std::filesystem::remove(databasePath.string() + "-wal", ignored);
+
+    {
+        Database writer(databasePath.string());
+        StoreProductRepository writerRepository(writer);
+        writerRepository.initializeSchema();
+        const Game game{"stardew-valley", "Stardew Valley", "stardew valley", {}};
+        writerRepository.saveNormalizedProducts(game, {makeSteamProduct(16000)});
+
+        Database reader(databasePath.string());
+        StoreProductRepository readerRepository(reader);
+        writer.execute("BEGIN IMMEDIATE TRANSACTION;");
+        writer.execute(R"sql(
+            UPDATE store_products
+            SET price_minor = 15000
+            WHERE store = 'Steam' AND external_product_id = '413150';
+        )sql");
+
+        const auto products = readerRepository.findProductsByGameId(game.id);
+        expect(
+            products.size() == 1 &&
+                products.front().currentPrice.minorAmount == 16000,
+            "A detail read must use the committed snapshot while collection writes");
+        writer.execute("ROLLBACK;");
+    }
+
+    std::filesystem::remove(databasePath, ignored);
+    std::filesystem::remove(databasePath.string() + "-shm", ignored);
+    std::filesystem::remove(databasePath.string() + "-wal", ignored);
 }
 
 void testDiscountChangeHistory() {
@@ -1752,6 +1790,8 @@ int main() {
         {"History deduplication and analysis", testHistoryDeduplicationAndAnalysis},
         {"Price observation integrity", testPriceObservationIntegrity},
         {"Database schema version", testDatabaseSchemaVersion},
+        {"Database concurrent detail read",
+         testDatabaseAllowsReadsDuringWriteTransaction},
         {"Discount change history", testDiscountChangeHistory},
         {"Store product price validation", testStoreProductPriceValidation},
         {"Repository-backed comparison", testPriceComparisonReadsRepository},
