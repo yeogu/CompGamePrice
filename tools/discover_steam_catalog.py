@@ -18,7 +18,9 @@ import sync_steam_catalog as catalog_sync
 SOURCES = (
     ("top-sellers", 300, {"filter": "topsellers"}),
     ("specials", 200, {"specials": "1"}),
+    ("popular-new", 175, {"filter": "popularnew"}),
     ("new-releases", 100, {"filter": "newreleases"}),
+    ("coming-soon", 50, {"filter": "comingsoon"}),
 )
 
 

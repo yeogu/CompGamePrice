@@ -260,37 +260,44 @@ const integrityIssueLabel = (issue: CatalogPriceIntegrityIssue) => {
 
 const integrityIssueGuidance: Record<CatalogPriceIntegrityIssue['type'], {
   cause: string
-  action: string
+  checks: string[]
+  resolvedWhen: string
   canRecollect: boolean
 }> = {
   MISSING_PRICE: {
     cause: '카탈로그에는 Store 상품이 연결되어 있지만 성공한 가격 수집 기록이 없습니다.',
-    action: 'Store 상품 페이지가 유효한지 확인한 뒤 가격을 재수집하세요. 계속 실패하면 잘못된 연결을 해제하고 올바른 상품을 다시 연결하세요.',
+    checks: ['Store 확인을 눌러 상품 페이지와 게임이 맞는지 봅니다.', '맞다면 가격 재수집을 실행합니다.', '계속 실패하면 연결을 해제하고 올바른 상품을 다시 찾습니다.'],
+    resolvedWhen: '재검사 후 이 항목이 사라지고 현재 가격이 표시되면 해결된 것입니다.',
     canRecollect: true,
   },
   STALE_PRICE: {
     cause: '마지막 성공 확인 이후 48시간 이상 지나 현재 가격으로 신뢰할 수 없습니다.',
-    action: '가격을 재수집하세요. Store에서 판매가 종료되었거나 URL이 바뀌었다면 연결 상태를 다시 검토하세요.',
+    checks: ['가격 재수집을 실행합니다.', '재수집이 실패하면 Store 페이지에서 판매 여부를 확인합니다.', '판매가 끝났거나 상품이 바뀌었다면 기존 연결을 해제합니다.'],
+    resolvedWhen: '재검사 후 오래된 가격 항목이 사라지면 해결된 것입니다.',
     canRecollect: true,
   },
   NOT_PURCHASABLE: {
     cause: '마지막 수집에서 해당 상품을 현재 구매할 수 없는 것으로 확인했습니다.',
-    action: '일시적인 판매 중단인지 Store에서 확인하고 재수집하세요. 영구 판매 종료라면 연결을 해제하세요.',
+    checks: ['Store 페이지에서 실제 구매 버튼이 있는지 확인합니다.', '구매 가능하면 가격 재수집을 실행합니다.', '판매가 종료됐다면 연결을 해제합니다.'],
+    resolvedWhen: '재검사 후 구매 불가 항목이 사라지거나 종료 상품 연결이 제거되면 해결된 것입니다.',
     canRecollect: true,
   },
   PLATFORM_MISMATCH: {
     cause: '카탈로그에 등록된 플랫폼과 수집 결과의 실제 지원 플랫폼이 겹치지 않습니다.',
-    action: 'Store 페이지에서 지원 기기를 확인하세요. 잘못된 상품이면 연결을 해제한 뒤 해당 Store 관리 화면에서 올바른 상품을 연결하세요.',
+    checks: ['Store 페이지에서 지원 플랫폼을 확인합니다.', '다른 플랫폼용 상품이라면 연결을 해제합니다.', 'Store 관리에서 같은 게임의 올바른 상품을 검색해 다시 연결합니다.'],
+    resolvedWhen: '재검사 후 카탈로그 플랫폼과 수집 플랫폼이 같아져 항목이 사라지면 해결된 것입니다.',
     canRecollect: false,
   },
   GAME_MISMATCH: {
     cause: '같은 Store 상품 ID가 카탈로그와 가격 DB에서 서로 다른 게임에 연결되어 있습니다.',
-    action: 'Store 페이지에서 실제 게임을 확인하고 잘못된 연결을 해제한 뒤 올바른 canonical Game에 다시 연결하세요.',
+    checks: ['Store 페이지의 제목·에디션·상품 종류를 확인합니다.', '잘못 연결된 상품을 해제합니다.', 'Store 관리에서 올바른 canonical Game에 다시 연결합니다.'],
+    resolvedWhen: '재검사 후 하나의 상품 ID가 올바른 게임 하나에만 연결되면 해결된 것입니다.',
     canRecollect: false,
   },
   ORPHAN_PRICE: {
     cause: '가격 DB에는 남아 있지만 현재 카탈로그에는 대응하는 Store 상품 연결이 없습니다.',
-    action: '사용자 가격 비교에는 노출되지 않습니다. 연결이 필요하면 Store 관리 화면에서 올바른 게임에 다시 등록하세요.',
+    checks: ['이 데이터는 사용자 화면에 노출되지 않으므로 Store 상품을 먼저 확인합니다.', '유효한 게임 상품이면 Store 관리에서 올바른 게임에 다시 연결합니다.', '판매 종료 상품이면 별도 조치 없이 보관해도 됩니다.'],
+    resolvedWhen: '유효한 상품을 다시 연결하면 사라집니다. 판매 종료 상품은 사용자 노출에 영향을 주지 않습니다.',
     canRecollect: false,
   },
 }
@@ -1075,6 +1082,18 @@ function App() {
     } catch (reason) {
       setAdminError(reason instanceof Error ? reason.message : '가격 재수집을 시작하지 못했습니다.')
     }
+  }
+
+  const findReplacementForIntegrityIssue = (issue: CatalogPriceIntegrityIssue) => {
+    const section = adminSectionForStore(issue.store)
+    if (!section) {
+      return
+    }
+    setAdminQuery(issue.gameTitle)
+    setAdminCandidates([])
+    setPendingCandidate(null)
+    selectAdminSection(section)
+    setActionMessage(`${issue.gameTitle}의 올바른 ${collectionStoreName(issue.store)} 상품을 검색하세요.`)
   }
 
   const refreshPriceIntegrity = async () => {
@@ -2257,9 +2276,9 @@ function App() {
                     <small>{guidance.cause}</small>
                   </summary>
                   <div className="integrity-resolution">
-                    <strong>관리자가 할 일</strong>
-                    <p>{guidance.action}</p>
-                    {adminSectionForStore(storeGroup.store) && <button onClick={() => selectAdminSection(adminSectionForStore(storeGroup.store)!)}>{storeGroup.store} 관리로 이동</button>}
+                    <strong>해결 순서</strong>
+                    <ol>{guidance.checks.map((check) => <li key={check}>{check}</li>)}</ol>
+                    <p><strong>완료 기준</strong>{guidance.resolvedWhen}</p>
                   </div>
                   <div className="integrity-list">
                     {issues.map((issue, index) => <article key={`${issue.productId}-${issue.gameId}-${index}`}>
@@ -2272,6 +2291,7 @@ function App() {
                       <div className="integrity-actions">
                         {issue.productUrl && <a href={issue.productUrl} target="_blank" rel="noreferrer">Store 확인 ↗</a>}
                         {guidance.canRecollect && <button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectIntegrityIssue(issue)}>가격 재수집</button>}
+                        {adminSectionForStore(issue.store) && <button onClick={() => findReplacementForIntegrityIssue(issue)}>올바른 상품 찾기</button>}
                         {issue.type !== 'ORPHAN_PRICE' && <button className="danger" disabled={adminImporting} onClick={() => void disconnectAdminProduct(issue.store, issue.productId, issue.gameTitle)}>연결 해제</button>}
                       </div>
                     </article>)}

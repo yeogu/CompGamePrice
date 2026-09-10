@@ -25,15 +25,21 @@ class SteamCatalogDiscoveryTest(unittest.TestCase):
         responses = {
             "topsellers": self.html("10", "Popular Game"),
             "specials": self.html("10", "Popular Game"),
+            "popularnew": self.html("20", "New Game"),
             "newreleases": self.html("20", "New Game"),
+            "comingsoon": self.html("30", "Upcoming Game"),
         }
 
         def fetch(parameters):
             return responses[parameters.get("filter", "specials")]
 
         candidates = discovery.discover(fetch, 10, 1)
-        self.assertEqual([candidate["appId"] for candidate in candidates], ["10", "20"])
+        self.assertEqual(
+            [candidate["appId"] for candidate in candidates],
+            ["10", "20", "30"],
+        )
         self.assertEqual(candidates[0]["source"], "top-sellers")
+        self.assertEqual(candidates[1]["source"], "popular-new")
 
     def test_fetches_multiple_bounded_pages_per_source(self):
         pages = []
@@ -44,7 +50,7 @@ class SteamCatalogDiscoveryTest(unittest.TestCase):
 
         candidates = discovery.discover(fetch, 10, 2)
 
-        self.assertEqual(len(pages), 6)
+        self.assertEqual(len(pages), 10)
         self.assertEqual({page for _, page in pages}, {"1", "2"})
         self.assertEqual([candidate["appId"] for candidate in candidates], ["1", "2"])
 
