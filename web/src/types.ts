@@ -227,6 +227,12 @@ export interface CatalogAdminResult {
   requiresApiRestart: boolean
 }
 export interface CatalogCollectionJob { id: number; store?: string; status: 'IDLE' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'; error?: string; integrityIssueCount?: number }
+export interface CatalogDiscoveryJob {
+  provider: 'Steam'
+  status: 'IDLE' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'
+  queued?: number
+  error?: string
+}
 export interface CatalogPriceIntegrityIssue { type: 'MISSING_PRICE' | 'STALE_PRICE' | 'NOT_PURCHASABLE' | 'PLATFORM_MISMATCH' | 'GAME_MISMATCH' | 'ORPHAN_PRICE'; severity: 'ERROR' | 'WARNING'; store: string; productId: string; gameId: string; gameTitle: string; reason: string; productUrl?: string }
 export interface CatalogPriceIntegrity { checkedAt: string; catalogProductCount: number; issueCount: number; counts: Record<string, number>; issues: CatalogPriceIntegrityIssue[] }
 export interface StoreProductCandidate { store: string; externalProductId: string; title: string; productUrl: string; platforms: string[]; developer?: string; priceMinor?: number; currency?: string; imageUrl?: string }

@@ -403,6 +403,8 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .mobile-review-group > header span { color: #91a79b; }
 .mobile-review-group .sync-reviews { padding: 0 12px; }
 .discovery-summary { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(6, minmax(90px, 1fr)); gap: 8px; }
+.catalog-step-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.catalog-step-actions .button-link { display: inline-flex; align-items: center; justify-content: center; padding: 10px 14px; color: #07130d; background: #72dfaa; border: 1px solid #72dfaa; border-radius: 9px; font-weight: 800; text-decoration: none; }
 .discovery-summary article { display: grid; gap: 4px; padding: 12px; background: #102219; border: 1px solid #294838; border-radius: 10px; }
 .discovery-summary small { color: #91a79b; }
 .discovery-summary strong { color: #eef8f2; font-size: 1.35rem; }

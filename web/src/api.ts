@@ -137,6 +137,8 @@ export const importAppleCatalogGame = (trackId: string, gameId: string, apply: b
 export const importStorefrontCatalogGame = (store: 'EpicGamesStore' | 'NintendoEShop' | 'PlayStationStore' | 'MicrosoftStore', productUrl: string, gameId: string, apply: boolean, acknowledgeReview = false) => requestJson<CatalogAdminResult>('/api/admin/catalog/storefront', { method: 'POST', body: JSON.stringify({ store, productUrl, gameId, apply, acknowledgeReview }) })
 export const getCatalogCollectionJob = () => requestJson<CatalogCollectionJob>('/api/admin/catalog/collection')
 export const startCatalogCollection = (store = 'Steam') => requestJson<CatalogCollectionJob>('/api/admin/catalog/collection', { method: 'POST', body: JSON.stringify({ store }) })
+export const getCatalogDiscoveryJob = () => requestJson<import('./types').CatalogDiscoveryJob>('/api/admin/catalog/discovery')
+export const startCatalogDiscovery = () => requestJson<import('./types').CatalogDiscoveryJob>('/api/admin/catalog/discovery', { method: 'POST' })
 export const searchStoreCandidates = async (store: string, query: string) => (await requestJson<{ candidates: StoreProductCandidate[] }>(`/api/admin/catalog/candidates?store=${encodeURIComponent(store)}&query=${encodeURIComponent(query)}`)).candidates
 export const getCatalogSyncJob = () => requestJson<CatalogSyncJob>('/api/admin/catalog/sync')
 export const startCatalogSync = (batchSize: number) => requestJson<CatalogSyncJob>('/api/admin/catalog/sync', { method: 'POST', body: JSON.stringify({ batchSize }) })

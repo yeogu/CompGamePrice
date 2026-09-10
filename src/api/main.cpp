@@ -748,6 +748,63 @@ Json::Value runCatalogSyncTool(bool synchronize, int batchSize) {
         " --status");
 }
 
+Json::Value runSteamCatalogDiscoveryTool() {
+    std::lock_guard<std::mutex> toolLock(catalogToolMutex());
+    const auto temporary = std::filesystem::temp_directory_path() /
+        "compgameprice-steam-discovery.json";
+    const auto script = projectPath() /
+        "tools/discover_steam_catalog.py";
+    std::string command = "python3 " + shellQuoted(script.string());
+    command += " --database " + shellQuoted(databasePath());
+    command += " --per-source-limit 100";
+    command += " --pages-per-source 6";
+    return executeCatalogTool(std::move(command), temporary);
+}
+
+class SteamCatalogDiscoveryJob {
+public:
+    SteamCatalogDiscoveryJob() {
+        result_["provider"] = "Steam";
+        result_["status"] = "IDLE";
+    }
+
+    bool start() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (result_["status"].asString() == "RUNNING") {
+            return false;
+        }
+        result_["provider"] = "Steam";
+        result_["status"] = "RUNNING";
+        result_.removeMember("error");
+        std::thread([this]() { run(); }).detach();
+        return true;
+    }
+
+    Json::Value json() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return result_;
+    }
+
+private:
+    void run() {
+        Json::Value next;
+        next["provider"] = "Steam";
+        try {
+            const auto discovery = runSteamCatalogDiscoveryTool();
+            next["status"] = "SUCCEEDED";
+            next["queued"] = discovery["queued"];
+        } catch (const std::exception& error) {
+            next["status"] = "FAILED";
+            next["error"] = error.what();
+        }
+        std::lock_guard<std::mutex> lock(mutex_);
+        result_ = next;
+    }
+
+    mutable std::mutex mutex_;
+    Json::Value result_;
+};
+
 void resolveCatalogReview(
     const std::string& appId,
     const std::string& resolution) {
@@ -1185,6 +1242,7 @@ int main() {
         AuthService authService(accountRepository);
         OAuthService oauthService(accountRepository);
         CatalogCollectionJob catalogCollectionJob;
+        SteamCatalogDiscoveryJob steamCatalogDiscoveryJob;
         CatalogSyncJob catalogSyncJob(catalog);
         MobileCatalogSyncJob mobileCatalogSyncJob;
 
@@ -2450,6 +2508,38 @@ int main() {
                 }
             },
             {drogon::Patch});
+        drogon::app().registerHandler(
+            "/api/admin/catalog/discovery",
+            [&steamCatalogDiscoveryJob, &authService](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
+                    return;
+                }
+                callback(jsonResponse(steamCatalogDiscoveryJob.json()));
+            },
+            {drogon::Get});
+        drogon::app().registerHandler(
+            "/api/admin/catalog/discovery",
+            [&steamCatalogDiscoveryJob, &authService](
+                const drogon::HttpRequestPtr& request,
+                std::function<void(const HttpResponsePtr&)>&& callback) {
+                if (const auto error = adminAccessError(request, authService)) {
+                    callback(error);
+                    return;
+                }
+                if (!steamCatalogDiscoveryJob.start()) {
+                    callback(jsonError(
+                        drogon::k409Conflict,
+                        "Steam catalog discovery is already running"));
+                    return;
+                }
+                callback(jsonResponse(
+                    steamCatalogDiscoveryJob.json(),
+                    drogon::k202Accepted));
+            },
+            {drogon::Post});
         drogon::app().registerHandler(
             "/api/admin/catalog/sync",
             [&catalogSyncJob, &authService](

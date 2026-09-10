@@ -1,12 +1,12 @@
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { deleteAccount } from './api'
-import { addAlertRule, addFavorite, confirmPasswordReset, deleteAlertRule, deleteFavorite, disconnectCatalogProduct, getAdminHealthSummary, getAdminUser, getAdminUserAudits, getAdminUsers, getAlertRules, getCatalogAdminStatus, getCatalogChangeAudits, getCatalogCollectionJob, getCatalogFilters, getCatalogPriceIntegrity, getCatalogSyncJob, getCollectionRuns, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getMetadataSyncStatus, getMobileCatalogSyncJob, getNotifications, getPreferences, importAppleCatalogGame, importGooglePlayCatalogGame, importSteamCatalogGame, importStorefrontCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, requestPasswordReset, resolveCatalogSyncReview, resolveMetadataReview, resolveMobileCatalogSyncReview, searchStoreCandidates, sendAdminPasswordReset, startCatalogCollection, startCatalogSync, startMetadataSync, startMobileCatalogSync, updateAdminUserStatus, updateCatalogGameMetadata, updatePreferences } from './api'
+import { addAlertRule, addFavorite, confirmPasswordReset, deleteAlertRule, deleteFavorite, disconnectCatalogProduct, getAdminHealthSummary, getAdminUser, getAdminUserAudits, getAdminUsers, getAlertRules, getCatalogAdminStatus, getCatalogChangeAudits, getCatalogCollectionJob, getCatalogDiscoveryJob, getCatalogFilters, getCatalogPriceIntegrity, getCatalogSyncJob, getCollectionRuns, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getMetadataSyncStatus, getMobileCatalogSyncJob, getNotifications, getPreferences, importAppleCatalogGame, importGooglePlayCatalogGame, importSteamCatalogGame, importStorefrontCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, requestPasswordReset, resolveCatalogSyncReview, resolveMetadataReview, resolveMobileCatalogSyncReview, searchStoreCandidates, sendAdminPasswordReset, startCatalogCollection, startCatalogDiscovery, startCatalogSync, startMetadataSync, startMobileCatalogSync, updateAdminUserStatus, updateCatalogGameMetadata, updatePreferences } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
 import { GameCatalogView, GameDetailView } from './GameViews'
 import GameArtwork from './GameArtwork'
 import { PlatformBadge, StoreBadge } from './VisualBadges'
 import { gameDetailPath, gameIdFromLocation } from './gameRoutes'
-import type { AdminHealthSummary, AdminUser, AdminUserAudit, AlertRule, AlertRuleType, CatalogAdminResult, CatalogChangeAudit, CatalogCollectionJob, CatalogFilterOptions, CatalogMetadataUpdateResult, CatalogPriceIntegrity, CatalogPriceIntegrityIssue, CatalogSyncJob, CollectionRun, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSort, GameSummary, MetadataSyncStatus, MobileCatalogSyncJob, MobileCatalogSyncReview, Money, Notification, StoreProductCandidate, User, UserPreferences } from './types'
+import type { AdminHealthSummary, AdminUser, AdminUserAudit, AlertRule, AlertRuleType, CatalogAdminResult, CatalogChangeAudit, CatalogCollectionJob, CatalogDiscoveryJob, CatalogFilterOptions, CatalogMetadataUpdateResult, CatalogPriceIntegrity, CatalogPriceIntegrityIssue, CatalogSyncJob, CollectionRun, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSort, GameSummary, MetadataSyncStatus, MobileCatalogSyncJob, MobileCatalogSyncReview, Money, Notification, StoreProductCandidate, User, UserPreferences } from './types'
 
 const formatMoney = (money: Money) =>
   new Intl.NumberFormat('ko-KR', {
@@ -357,6 +357,7 @@ function App() {
   const [adminGameId, setAdminGameId] = useState('')
   const [adminResult, setAdminResult] = useState<CatalogAdminResult | null>(null)
   const [catalogJob, setCatalogJob] = useState<CatalogCollectionJob | null>(null)
+  const [catalogDiscoveryJob, setCatalogDiscoveryJob] = useState<CatalogDiscoveryJob | null>(null)
   const [catalogSyncJob, setCatalogSyncJob] = useState<CatalogSyncJob | null>(null)
   const [catalogSyncBatchSize, setCatalogSyncBatchSize] = useState(20)
   const [mobileSyncJobs, setMobileSyncJobs] = useState<MobileCatalogSyncJob[]>([])
@@ -1074,6 +1075,12 @@ function App() {
     }
   }
 
+  const openAdminProductWorkspace = () => {
+    window.setTimeout(() => {
+      document.getElementById('admin-product-workspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+
   const collectIntegrityIssue = async (issue: CatalogPriceIntegrityIssue) => {
     setAdminError('')
     try {
@@ -1111,6 +1118,15 @@ function App() {
       setCatalogSyncJob(await startCatalogSync(catalogSyncBatchSize))
     } catch (reason) {
       setAdminError(reason instanceof Error ? reason.message : 'Steam 카탈로그 동기화를 시작하지 못했습니다.')
+    }
+  }
+
+  const discoverSteamCatalog = async () => {
+    setAdminError('')
+    try {
+      setCatalogDiscoveryJob(await startCatalogDiscovery())
+    } catch (reason) {
+      setAdminError(reason instanceof Error ? reason.message : 'Steam 새 후보를 찾지 못했습니다.')
     }
   }
 
@@ -1394,6 +1410,7 @@ function App() {
         if (status.enabled) {
           void getCollectionRuns().then(setCollectionRuns)
           void getCatalogCollectionJob().then(setCatalogJob)
+          void getCatalogDiscoveryJob().then(setCatalogDiscoveryJob)
           void getCatalogSyncJob().then(setCatalogSyncJob)
           void refreshMobileSyncJobs()
           void getCatalogChangeAudits().then(setCatalogAudits)
@@ -1460,6 +1477,21 @@ function App() {
     }, 1000)
     return () => window.clearInterval(timer)
   }, [catalogJob?.status])
+
+  useEffect(() => {
+    if (catalogDiscoveryJob?.status !== 'RUNNING') {
+      return
+    }
+    const timer = window.setInterval(() => {
+      void getCatalogDiscoveryJob().then((job) => {
+        setCatalogDiscoveryJob(job)
+        if (job.status === 'SUCCEEDED') {
+          setActionMessage(`Steam 새 후보 ${job.queued ?? 0}개를 찾았습니다. 이제 대기 후보 등록을 실행할 수 있습니다.`)
+        }
+      })
+    }, 1000)
+    return () => window.clearInterval(timer)
+  }, [catalogDiscoveryJob?.status])
 
   useEffect(() => {
     if (catalogSyncJob?.status !== 'RUNNING') {
@@ -1632,11 +1664,6 @@ function App() {
   const selectedMobileSyncJob = mobileSyncJobs.find((job) => job.provider === mobileSyncStore)
   const selectedMobileSyncRun = selectedMobileSyncJob?.recentRuns[0]
   const rejectedMobileReviews = selectedMobileSyncJob?.reviewHistory.filter((review) => review.status === 'REJECTED') ?? []
-  const mobileSyncButtonLabel = selectedMobileSyncJob?.status === 'RUNNING'
-    ? `${catalogProviderLabel(mobileSyncStore)} 탐색 중…`
-    : runningMobileSyncJob
-      ? `${catalogProviderLabel(runningMobileSyncJob.provider)} 탐색 중 · 대기`
-      : '후보 배치 탐색'
   const collectionStores = useMemo(
     () => Array.from(new Set(collectionRuns.map((run) => run.store))),
     [collectionRuns],
@@ -2144,11 +2171,16 @@ function App() {
         </article>
         <article className="catalog-sync-panel">
           <div>
-            <h2>Steam 자동 동기화</h2>
-            <p>아직 처리하지 않은 상품을 제한된 배치로 검사합니다. 확실한 일반판 본편만 자동 등록됩니다.</p>
+            <h2>Steam 신규 게임 등록</h2>
+            <p>1단계에서 공개 목록의 새 후보를 찾고, 2단계에서 대기 후보를 검사합니다. 확실한 일반판 본편만 자동 등록됩니다.</p>
           </div>
           <label>한 번에 처리할 수<input type="number" min="1" max="100" value={catalogSyncBatchSize} onChange={(event) => setCatalogSyncBatchSize(Number(event.target.value))} /></label>
-          <button disabled={catalogSyncJob?.status === 'RUNNING' || catalogSyncBatchSize < 1 || catalogSyncBatchSize > 100} onClick={() => void synchronizeCatalog()}>{catalogSyncJob?.status === 'RUNNING' ? '동기화 중…' : '다음 배치 동기화'}</button>
+          <div className="catalog-step-actions">
+            <button disabled={catalogDiscoveryJob?.status === 'RUNNING' || catalogSyncJob?.status === 'RUNNING'} onClick={() => void discoverSteamCatalog()}>{catalogDiscoveryJob?.status === 'RUNNING' ? '새 후보 찾는 중…' : '1. 새 후보 찾기'}</button>
+            <button disabled={catalogDiscoveryJob?.status === 'RUNNING' || catalogSyncJob?.status === 'RUNNING' || catalogSyncBatchSize < 1 || catalogSyncBatchSize > 100} onClick={() => void synchronizeCatalog()}>{catalogSyncJob?.status === 'RUNNING' ? '후보 등록 중…' : '2. 대기 후보 등록'}</button>
+            <button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectCatalogPrices()}>{catalogJob?.status === 'RUNNING' ? '가격 수집 중…' : '3. 가격 수집'}</button>
+          </div>
+          {catalogDiscoveryJob && catalogDiscoveryJob.status !== 'IDLE' && <div className={`sync-summary ${catalogDiscoveryJob.status.toLowerCase()}`}><strong>후보 탐색 {catalogDiscoveryJob.status}</strong>{catalogDiscoveryJob.queued !== undefined && <span>발견·갱신 {catalogDiscoveryJob.queued}개</span>}{catalogDiscoveryJob.error && <p>{catalogDiscoveryJob.error}</p>}</div>}
           {catalogSyncJob && <div className={`sync-summary ${catalogSyncJob.status.toLowerCase()}`}>
             <strong>{catalogSyncJob.status}</strong>
             <span>자동 등록 {catalogSyncJob.accepted ?? 0} · 검토 {catalogSyncJob.review ?? 0} · 제외 {catalogSyncJob.skipped ?? 0} · 실패 {catalogSyncJob.failed ?? 0}</span>
@@ -2165,13 +2197,17 @@ function App() {
           </div>}
         </article>
         </div>}
-        {adminSection === 'epic-games' && <div className="admin-store-workspace"><header><StoreBadge store={adminStore} /><div><h2>{adminStore}</h2><p>공식 Store 상품을 canonical Game과 비교하고 검증된 상품만 연결합니다.</p></div></header><article className="catalog-sync-panel"><div><h2>{adminStore} 관리자 검수</h2><p>공식 상품 URL을 이용해 검수합니다.</p></div></article></div>}
+        {adminSection === 'epic-games' && <div className="admin-store-workspace"><header><StoreBadge store={adminStore} /><div><h2>{adminStore}</h2><p>공식 Store 상품을 canonical Game과 비교하고 검증된 상품만 연결합니다.</p></div></header><article className="catalog-sync-panel"><div><h2>{adminStore} 상품 연결</h2><p>Epic의 서버 검색 제한 때문에 자동 배치 탐색 대신 공식 검색을 사용합니다. 상품 URL을 확인하고 연결한 뒤 가격을 수집하세요.</p></div><div className="catalog-step-actions"><a className="button-link" href={`https://store.epicgames.com/ko/browse?q=${encodeURIComponent(adminQuery || 'Hades')}&category=Game&sortBy=relevancy&sortDir=DESC`} target="_blank" rel="noreferrer">1. 공식 Store 검색</a><button onClick={openAdminProductWorkspace}>2. URL 검증·연결</button><button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectCatalogPrices()}>{catalogJob?.status === 'RUNNING' ? '가격 수집 중…' : '3. 가격 수집'}</button></div></article></div>}
         {(adminSection === 'nintendo-eshop' || adminSection === 'playstation-store' || adminSection === 'microsoft-store' || adminSection === 'google-play' || adminSection === 'apple-app-store') && <div className="admin-store-workspace"><header><StoreBadge store={adminStore} /><div><h2>{adminStore}</h2><p>Store 상품 후보 탐색, 검토, 연결과 가격 수집을 관리합니다.</p></div></header><article className="catalog-sync-panel">
           <div>
-            <h2>{adminStore} 후보 자동 탐색</h2>
-            <p>카탈로그 게임을 Store에서 찾아 매칭 신뢰도를 판정합니다. 제목과 공식 개발사·퍼블리셔가 일치하는 유료 게임은 자동 연결하고, 불확실한 후보만 검토 큐에 저장합니다.{mobileSyncStore === 'PlayStationStore' ? ' 첫 실행은 공식 PS4·PS5 전체 카탈로그를 읽으므로 약 1분 걸릴 수 있습니다.' : ''}{mobileSyncStore === 'MicrosoftStore' ? ' Xbox One과 Xbox Series 지원 여부를 상품별로 구분합니다.' : ''}</p>
+            <h2>{adminStore} 상품 연결</h2>
+            <p>1단계에서 기존 게임과 일치하는 Store 상품을 찾아 확실한 후보는 연결하고, 애매한 후보는 검토 대기에 저장합니다. 2단계에서 검토 항목을 처리한 뒤 3단계에서 가격을 수집하세요.{mobileSyncStore === 'PlayStationStore' ? ' 첫 실행은 공식 PS4·PS5 전체 카탈로그를 읽으므로 약 1분 걸릴 수 있습니다.' : ''}{mobileSyncStore === 'MicrosoftStore' ? ' Xbox One과 Xbox Series 지원 여부를 상품별로 구분합니다.' : ''}</p>
           </div>
-          <button disabled={Boolean(runningMobileSyncJob)} onClick={() => void synchronizeMobileCatalog()}>{mobileSyncButtonLabel}</button>
+          <div className="catalog-step-actions">
+            <button disabled={Boolean(runningMobileSyncJob)} onClick={() => void synchronizeMobileCatalog()}>{selectedMobileSyncJob?.status === 'RUNNING' ? '상품 후보 찾는 중…' : runningMobileSyncJob ? `${catalogProviderLabel(runningMobileSyncJob.provider)} 작업 대기` : '1. 상품 후보 찾기'}</button>
+            <button disabled={(selectedMobileSyncJob?.pendingReviews.length ?? 0) === 0} onClick={() => setStoreDiscoveryView('pending')}>2. 검토 대기 열기 ({selectedMobileSyncJob?.pendingReviews.length ?? 0})</button>
+            <button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectCatalogPrices()}>{catalogJob?.status === 'RUNNING' ? '가격 수집 중…' : '3. 가격 수집'}</button>
+          </div>
           {selectedMobileSyncRun && <div className="discovery-summary" aria-label="최근 탐색 결과">
             <article><small>처리</small><strong>{selectedMobileSyncRun.processed}</strong></article>
             <article className="success"><small>자동 연결</small><strong>{selectedMobileSyncRun.approvedCandidates}</strong></article>
@@ -2194,7 +2230,7 @@ function App() {
           </div>
         </article>
         </div>}
-        {(adminSection === 'steam' || adminSection === 'epic-games' || adminSection === 'nintendo-eshop' || adminSection === 'playstation-store' || adminSection === 'microsoft-store' || adminSection === 'google-play' || adminSection === 'apple-app-store') && <div className="admin-product-workspace"><h2>{adminStore} 상품 검색·연결</h2><p>게임 이름이나 공식 상품 URL로 canonical Game에 연결합니다.</p>
+        {(adminSection === 'steam' || adminSection === 'epic-games' || adminSection === 'nintendo-eshop' || adminSection === 'playstation-store' || adminSection === 'microsoft-store' || adminSection === 'google-play' || adminSection === 'apple-app-store') && <div className="admin-product-workspace" id="admin-product-workspace"><h2>{adminStore} 상품 검색·연결</h2><p>게임 이름이나 공식 상품 URL로 canonical Game에 연결합니다.</p>
         {adminStore === 'Epic Games Store' && <div className="admin-feedback review-note"><strong>Epic 공식 검색에서 상품을 확인하세요.</strong><span>Epic Games Store가 서버 검색 요청을 제한하므로 공식 검색 결과에서 상품을 연 뒤 URL을 아래 입력란에 붙여넣습니다.</span><input aria-label="Epic 게임 이름" value={adminQuery} onChange={(event) => setAdminQuery(event.target.value)} placeholder="예: Hades" /><a href={`https://store.epicgames.com/ko/browse?q=${encodeURIComponent(adminQuery || 'Hades')}&category=Game&sortBy=relevancy&sortDir=DESC`} target="_blank" rel="noreferrer">Epic Games Store 검색 열기 ↗</a></div>}
         {adminStore !== 'Epic Games Store' && adminStore !== 'PlayStation Store' && adminStore !== 'Microsoft Store' && <div className="admin-search">
           <input aria-label="Store 게임 이름" value={adminQuery} onChange={(event) => setAdminQuery(event.target.value)} placeholder="예: Sekiro" />
