@@ -14,6 +14,15 @@ SPEC.loader.exec_module(daily_operations)
 
 
 class DailyOperationsTest(unittest.TestCase):
+    def test_classifies_success_partial_warning_and_failure(self):
+        self.assertEqual(daily_operations.step_outcome("steam", 0), "SUCCEEDED")
+        self.assertEqual(daily_operations.step_outcome("epic-games", 2), "PARTIAL")
+        self.assertEqual(
+            daily_operations.step_outcome("collection-health", 1),
+            "WARNING",
+        )
+        self.assertEqual(daily_operations.step_outcome("steam", 1), "FAILED")
+
     def test_runs_provider_jobs_independently_and_continues_after_failure(self):
         exit_codes = iter(
             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0]

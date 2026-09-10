@@ -54,6 +54,23 @@ class StorefrontPricePipelineTest(unittest.TestCase):
         self.assertEqual(result, 1)
         run.assert_not_called()
 
+    def test_reports_partial_result_when_some_products_failed(self):
+        collector = pipeline.COLLECTORS["EpicGamesStore"][0]
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.object(
+                collector,
+                "collect",
+                return_value=(1, [("broken", "timeout")]),
+            ), patch.object(pipeline.subprocess, "run") as run:
+                run.return_value.returncode = 0
+                result = pipeline.run_pipeline(
+                    "EpicGamesStore",
+                    Path("tracker"),
+                    Path("catalog"),
+                    Path(directory),
+                )
+        self.assertEqual(result, 2)
+
 
 if __name__ == "__main__":
     unittest.main()

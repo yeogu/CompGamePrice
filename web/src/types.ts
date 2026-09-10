@@ -171,6 +171,7 @@ export interface PeriodicJobStatus {
   lastFinishedAt?: string | null
   nextRunAt?: string | null
   failedSteps?: string[]
+  partialSteps?: string[]
   lastBackup?: string | null
   removedFiles?: number
   error?: string | null

@@ -11,13 +11,32 @@ import subprocess
 import sys
 
 
+def step_outcome(name: str, exit_code: int) -> str:
+    if exit_code == 0:
+        return "SUCCEEDED"
+    if exit_code == 2:
+        return "PARTIAL"
+    if name == "collection-health" and exit_code == 1:
+        return "WARNING"
+    return "FAILED"
+
+
 def run_step(name: str, command: list[str], environment: dict[str, str]) -> dict:
     try:
         completed = subprocess.run(command, check=False, env=environment)
-        return {"name": name, "exitCode": completed.returncode}
+        return {
+            "name": name,
+            "exitCode": completed.returncode,
+            "outcome": step_outcome(name, completed.returncode),
+        }
     except OSError as error:
         print(f"{name} could not start: {error}", file=sys.stderr)
-        return {"name": name, "exitCode": 127, "error": str(error)}
+        return {
+            "name": name,
+            "exitCode": 127,
+            "outcome": "FAILED",
+            "error": str(error),
+        }
 
 
 def run_operations(

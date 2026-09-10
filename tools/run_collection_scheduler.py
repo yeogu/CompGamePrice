@@ -74,12 +74,26 @@ def run_once(
             1,
         ),
     )
-    failed_steps = [result["name"] for result in results if result["exitCode"] != 0]
+    failed_steps = [
+        result["name"]
+        for result in results
+        if result.get("outcome") == "FAILED"
+    ]
+    partial_steps = [
+        result["name"]
+        for result in results
+        if result.get("outcome") == "PARTIAL"
+    ]
     summary = {
         "startedAtEpoch": started_at,
         "finishedAtEpoch": time.time(),
-        "status": "SUCCEEDED" if not failed_steps else "PARTIAL_FAILURE",
+        "status": (
+            "SUCCEEDED"
+            if not failed_steps and not partial_steps
+            else "PARTIAL_FAILURE"
+        ),
         "failedSteps": failed_steps,
+        "partialSteps": partial_steps,
         "steps": results,
     }
     if status_path is not None:
@@ -93,6 +107,7 @@ def run_once(
                 "lastFinishedAt": periodic_job_status.timestamp(),
                 "nextRunAt": None,
                 "failedSteps": failed_steps,
+                "partialSteps": partial_steps,
                 "error": None,
             },
         )

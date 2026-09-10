@@ -31,8 +31,9 @@ class CollectionSchedulerTest(unittest.TestCase):
 
     def test_reports_partial_failure_without_raising(self):
         results = [
-            {"name": "steam", "exitCode": 1},
-            {"name": "google-play", "exitCode": 0},
+            {"name": "steam", "exitCode": 1, "outcome": "FAILED"},
+            {"name": "google-play", "exitCode": 2, "outcome": "PARTIAL"},
+            {"name": "collection-health", "exitCode": 1, "outcome": "WARNING"},
         ]
         with patch.object(
             collection_scheduler.run_daily_operations,
@@ -55,8 +56,10 @@ class CollectionSchedulerTest(unittest.TestCase):
                 )
         self.assertEqual(summary["status"], "PARTIAL_FAILURE")
         self.assertEqual(summary["failedSteps"], ["steam"])
+        self.assertEqual(summary["partialSteps"], ["google-play"])
         self.assertEqual(persisted["status"], "PARTIAL_FAILURE")
         self.assertEqual(persisted["failedSteps"], ["steam"])
+        self.assertEqual(persisted["partialSteps"], ["google-play"])
 
     def test_second_scheduler_cannot_use_same_lock(self):
         with tempfile.TemporaryDirectory() as directory:

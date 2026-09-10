@@ -37,7 +37,7 @@ def run_pipeline(
     )
     if completed.returncode != 0:
         return completed.returncode
-    return 1 if failures else 0
+    return 2 if failures else 0
 
 
 def main() -> int:
