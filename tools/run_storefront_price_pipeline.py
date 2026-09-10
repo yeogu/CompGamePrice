@@ -7,6 +7,7 @@ import argparse
 import os
 from pathlib import Path
 import subprocess
+import sys
 
 import collect_epic_snapshot
 import collect_nintendo_snapshot
@@ -50,6 +51,11 @@ def run_pipeline(
         collected, failures = collector.collect(store, catalog, output)
     else:
         collected, failures = collector.collect(catalog, output)
+    for product_id, error in failures:
+        print(
+            f"{store} partial collection failure: {product_id}: {error}",
+            file=sys.stderr,
+        )
     if collected == 0:
         return 1
     environment = dict(os.environ)

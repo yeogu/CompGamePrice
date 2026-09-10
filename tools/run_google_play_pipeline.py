@@ -7,6 +7,7 @@ import argparse
 import os
 from pathlib import Path
 import subprocess
+import sys
 
 import collect_google_play_snapshot as collector
 
@@ -19,6 +20,11 @@ def run_pipeline(
 ) -> int:
     output = output_directory / "google_play_products.txt"
     collected, failures = collector.collect(catalog, output)
+    for product_id, error in failures:
+        print(
+            f"GooglePlay partial collection failure: {product_id}: {error}",
+            file=sys.stderr,
+        )
     if collected == 0:
         return 1
     environment = dict(os.environ)
