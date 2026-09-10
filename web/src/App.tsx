@@ -51,6 +51,13 @@ const jobStatusLabel: Record<string, string> = {
   FAILED: '실패',
 }
 
+const catalogPriceCollectionStatusLabel: Record<string, string> = {
+  NOT_REQUIRED: '신규 등록 없음 · 가격 수집 생략',
+  RUNNING: '가격 수집 중',
+  SUCCEEDED: '가격 수집 완료',
+  FAILED: '가격 수집 실패',
+}
+
 const percentage = (value: number, total: number) => {
   if (total === 0) {
     return '기록 없음'
@@ -2185,7 +2192,8 @@ function App() {
             <strong>{catalogSyncJob.status}</strong>
             <span>자동 등록 {catalogSyncJob.accepted ?? 0} · 검토 {catalogSyncJob.review ?? 0} · 제외 {catalogSyncJob.skipped ?? 0} · 실패 {catalogSyncJob.failed ?? 0}</span>
             {catalogSyncJob.lastAppId && <small>마지막 App ID {catalogSyncJob.lastAppId}</small>}
-            {catalogSyncJob.priceCollection && <span>신규 게임 가격 수집 {catalogSyncJob.priceCollection.status}</span>}
+            {catalogSyncJob.priceCollection && <span>{catalogPriceCollectionStatusLabel[catalogSyncJob.priceCollection.status] ?? catalogSyncJob.priceCollection.status}</span>}
+            {catalogSyncJob.status === 'SUCCEEDED' && (catalogSyncJob.accepted ?? 0) === 0 && (catalogSyncJob.review ?? 0) === 0 && (catalogSyncJob.skipped ?? 0) === 0 && (catalogSyncJob.failed ?? 0) === 0 && <small>처리할 대기 후보가 없습니다. 먼저 ‘1. 새 후보 찾기’를 실행하세요.</small>}
             {catalogSyncJob.error && <p>{catalogSyncJob.error}</p>}
           </div>}
           {catalogSyncJob && <div className="sync-queue">
