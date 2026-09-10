@@ -791,8 +791,10 @@ private:
         next["provider"] = "Steam";
         try {
             const auto discovery = runSteamCatalogDiscoveryTool();
-            next["status"] = "SUCCEEDED";
+            next["status"] = discovery.isMember("status") ?
+                discovery["status"] : Json::Value("SUCCEEDED");
             next["queued"] = discovery["queued"];
+            next["failures"] = discovery["failures"];
         } catch (const std::exception& error) {
             next["status"] = "FAILED";
             next["error"] = error.what();

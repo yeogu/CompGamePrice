@@ -229,8 +229,9 @@ export interface CatalogAdminResult {
 export interface CatalogCollectionJob { id: number; store?: string; status: 'IDLE' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'; error?: string; integrityIssueCount?: number }
 export interface CatalogDiscoveryJob {
   provider: 'Steam'
-  status: 'IDLE' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'
+  status: 'IDLE' | 'RUNNING' | 'SUCCEEDED' | 'PARTIAL' | 'FAILED'
   queued?: number
+  failures?: Array<{ source: string; page: number; error: string }>
   error?: string
 }
 export interface CatalogPriceIntegrityIssue { type: 'MISSING_PRICE' | 'STALE_PRICE' | 'NOT_PURCHASABLE' | 'PLATFORM_MISMATCH' | 'GAME_MISMATCH' | 'ORPHAN_PRICE'; severity: 'ERROR' | 'WARNING'; store: string; productId: string; gameId: string; gameTitle: string; reason: string; productUrl?: string }

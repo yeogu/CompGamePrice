@@ -4,6 +4,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+from urllib.error import HTTPError
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -53,6 +54,57 @@ class SteamCatalogDiscoveryTest(unittest.TestCase):
         self.assertEqual(len(pages), 10)
         self.assertEqual({page for _, page in pages}, {"1", "2"})
         self.assertEqual([candidate["appId"] for candidate in candidates], ["1", "2"])
+
+    def test_continues_with_other_sources_after_rate_limit(self):
+        failures = []
+
+        def fetch(parameters):
+            if parameters.get("filter") == "topsellers":
+                raise HTTPError("url", 429, "Too Many Requests", {}, None)
+            return self.html("20", "Available Game")
+
+        candidates = discovery.discover(fetch, 10, 1, failures=failures)
+
+        self.assertEqual([candidate["appId"] for candidate in candidates], ["20"])
+        self.assertEqual(failures[0]["source"], "top-sellers")
+        self.assertEqual(failures[0]["page"], 1)
+
+    def test_fetch_source_retries_rate_limit_with_bounded_backoff(self):
+        attempts = []
+        delays = []
+        original_urlopen = discovery.urlopen
+
+        def rate_limited(*args, **kwargs):
+            attempts.append(1)
+            if len(attempts) < 3:
+                raise HTTPError("url", 429, "Too Many Requests", {}, None)
+
+            class Response:
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *args):
+                    return False
+
+                def read(self):
+                    return b"ok"
+
+            return Response()
+
+        discovery.urlopen = rate_limited
+        try:
+            result = discovery.fetch_source(
+                {"filter": "topsellers"},
+                max_attempts=3,
+                retry_delay=1.0,
+                sleeper=delays.append,
+            )
+        finally:
+            discovery.urlopen = original_urlopen
+
+        self.assertEqual(result, b"ok")
+        self.assertEqual(len(attempts), 3)
+        self.assertEqual(delays, [1.0, 2.0])
 
     def test_enqueues_candidates_for_priority_processing(self):
         with tempfile.TemporaryDirectory() as directory:

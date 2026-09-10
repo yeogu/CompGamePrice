@@ -7,6 +7,8 @@ import argparse
 import json
 from pathlib import Path
 import sqlite3
+import time
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
@@ -24,33 +26,81 @@ SOURCES = (
 )
 
 
-def fetch_source(parameters: dict[str, str], timeout: float = 15.0) -> bytes:
+def retry_delay_seconds(error: HTTPError, fallback: float) -> float:
+    retry_after = error.headers.get("Retry-After")
+    try:
+        return min(float(retry_after), 30.0) if retry_after else fallback
+    except ValueError:
+        return fallback
+
+
+def fetch_source(
+    parameters: dict[str, str],
+    timeout: float = 15.0,
+    max_attempts: int = 3,
+    retry_delay: float = 2.0,
+    sleeper=time.sleep,
+) -> bytes:
     query = urlencode({**parameters, "cc": "kr", "l": "koreana"})
     request = Request(
         f"https://store.steampowered.com/search/?{query}",
         headers={"User-Agent": steam.USER_AGENT},
     )
-    with urlopen(request, timeout=timeout, context=steam.tls_context()) as response:
-        return response.read()
+    last_error = None
+    for attempt in range(max_attempts):
+        try:
+            with urlopen(request, timeout=timeout, context=steam.tls_context()) as response:
+                return response.read()
+        except HTTPError as error:
+            last_error = error
+            transient = error.code in {408, 429} or 500 <= error.code < 600
+            if not transient or attempt + 1 >= max_attempts:
+                raise
+            fallback = retry_delay * (2**attempt)
+            sleeper(retry_delay_seconds(error, fallback))
+        except (TimeoutError, URLError) as error:
+            last_error = error
+            if attempt + 1 >= max_attempts:
+                raise
+            sleeper(retry_delay * (2**attempt))
+    if last_error is not None:
+        raise last_error
+    raise RuntimeError("Steam catalog source request failed")
 
 
 def discover(
     fetcher=fetch_source,
     per_source_limit: int = 50,
     pages_per_source: int = 3,
+    request_delay: float = 0.0,
+    sleeper=time.sleep,
+    failures: list[dict] | None = None,
 ) -> list[dict]:
     if not 1 <= per_source_limit <= 100:
         raise ValueError("per-source limit must be between 1 and 100")
     if not 1 <= pages_per_source <= 10:
         raise ValueError("pages-per-source must be between 1 and 10")
     candidates = {}
+    request_count = 0
     for source, priority, parameters in SOURCES:
         for page in range(1, pages_per_source + 1):
             page_parameters = {**parameters, "page": str(page)}
-            for candidate in steam_search.parse_results(
-                fetcher(page_parameters),
-                per_source_limit,
-            ):
+            if request_count > 0 and request_delay > 0:
+                sleeper(request_delay)
+            request_count += 1
+            try:
+                raw = fetcher(page_parameters)
+            except (HTTPError, TimeoutError, URLError) as error:
+                if failures is not None:
+                    failures.append(
+                        {
+                            "source": source,
+                            "page": page,
+                            "error": str(error),
+                        }
+                    )
+                break
+            for candidate in steam_search.parse_results(raw, per_source_limit):
                 app_id = candidate["externalProductId"]
                 existing = candidates.get(app_id)
                 if existing is None or priority > existing["priority"]:
@@ -100,13 +150,28 @@ def main() -> int:
     parser.add_argument("--database", default=root / "build/game_prices.db", type=Path)
     parser.add_argument("--per-source-limit", default=50, type=int)
     parser.add_argument("--pages-per-source", default=3, type=int)
+    parser.add_argument("--request-delay", default=1.0, type=float)
     arguments = parser.parse_args()
+    failures = []
     candidates = discover(
         per_source_limit=arguments.per_source_limit,
         pages_per_source=arguments.pages_per_source,
+        request_delay=arguments.request_delay,
+        failures=failures,
     )
     queued = enqueue(arguments.database, candidates)
-    print(json.dumps({"provider": "Steam", "queued": queued}, ensure_ascii=False))
+    status = "PARTIAL" if failures else "SUCCEEDED"
+    print(
+        json.dumps(
+            {
+                "provider": "Steam",
+                "status": status,
+                "queued": queued,
+                "failures": failures,
+            },
+            ensure_ascii=False,
+        )
+    )
     return 0
 
 

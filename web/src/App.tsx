@@ -1492,7 +1492,7 @@ function App() {
     const timer = window.setInterval(() => {
       void getCatalogDiscoveryJob().then((job) => {
         setCatalogDiscoveryJob(job)
-        if (job.status === 'SUCCEEDED') {
+        if (job.status === 'SUCCEEDED' || job.status === 'PARTIAL') {
           setActionMessage(`Steam 새 후보 ${job.queued ?? 0}개를 찾았습니다. 이제 대기 후보 등록을 실행할 수 있습니다.`)
         }
       })
@@ -2187,7 +2187,7 @@ function App() {
             <button disabled={catalogDiscoveryJob?.status === 'RUNNING' || catalogSyncJob?.status === 'RUNNING' || catalogSyncBatchSize < 1 || catalogSyncBatchSize > 100} onClick={() => void synchronizeCatalog()}>{catalogSyncJob?.status === 'RUNNING' ? '후보 등록 중…' : '2. 대기 후보 등록'}</button>
             <button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectCatalogPrices()}>{catalogJob?.status === 'RUNNING' ? '가격 수집 중…' : '3. 가격 수집'}</button>
           </div>
-          {catalogDiscoveryJob && catalogDiscoveryJob.status !== 'IDLE' && <div className={`sync-summary ${catalogDiscoveryJob.status.toLowerCase()}`}><strong>후보 탐색 {catalogDiscoveryJob.status}</strong>{catalogDiscoveryJob.queued !== undefined && <span>발견·갱신 {catalogDiscoveryJob.queued}개</span>}{catalogDiscoveryJob.error && <p>{catalogDiscoveryJob.error}</p>}</div>}
+          {catalogDiscoveryJob && catalogDiscoveryJob.status !== 'IDLE' && <div className={`sync-summary ${catalogDiscoveryJob.status.toLowerCase()}`}><strong>후보 탐색 {jobStatusLabel[catalogDiscoveryJob.status] ?? catalogDiscoveryJob.status}</strong>{catalogDiscoveryJob.queued !== undefined && <span>발견·갱신 {catalogDiscoveryJob.queued}개</span>}{catalogDiscoveryJob.failures?.length ? <small>일부 공개 목록 {catalogDiscoveryJob.failures.length}곳은 요청 제한으로 건너뛰었습니다. 발견한 후보는 정상 저장되었습니다.</small> : null}{catalogDiscoveryJob.error && <p>{catalogDiscoveryJob.error}</p>}</div>}
           {catalogSyncJob && <div className={`sync-summary ${catalogSyncJob.status.toLowerCase()}`}>
             <strong>{catalogSyncJob.status}</strong>
             <span>자동 등록 {catalogSyncJob.accepted ?? 0} · 검토 {catalogSyncJob.review ?? 0} · 제외 {catalogSyncJob.skipped ?? 0} · 실패 {catalogSyncJob.failed ?? 0}</span>
