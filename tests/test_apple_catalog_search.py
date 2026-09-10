@@ -35,6 +35,43 @@ class AppleCatalogSearchTest(unittest.TestCase):
             "https://cdn.example.test/stardew-apple.jpg",
         )
 
+    def test_excludes_non_game_applications(self):
+        document = {
+            "resultCount": 2,
+            "results": [
+                {
+                    "trackId": 363590051,
+                    "trackName": "Netflix",
+                    "primaryGenreId": 6016,
+                    "primaryGenreName": "Entertainment",
+                },
+                {
+                    "trackId": 1406710800,
+                    "trackName": "Stardew Valley",
+                    "primaryGenreId": 6014,
+                    "primaryGenreName": "Games",
+                },
+            ],
+        }
+        candidates = search.parse_results(json.dumps(document).encode())
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["title"], "Stardew Valley")
+
+    def test_recognizes_games_genre_id_without_localized_name(self):
+        document = {
+            "resultCount": 1,
+            "results": [
+                {
+                    "trackId": 1406710800,
+                    "trackName": "Stardew Valley",
+                    "primaryGenreId": 6014,
+                    "primaryGenreName": "Jeux",
+                },
+            ],
+        }
+        candidates = search.parse_results(json.dumps(document).encode())
+        self.assertEqual(len(candidates), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

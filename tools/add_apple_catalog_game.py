@@ -12,6 +12,7 @@ from urllib.request import urlopen
 import catalog_matcher
 import catalog_storage
 import collect_steam_snapshot as network_support
+import apple_product_metadata
 
 
 class CatalogImportError(ValueError):
@@ -37,16 +38,13 @@ def apple_product(raw: bytes, track_id: str) -> dict:
         platforms.append("iOS")
     if any(str(value).startswith("iPad") for value in supported):
         platforms.append("iPadOS")
-    genres = {str(value).casefold() for value in product.get("genres", [])}
-    primary_genre = str(product.get("primaryGenreName", "")).casefold()
-    is_game = primary_genre in {"games", "게임"} or bool(genres & {"games", "게임"})
     return {
         "title": title.strip(),
         "imageUrl": str(product.get("artworkUrl512") or product.get("artworkUrl100") or ""),
         "developer": str(product.get("sellerName") or product.get("artistName") or ""),
         "priceMinor": price_minor,
         "currency": str(product.get("currency", "")),
-        "isGame": is_game,
+        "isGame": apple_product_metadata.is_game(product),
         "supportsTargetPlatform": bool(platforms),
         "excludedWords": sorted(
             catalog_matcher.normalized_words(title) &

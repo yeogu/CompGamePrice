@@ -40,16 +40,21 @@ class AppleCollectorTest(unittest.TestCase):
         )
 
     def test_rejects_wrong_currency(self):
-        raw = b'{"resultCount":1,"results":[{"trackId":1406710800,"currency":"USD","price":4.99,"supportedDevices":["iPhone"]}]}'
+        raw = b'{"resultCount":1,"results":[{"trackId":1406710800,"primaryGenreId":6014,"currency":"USD","price":4.99,"supportedDevices":["iPhone"]}]}'
         with self.assertRaisesRegex(ValueError, "currency"):
             apple_collector.normalized_row(raw, "1406710800", "stardew-valley")
 
     def test_preserves_explicit_free_price(self):
-        raw = b'{"resultCount":1,"results":[{"trackId":100,"currency":"KRW","price":0,"supportedDevices":["iPhone"]}]}'
+        raw = b'{"resultCount":1,"results":[{"trackId":100,"primaryGenreId":6014,"currency":"KRW","price":0,"supportedDevices":["iPhone"]}]}'
         self.assertEqual(
             apple_collector.normalized_row(raw, "100", "free-game"),
             "100,free-game,0,IPHONE,true",
         )
+
+    def test_rejects_non_game_application(self):
+        raw = b'{"resultCount":1,"results":[{"trackId":100,"primaryGenreId":6016,"primaryGenreName":"Entertainment","currency":"KRW","price":0,"supportedDevices":["iPhone"]}]}'
+        with self.assertRaisesRegex(ValueError, "not categorized as a game"):
+            apple_collector.normalized_row(raw, "100", "not-a-game")
 
 
 if __name__ == "__main__":

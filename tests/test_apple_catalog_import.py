@@ -66,6 +66,22 @@ class AppleCatalogImportTest(unittest.TestCase):
             )
             self.assertEqual(decision["status"], "Rejected")
 
+    def test_rejects_non_game_application(self):
+        document = json.loads(self.raw)
+        document["results"][0]["primaryGenreId"] = 6016
+        document["results"][0]["primaryGenreName"] = "Entertainment"
+        document["results"][0]["genres"] = ["Entertainment"]
+        metadata = catalog_import.apple_product(
+            json.dumps(document).encode(),
+            "1406710800",
+        )
+        decision = catalog_import.catalog_matcher.evaluate(
+            self.catalog["games"][0],
+            metadata,
+        )
+        self.assertEqual(decision["status"], "Rejected")
+        self.assertIn("Store category is not a game", decision["reasons"])
+
     def test_unknown_price_requires_review(self):
         metadata = catalog_import.apple_product(self.raw, "1406710800")
         metadata["priceMinor"] = None

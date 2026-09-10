@@ -9,12 +9,15 @@ from urllib.parse import urlencode
 from urllib.request import urlopen
 
 import collect_steam_snapshot as network_support
+import apple_product_metadata
 
 
 def parse_results(raw: bytes, limit: int = 10) -> list[dict]:
     document = json.loads(raw)
     candidates = []
     for product in document.get("results", []):
+        if not apple_product_metadata.is_game(product):
+            continue
         track_id = product.get("trackId")
         title = product.get("trackName")
         if not isinstance(track_id, int) or not isinstance(title, str):
@@ -57,6 +60,7 @@ def search(query: str, limit: int = 10, timeout: float = 15.0) -> list[dict]:
             "country": "kr",
             "media": "software",
             "entity": "software",
+            "genreId": apple_product_metadata.APPLE_GAMES_GENRE_ID,
             "limit": limit,
         }
     )

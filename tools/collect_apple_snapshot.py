@@ -10,6 +10,7 @@ import tempfile
 from urllib.request import urlopen
 
 import collect_steam_snapshot as network_support
+import apple_product_metadata
 
 
 def apple_targets(catalog: Path) -> list[tuple[str, str]]:
@@ -29,6 +30,8 @@ def normalized_row(raw: bytes, track_id: str, game_id: str) -> str:
     product = document["results"][0]
     if str(product.get("trackId")) != track_id:
         raise ValueError("Apple response track ID mismatch")
+    if not apple_product_metadata.is_game(product):
+        raise ValueError(f"Apple product {track_id} is not categorized as a game")
     if product.get("currency") != "KRW":
         raise ValueError("Apple response currency must be KRW")
     price = product.get("price")
