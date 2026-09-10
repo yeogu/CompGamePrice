@@ -52,9 +52,12 @@ latest_backup_name=$(basename "${latest_backup}")
 sudo "${docker_binary}" run --rm \
     -v "${backup_directory}:/backups:ro" \
     compgameprice_api:latest \
-    python3 /app/tools/database_backup.py restore \
-    --backup "/backups/${latest_backup_name}" \
-    --output /tmp/restore-test.db
+    sh -c '
+        cp "$1" /tmp/source-backup.db
+        python3 /app/tools/database_backup.py restore \
+            --backup /tmp/source-backup.db \
+            --output /tmp/restore-test.db
+    ' sh "/backups/${latest_backup_name}"
 
 echo "[4/7] API 이미지를 빌드합니다."
 sudo "${docker_binary}" build \
