@@ -223,7 +223,12 @@ def search_game_candidates(
 ) -> list[dict]:
     candidates = []
     seen = set()
+    searched_queries = set()
     for query in [game["title"], *game.get("aliases", [])]:
+        normalized_query = " ".join(str(query).split()).casefold()
+        if not normalized_query or normalized_query in searched_queries:
+            continue
+        searched_queries.add(normalized_query)
         results = call_with_retry(
             lambda query=query: searcher(query, 5, timeout),
             max_attempts,
@@ -234,8 +239,6 @@ def search_game_candidates(
             if product_id and product_id not in seen:
                 candidates.append(candidate)
                 seen.add(product_id)
-        if candidates:
-            break
     return candidates
 
 
@@ -250,22 +253,30 @@ def best_candidate(
     retry_counter: list[int],
 ) -> tuple[dict, dict, dict]:
     evaluated = []
+    candidate_errors = []
     priority = {"ApprovedCandidate": 0, "NeedsReview": 1, "Rejected": 2}
     for candidate in candidates:
         product_id = str(candidate["externalProductId"])
-        metadata = candidate_metadata(
-            provider,
-            product_id,
-            fetcher,
-            metadata_parser,
-            timeout,
-            max_attempts,
-            retry_counter,
-        )
+        try:
+            metadata = candidate_metadata(
+                provider,
+                product_id,
+                fetcher,
+                metadata_parser,
+                timeout,
+                max_attempts,
+                retry_counter,
+            )
+        except Exception as error:
+            candidate_errors.append(f"{product_id}: {error}")
+            continue
         decision = catalog_matcher.evaluate(game, metadata)
         evaluated.append((candidate, metadata, decision))
         if decision["status"] == "ApprovedCandidate":
             break
+    if not evaluated:
+        details = "; ".join(candidate_errors)
+        raise RuntimeError(f"All Store candidates failed: {details}")
     return min(evaluated, key=lambda item: priority[item[2]["status"]])
 
 

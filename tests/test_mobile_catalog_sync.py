@@ -92,6 +92,58 @@ class MobileCatalogSyncTest(unittest.TestCase):
         status = sync.synchronization_status(self.database, "GooglePlay")
         self.assertEqual(status["pendingReviews"], [])
 
+    def test_search_combines_localized_title_and_alias_candidates(self):
+        queries = []
+
+        def searcher(query, limit, timeout):
+            del limit
+            del timeout
+            queries.append(query)
+            if query == "Stardew Valley":
+                return [{"externalProductId": "unrelated", "title": "Unrelated"}]
+            return [{"externalProductId": "correct", "title": "Stardew Valley"}]
+
+        candidates = sync.search_game_candidates(
+            catalog_document()["games"][0],
+            searcher,
+            1.0,
+            1,
+            [0],
+        )
+
+        self.assertEqual(queries, ["Stardew Valley", "스타듀 밸리"])
+        self.assertEqual(
+            [candidate["externalProductId"] for candidate in candidates],
+            ["unrelated", "correct"],
+        )
+
+    def test_failed_candidate_does_not_block_later_exact_candidate(self):
+        candidates = [
+            {"externalProductId": "broken", "title": "Stardew Valley"},
+            {"externalProductId": "correct", "title": "Stardew Valley"},
+        ]
+
+        def fetcher(product_id, timeout):
+            del timeout
+            if product_id == "broken":
+                raise ValueError("malformed response")
+            return b"product"
+
+        candidate, metadata, decision = sync.best_candidate(
+            catalog_document()["games"][0],
+            candidates,
+            "GooglePlay",
+            fetcher,
+            approved_metadata,
+            1.0,
+            1,
+            [0],
+        )
+
+        self.assertEqual(candidate["externalProductId"], "correct")
+        self.assertEqual(metadata["title"], "Stardew Valley")
+        self.assertEqual(decision["status"], "ApprovedCandidate")
+
     def test_approved_apple_candidate_is_connected_with_device_platforms(self):
         report = sync.synchronize_provider(
             self.catalog,
@@ -433,7 +485,10 @@ class MobileCatalogSyncTest(unittest.TestCase):
         finally:
             sync.time.sleep = original_sleep
 
-        self.assertEqual(len(attempts), 3)
+        self.assertEqual(
+            attempts,
+            ["Stardew Valley", "Stardew Valley", "Stardew Valley", "스타듀 밸리"],
+        )
         self.assertEqual(report["retries"], 2)
         status = sync.synchronization_status(self.database, "AppleAppStore")
         self.assertEqual(status["recentRuns"][0]["retries"], 2)

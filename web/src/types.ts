@@ -161,6 +161,9 @@ export interface AdminStoreQuality {
   catalogFailed: number
   catalogAddedLast7Days: number
   lastCatalogSyncAt?: string
+  lastPriceCollectionStatus?: 'RUNNING' | 'SUCCEEDED' | 'FAILED'
+  lastPriceCollectionAt?: string
+  lastPriceCollectionError?: string
 }
 export interface PeriodicJobStatus {
   job: 'collection' | 'backup'

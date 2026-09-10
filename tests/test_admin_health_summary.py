@@ -122,6 +122,17 @@ class AdminHealthSummaryTest(unittest.TestCase):
                         '2099-01-01T00:00:00Z', '2099-01-01T00:01:00Z',
                         20, 3, 2, 14, 1
                     );
+                    CREATE TABLE catalog_sync_price_collection(
+                        provider TEXT PRIMARY KEY,
+                        status TEXT,
+                        attempted_at TEXT,
+                        exit_code INTEGER,
+                        error_message TEXT
+                    );
+                    INSERT INTO catalog_sync_price_collection VALUES(
+                        'EpicGamesStore', 'FAILED',
+                        '2026-01-01T01:00:00Z', 1, 'HTTP 403'
+                    );
                     """
                 )
             result = admin_health_summary.summary(catalog, database)
@@ -150,6 +161,13 @@ class AdminHealthSummaryTest(unittest.TestCase):
             self.assertEqual(steam["catalogSkippedOrRejected"], 14)
             self.assertEqual(steam["catalogFailed"], 1)
             self.assertEqual(steam["catalogAddedLast7Days"], 3)
+            epic = next(
+                store
+                for store in result["stores"]
+                if store["store"] == "EpicGamesStore"
+            )
+            self.assertEqual(epic["lastPriceCollectionStatus"], "FAILED")
+            self.assertEqual(epic["lastPriceCollectionError"], "HTTP 403")
 
 
 if __name__ == "__main__":

@@ -18,8 +18,66 @@ PLAYSTATION_PRODUCT = b"""
 </script><span>PS4</span>
 """
 
+MICROSOFT_PRODUCT = json.dumps({
+    "Products": [{
+        "ProductType": "Game",
+        "LocalizedProperties": [{
+            "ProductTitle": "Hades",
+            "DeveloperName": "Supergiant Games",
+            "Images": [],
+        }],
+        "Properties": {
+            "Platforms": ["Windows"],
+            "XboxConsoleGenCompatible": ["ConsoleGen8"],
+            "XboxConsoleGenOptimized": ["ConsoleGen9"],
+        },
+        "DisplaySkuAvailabilities": [{
+            "Availabilities": [{
+                "Actions": ["Purchase"],
+                "OrderManagementData": {
+                    "Price": {
+                        "CurrencyCode": "KRW",
+                        "ListPrice": 26000,
+                    },
+                },
+            }],
+        }],
+    }],
+}).encode("utf-8")
+
 
 class ConsoleCollectorTest(unittest.TestCase):
+    def test_microsoft_collection_uses_catalog_json_metadata(self):
+        catalog = {
+            "games": [{
+                "id": "hades",
+                "products": [{
+                    "store": "MicrosoftStore",
+                    "productId": "9TESTPRODUCT",
+                    "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9TESTPRODUCT",
+                }],
+            }],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            catalog_path = Path(directory) / "catalog.json"
+            output_path = Path(directory) / "snapshot.csv"
+            catalog_path.write_text(json.dumps(catalog), encoding="utf-8")
+            collected, failures = collect_console_snapshot.collect(
+                "MicrosoftStore",
+                catalog_path,
+                output_path,
+                request_delay=0,
+                retry_delay=0,
+                fetcher=lambda *_: MICROSOFT_PRODUCT,
+            )
+
+            self.assertEqual(collected, 1)
+            self.assertEqual(failures, [])
+            self.assertIn(
+                ",WIN|XBOX_ONE|XBOX_SERIES,KR,AVAILABLE",
+                output_path.read_text(),
+            )
+
     def test_collects_registered_product_with_exact_generation(self):
         catalog = {
             "games": [{

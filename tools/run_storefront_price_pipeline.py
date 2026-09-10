@@ -12,6 +12,7 @@ import sys
 import collect_epic_snapshot
 import collect_nintendo_snapshot
 import collect_console_snapshot
+import sync_steam_catalog as collection_status
 
 
 COLLECTORS = {
@@ -57,6 +58,15 @@ def run_pipeline(
             file=sys.stderr,
         )
     if collected == 0:
+        if database is not None:
+            error = collection_error(failures, "No products were collected")
+            collection_status.record_price_collection(
+                database,
+                "FAILED",
+                1,
+                error,
+                store,
+            )
         return 1
     environment = dict(os.environ)
     environment["GAME_PRICE_CATALOG_PATH"] = str(catalog)
@@ -68,8 +78,40 @@ def run_pipeline(
         env=environment,
     )
     if completed.returncode != 0:
+        if database is not None:
+            collection_status.record_price_collection(
+                database,
+                "FAILED",
+                completed.returncode,
+                "C++ snapshot import failed",
+                store,
+            )
         return completed.returncode
-    return 2 if failures else 0
+    result = 2 if failures else 0
+    if database is not None:
+        status = "FAILED" if failures else "SUCCEEDED"
+        error = collection_error(failures, "Partial product collection failure")
+        collection_status.record_price_collection(
+            database,
+            status,
+            result,
+            error if failures else None,
+            store,
+        )
+    return result
+
+
+def collection_error(
+    failures: list[tuple[str, str]],
+    fallback: str,
+) -> str:
+    if not failures:
+        return fallback
+    details = "; ".join(
+        f"{product_id}: {error}"
+        for product_id, error in failures[:5]
+    )
+    return f"{fallback}: {details}"
 
 
 def main() -> int:

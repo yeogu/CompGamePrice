@@ -651,6 +651,7 @@ def record_price_collection(
     status: str,
     exit_code: int | None,
     error_message: str | None = None,
+    provider: str = "Steam",
 ) -> None:
     if status not in {"NOT_REQUIRED", "RUNNING", "SUCCEEDED", "FAILED"}:
         raise ValueError("invalid catalog price collection status")
@@ -667,7 +668,7 @@ def record_price_collection(
                 exit_code = excluded.exit_code,
                 error_message = excluded.error_message
             """,
-            ("Steam", status, utc_now(), exit_code, error_message),
+            (provider, status, utc_now(), exit_code, error_message),
         )
         connection.commit()
 

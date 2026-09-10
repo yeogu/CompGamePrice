@@ -9,10 +9,12 @@ from pathlib import Path
 
 import storefront_catalog
 import storefront_price_support as support
+import search_microsoft_catalog as microsoft_catalog
 
 
 SUPPORTED_STORES = {"PlayStationStore", "MicrosoftStore"}
 PLATFORM_VALUES = {
+    "Windows": "WIN",
     "PlayStation4": "PS4",
     "PlayStation5": "PS5",
     "XboxOne": "XBOX_ONE",
@@ -37,8 +39,10 @@ def fetch_for(store: str):
         product_url: str,
         timeout: float,
     ) -> bytes:
-        del product_id
         del game_id
+        if store == "MicrosoftStore":
+            return microsoft_catalog.fetch_product(product_id, timeout)
+        del product_id
         return storefront_catalog.fetch_product(store, product_url, timeout)
 
     return fetch
@@ -52,11 +56,14 @@ def normalizer_for(store: str):
         product_url: str,
     ) -> str:
         try:
-            metadata = storefront_catalog.verified_product(
-                raw,
-                store,
-                product_url,
-            )
+            if store == "MicrosoftStore":
+                metadata = microsoft_catalog.verified_product(raw, product_id)
+            else:
+                metadata = storefront_catalog.verified_product(
+                    raw,
+                    store,
+                    product_url,
+                )
         except ValueError as error:
             raise support.PermanentCollectionError(str(error)) from error
         price = metadata.get("priceMinor")

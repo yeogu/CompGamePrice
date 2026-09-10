@@ -76,6 +76,9 @@ def store_quality(document: dict, database: Path) -> list[dict]:
             "catalogFailed": 0,
             "catalogAddedLast7Days": 0,
             "lastCatalogSyncAt": None,
+            "lastPriceCollectionStatus": None,
+            "lastPriceCollectionAt": None,
+            "lastPriceCollectionError": None,
         }
         for store in sorted(stores | set(STORE_NAMES))
     }
@@ -165,6 +168,19 @@ def store_quality(document: dict, database: Path) -> list[dict]:
             for store, accepted in rows:
                 if store in result:
                     result[store]["catalogAddedLast7Days"] = accepted
+        if table_exists(connection, "catalog_sync_price_collection"):
+            rows = connection.execute(
+                """
+                SELECT provider, status, attempted_at, error_message
+                FROM catalog_sync_price_collection
+                """
+            ).fetchall()
+            for store, status, attempted_at, error_message in rows:
+                if store not in result:
+                    continue
+                result[store]["lastPriceCollectionStatus"] = status
+                result[store]["lastPriceCollectionAt"] = attempted_at
+                result[store]["lastPriceCollectionError"] = error_message
     return list(result.values())
 
 
