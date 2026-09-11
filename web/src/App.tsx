@@ -1,6 +1,6 @@
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { deleteAccount } from './api'
-import { addAlertRule, addFavorite, confirmPasswordReset, deleteAlertRule, deleteFavorite, disconnectCatalogProduct, getAdminHealthSummary, getAdminUser, getAdminUserAudits, getAdminUsers, getAlertRules, getCatalogAdminStatus, getCatalogChangeAudits, getCatalogCollectionJob, getCatalogDiscoveryJob, getCatalogFilters, getCatalogPriceIntegrity, getCatalogSyncJob, getCollectionRuns, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getMetadataSyncStatus, getMobileCatalogSyncJob, getNotifications, getPreferences, importAppleCatalogGame, importGooglePlayCatalogGame, importSteamCatalogGame, importStorefrontCatalogGame, login, logout, markNotificationRead, register, requestCatalogGame, requestPasswordReset, resolveCatalogSyncReview, resolveMetadataReview, resolveMobileCatalogSyncReview, searchStoreCandidates, sendAdminPasswordReset, startCatalogCollection, startCatalogDiscovery, startCatalogSync, startMetadataSync, startMobileCatalogSync, updateAdminUserStatus, updateCatalogGameMetadata, updatePreferences } from './api'
+import { addAlertRule, addFavorite, confirmPasswordReset, deleteAlertRule, deleteFavorite, disconnectCatalogProduct, getAdminHealthSummary, getAdminUser, getAdminUserAudits, getAdminUsers, getAlertRules, getCatalogAdminStatus, getCatalogChangeAudits, getCatalogCollectionJob, getCatalogDiscoveryJob, getCatalogFilters, getCatalogPriceIntegrity, getCatalogSyncJob, getCollectionRuns, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getMetadataSyncStatus, getMobileCatalogSyncJob, getNotifications, getPreferences, importAppleCatalogGame, importGooglePlayCatalogGame, importSteamCatalogGame, importStorefrontCatalogGame, isAuthenticationError, login, logout, markNotificationRead, register, requestCatalogGame, requestPasswordReset, resolveCatalogSyncReview, resolveMetadataReview, resolveMobileCatalogSyncReview, searchStoreCandidates, sendAdminPasswordReset, startCatalogCollection, startCatalogDiscovery, startCatalogSync, startMetadataSync, startMobileCatalogSync, updateAdminUserStatus, updateCatalogGameMetadata, updatePreferences } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
 import { GameCatalogView, GameDetailView } from './GameViews'
 import GameArtwork from './GameArtwork'
@@ -1609,8 +1609,14 @@ function App() {
     if (oauthSuccess) localStorage.setItem('game-price-session', '1')
     if (oauthSuccess || hash.has('oauth_linked')) window.history.replaceState(null, '', window.location.pathname + window.location.search)
     if (!token) return
-    void refreshAccount(token).catch(() => {
-      localStorage.removeItem('game-price-session'); setToken(''); setUser(null)
+    void refreshAccount(token).catch((reason) => {
+      if (isAuthenticationError(reason)) {
+        localStorage.removeItem('game-price-session')
+        setToken('')
+        setUser(null)
+        return
+      }
+      setError('계정 정보를 일시적으로 불러오지 못했습니다. 로그인 상태는 유지됩니다.')
     })
   }, [token])
 
@@ -2426,7 +2432,7 @@ function App() {
                       <p>{issue.reason}</p>
                       <div className="integrity-actions">
                         {issue.productUrl && <a href={issue.productUrl} target="_blank" rel="noreferrer">Store 확인 ↗</a>}
-                        {guidance.canRecollect && <button disabled={integrityCollectionStarting || catalogJob?.status === 'RUNNING'} onClick={() => void collectIntegrityIssue(issue)}>{integrityCollectionTarget?.productId === issue.productId && integrityCollectionStarting ? '요청 중…' : integrityCollectionTarget?.productId === issue.productId && catalogJob?.status === 'RUNNING' ? '재수집 중…' : '가격 재수집'}</button>}
+                        {guidance.canRecollect && <button disabled={integrityCollectionStarting || catalogJob?.status === 'RUNNING'} onClick={() => void collectIntegrityIssue(issue)}>{integrityCollectionTarget?.store === collectionStoreName(issue.store) && integrityCollectionTarget?.productId === issue.productId && integrityCollectionStarting ? '요청 중…' : integrityCollectionTarget?.store === collectionStoreName(issue.store) && integrityCollectionTarget?.productId === issue.productId && catalogJob?.status === 'RUNNING' ? '재수집 중…' : '가격 재수집'}</button>}
                         {adminSectionForStore(issue.store) && <button onClick={() => findReplacementForIntegrityIssue(issue)}>올바른 상품 찾기</button>}
                         {issue.type !== 'ORPHAN_PRICE' && <button className="danger" disabled={adminImporting} onClick={() => void disconnectAdminProduct(issue.store, issue.productId, issue.gameTitle)}>연결 해제</button>}
                       </div>

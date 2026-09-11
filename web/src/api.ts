@@ -2,6 +2,19 @@ import type { AdminUser, AdminUserAudit, AdminUserPage, AlertRule, AlertRuleType
 
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8080'
 
+export class ApiRequestError extends Error {
+  readonly status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ApiRequestError'
+    this.status = status
+  }
+}
+
+export const isAuthenticationError = (reason: unknown) =>
+  reason instanceof ApiRequestError && reason.status === 401
+
 async function requestJson<T>(path: string, init: RequestInit = {}, token = ''): Promise<T> {
   const response = await fetch(`${apiBaseUrl}${path}`, {
     ...init,
@@ -10,7 +23,10 @@ async function requestJson<T>(path: string, init: RequestInit = {}, token = ''):
   })
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as { error?: string } | null
-    throw new Error(body?.error ?? `API request failed (${response.status})`)
+    throw new ApiRequestError(
+      body?.error ?? `API request failed (${response.status})`,
+      response.status,
+    )
   }
   return response.json() as Promise<T>
 }

@@ -28,9 +28,34 @@ STORE_KEYS = {
     "Apple App Store": "AppleAppStore",
 }
 
+PLATFORM_KEYS = {
+    "Windows": "Windows",
+    "macOS": "macOS",
+    "Linux": "Linux",
+    "Android": "Android",
+    "iOS": "iOS",
+    "iPadOS": "iPadOS",
+    "NintendoSwitch": "NintendoSwitch",
+    "Nintendo Switch": "NintendoSwitch",
+    "NintendoSwitch2": "NintendoSwitch2",
+    "Nintendo Switch 2": "NintendoSwitch2",
+    "PlayStation4": "PlayStation4",
+    "PlayStation 4": "PlayStation4",
+    "PlayStation5": "PlayStation5",
+    "PlayStation 5": "PlayStation5",
+    "XboxOne": "XboxOne",
+    "Xbox One": "XboxOne",
+    "XboxSeries": "XboxSeries",
+    "Xbox Series X|S": "XboxSeries",
+}
+
 
 def store_key(store: str) -> str:
     return STORE_KEYS.get(store, store)
+
+
+def platform_key(platform: str) -> str:
+    return PLATFORM_KEYS.get(platform, platform)
 
 
 def parsed_time(value: str | None) -> datetime | None:
@@ -70,7 +95,7 @@ def database_products(connection: sqlite3.Connection) -> dict[tuple[str, str], d
     products = {}
     for store, product_id, game_id, purchasable, checked_at in rows:
         platforms = {
-            row[0]
+            platform_key(row[0])
             for row in connection.execute(
                 """
                 SELECT platform FROM product_platforms
@@ -146,7 +171,10 @@ def audit(catalog: Path, database: Path, stale_hours: int = 48) -> dict:
                 product,
                 "가격이 48시간 이상 성공적으로 확인되지 않았습니다.",
             ))
-        catalog_platforms = set(product.get("platforms", []))
+        catalog_platforms = {
+            platform_key(platform)
+            for platform in product.get("platforms", [])
+        }
         if catalog_platforms and observed["platforms"] and not (
             catalog_platforms & observed["platforms"]
         ):

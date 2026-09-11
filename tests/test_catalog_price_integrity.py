@@ -115,6 +115,47 @@ class CatalogPriceIntegrityTest(unittest.TestCase):
         ]
         self.assertEqual(mobile_issues, [])
 
+    def test_matches_catalog_and_database_platform_name_variants(self):
+        document = json.loads(self.catalog.read_text(encoding="utf-8"))
+        document["games"].append({
+            "id": "console-game",
+            "title": "Console Game",
+            "platforms": ["NintendoSwitch"],
+            "products": [{
+                "store": "NintendoEShop",
+                "productId": "70010000000000",
+                "productUrl": "https://www.nintendo.com/store/products/console-game-switch/",
+                "platforms": ["NintendoSwitch"],
+                "region": "KR",
+                "edition": "Standard",
+                "offerType": "BaseGame",
+            }],
+        })
+        self.catalog.write_text(json.dumps(document), encoding="utf-8")
+        checked_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        with sqlite3.connect(self.database) as connection:
+            connection.execute(
+                "INSERT INTO store_products VALUES(?, ?, ?, ?, ?)",
+                (
+                    "Nintendo eShop",
+                    "70010000000000",
+                    "console-game",
+                    1,
+                    checked_at,
+                ),
+            )
+            connection.execute(
+                "INSERT INTO product_platforms VALUES(?, ?, ?)",
+                ("Nintendo eShop", "70010000000000", "Nintendo Switch"),
+            )
+        result = integrity.audit(self.catalog, self.database)
+        console_issues = [
+            entry
+            for entry in result["issues"]
+            if entry["productId"] == "70010000000000"
+        ]
+        self.assertEqual(console_issues, [])
+
 
 if __name__ == "__main__":
     unittest.main()
