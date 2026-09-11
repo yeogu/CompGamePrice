@@ -91,6 +91,8 @@ class AdminHealthSummaryTest(unittest.TestCase):
                         error_message TEXT, started_at TEXT
                     );
                     INSERT INTO crawl_runs VALUES(1, 'Steam', 'FAILED', 'timeout', '2026-01-01T00:00:00Z');
+                    INSERT INTO crawl_runs VALUES(2, 'Steam', 'FAILED', 'HTTP 429 Too Many Requests', '2026-01-02T00:00:00Z');
+                    INSERT INTO crawl_runs VALUES(3, 'EpicGamesStore', 'FAILED', 'rate limit exceeded', '2026-01-03T00:00:00Z');
                     CREATE TABLE notification_outbox(
                         notification_id INTEGER PRIMARY KEY, channel TEXT, status TEXT
                     );
@@ -137,7 +139,19 @@ class AdminHealthSummaryTest(unittest.TestCase):
                 )
             result = admin_health_summary.summary(catalog, database)
             self.assertEqual(result["metadata"], {"complete": 1, "incomplete": 1, "total": 2})
-            self.assertEqual(result["collection"]["recentFailures"], 1)
+            self.assertEqual(result["collection"]["recentFailures"], 3)
+            self.assertEqual(
+                result["collection"]["errorCategories"][0]["category"],
+                "RATE_LIMIT",
+            )
+            self.assertEqual(
+                result["collection"]["errorCategories"][0]["count"],
+                2,
+            )
+            self.assertEqual(
+                result["collection"]["errorCategories"][1]["category"],
+                "TIMEOUT",
+            )
             self.assertEqual(result["collection"]["steamPipeline"]["targets"], 40)
             self.assertEqual(result["collection"]["steamPipeline"]["failed"], 1)
             self.assertEqual(

@@ -184,6 +184,14 @@ export interface AdminHealthSummary {
   collection: {
     recentFailures: number
     lastFailure?: { store: string; error?: string; startedAt: string }
+    errorCategories?: Array<{
+      category: 'RATE_LIMIT' | 'TIMEOUT' | 'NETWORK' | 'MALFORMED_RESPONSE' | 'VALIDATION' | 'PROVIDER_UNAVAILABLE' | 'OTHER'
+      label: string
+      count: number
+      latestStore: string
+      latestError?: string
+      latestAt: string
+    }>
     steamPipeline?: {
       startedAt?: string
       finishedAt?: string

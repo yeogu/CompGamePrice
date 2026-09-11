@@ -14,6 +14,7 @@ services:
       GAME_PRICE_API_HOST: 0.0.0.0
       GAME_PRICE_PROJECT_PATH: /app
       GAME_PRICE_TRACKER_PATH: /app/game_price_tracker
+      COLLECTION_LOCK_PATH: /data/.collection-scheduler.lock
       COLLECTION_STATUS_PATH: /data/collection-scheduler-status.json
       BACKUP_STATUS_PATH: /data/backup-scheduler-status.json
       GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}

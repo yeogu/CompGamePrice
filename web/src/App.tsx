@@ -214,6 +214,16 @@ const collectionStoreName = (store: string) => {
   return names[store] ?? store
 }
 
+const collectionFailureGuidance: Record<string, string> = {
+  RATE_LIMIT: '요청 제한이 풀린 뒤 해당 Store만 다시 수집하세요. 반복되면 배치 크기를 줄이세요.',
+  TIMEOUT: 'Store 응답이 늦었습니다. 네트워크 상태를 확인한 뒤 해당 Store만 다시 수집하세요.',
+  NETWORK: 'DNS와 외부 연결 상태를 확인한 뒤 해당 Store만 다시 수집하세요.',
+  MALFORMED_RESPONSE: 'Store 응답 형식이 바뀌었을 수 있습니다. 상세 오류와 collector 로그를 확인하세요.',
+  VALIDATION: '가격을 저장하기 전에 거부된 데이터입니다. 데이터 정합성에서 상품 연결을 검토하세요.',
+  PROVIDER_UNAVAILABLE: '판매 종료 또는 잘못된 상품 URL인지 확인한 뒤 상품을 다시 연결하세요.',
+  OTHER: '상세 오류와 collector 로그를 확인한 뒤 해당 Store만 다시 수집하세요.',
+}
+
 const adminSectionForStore = (store: string): AdminSection | null => {
   const sections: Record<string, AdminSection> = {
     Steam: 'steam',
@@ -1074,6 +1084,22 @@ function App() {
     }
   }
 
+  const retryCollectionStore = async (store: string) => {
+    const storeName = collectionStoreName(store)
+    setCollectionStatusError('')
+    try {
+      setCatalogJob(await startCatalogCollection(storeName))
+      setActionMessage(`${storeName} 가격 재수집을 시작했습니다.`)
+    } catch (reason) {
+      setCollectionStatusError(reason instanceof Error ? reason.message : '가격 재수집을 시작하지 못했습니다.')
+    }
+  }
+
+  const openIntegrityWorkspace = () => {
+    navigate('admin')
+    selectAdminSection('integrity')
+  }
+
   const openAdminProductWorkspace = () => {
     window.setTimeout(() => {
       document.getElementById('admin-product-workspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -1466,8 +1492,10 @@ function App() {
     const timer = window.setInterval(() => {
       void getCatalogCollectionJob().then((job) => {
         setCatalogJob(job)
-        if (job.status === 'SUCCEEDED') {
-          setActionMessage(`${job.store ?? 'Store'} 가격 수집과 정합성 검사가 완료되었습니다.`)
+        if (job.status === 'SUCCEEDED' || job.status === 'FAILED') {
+          setActionMessage(job.status === 'SUCCEEDED'
+            ? `${job.store ?? 'Store'} 가격 수집과 정합성 검사가 완료되었습니다.`
+            : `${job.store ?? 'Store'} 가격 수집에 실패했습니다. 수집 이력에서 원인을 확인하세요.`)
           void getCollectionRuns().then(setCollectionRuns)
           void getCatalogPriceIntegrity().then(setPriceIntegrity)
           void getAdminHealthSummary().then(setAdminHealth)
@@ -1909,6 +1937,7 @@ function App() {
                 <small className="platform-badge-list catalog-platform-icons">{game.platforms.map((platform) => <PlatformBadge compact iconOnly key={platform} platform={platform} />)}</small>
                 <span>{game.genres.join(' · ') || '장르 정보 수집 중'}</span>
                 <span className="catalog-price-row"><em>{catalogPriceStatus(game)}</em>{game.priceStatus === 'Available' && game.maxDiscountPercent !== undefined && game.maxDiscountPercent > 0 && <b>-{game.maxDiscountPercent}%</b>}</span>
+                <small className={`catalog-freshness ${game.priceStatus === 'Stale' ? 'stale' : ''}`}>{game.priceStatus === 'Available' && game.lastUpdatedAt ? `가격 확인 ${new Date(game.lastUpdatedAt).toLocaleDateString('ko-KR')}` : game.priceStatus === 'Stale' ? '오래된 가격은 비교에서 제외됨' : '가격 확인 대기 중'}</small>
               </button>
             ))}
           </div>
@@ -2171,12 +2200,14 @@ function App() {
         {collectionStatusError && <p className="status-message error-text">{collectionStatusError}</p>}
         {!collectionStatusError && collectionRuns.length === 0 && <p className="empty-state">아직 저장된 수집 실행이 없습니다.</p>}
         {adminHealth?.collection.steamPipeline && <section className="collection-section"><h2>Steam 최근 배치</h2><div className="collection-summary-grid"><article><strong>처리 범위</strong><span>{adminHealth.collection.steamPipeline.targets} / {adminHealth.collection.steamPipeline.catalogTargets}</span></article><article><strong>성공</strong><span>{adminHealth.collection.steamPipeline.collected}건</span></article><article><strong>실패</strong><span>{adminHealth.collection.steamPipeline.failed}건</span></article><article><strong>재시도</strong><span>{adminHealth.collection.steamPipeline.retryCount}회</span></article></div>{adminHealth.collection.steamPipeline.lastError && <p className="status-message error-text">최근 오류: {adminHealth.collection.steamPipeline.lastError}</p>}</section>}
+        {(adminHealth?.collection.errorCategories?.length ?? 0) > 0 && <section className="collection-section"><h2>최근 실패 원인</h2><div className="collection-error-grid">{adminHealth?.collection.errorCategories?.map((failure) => <article key={failure.category}><header><strong>{failure.label}</strong><b>{failure.count}건</b></header><span><StoreBadge compact store={collectionStoreName(failure.latestStore)} /> · {new Date(failure.latestAt).toLocaleString('ko-KR')}</span><p>{collectionFailureGuidance[failure.category]}</p>{failure.latestError && <details><summary>최근 오류 보기</summary><code>{failure.latestError}</code></details>}<div className="collection-recovery-actions">{failure.category === 'VALIDATION' ? <button onClick={openIntegrityWorkspace}>정합성 검토</button> : <button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void retryCollectionStore(failure.latestStore)}>이 Store만 재수집</button>}</div></article>)}</div></section>}
         {collectionRuns.length > 0 && <>
           <section className="collection-section"><h2>Store별 최신 상태</h2><div className="collection-latest-grid">{latestCollectionRuns.map((run) => <article key={run.id} className={`collection-run ${run.status.toLowerCase()}`}>
             <span className="status-dot" /><StoreBadge compact store={collectionStoreName(run.store)} /><span>{run.status === 'SUCCEEDED' ? '성공' : run.status === 'FAILED' ? '실패' : '실행 중'}</span>
             <small>{run.gameId ? `게임 ${run.gameId} · ` : ''}{new Date(run.startedAt).toLocaleString('ko-KR')}</small>
             <small>수집 {run.productsFound} · 검증 거부 {run.productsRejected} · 실패 {run.productsFailed}{run.retryCount > 0 ? ` · 재시도 ${run.retryCount}` : ''}</small>
             {run.errorMessage && <p>{run.errorMessage}</p>}
+            {(run.status === 'FAILED' || run.productsFailed > 0 || run.productsRejected > 0) && <div className="collection-recovery-actions"><button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void retryCollectionStore(run.store)}>이 Store만 재수집</button>{run.productsRejected > 0 && <button className="secondary" onClick={openIntegrityWorkspace}>거부 항목 검토</button>}</div>}
           </article>)}</div></section>
           <section className="collection-section"><h2>최근 {collectionRuns.length}회 요약</h2><div className="collection-summary-grid"><article><strong>성공</strong><span>{collectionTotals.succeeded}회</span></article><article><strong>실패</strong><span>{collectionTotals.failed}회</span></article><article><strong>검증 거부</strong><span>{collectionTotals.rejected}건</span></article><article><strong>재시도</strong><span>{collectionTotals.retries}회</span></article></div></section>
           <section className="collection-section"><div className="collection-history-heading"><h2>상세 실행 이력</h2><div className="collection-filters"><label>Store<select value={collectionStoreFilter} onChange={(event) => setCollectionStoreFilter(event.target.value)}><option value="ALL">전체</option>{collectionStores.map((store) => <option key={store} value={store}>{collectionStoreName(store)}</option>)}</select></label><label>결과<select value={collectionResultFilter} onChange={(event) => setCollectionResultFilter(event.target.value)}><option value="ALL">전체</option><option value="SUCCEEDED">성공</option><option value="FAILED">실패</option><option value="RUNNING">실행 중</option></select></label></div></div>

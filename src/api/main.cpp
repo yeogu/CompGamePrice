@@ -26,6 +26,9 @@
 #include <stdexcept>
 #include <string>
 #include <map>
+#include <fcntl.h>
+#include <sys/file.h>
+#include <unistd.h>
 
 namespace {
 
@@ -284,6 +287,37 @@ std::filesystem::path trackerPath() {
     return value.empty()
         ? projectPath() / "build/game_price_tracker"
         : std::filesystem::path(value);
+}
+
+std::filesystem::path collectionLockPath() {
+    const auto value = env("COLLECTION_LOCK_PATH");
+    return value.empty()
+        ? std::filesystem::path("/tmp/dealquest-collection.lock")
+        : std::filesystem::path(value);
+}
+
+int acquireCollectionLock() {
+    const auto path = collectionLockPath();
+    const auto descriptor = ::open(
+        path.c_str(),
+        O_CREAT | O_WRONLY | O_CLOEXEC,
+        0644);
+    if (descriptor < 0) {
+        return -1;
+    }
+    if (::flock(descriptor, LOCK_EX | LOCK_NB) == 0) {
+        return descriptor;
+    }
+    ::close(descriptor);
+    return -1;
+}
+
+void releaseCollectionLock(int descriptor) {
+    if (descriptor < 0) {
+        return;
+    }
+    ::flock(descriptor, LOCK_UN);
+    ::close(descriptor);
 }
 
 bool catalogAdminEnabled() {
@@ -630,13 +664,19 @@ public:
         if (status_ == "RUNNING") {
             return false;
         }
+        const auto lockDescriptor = acquireCollectionLock();
+        if (lockDescriptor < 0) {
+            return false;
+        }
         ++id_;
         store_ = store;
         status_ = "RUNNING";
         error_.clear();
         integrityIssueCount_ = 0;
         const auto selectedStore = store_;
-        std::thread([this, selectedStore]() { run(selectedStore); }).detach();
+        std::thread([this, selectedStore, lockDescriptor]() {
+            run(selectedStore, lockDescriptor);
+        }).detach();
         return true;
     }
 
@@ -654,7 +694,7 @@ public:
     }
 
 private:
-    void run(const std::string& store) {
+    void run(const std::string& store, int lockDescriptor) {
         const auto project = projectPath();
         std::string pipeline;
         std::string pipelineArguments;
@@ -698,6 +738,7 @@ private:
         if (exitCode != 0) {
             error_ = store + " collection pipeline failed";
         }
+        releaseCollectionLock(lockDescriptor);
     }
 
     mutable std::mutex mutex_;

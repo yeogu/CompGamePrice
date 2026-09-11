@@ -126,6 +126,7 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .collection-run { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px 9px; padding: 12px; background: #0c1912; border-radius: 10px; }
 .collection-run small { grid-column: 2 / -1; color: #82968b; }
 .collection-run p { grid-column: 1 / -1; margin: 5px 0 0; color: #ffb4a8; font-size: 0.8rem; }
+.collection-run .collection-recovery-actions { grid-column: 1 / -1; }
 .status-dot { width: 9px; height: 9px; background: #f6c85f; border-radius: 50%; }
 .collection-run.succeeded .status-dot { background: #73e2a7; }
 .collection-run.failed .status-dot { background: #ff7b6b; }
@@ -136,6 +137,17 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .collection-summary-grid article { display: grid; gap: 7px; padding: 16px; background: #0c1912; border: 1px solid #263c31; border-radius: 11px; }
 .collection-summary-grid strong { color: #91a79b; font-size: .78rem; }
 .collection-summary-grid span { color: #eaf5ee; font-size: 1.3rem; font-weight: 800; }
+.collection-error-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; }
+.collection-error-grid article { display: grid; align-content: start; gap: 9px; padding: 16px; background: #0c1912; border: 1px solid #633a34; border-radius: 11px; }
+.collection-error-grid header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.collection-error-grid header b { color: #ffb4a8; }
+.collection-error-grid article > span, .collection-error-grid p { margin: 0; color: #91a79b; font-size: .76rem; }
+.collection-error-grid details { color: #ffb4a8; font-size: .73rem; }
+.collection-error-grid code { display: block; max-height: 100px; margin-top: 7px; overflow: auto; white-space: pre-wrap; }
+.collection-recovery-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+.collection-recovery-actions button { padding: 7px 10px; color: #07110d; background: #73e2a7; border: 0; border-radius: 7px; font-size: .72rem; font-weight: 800; }
+.collection-recovery-actions button.secondary { color: #b9f2d2; background: #172a20; border: 1px solid #315141; }
+.collection-recovery-actions button:disabled { cursor: wait; opacity: .55; }
 .collection-history-heading { display: flex; align-items: end; justify-content: space-between; gap: 18px; }
 .collection-filters { display: flex; gap: 8px; }
 .collection-filters label { display: grid; gap: 4px; color: #82968b; font-size: .7rem; }
@@ -176,6 +188,8 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .artwork-admin-panel button.secondary { color: #b8cbbf; background: #172a20; border: 1px solid #315141; }
 .catalog-price-row { display: flex; align-items: center; gap: 8px; }
 .catalog-price-row b { padding: 3px 7px; color: #07110d; background: #73e2a7; border-radius: 999px; font-size: .7rem; }
+.game-list button .catalog-freshness { color: #82968b; font-size: .62rem; font-weight: 500; }
+.game-list button .catalog-freshness.stale { color: #f6c85f; }
 .game-list button.selected { box-shadow: 0 0 0 3px rgba(115, 226, 167, 0.25); }
 .game-list button:disabled { cursor: wait; opacity: 0.72; }
 

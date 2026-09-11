@@ -27,6 +27,23 @@ STORE_NAMES = (
 )
 
 
+def collection_error_category(message: str | None) -> tuple[str, str]:
+    normalized = (message or "").lower()
+    if "429" in normalized or "rate limit" in normalized or "too many requests" in normalized:
+        return "RATE_LIMIT", "요청 제한"
+    if "timeout" in normalized or "timed out" in normalized:
+        return "TIMEOUT", "시간 초과"
+    if "resolve" in normalized or "network" in normalized or "connection" in normalized:
+        return "NETWORK", "네트워크 연결"
+    if "parse" in normalized or "malformed" in normalized or "invalid response" in normalized:
+        return "MALFORMED_RESPONSE", "응답 형식"
+    if "validation" in normalized or "rejected" in normalized:
+        return "VALIDATION", "데이터 검증"
+    if "403" in normalized or "404" in normalized or "unavailable" in normalized:
+        return "PROVIDER_UNAVAILABLE", "Store 응답"
+    return "OTHER", "기타"
+
+
 def table_exists(connection: sqlite3.Connection, table: str) -> bool:
     return connection.execute(
         "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
@@ -187,7 +204,12 @@ def store_quality(document: dict, database: Path) -> list[dict]:
 def collection_summary(database: Path) -> dict:
     pipeline = steam_pipeline_summary(database)
     if not database.exists():
-        return {"recentFailures": 0, "lastFailure": None, "steamPipeline": pipeline}
+        return {
+            "recentFailures": 0,
+            "lastFailure": None,
+            "errorCategories": [],
+            "steamPipeline": pipeline,
+        }
     with sqlite3.connect(database) as connection:
         table = connection.execute(
             """
@@ -196,7 +218,12 @@ def collection_summary(database: Path) -> dict:
             """
         ).fetchone()
         if table is None:
-            return {"recentFailures": 0, "lastFailure": None, "steamPipeline": pipeline}
+            return {
+                "recentFailures": 0,
+                "lastFailure": None,
+                "errorCategories": [],
+                "steamPipeline": pipeline,
+            }
         failures = connection.execute(
             """
             SELECT store, error_message, started_at
@@ -206,6 +233,21 @@ def collection_summary(database: Path) -> dict:
             LIMIT 20
             """
         ).fetchall()
+    categories: dict[str, dict] = {}
+    for store, error, started_at in failures:
+        category, label = collection_error_category(error)
+        current = categories.setdefault(
+            category,
+            {
+                "category": category,
+                "label": label,
+                "count": 0,
+                "latestStore": store,
+                "latestError": error,
+                "latestAt": started_at,
+            },
+        )
+        current["count"] += 1
     return {
         "recentFailures": len(failures),
         "lastFailure": None if not failures else {
@@ -213,6 +255,10 @@ def collection_summary(database: Path) -> dict:
             "error": failures[0][1],
             "startedAt": failures[0][2],
         },
+        "errorCategories": sorted(
+            categories.values(),
+            key=lambda item: (-item["count"], item["label"]),
+        ),
         "steamPipeline": pipeline,
     }
 
