@@ -205,6 +205,8 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .result-heading > .game-artwork { width: clamp(220px, 24vw, 360px); height: auto; flex: 0 1 360px; margin: 0; border-radius: 16px; }
 .result-heading > .game-artwork img { position: static; height: auto; object-fit: contain; }
 .favorite-button { padding: 10px 13px; color: #b7f4d2; background: #13271d; border: 1px solid #315141; border-radius: 10px; font-weight: 800; white-space: nowrap; }
+.favorite-button.active { color: #241b09; background: #f6c85f; border-color: #f6c85f; box-shadow: 0 0 0 4px rgba(246, 200, 95, .16); }
+.favorite-button.active:hover { background: #ffd978; border-color: #ffd978; }
 .game-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: -8px 0 24px; }
 .game-summary div { display: grid; gap: 5px; padding: 14px; background: #0b1812; border: 1px solid #213a2d; border-radius: 11px; }
 .game-summary span { color: #82968b; font-size: .76rem; }

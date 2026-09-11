@@ -2034,8 +2034,12 @@ function App() {
                 {isMobileFreeOffer(report.cheapest.store, report.cheapest.price) && <small>인앱 결제가 필요할 수 있음</small>}
               </div>
             )}
-            <button className="favorite-button" onClick={() => void toggleFavorite()}>
-              {favorites.some((game) => game.id === report.game.id) ? '★ 관심 게임' : '☆ 관심 게임 추가'}
+            <button
+              className={`favorite-button ${favorites.some((game) => game.id === report.game.id) ? 'active' : ''}`}
+              aria-pressed={favorites.some((game) => game.id === report.game.id)}
+              onClick={() => void toggleFavorite()}
+            >
+              {favorites.some((game) => game.id === report.game.id) ? '★ 관심 게임 등록됨' : '☆ 관심 게임 추가'}
             </button>
           </div>
 
