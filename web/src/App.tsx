@@ -15,6 +15,13 @@ const formatMoney = (money: Money) =>
     maximumFractionDigits: 0,
   }).format(money.minorAmount)
 
+const isMobileFreeOffer = (store: string, money: Money) =>
+  (store === 'Google Play' || store === 'Apple App Store') &&
+  money.minorAmount === 0
+
+const offerPriceLabel = (store: string, money: Money) =>
+  isMobileFreeOffer(store, money) ? '무료 다운로드' : formatMoney(money)
+
 const catalogPriceStatus = (game: GameSummary) => {
   if (game.priceStatus === 'Stale') {
     return '가격 갱신 필요'
@@ -2000,7 +2007,7 @@ function App() {
 
       {activeView === 'games' && selectedGameId && <GameDetailView error={detailError} loading={loading && !report} onBack={closeGameDetail}>
       {report && <section className="inline-alert-card">
-        <div><strong>{report.game.title} 가격 알림</strong><span>{selectedPlatform || '모든 플랫폼'}{report.cheapest ? ` · 현재 ${formatMoney(report.cheapest.price)}` : ''}</span></div>
+        <div><strong>{report.game.title} 가격 알림</strong><span>{selectedPlatform || '모든 플랫폼'}{report.cheapest ? ` · 현재 ${offerPriceLabel(report.cheapest.store, report.cheapest.price)}` : ''}</span></div>
         <input type="number" min="0" value={targetPrice} onChange={(event) => setTargetPrice(event.target.value)} placeholder="목표 가격(KRW)" />
         {user ? <button onClick={() => void createRule('BelowTargetPrice')}>목표가 알림</button> : <button onClick={() => openAuth('login')}>로그인하고 알림 받기</button>}
       </section>}
@@ -2022,8 +2029,9 @@ function App() {
             {report.cheapest && (
               <div className="best-summary">
                 <span>현재 최저가</span>
-                <strong>{formatMoney(report.cheapest.price)}</strong>
+                <strong>{offerPriceLabel(report.cheapest.store, report.cheapest.price)}</strong>
                 <StoreBadge compact store={report.cheapest.store} />
+                {isMobileFreeOffer(report.cheapest.store, report.cheapest.price) && <small>인앱 결제가 필요할 수 있음</small>}
               </div>
             )}
             <button className="favorite-button" onClick={() => void toggleFavorite()}>
@@ -2070,7 +2078,8 @@ function App() {
                   <p className="offer-meta">
                     {product.region} · {product.edition} · {product.offerType}
                   </p>
-                  <strong className="price">{formatMoney(product.price)}</strong>
+                  <strong className="price">{offerPriceLabel(product.store, product.price)}</strong>
+                  {isMobileFreeOffer(product.store, product.price) && <p className="iap-notice"><strong>인앱 결제 안내</strong><span>다운로드는 무료지만 체험판이거나 전체 콘텐츠 이용에 별도 인앱 결제가 필요할 수 있습니다.</span></p>}
                   {product.regularPrice && product.discountPercent > 0 && (
                     <div className="discount-summary">
                       <span className="discount-rate">{product.discountPercent}% 할인</span>
@@ -2364,7 +2373,7 @@ function App() {
           {pendingCandidate?.productUrl && <p><a href={pendingCandidate.productUrl} target="_blank" rel="noreferrer">Store 상품 페이지에서 직접 확인 ↗</a></p>}
           {adminResult.game.matchedProduct?.developer && <p><strong>개발사</strong> {adminResult.game.matchedProduct.developer}</p>}
           {adminResult.game.matchDecision?.priceStatus && <p><strong>가격 상태</strong> {catalogPriceStatusLabel(adminResult.game.matchDecision.priceStatus)}</p>}
-          {adminResult.game.matchedProduct?.priceMinor !== undefined && adminResult.game.matchedProduct.priceMinor !== null && <p><strong>현재 가격</strong> {adminResult.game.matchedProduct.priceMinor === 0 ? '무료' : `${adminResult.game.matchedProduct.priceMinor.toLocaleString('ko-KR')} ${adminResult.game.matchedProduct.currency}`}</p>}
+          {adminResult.game.matchedProduct?.priceMinor !== undefined && adminResult.game.matchedProduct.priceMinor !== null && <p><strong>현재 가격</strong> {adminResult.game.matchedProduct.priceMinor === 0 ? adminStore === 'Google Play' || adminStore === 'Apple App Store' ? '무료 다운로드 · 인앱 결제 가능' : '무료' : `${adminResult.game.matchedProduct.priceMinor.toLocaleString('ko-KR')} ${adminResult.game.matchedProduct.currency}`}</p>}
           {adminImporting && <p className="admin-feedback progress" role="status">Store 상품을 확인하고 카탈로그에 연결하는 중입니다. 잠시만 기다려주세요.</p>}
           {adminError && <p className="admin-feedback error" role="alert"><strong>연결하지 못했습니다.</strong><span>{adminError}</span><small>Store 상품 페이지와 canonical Game ID를 확인한 뒤 다시 시도하세요.</small></p>}
           {adminResult.applied && !adminError && <p className="admin-feedback success" role="status"><strong>카탈로그 연결 완료</strong><span>{adminStore} 상품이 {adminResult.game.title}에 연결되었습니다.</span></p>}
