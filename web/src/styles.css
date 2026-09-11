@@ -479,6 +479,13 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .integrity-panel > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .integrity-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; margin: 18px 0; padding: 14px; background: #101f18; border-radius: 10px; }
 .integrity-summary small { margin-left: auto; color: #82968b; }
+.integrity-collection-status { display: grid; gap: 5px; margin: 0 0 18px; padding: 14px 16px; color: #d7e7de; background: #16271e; border: 1px solid #a8863d; border-radius: 10px; }
+.integrity-collection-status strong { color: #f2d99b; }
+.integrity-collection-status small { color: #ffb4a8; }
+.integrity-collection-status.succeeded { border-color: #39835a; }
+.integrity-collection-status.succeeded strong { color: #73e2a7; }
+.integrity-collection-status.failed { border-color: #b85b5b; }
+.integrity-collection-status.failed strong { color: #ffb4a8; }
 .integrity-groups { display: grid; gap: 18px; }
 .integrity-store-group { overflow: hidden; border: 1px solid #315141; border-radius: 14px; }
 .integrity-store-group > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; background: #101f18; }

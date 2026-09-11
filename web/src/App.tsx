@@ -374,6 +374,13 @@ function App() {
   const [adminGameId, setAdminGameId] = useState('')
   const [adminResult, setAdminResult] = useState<CatalogAdminResult | null>(null)
   const [catalogJob, setCatalogJob] = useState<CatalogCollectionJob | null>(null)
+  const [integrityCollectionTarget, setIntegrityCollectionTarget] = useState<{
+    store: string
+    productId: string
+    gameTitle: string
+  } | null>(null)
+  const [integrityCollectionStarting, setIntegrityCollectionStarting] = useState(false)
+  const [integrityCollectionError, setIntegrityCollectionError] = useState('')
   const [catalogDiscoveryJob, setCatalogDiscoveryJob] = useState<CatalogDiscoveryJob | null>(null)
   const [catalogSyncJob, setCatalogSyncJob] = useState<CatalogSyncJob | null>(null)
   const [catalogSyncBatchSize, setCatalogSyncBatchSize] = useState(20)
@@ -1108,11 +1115,22 @@ function App() {
 
   const collectIntegrityIssue = async (issue: CatalogPriceIntegrityIssue) => {
     setAdminError('')
+    setIntegrityCollectionError('')
+    setIntegrityCollectionTarget({
+      store: collectionStoreName(issue.store),
+      productId: issue.productId,
+      gameTitle: issue.gameTitle,
+    })
+    setIntegrityCollectionStarting(true)
     try {
       setCatalogJob(await startCatalogCollection(collectionStoreName(issue.store)))
       setActionMessage(`${collectionStoreName(issue.store)} 가격 재수집을 시작했습니다.`)
     } catch (reason) {
-      setAdminError(reason instanceof Error ? reason.message : '가격 재수집을 시작하지 못했습니다.')
+      const message = reason instanceof Error ? reason.message : '가격 재수집을 시작하지 못했습니다.'
+      setIntegrityCollectionError(message)
+      setAdminError(message)
+    } finally {
+      setIntegrityCollectionStarting(false)
     }
   }
 
@@ -2372,6 +2390,11 @@ function App() {
             <span className={priceIntegrity.issueCount > 0 ? 'warning' : ''}>문제 {priceIntegrity.issueCount}건</span>
             <small>검사 시각 {new Date(priceIntegrity.checkedAt).toLocaleString('ko-KR')}</small>
           </div>}
+          {integrityCollectionTarget && <div className={`integrity-collection-status ${integrityCollectionError || catalogJob?.status === 'FAILED' ? 'failed' : catalogJob?.status === 'SUCCEEDED' ? 'succeeded' : 'running'}`} role={integrityCollectionError || catalogJob?.status === 'FAILED' ? 'alert' : 'status'} aria-live="polite">
+            <strong>{integrityCollectionTarget.gameTitle} · {integrityCollectionTarget.store}</strong>
+            <span>{integrityCollectionStarting ? '재수집을 요청하는 중입니다…' : integrityCollectionError ? '가격 재수집을 시작하지 못했습니다.' : catalogJob?.status === 'RUNNING' ? '가격을 다시 수집하고 있습니다. 완료되면 정합성 목록을 자동으로 갱신합니다.' : catalogJob?.status === 'SUCCEEDED' ? '가격 재수집이 완료되었습니다. 갱신된 정합성 결과를 확인하세요.' : catalogJob?.status === 'FAILED' ? '가격 재수집에 실패했습니다.' : '가격 재수집 상태를 확인하고 있습니다.'}</span>
+            {(integrityCollectionError || catalogJob?.error) && <small>{integrityCollectionError || catalogJob?.error}</small>}
+          </div>}
           <div className="integrity-groups">
             {groupedIntegrityIssues.map((storeGroup) => <section className="integrity-store-group" key={storeGroup.store}>
               <header>
@@ -2402,7 +2425,7 @@ function App() {
                       <p>{issue.reason}</p>
                       <div className="integrity-actions">
                         {issue.productUrl && <a href={issue.productUrl} target="_blank" rel="noreferrer">Store 확인 ↗</a>}
-                        {guidance.canRecollect && <button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectIntegrityIssue(issue)}>가격 재수집</button>}
+                        {guidance.canRecollect && <button disabled={integrityCollectionStarting || catalogJob?.status === 'RUNNING'} onClick={() => void collectIntegrityIssue(issue)}>{integrityCollectionTarget?.productId === issue.productId && integrityCollectionStarting ? '요청 중…' : integrityCollectionTarget?.productId === issue.productId && catalogJob?.status === 'RUNNING' ? '재수집 중…' : '가격 재수집'}</button>}
                         {adminSectionForStore(issue.store) && <button onClick={() => findReplacementForIntegrityIssue(issue)}>올바른 상품 찾기</button>}
                         {issue.type !== 'ORPHAN_PRICE' && <button className="danger" disabled={adminImporting} onClick={() => void disconnectAdminProduct(issue.store, issue.productId, issue.gameTitle)}>연결 해제</button>}
                       </div>
