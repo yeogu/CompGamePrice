@@ -28,22 +28,23 @@ def parse_results(raw: bytes, limit: int = 10) -> list[dict]:
             platforms.append("iOS")
         if any(str(value).startswith("iPad") for value in supported):
             platforms.append("iPadOS")
-        candidates.append(
-            {
-                "store": "Apple App Store",
-                "externalProductId": str(track_id),
-                "title": title,
-                "imageUrl": product.get("artworkUrl512") or product.get("artworkUrl100", ""),
-                "developer": product.get("sellerName", ""),
-                "priceMinor": product.get("price"),
-                "currency": product.get("currency", ""),
-                "productUrl": product.get(
-                    "trackViewUrl",
-                    f"https://apps.apple.com/app/id{track_id}",
-                ),
-                "platforms": platforms,
-            }
-        )
+        candidate = {
+            "store": "Apple App Store",
+            "externalProductId": str(track_id),
+            "title": title,
+            "imageUrl": product.get("artworkUrl512") or product.get("artworkUrl100", ""),
+            "developer": product.get("sellerName", ""),
+            "currency": product.get("currency", ""),
+            "productUrl": product.get(
+                "trackViewUrl",
+                f"https://apps.apple.com/app/id{track_id}",
+            ),
+            "platforms": platforms,
+        }
+        price = product.get("price")
+        if isinstance(price, (int, float)) and not isinstance(price, bool):
+            candidate["priceMinor"] = price
+        candidates.append(candidate)
         if len(candidates) >= limit:
             break
     return candidates

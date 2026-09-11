@@ -72,6 +72,21 @@ class AppleCatalogSearchTest(unittest.TestCase):
         candidates = search.parse_results(json.dumps(document).encode())
         self.assertEqual(len(candidates), 1)
 
+    def test_omits_null_price_from_candidate(self):
+        document = {
+            "resultCount": 1,
+            "results": [
+                {
+                    "trackId": 1406710800,
+                    "trackName": "Stardew Valley",
+                    "primaryGenreId": 6014,
+                    "price": None,
+                },
+            ],
+        }
+        candidate = search.parse_results(json.dumps(document).encode())[0]
+        self.assertNotIn("priceMinor", candidate)
+
 
 if __name__ == "__main__":
     unittest.main()

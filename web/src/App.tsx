@@ -1273,7 +1273,7 @@ function App() {
     try {
       setAdminCandidates(await searchStoreCandidates(adminStore, adminQuery.trim()))
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Store 상품을 검색하지 못했습니다.')
+      setAdminError(reason instanceof Error ? reason.message : 'Store 상품을 검색하지 못했습니다.')
     } finally {
       setAdminSearching(false)
     }
@@ -2330,7 +2330,8 @@ function App() {
           <input aria-label="Store 게임 이름" value={adminQuery} onChange={(event) => setAdminQuery(event.target.value)} placeholder="예: Sekiro" />
           <button disabled={!adminQuery.trim() || adminSearching} onClick={() => void searchCatalogCandidates()}>{adminSearching ? '검색 중…' : 'Store 검색'}</button>
         </div>}
-        {adminCandidates.length > 0 && <div className="candidate-list">{adminCandidates.map((candidate) => <button key={`${candidate.store}:${candidate.externalProductId}`} onClick={() => chooseCatalogCandidate(candidate)}><GameArtwork compact imageUrl={candidate.imageUrl} title={candidate.title} /><strong>{candidate.title}</strong><span className="candidate-badges"><StoreBadge compact store={candidate.store} />{candidate.platforms.map((platform) => <PlatformBadge compact key={platform} platform={platform} />)}</span>{candidate.platforms.length === 0 && <small>플랫폼 확인 필요</small>}{candidate.developer && <small>{candidate.developer}</small>}<small>상품 ID {candidate.externalProductId}{candidate.priceMinor !== undefined ? ` · ${candidate.priceMinor.toLocaleString('ko-KR')} ${candidate.currency}` : ''}</small></button>)}</div>}
+        {adminError && <p className="admin-feedback error" role="alert">{adminError}</p>}
+        {adminCandidates.length > 0 && <div className="candidate-list">{adminCandidates.map((candidate) => <button key={`${candidate.store}:${candidate.externalProductId}`} onClick={() => chooseCatalogCandidate(candidate)}><GameArtwork compact imageUrl={candidate.imageUrl} title={candidate.title} /><strong>{candidate.title}</strong><span className="candidate-badges"><StoreBadge compact store={candidate.store} />{(candidate.platforms ?? []).map((platform) => <PlatformBadge compact key={platform} platform={platform} />)}</span>{(candidate.platforms ?? []).length === 0 && <small>플랫폼 확인 필요</small>}{candidate.developer && <small>{candidate.developer}</small>}<small>상품 ID {candidate.externalProductId}{typeof candidate.priceMinor === 'number' && Number.isFinite(candidate.priceMinor) ? ` · ${candidate.priceMinor.toLocaleString('ko-KR')} ${candidate.currency ?? ''}` : ' · 가격 확인 필요'}</small></button>)}</div>}
         {pendingCandidate && !adminResult && <div className="candidate-confirmation">
           <div><strong>{pendingCandidate.title}</strong><span>상품 ID {pendingCandidate.externalProductId}</span></div>
           <label>영문 게임명 또는 Canonical Game ID
