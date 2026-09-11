@@ -1,16 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { PointerEvent } from 'react'
 import type { Money, PriceObservation, ProductPriceHistory } from './types'
-
-const storeStyles: Record<string, { color: string }> = {
-  Steam: { color: '#66c0f4' },
-  'Epic Games Store': { color: '#c7a6ff' },
-  'Google Play': { color: '#73e2a7' },
-  'Apple App Store': { color: '#f4a261' },
-  'Nintendo eShop': { color: '#e60012' },
-}
-
-const fallbackStyle = { color: '#c7a6ff' }
+import { storeAccentColor } from './VisualBadges'
 
 const formatMoney = (money: Money) =>
   new Intl.NumberFormat('ko-KR', {
@@ -48,14 +39,14 @@ function PointShape({ point, store, onPointer, onLeave }: {
   onPointer: (event: PointerEvent<SVGElement>, store: string, observation: PriceObservation) => void
   onLeave: () => void
 }) {
-  const style = storeStyles[store] ?? fallbackStyle
+  const color = storeAccentColor(store)
   const events = {
     onPointerEnter: (event: PointerEvent<SVGElement>) => onPointer(event, store, point.observation),
     onPointerMove: (event: PointerEvent<SVGElement>) => onPointer(event, store, point.observation),
     onPointerDown: (event: PointerEvent<SVGElement>) => onPointer(event, store, point.observation),
     onPointerLeave: onLeave,
   }
-  return <circle {...events} className="trend-point" cx={point.x} cy={point.y} r="7" stroke={style.color} />
+  return <circle {...events} className="trend-point" cx={point.x} cy={point.y} r="7" stroke={color} />
 }
 
 function PriceHistoryChart({ histories }: Props) {
@@ -138,17 +129,13 @@ function PriceHistoryChart({ histories }: Props) {
   return (
     <section className="trend-panel">
       <div className="trend-heading">
-        <div>
-          <p className="eyebrow">PRICE HISTORY</p>
-          <h2>Store 가격 추이 비교</h2>
-        </div>
         <div className="store-legend" aria-label="표시할 Store 선택">
           {comparable.map((history) => {
-            const style = storeStyles[history.store] ?? fallbackStyle
+            const color = storeAccentColor(history.store)
             const active = !hiddenStores.has(history.store)
             return (
               <button aria-pressed={active} className={active ? 'active' : ''} key={history.store} onClick={() => toggleStore(history.store)}>
-                <span className="legend-shape" style={{ borderColor: style.color, backgroundColor: active ? style.color : 'transparent' }} />
+                <span className="legend-shape" style={{ borderColor: color, backgroundColor: active ? color : 'transparent' }} />
                 {history.store}
               </button>
             )
@@ -169,10 +156,10 @@ function PriceHistoryChart({ histories }: Props) {
               <line className="grid-line" x1="30" x2="610" y1="30" y2="30" />
               <line className="grid-line" x1="30" x2="610" y1="210" y2="210" />
               {chart.series.map((series) => {
-                const style = storeStyles[series.store] ?? fallbackStyle
+                const color = storeAccentColor(series.store)
                 return (
                   <g aria-label={series.store} key={series.store}>
-                    {series.points.length > 1 && <polyline className="trend-line" points={series.points.map((point) => `${point.x},${point.y}`).join(' ')} stroke={style.color} />}
+                    {series.points.length > 1 && <polyline className="trend-line" points={series.points.map((point) => `${point.x},${point.y}`).join(' ')} stroke={color} />}
                     {series.points.map((point, index) => (
                       <PointShape
                         key={`${series.store}-${index}`}
@@ -188,7 +175,7 @@ function PriceHistoryChart({ histories }: Props) {
             </svg>
             {tooltip && (
               <div className="chart-tooltip" role="status" style={{ left: tooltip.left, top: tooltip.top }}>
-                <span style={{ color: (storeStyles[tooltip.store] ?? fallbackStyle).color }}>
+                <span style={{ color: storeAccentColor(tooltip.store) }}>
                   {tooltip.store}
                 </span>
                 <strong>{formatMoney(tooltip.observation.price)}</strong>
@@ -211,10 +198,10 @@ function PriceHistoryChart({ histories }: Props) {
           <div className="latest-price-list">
             {chart.series.map((series) => {
               const latest = series.observations[series.observations.length - 1]
-              const style = storeStyles[series.store] ?? fallbackStyle
+              const color = storeAccentColor(series.store)
               return (
                 <div key={series.store}>
-                  <span><i style={{ backgroundColor: style.color }} />{series.store}</span>
+                  <span><i style={{ backgroundColor: color }} />{series.store}</span>
                   <time dateTime={latest.observedAt}>{formatDate(latest.observedAt)}</time>
                   <strong>
                     {formatMoney(latest.price)}

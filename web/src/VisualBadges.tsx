@@ -53,30 +53,33 @@ const platformVisuals: Record<string, PlatformVisual> = {
   MetaQuest: { icon: Gamepad2, label: 'Meta Quest', marker: 'VR', tone: 'meta-quest' },
 }
 
-const storeVisuals: Record<string, { label?: string, tone: string }> = {
-  Steam: { tone: 'steam' },
-  'Epic Games Store': { tone: 'epic-games' },
-  EpicGamesStore: { label: 'Epic Games Store', tone: 'epic-games' },
-  'Nintendo eShop': { tone: 'nintendo-eshop' },
-  NintendoEShop: { label: 'Nintendo eShop', tone: 'nintendo-eshop' },
-  'Google Play': { tone: 'google-play' },
-  GooglePlay: { label: 'Google Play', tone: 'google-play' },
-  'Apple App Store': { tone: 'apple-app-store' },
-  AppleAppStore: { label: 'Apple App Store', tone: 'apple-app-store' },
-  'PlayStation Store': { tone: 'playstation-store' },
-  PlayStationStore: { label: 'PlayStation Store', tone: 'playstation-store' },
-  'Microsoft Store': { tone: 'microsoft-store' },
-  MicrosoftStore: { label: 'Microsoft Store', tone: 'microsoft-store' },
-  'Ubisoft Store': { tone: 'ubisoft-store' },
-  UbisoftStore: { label: 'Ubisoft Store', tone: 'ubisoft-store' },
-  GOG: { tone: 'gog' },
-  'Meta Quest Store': { tone: 'meta-quest-store' },
-  MetaQuestStore: { label: 'Meta Quest Store', tone: 'meta-quest-store' },
-  'EA app': { tone: 'ea-app' },
-  EAApp: { label: 'EA app', tone: 'ea-app' },
-  'Battle.net': { tone: 'battle-net' },
-  BattleNet: { label: 'Battle.net', tone: 'battle-net' },
+const storeVisuals: Record<string, { accent: string, label?: string, tone: string }> = {
+  Steam: { accent: '#9dd8ff', tone: 'steam' },
+  'Epic Games Store': { accent: '#eeeeee', tone: 'epic-games' },
+  EpicGamesStore: { accent: '#eeeeee', label: 'Epic Games Store', tone: 'epic-games' },
+  'Nintendo eShop': { accent: '#ffb3b8', tone: 'nintendo-eshop' },
+  NintendoEShop: { accent: '#ffb3b8', label: 'Nintendo eShop', tone: 'nintendo-eshop' },
+  'Google Play': { accent: '#8fe6a8', tone: 'google-play' },
+  GooglePlay: { accent: '#8fe6a8', label: 'Google Play', tone: 'google-play' },
+  'Apple App Store': { accent: '#c8bfff', tone: 'apple-app-store' },
+  AppleAppStore: { accent: '#c8bfff', label: 'Apple App Store', tone: 'apple-app-store' },
+  'PlayStation Store': { accent: '#d8e9ff', tone: 'playstation-store' },
+  PlayStationStore: { accent: '#d8e9ff', label: 'PlayStation Store', tone: 'playstation-store' },
+  'Microsoft Store': { accent: '#dff7d7', tone: 'microsoft-store' },
+  MicrosoftStore: { accent: '#dff7d7', label: 'Microsoft Store', tone: 'microsoft-store' },
+  'Ubisoft Store': { accent: '#dbeaff', tone: 'ubisoft-store' },
+  UbisoftStore: { accent: '#dbeaff', label: 'Ubisoft Store', tone: 'ubisoft-store' },
+  GOG: { accent: '#e7c9ff', tone: 'gog' },
+  'Meta Quest Store': { accent: '#9ad9ff', tone: 'meta-quest-store' },
+  MetaQuestStore: { accent: '#9ad9ff', label: 'Meta Quest Store', tone: 'meta-quest-store' },
+  'EA app': { accent: '#ffb59f', tone: 'ea-app' },
+  EAApp: { accent: '#ffb59f', label: 'EA app', tone: 'ea-app' },
+  'Battle.net': { accent: '#9bcfff', tone: 'battle-net' },
+  BattleNet: { accent: '#9bcfff', label: 'Battle.net', tone: 'battle-net' },
 }
+
+export const storeAccentColor = (store: string) =>
+  storeVisuals[store]?.accent ?? '#dcebe3'
 
 export const PlatformBadge = ({ compact = false, iconOnly = false, label, platform }: PlatformBadgeProps) => {
   const visual = platformVisuals[platform] ?? { icon: Gamepad2, tone: 'other' }
@@ -97,7 +100,7 @@ export const PlatformBadge = ({ compact = false, iconOnly = false, label, platfo
 }
 
 export const StoreBadge = ({ compact = false, label, store }: StoreBadgeProps) => {
-  const visual = storeVisuals[store] ?? { tone: 'other' }
+  const visual = storeVisuals[store] ?? { accent: '#dcebe3', tone: 'other' }
   const displayLabel = label ?? visual.label ?? store
 
   return <span className={`visual-store-badge ${visual.tone}${compact ? ' compact' : ''}`} data-store={store}>
