@@ -11,6 +11,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import collect_epic_snapshot as epic
 import collect_nintendo_snapshot as nintendo
+import collect_ubisoft_snapshot as ubisoft
 import storefront_price_support as support
 
 
@@ -71,6 +72,16 @@ class StorefrontPriceCollectorsTest(unittest.TestCase):
             row,
             "70010000033128,hades,28600,17160,40,SWITCH,KR,AVAILABLE,SUPPORTED",
         )
+
+    def test_ubisoft_normalizes_official_json_ld_price(self):
+        raw = b'''<script type="application/ld+json">
+        {"@type":"Product","name":"Hades","offers":[
+        {"price":"26000","priceCurrency":"KRW"}]}</script>'''
+        block = ubisoft.normalized_block(
+            raw, "660e5a03fbff4e2940488bcd", "hades",
+            "https://store.ubisoft.com/kr/hades/660e5a03fbff4e2940488bcd.html")
+        self.assertIn("current_price_krw: 26000", block)
+        self.assertIn("compatible_os: WIN", block)
 
     def test_nintendo_rejects_final_price_above_regular_price(self):
         raw = b'''<meta itemprop="priceCurrency" content="KRW"><script>

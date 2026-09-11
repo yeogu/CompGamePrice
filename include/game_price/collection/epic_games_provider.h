@@ -10,7 +10,9 @@ namespace game_price {
 
 class EpicGamesProvider final : public StoreProductProvider {
 public:
-    explicit EpicGamesProvider(const std::string& dataPath);
+    explicit EpicGamesProvider(
+        const std::string& dataPath,
+        Store store = Store::EpicGamesStore);
     Store store() const noexcept override;
     std::vector<StoreProduct> findProducts(const std::string& gameId) const override;
     std::vector<ProviderRejection> findRejections(
@@ -29,6 +31,7 @@ private:
 
     std::vector<RawProduct> products_;
     std::vector<ProviderRejection> rejections_;
+    Store store_;
 };
 
 }  // namespace game_price

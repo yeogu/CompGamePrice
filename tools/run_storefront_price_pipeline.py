@@ -12,6 +12,7 @@ import sys
 import collect_epic_snapshot
 import collect_nintendo_snapshot
 import collect_console_snapshot
+import collect_ubisoft_snapshot
 import sync_steam_catalog as collection_status
 
 
@@ -35,6 +36,11 @@ COLLECTORS = {
         collect_console_snapshot,
         "microsoft_store_products.csv",
         "collect-microsoft-all",
+    ),
+    "UbisoftStore": (
+        collect_ubisoft_snapshot,
+        "ubisoft_store_products.txt",
+        "collect-ubisoft-all",
     ),
 }
 

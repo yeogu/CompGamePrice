@@ -24,6 +24,7 @@ STORE_NAMES = (
     "NintendoEShop",
     "PlayStationStore",
     "MicrosoftStore",
+    "UbisoftStore",
 )
 
 

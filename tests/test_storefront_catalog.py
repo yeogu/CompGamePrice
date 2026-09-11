@@ -51,6 +51,14 @@ MICROSOFT_PRODUCT = b"""
 </script><div>Xbox Series X|S</div>
 """
 
+UBISOFT_PRODUCT = b"""
+<html><head><meta property="og:image" content="/images/hades.jpg" />
+<script type="application/ld+json">
+{"@type":"Product","name":"Hades","brand":{"name":"Ubisoft"},
+ "offers":[{"price":"26000","priceCurrency":"KRW"}]}
+</script></head></html>
+"""
+
 
 class StorefrontCatalogTest(unittest.TestCase):
     def test_parses_epic_and_nintendo_search_results(self):
@@ -73,6 +81,33 @@ class StorefrontCatalogTest(unittest.TestCase):
                 "EpicGamesStore",
                 "https://example.com/p/hades",
             )
+
+    def test_parses_ubisoft_product_identity_and_krw_price(self):
+        url = "https://store.ubisoft.com/kr/hades/660e5a03fbff4e2940488bcd.html"
+        self.assertEqual(
+            storefront_catalog.product_id_from_url("UbisoftStore", url),
+            "660e5a03fbff4e2940488bcd",
+        )
+        metadata = storefront_catalog.verified_product(
+            UBISOFT_PRODUCT, "UbisoftStore", url)
+        self.assertEqual(metadata["priceMinor"], 26000)
+        self.assertEqual(metadata["currency"], "KRW")
+        self.assertEqual(metadata["platforms"], ["Windows"])
+        self.assertEqual(
+            metadata["imageUrl"],
+            "https://store.ubisoft.com/images/hades.jpg",
+        )
+
+    def test_ubisoft_search_prioritizes_matching_title(self):
+        raw = b'''<a href="/kr/other/111111111111111111111111.html">Other</a>
+        <a href="/kr/hades/222222222222222222222222.html">Hades</a>'''
+        original_fetch = storefront_catalog.fetch
+        storefront_catalog.fetch = lambda url, timeout: raw
+        try:
+            results = storefront_catalog.search("UbisoftStore", "Hades", 1)
+        finally:
+            storefront_catalog.fetch = original_fetch
+        self.assertEqual(results[0]["title"], "Hades")
 
     def test_distinguishes_playstation_console_generation(self):
         metadata = storefront_catalog.verified_product(

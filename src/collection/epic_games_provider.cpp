@@ -8,7 +8,11 @@
 
 namespace game_price {
 
-EpicGamesProvider::EpicGamesProvider(const std::string& dataPath) {
+EpicGamesProvider::EpicGamesProvider(const std::string& dataPath, Store store)
+    : store_(store) {
+    if (store != Store::EpicGamesStore && store != Store::UbisoftStore) {
+        throw std::invalid_argument("PC storefront provider requires Epic or Ubisoft");
+    }
     std::ifstream input(dataPath);
     if (!input) throw std::runtime_error("Cannot open Epic Games data: " + dataPath);
 
@@ -72,7 +76,7 @@ std::vector<ProviderRejection> EpicGamesProvider::findRejections(
 }
 
 Store EpicGamesProvider::store() const noexcept {
-    return Store::EpicGamesStore;
+    return store_;
 }
 
 std::vector<StoreProduct> EpicGamesProvider::findProducts(
@@ -86,7 +90,7 @@ std::vector<StoreProduct> EpicGamesProvider::findProducts(
             else if (os == "MAC") platforms.push_back(Platform::MacOS);
         }
         result.push_back(StoreProduct{
-            raw.offerId, raw.gameId, Store::EpicGamesStore, std::move(platforms),
+            raw.offerId, raw.gameId, store_, std::move(platforms),
             Money{raw.currentPriceWon, Currency::KRW}, raw.active, std::nullopt,
             Money{raw.regularPriceWon, Currency::KRW}, raw.discountPercent,
             Region::KR, GameEdition::Standard, OfferType::BaseGame});

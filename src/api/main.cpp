@@ -612,7 +612,8 @@ Json::Value runCatalogAuditList(int limit) {
 Json::Value runStoreSearch(const std::string& store, const std::string& query) {
     std::lock_guard<std::mutex> toolLock(catalogToolMutex());
     if (store != "Steam" && store != "Google Play" &&
-        store != "Apple App Store" && store != "Nintendo eShop") {
+        store != "Apple App Store" && store != "Nintendo eShop" &&
+        store != "Ubisoft Store") {
         throw std::invalid_argument("store is not supported yet");
     }
     const auto temporary = std::filesystem::temp_directory_path() /
@@ -624,11 +625,15 @@ Json::Value runStoreSearch(const std::string& store, const std::string& query) {
         scriptName = "tools/search_google_play_catalog.py";
     } else if (store == "Apple App Store") {
         scriptName = "tools/search_apple_catalog.py";
-    } else {
+    } else if (store == "Nintendo eShop") {
         scriptName = "tools/search_nintendo_catalog.py";
+    } else {
+        scriptName = "tools/search_storefront_catalog.py";
     }
     const auto script = projectPath() / scriptName;
-    const auto command = "python3 " + shellQuoted(script.string()) +
+    auto command = "python3 " + shellQuoted(script.string());
+    if (store == "Ubisoft Store") command += " --store UbisoftStore";
+    command +=
         " --query " + shellQuoted(query) +
         " > " + shellQuoted(temporary.string()) + " 2>&1";
     const auto exitCode = std::system(command.c_str());
@@ -714,6 +719,9 @@ private:
         } else if (store == "Microsoft Store") {
             pipeline = "tools/run_storefront_price_pipeline.py";
             pipelineArguments = " --store MicrosoftStore";
+        } else if (store == "Ubisoft Store") {
+            pipeline = "tools/run_storefront_price_pipeline.py";
+            pipelineArguments = " --store UbisoftStore";
         } else {
             pipeline = "tools/run_steam_pipeline.py";
         }
@@ -2121,6 +2129,7 @@ int main() {
                     "NintendoEShop",
                     "PlayStationStore",
                     "MicrosoftStore",
+                    "UbisoftStore",
                 };
                 if (supportedStores.count(store) == 0 || productId.empty()) {
                     callback(jsonError(
@@ -2377,7 +2386,8 @@ int main() {
                 if ((store != "EpicGamesStore" &&
                      store != "NintendoEShop" &&
                      store != "PlayStationStore" &&
-                     store != "MicrosoftStore") ||
+                     store != "MicrosoftStore" &&
+                     store != "UbisoftStore") ||
                     productUrl.empty() ||
                     !validCanonicalGameId(gameId)) {
                     callback(jsonError(
@@ -2442,7 +2452,8 @@ int main() {
                     store != "Nintendo eShop" && store != "Google Play" &&
                     store != "Apple App Store" &&
                     store != "PlayStation Store" &&
-                    store != "Microsoft Store") {
+                    store != "Microsoft Store" &&
+                    store != "Ubisoft Store") {
                     callback(jsonError(
                         drogon::k400BadRequest,
                         "unsupported collection store"));

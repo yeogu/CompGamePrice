@@ -23,6 +23,7 @@ STORE_PRIORITY = (
     "NintendoEShop",
     "GooglePlay",
     "AppleAppStore",
+    "UbisoftStore",
 )
 
 

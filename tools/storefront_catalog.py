@@ -51,6 +51,14 @@ STORE_CONFIG = {
         "productPath": "/games/store/",
         "platforms": ["XboxOne", "XboxSeries"],
     },
+    "UbisoftStore": {
+        "display": "Ubisoft Store",
+        "hosts": ["store.ubisoft.com"],
+        "search": "https://store.ubisoft.com/kr/games",
+        "searchParameters": {},
+        "productPath": "/kr/",
+        "platforms": ["Windows"],
+    },
 }
 
 
@@ -85,6 +93,13 @@ def product_id_from_url(store: str, product_url: str) -> str:
         if len(parts) < 2:
             raise ValueError("invalid Microsoft Store product URL")
         return parts[-1]
+    if store == "UbisoftStore":
+        if len(parts) < 3 or parts[0] != "kr":
+            raise ValueError("invalid Ubisoft Store product URL")
+        identifier = parts[-1].removesuffix(".html")
+        if not re.fullmatch(r"[0-9a-f]{24}", identifier):
+            raise ValueError("invalid Ubisoft Store product URL")
+        return identifier
     if not parts:
         raise ValueError("invalid Nintendo eShop product URL")
     identifier = parts[-1].removesuffix(".html")
@@ -140,6 +155,8 @@ class StoreSearchParser(HTMLParser):
         title = self.current["title"].strip()
         if not title:
             title = " ".join("".join(self.text).split())
+        if self.store == "UbisoftStore" and title.startswith("상품으로 이동:"):
+            title = title.split(":", 1)[1].strip()
         if title and len(title) <= 200 and "{" not in title and "}" not in title:
             self.current["title"] = title
             self.identifiers.add(self.current["externalProductId"])
@@ -193,7 +210,20 @@ def search(store: str, query: str, limit: int = 10, timeout: float = 15.0) -> li
     parameters = dict(settings["searchParameters"])
     parameters["q"] = query.strip()
     url = f"{settings['search']}?{urlencode(parameters)}"
-    return parse_search_results(fetch(url, timeout), store, limit)
+    parse_limit = 200 if store == "UbisoftStore" else limit
+    results = parse_search_results(fetch(url, timeout), store, parse_limit)
+    if store == "UbisoftStore":
+        query_words = catalog_matcher.normalized_words(query)
+        normalized_query = " ".join(str(query).casefold().split())
+        results.sort(
+            key=lambda candidate: (
+                " ".join(candidate["title"].casefold().split()) != normalized_query,
+                len(catalog_matcher.normalized_words(candidate["title"]) ^ query_words),
+                -len(query_words & catalog_matcher.normalized_words(candidate["title"])),
+                candidate["title"].casefold(),
+            )
+        )
+    return results[:limit]
 
 
 class ProductDocumentParser(HTMLParser):
@@ -360,6 +390,7 @@ def verified_product(raw: bytes, store: str, product_url: str) -> dict:
     image_url = named_value(product.get("image"))
     if not image_url:
         image_url = parser.meta.get("og:image", "").strip()
+    image_url = urljoin(product_url, image_url)
     return {
         "productId": product_id,
         "title": title,

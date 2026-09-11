@@ -26,6 +26,8 @@ STORE_KEYS = {
     "Google Play": "GooglePlay",
     "AppleAppStore": "AppleAppStore",
     "Apple App Store": "AppleAppStore",
+    "UbisoftStore": "UbisoftStore",
+    "Ubisoft Store": "UbisoftStore",
 }
 
 PLATFORM_KEYS = {
