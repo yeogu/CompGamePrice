@@ -89,6 +89,7 @@ Platform platformFromString(const std::string& value) {
     if (value == "PlayStation5") return Platform::PlayStation5;
     if (value == "XboxOne") return Platform::XboxOne;
     if (value == "XboxSeries") return Platform::XboxSeries;
+    if (value == "MetaQuest") return Platform::MetaQuest;
     throw std::runtime_error("Unsupported Game Catalog platform: " + value);
 }
 
@@ -100,6 +101,11 @@ Store storeFromString(const std::string& value) {
     if (value == "MicrosoftStore") return Store::MicrosoftStore;
     if (value == "GooglePlay") return Store::GooglePlay;
     if (value == "AppleAppStore") return Store::AppleAppStore;
+    if (value == "UbisoftStore") return Store::UbisoftStore;
+    if (value == "GOG") return Store::GOG;
+    if (value == "MetaQuestStore") return Store::MetaQuestStore;
+    if (value == "EAApp") return Store::EAApp;
+    if (value == "BattleNet") return Store::BattleNet;
     throw std::runtime_error("Unsupported Game Catalog Store: " + value);
 }
 

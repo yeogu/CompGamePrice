@@ -88,6 +88,11 @@ Store parseStore(const std::string& value) {
     if (value == "Microsoft Store") return Store::MicrosoftStore;
     if (value == "Google Play") return Store::GooglePlay;
     if (value == "Apple App Store") return Store::AppleAppStore;
+    if (value == "Ubisoft Store") return Store::UbisoftStore;
+    if (value == "GOG") return Store::GOG;
+    if (value == "Meta Quest Store") return Store::MetaQuestStore;
+    if (value == "EA app") return Store::EAApp;
+    if (value == "Battle.net") return Store::BattleNet;
     throw std::runtime_error("Unknown Store value in database: " + value);
 }
 
@@ -104,6 +109,7 @@ Platform parsePlatform(const std::string& value) {
     if (value == "PlayStation 5") return Platform::PlayStation5;
     if (value == "Xbox One") return Platform::XboxOne;
     if (value == "Xbox Series X|S") return Platform::XboxSeries;
+    if (value == "Meta Quest") return Platform::MetaQuest;
     throw std::runtime_error("Unknown Platform value in database: " + value);
 }
 
@@ -139,6 +145,10 @@ CompatibilityStatus parseCompatibilityStatus(const std::string& value) {
 
 Currency parseCurrency(const std::string& value) {
     if (value == "KRW") return Currency::KRW;
+    if (value == "USD") return Currency::USD;
+    if (value == "EUR") return Currency::EUR;
+    if (value == "GBP") return Currency::GBP;
+    if (value == "JPY") return Currency::JPY;
     throw std::runtime_error("Unknown Currency value in database: " + value);
 }
 
@@ -202,8 +212,8 @@ void validatePriceObservation(const PriceObservation& observation) {
     if (!isUtcTimestamp(observation.observedAt)) {
         throw std::invalid_argument("Price observation timestamp must be UTC");
     }
-    if (observation.price.currency != Currency::KRW ||
-        observation.price.minorAmount < 0 ||
+    const auto currency = toString(observation.price.currency);
+    if (currency == "Unknown Currency" || observation.price.minorAmount < 0 ||
         observation.price.minorAmount > MaximumSupportedPriceMinor) {
         throw std::invalid_argument("Price observation contains an invalid price");
     }

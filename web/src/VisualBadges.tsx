@@ -49,6 +49,8 @@ const platformVisuals: Record<string, PlatformVisual> = {
   PlayStation5: { icon: Gamepad2, label: 'PlayStation 5', marker: '5', tone: 'playstation' },
   XboxOne: { icon: Gamepad2, label: 'Xbox One', marker: '1', tone: 'xbox' },
   XboxSeries: { icon: Gamepad2, label: 'Xbox Series X|S', marker: 'X|S', tone: 'xbox' },
+  'Meta Quest': { icon: Gamepad2, marker: 'VR', tone: 'meta-quest' },
+  MetaQuest: { icon: Gamepad2, label: 'Meta Quest', marker: 'VR', tone: 'meta-quest' },
 }
 
 const storeVisuals: Record<string, { label?: string, tone: string }> = {
@@ -65,6 +67,15 @@ const storeVisuals: Record<string, { label?: string, tone: string }> = {
   PlayStationStore: { label: 'PlayStation Store', tone: 'playstation-store' },
   'Microsoft Store': { tone: 'microsoft-store' },
   MicrosoftStore: { label: 'Microsoft Store', tone: 'microsoft-store' },
+  'Ubisoft Store': { tone: 'ubisoft-store' },
+  UbisoftStore: { label: 'Ubisoft Store', tone: 'ubisoft-store' },
+  GOG: { tone: 'gog' },
+  'Meta Quest Store': { tone: 'meta-quest-store' },
+  MetaQuestStore: { label: 'Meta Quest Store', tone: 'meta-quest-store' },
+  'EA app': { tone: 'ea-app' },
+  EAApp: { label: 'EA app', tone: 'ea-app' },
+  'Battle.net': { tone: 'battle-net' },
+  BattleNet: { label: 'Battle.net', tone: 'battle-net' },
 }
 
 export const PlatformBadge = ({ compact = false, iconOnly = false, label, platform }: PlatformBadgeProps) => {

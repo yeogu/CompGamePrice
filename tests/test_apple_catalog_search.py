@@ -87,6 +87,18 @@ class AppleCatalogSearchTest(unittest.TestCase):
         candidate = search.parse_results(json.dumps(document).encode())[0]
         self.assertNotIn("priceMinor", candidate)
 
+    def test_recognizes_mac_app_store_game(self):
+        document = {"results": [{
+            "trackId": 42,
+            "trackName": "Mac Game",
+            "primaryGenreId": 6014,
+            "kind": "mac-software",
+            "price": 9900,
+            "currency": "KRW",
+        }]}
+        candidate = search.parse_results(json.dumps(document).encode())[0]
+        self.assertEqual(candidate["platforms"], ["macOS"])
+
 
 if __name__ == "__main__":
     unittest.main()

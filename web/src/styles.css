@@ -64,6 +64,7 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .platform-badge.nintendo { color: #ffacae; border-color: #81393c; background: #351719; }
 .platform-badge.playstation { color: #8cbcff; border-color: #315a91; background: #14243c; }
 .platform-badge.xbox { color: #9ae586; border-color: #3e7332; background: #192d15; }
+.platform-badge.meta-quest { color: #9ad9ff; border-color: #28698c; background: #102a39; }
 .visual-store-badge.steam { color: #9dd8ff; border-color: #285c78; background: #102632; }
 .visual-store-badge.epic-games { color: #eeeeee; border-color: #555; background: #292929; }
 .visual-store-badge.nintendo-eshop { color: #ffb3b8; border-color: #81393c; background: #351719; }
@@ -71,6 +72,11 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .visual-store-badge.apple-app-store { color: #c8bfff; border-color: #594e9d; background: #24203f; }
 .visual-store-badge.playstation-store { color: #d8e9ff; border-color: #2868b2; background: #102a55; }
 .visual-store-badge.microsoft-store { color: #dff7d7; border-color: #4b9b45; background: #18391c; }
+.visual-store-badge.ubisoft-store { color: #dbeaff; border-color: #52749e; background: #17283d; }
+.visual-store-badge.gog { color: #e7c9ff; border-color: #76509a; background: #2d1c3c; }
+.visual-store-badge.meta-quest-store { color: #9ad9ff; border-color: #28698c; background: #102a39; }
+.visual-store-badge.ea-app { color: #ffb59f; border-color: #944f3d; background: #3a1c17; }
+.visual-store-badge.battle-net { color: #9bcfff; border-color: #3479aa; background: #10283b; }
 .platform-filter button .platform-badge { padding: 0; color: inherit; background: transparent; border: 0; }
 .catalog-filter-panel { display: grid; gap: 18px; padding: 18px; background: rgba(16, 31, 24, .72); border: 1px solid #263c31; border-radius: 16px; }
 .catalog-filter-group { min-width: 0; margin: 0; padding: 0; border: 0; }

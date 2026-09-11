@@ -51,6 +51,13 @@ class AppleCollectorTest(unittest.TestCase):
             "100,free-game,0,IPHONE,true",
         )
 
+    def test_collects_mac_app_store_game(self):
+        raw = b'{"resultCount":1,"results":[{"trackId":100,"primaryGenreId":12006,"kind":"mac-software","currency":"KRW","price":9900}]}'
+        self.assertEqual(
+            apple_collector.normalized_row(raw, "100", "mac-game"),
+            "100,mac-game,9900,MAC,true",
+        )
+
     def test_rejects_non_game_application(self):
         raw = b'{"resultCount":1,"results":[{"trackId":100,"primaryGenreId":6016,"primaryGenreName":"Entertainment","currency":"KRW","price":0,"supportedDevices":["iPhone"]}]}'
         with self.assertRaisesRegex(ValueError, "not categorized as a game"):

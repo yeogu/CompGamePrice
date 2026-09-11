@@ -11,7 +11,12 @@ enum class Store {
     PlayStationStore,
     MicrosoftStore,
     GooglePlay,
-    AppleAppStore
+    AppleAppStore,
+    UbisoftStore,
+    GOG,
+    MetaQuestStore,
+    EAApp,
+    BattleNet
 };
 
 enum class Platform {
@@ -26,12 +31,11 @@ enum class Platform {
     PlayStation4,
     PlayStation5,
     XboxOne,
-    XboxSeries
+    XboxSeries,
+    MetaQuest
 };
 
-enum class Currency {
-    KRW
-};
+enum class Currency { KRW, USD, EUR, GBP, JPY };
 
 enum class Region {
     KR

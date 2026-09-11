@@ -26,7 +26,7 @@ AppleAppStoreProvider::AppleAppStoreProvider(const std::string& dataPath) {
                 throw std::runtime_error("unexpected field count");
             }
             for (const auto& family : split(fields[3], '+')) {
-                if (family != "IPHONE" && family != "IPAD") {
+                if (family != "IPHONE" && family != "IPAD" && family != "MAC") {
                     throw std::runtime_error("unsupported device family");
                 }
             }
@@ -65,6 +65,7 @@ std::vector<StoreProduct> AppleAppStoreProvider::findProducts(const std::string&
         for (const auto& family : split(raw.deviceFamilies, '+')) {
             if (family == "IPHONE") platforms.push_back(Platform::IOS);
             else if (family == "IPAD") platforms.push_back(Platform::IPadOS);
+            else if (family == "MAC") platforms.push_back(Platform::MacOS);
         }
 
         result.push_back(StoreProduct{

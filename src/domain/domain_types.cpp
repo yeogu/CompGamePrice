@@ -11,6 +11,11 @@ std::string toString(Store store) {
         case Store::MicrosoftStore: return "Microsoft Store";
         case Store::GooglePlay: return "Google Play";
         case Store::AppleAppStore: return "Apple App Store";
+        case Store::UbisoftStore: return "Ubisoft Store";
+        case Store::GOG: return "GOG";
+        case Store::MetaQuestStore: return "Meta Quest Store";
+        case Store::EAApp: return "EA app";
+        case Store::BattleNet: return "Battle.net";
     }
     return "Unknown Store";
 }
@@ -29,6 +34,7 @@ std::string toString(Platform platform) {
         case Platform::PlayStation5: return "PlayStation 5";
         case Platform::XboxOne: return "Xbox One";
         case Platform::XboxSeries: return "Xbox Series X|S";
+        case Platform::MetaQuest: return "Meta Quest";
     }
     return "Unknown Platform";
 }
@@ -36,6 +42,10 @@ std::string toString(Platform platform) {
 std::string toString(Currency currency) {
     switch (currency) {
         case Currency::KRW: return "KRW";
+        case Currency::USD: return "USD";
+        case Currency::EUR: return "EUR";
+        case Currency::GBP: return "GBP";
+        case Currency::JPY: return "JPY";
     }
     return "Unknown Currency";
 }

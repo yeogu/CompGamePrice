@@ -10,14 +10,22 @@ namespace game_price {
 namespace {
 
 void validateMoney(const Money& money, const char* field) {
-    if (money.currency != Currency::KRW) {
-        throw std::invalid_argument(std::string(field) + " must use KRW");
+    switch (money.currency) {
+        case Currency::KRW:
+        case Currency::USD:
+        case Currency::EUR:
+        case Currency::GBP:
+        case Currency::JPY:
+            break;
+        default:
+            throw std::invalid_argument(
+                std::string(field) + " uses an unsupported currency");
     }
     if (money.minorAmount < 0 ||
         money.minorAmount > MaximumSupportedPriceMinor) {
         throw std::invalid_argument(
             std::string(field) + " must be between 0 and " +
-            std::to_string(MaximumSupportedPriceMinor) + " KRW");
+            std::to_string(MaximumSupportedPriceMinor) + " minor units");
     }
 }
 

@@ -44,6 +44,14 @@ class AppleCatalogImportTest(unittest.TestCase):
         metadata = catalog_import.apple_product(json.dumps(document).encode(), "1406710800")
         self.assertEqual(metadata["platforms"], ["iOS"])
 
+    def test_supports_mac_app_store_game(self):
+        document = json.loads(self.raw)
+        document["results"][0]["kind"] = "mac-software"
+        document["results"][0]["supportedDevices"] = []
+        metadata = catalog_import.apple_product(
+            json.dumps(document).encode(), "1406710800")
+        self.assertEqual(metadata["platforms"], ["macOS"])
+
     def test_accepts_explicit_free_game(self):
         metadata = catalog_import.apple_product(self.raw, "1406710800")
         metadata["priceMinor"] = 0

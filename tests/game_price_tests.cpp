@@ -753,6 +753,10 @@ void testStoreProductPriceValidation() {
     wrongCurrency.currentPrice.currency = static_cast<Currency>(999);
     expect(isRejected(wrongCurrency), "Unsupported currencies must be rejected");
 
+    auto usdProduct = makeSteamProduct(1999);
+    usdProduct.currentPrice.currency = Currency::USD;
+    expect(!isRejected(usdProduct), "Supported non-KRW prices must be accepted");
+
     auto aboveRegular = makeSteamProduct(17000);
     aboveRegular.regularPrice = Money{16000, Currency::KRW};
     expect(isRejected(aboveRegular),

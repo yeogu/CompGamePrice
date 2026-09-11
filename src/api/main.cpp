@@ -1117,6 +1117,9 @@ std::optional<Platform> platformFromParameter(const std::string& value) {
     if (value == "Xbox Series X|S") {
         return Platform::XboxSeries;
     }
+    if (value == "Meta Quest") {
+        return Platform::MetaQuest;
+    }
     throw std::invalid_argument("unsupported platform");
 }
 
@@ -1145,6 +1148,11 @@ std::optional<Store> storeFromParameter(const std::string& value) {
     if (value == "Apple App Store") {
         return Store::AppleAppStore;
     }
+    if (value == "Ubisoft Store") return Store::UbisoftStore;
+    if (value == "GOG") return Store::GOG;
+    if (value == "Meta Quest Store") return Store::MetaQuestStore;
+    if (value == "EA app") return Store::EAApp;
+    if (value == "Battle.net") return Store::BattleNet;
     throw std::invalid_argument("unsupported store");
 }
 
@@ -1181,9 +1189,12 @@ PriceComparisonCriteria comparisonCriteria(
                 "offerType must be BaseGame, DLC, Bundle, Subscription, or UpgradePack");
         }
     }
-    if (!currency.empty() && currency != "KRW") {
-        throw std::invalid_argument("currency must be KRW");
-    }
+    if (currency == "USD") criteria.currency = Currency::USD;
+    else if (currency == "EUR") criteria.currency = Currency::EUR;
+    else if (currency == "GBP") criteria.currency = Currency::GBP;
+    else if (currency == "JPY") criteria.currency = Currency::JPY;
+    else if (!currency.empty() && currency != "KRW")
+        throw std::invalid_argument("unsupported currency");
     const auto parsedPlatform = platformFromParameter(platform);
     if (parsedPlatform) {
         criteria.platform = *parsedPlatform;
@@ -2850,7 +2861,12 @@ int main() {
                     Store::PlayStationStore,
                     Store::MicrosoftStore,
                     Store::GooglePlay,
-                    Store::AppleAppStore};
+                    Store::AppleAppStore,
+                    Store::UbisoftStore,
+                    Store::GOG,
+                    Store::MetaQuestStore,
+                    Store::EAApp,
+                    Store::BattleNet};
                 const std::vector<Platform> supportedPlatforms{
                     Platform::Windows,
                     Platform::MacOS,
@@ -2863,13 +2879,16 @@ int main() {
                     Platform::PlayStation4,
                     Platform::PlayStation5,
                     Platform::XboxOne,
-                    Platform::XboxSeries};
+                    Platform::XboxSeries,
+                    Platform::MetaQuest};
                 std::set<std::string> genres;
                 std::set<std::string> tags;
                 Json::Value response;
                 response["stores"] = Json::arrayValue;
                 for (const auto store : supportedStores) {
-                    response["stores"].append(toString(store));
+                    if (!catalog.storeProducts(store).empty()) {
+                        response["stores"].append(toString(store));
+                    }
                 }
                 for (const auto& game : catalog.allGames()) {
                     genres.insert(game.genres.begin(), game.genres.end());

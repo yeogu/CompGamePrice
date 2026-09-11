@@ -39,12 +39,14 @@ def normalized_row(raw: bytes, track_id: str, game_id: str) -> str:
         raise ValueError("Apple KRW price must be a non-negative integer")
     families = product.get("supportedDevices", [])
     device_families = []
+    if str(product.get("kind", "")).casefold() in {"mac-software", "macsoftware"}:
+        device_families.append("MAC")
     if any(str(value).startswith("iPhone") for value in families):
         device_families.append("IPHONE")
     if any(str(value).startswith("iPad") for value in families):
         device_families.append("IPAD")
     if not device_families:
-        raise ValueError("Apple response has no supported iPhone or iPad device")
+        raise ValueError("Apple response has no supported Apple platform")
     return f"{track_id},{game_id},{int(price)},{'+'.join(device_families)},true"
 
 

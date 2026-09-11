@@ -76,6 +76,8 @@ AlertRule readRule(sqlite3_stmt* row) {
         platform = Platform::XboxOne;
     } else if (platformName == "Xbox Series X|S") {
         platform = Platform::XboxSeries;
+    } else if (platformName == "Meta Quest") {
+        platform = Platform::MetaQuest;
     } else if (!platformName.empty()) {
         throw std::runtime_error("Unknown alert platform in database");
     }

@@ -33,7 +33,8 @@ def apple_product(raw: bytes, track_id: str) -> dict:
     price = product.get("price")
     price_minor = int(price) if isinstance(price, (int, float)) and int(price) == price else -1
     supported = product.get("supportedDevices", [])
-    platforms = []
+    kind = str(product.get("kind", "")).casefold()
+    platforms = ["macOS"] if kind in {"mac-software", "macsoftware"} else []
     if any(str(value).startswith("iPhone") for value in supported):
         platforms.append("iOS")
     if any(str(value).startswith("iPad") for value in supported):
