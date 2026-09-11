@@ -701,14 +701,6 @@ function App() {
     })
   }
 
-  const applyQuickPlatform = (platform: string) => {
-    setSelectedStore('')
-    setBrowsePlatform(platform)
-    setSelectedGenre('')
-    setSelectedTag('')
-    void browseCatalog({ platform, sort: gameSort, page: 1 })
-  }
-
   const activeBrowseFilters = {
     store: selectedStore,
     platform: browsePlatform,
@@ -1810,24 +1802,69 @@ function App() {
           </button>
         </form>
         <section className="catalog-discovery" aria-label="게임 카테고리 탐색">
-          <div className="quick-platforms" aria-label="빠른 플랫폼 탐색">
-            {[
-              ['Windows', 'PC'],
-              ['Nintendo Switch', 'Switch'],
-              ['Nintendo Switch 2', 'Switch 2'],
-              ['Android', 'Android'],
-              ['iOS', 'iPhone'],
-            ].filter(([platform]) => catalogFilters.platforms.includes(platform)).map(([platform, label]) => <button className={browseMode && browsePlatform === platform && !selectedStore && !selectedGenre && !selectedTag ? 'active' : ''} key={platform} type="button" onClick={() => applyQuickPlatform(platform)}><PlatformBadge compact label={label} platform={platform} /></button>)}
-          </div>
-          <details className="detailed-filters"><summary>구매처·플랫폼·장르로 자세히 찾기</summary>
-            <form onSubmit={applyDetailedFilters}>
-              <label>구매처<select aria-label="구매처 필터" value={selectedStore} onChange={(event) => setSelectedStore(event.target.value)}><option value="">전체</option>{catalogFilters.stores.map((store) => <option key={store}>{store}</option>)}</select></label>
-              <label>플레이 환경<select aria-label="플랫폼 탐색 필터" value={browsePlatform} onChange={(event) => setBrowsePlatform(event.target.value)}><option value="">전체</option>{catalogFilters.platforms.map((platform) => <option key={platform}>{platform}</option>)}</select></label>
-              <label>장르<select aria-label="장르 필터" value={selectedGenre} onChange={(event) => setSelectedGenre(event.target.value)}><option value="">전체</option>{catalogFilters.genres.map((genre) => <option key={genre}>{genre}</option>)}</select></label>
-              <label>태그<select aria-label="태그 필터" value={selectedTag} onChange={(event) => setSelectedTag(event.target.value)}><option value="">전체</option>{catalogFilters.tags.map((tag) => <option key={tag}>{tag}</option>)}</select></label>
-              <button disabled={loading} type="submit">조건으로 찾기</button>
-            </form>
-          </details>
+          <form className="catalog-filter-panel" onSubmit={applyDetailedFilters}>
+            <fieldset className="catalog-filter-group">
+              <legend>구매처</legend>
+              <div className="catalog-filter-options">
+                <button
+                  aria-pressed={!selectedStore}
+                  className={!selectedStore ? 'active' : ''}
+                  onClick={() => setSelectedStore('')}
+                  type="button"
+                >
+                  전체
+                </button>
+                {catalogFilters.stores.map((store) => <button
+                  aria-pressed={selectedStore === store}
+                  className={selectedStore === store ? 'active' : ''}
+                  key={store}
+                  onClick={() => setSelectedStore(store)}
+                  type="button"
+                >
+                  <StoreBadge compact store={store} />
+                </button>)}
+              </div>
+            </fieldset>
+            <fieldset className="catalog-filter-group">
+              <legend>플레이 환경</legend>
+              <div className="catalog-filter-options">
+                <button
+                  aria-pressed={!browsePlatform}
+                  className={!browsePlatform ? 'active' : ''}
+                  onClick={() => setBrowsePlatform('')}
+                  type="button"
+                >
+                  전체
+                </button>
+                {catalogFilters.platforms.map((platform) => <button
+                  aria-pressed={browsePlatform === platform}
+                  className={browsePlatform === platform ? 'active' : ''}
+                  key={platform}
+                  onClick={() => setBrowsePlatform(platform)}
+                  type="button"
+                >
+                  <PlatformBadge compact platform={platform} />
+                </button>)}
+              </div>
+            </fieldset>
+            <div className="catalog-filter-selects">
+              <label>
+                장르
+                <select aria-label="장르 필터" value={selectedGenre} onChange={(event) => setSelectedGenre(event.target.value)}>
+                  <option value="">전체</option>
+                  {catalogFilters.genres.map((genre) => <option key={genre}>{genre}</option>)}
+                </select>
+              </label>
+              <label>
+                태그
+                <select aria-label="태그 필터" value={selectedTag} onChange={(event) => setSelectedTag(event.target.value)}>
+                  <option value="">전체</option>
+                  {catalogFilters.tags.map((tag) => <option key={tag}>{tag}</option>)}
+                </select>
+              </label>
+              <button disabled={loading} type="submit">선택 조건으로 찾기</button>
+            </div>
+          </form>
         </section>
       </header>
 

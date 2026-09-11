@@ -49,10 +49,7 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .catalog-request p { padding: 4px; }
 .catalog-request span { padding: 8px; color: #73d49b; font-size: .8rem; }
 .search-form .catalog-request button { display: block; padding: 10px; color: #b9f2d2; background: #173426; border: 1px solid #315141; text-align: center; }
-.catalog-discovery { display: grid; gap: 12px; margin-top: 18px; }
-.quick-platforms { display: flex; flex-wrap: wrap; gap: 7px; }
-.quick-platforms button { padding: 9px 13px; color: #91a79b; background: #101f18; border: 1px solid #315141; border-radius: 999px; }
-.quick-platforms button.active { color: #07110d; background: #73e2a7; }
+.catalog-discovery { display: grid; gap: 12px; margin-top: 22px; }
 .platform-badge-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .platform-badge, .visual-store-badge { display: inline-flex; align-items: center; width: fit-content; gap: 6px; padding: 6px 9px; color: #dcebe3; background: #17271f; border: 1px solid #315141; border-radius: 999px; font-size: .74rem; font-weight: 800; line-height: 1; white-space: nowrap; }
 .platform-badge.compact, .visual-store-badge.compact { padding: 5px 8px; font-size: .68rem; }
@@ -74,13 +71,20 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .visual-store-badge.apple-app-store { color: #c8bfff; border-color: #594e9d; background: #24203f; }
 .visual-store-badge.playstation-store { color: #d8e9ff; border-color: #2868b2; background: #102a55; }
 .visual-store-badge.microsoft-store { color: #dff7d7; border-color: #4b9b45; background: #18391c; }
-.quick-platforms button .platform-badge, .platform-filter button .platform-badge { padding: 0; color: inherit; background: transparent; border: 0; }
-.detailed-filters { color: #91a79b; font-size: .86rem; }
-.detailed-filters summary { cursor: pointer; }
-.detailed-filters form { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)) auto; align-items: end; gap: 8px; margin-top: 12px; }
-.detailed-filters label { display: grid; gap: 5px; font-size: .72rem; }
-.detailed-filters select { min-width: 0; padding: 10px; color: #eef8f2; background: #101f18; border: 1px solid #315141; border-radius: 9px; }
-.detailed-filters button { padding: 11px 13px; color: #07110d; font-weight: 800; background: #73e2a7; border: 0; border-radius: 9px; }
+.platform-filter button .platform-badge { padding: 0; color: inherit; background: transparent; border: 0; }
+.catalog-filter-panel { display: grid; gap: 18px; padding: 18px; background: rgba(16, 31, 24, .72); border: 1px solid #263c31; border-radius: 16px; }
+.catalog-filter-group { min-width: 0; margin: 0; padding: 0; border: 0; }
+.catalog-filter-group legend { margin-bottom: 9px; color: #b7c9bf; font-size: .78rem; font-weight: 800; }
+.catalog-filter-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.catalog-filter-options > button { min-height: 38px; padding: 7px 11px; color: #91a79b; font-weight: 800; background: #0b1812; border: 1px solid #315141; border-radius: 999px; }
+.catalog-filter-options > button:hover { border-color: #58ae82; }
+.catalog-filter-options > button.active { color: #07110d; background: #73e2a7; border-color: #73e2a7; }
+.catalog-filter-options > button .platform-badge, .catalog-filter-options > button .visual-store-badge { padding: 0; color: inherit; background: transparent; border: 0; }
+.catalog-filter-selects { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) auto; align-items: end; gap: 10px; padding-top: 2px; }
+.catalog-filter-selects label { display: grid; gap: 6px; color: #b7c9bf; font-size: .78rem; font-weight: 800; }
+.catalog-filter-selects select { min-width: 0; padding: 11px; color: #eef8f2; background: #0b1812; border: 1px solid #315141; border-radius: 9px; }
+.catalog-filter-selects > button { min-height: 41px; padding: 10px 15px; color: #07110d; font-weight: 800; background: #73e2a7; border: 0; border-radius: 9px; }
+.catalog-filter-selects > button:disabled { opacity: .65; cursor: wait; }
 
 .notice, .panel { padding: 18px 20px; background: #111f19; border: 1px solid #263c31; border-radius: 14px; }
 .account-panel { margin-bottom: 42px; padding: 24px; background: #101f18; border: 1px solid #315141; border-radius: 18px; }
@@ -555,7 +559,7 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
   .preference-card { grid-template-columns: 1fr; }
   .catalog-sync-panel { grid-template-columns: 1fr; }
   .discovery-summary { grid-template-columns: repeat(2, 1fr); }
-  .detailed-filters form { grid-template-columns: 1fr; }
+  .catalog-filter-selects { grid-template-columns: 1fr; }
   .detail-navigation { top: 70px; }
   .detail-state { min-height: 45vh; padding: 28px 18px; }
   .sync-reviews > div { grid-template-columns: 1fr; }
