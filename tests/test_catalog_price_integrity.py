@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 import sqlite3
 import sys
@@ -72,6 +73,47 @@ class CatalogPriceIntegrityTest(unittest.TestCase):
         self.assertEqual(result["counts"]["STALE_PRICE"], 1)
         self.assertEqual(result["counts"]["NOT_PURCHASABLE"], 1)
         self.assertEqual(result["counts"]["PLATFORM_MISMATCH"], 1)
+
+    def test_matches_catalog_and_database_store_name_variants(self):
+        document = json.loads(self.catalog.read_text(encoding="utf-8"))
+        document["games"].append({
+            "id": "mobile-game",
+            "title": "Mobile Game",
+            "platforms": ["Android"],
+            "products": [{
+                "store": "GooglePlay",
+                "productId": "com.example.mobilegame",
+                "productUrl": "https://play.google.com/store/apps/details?id=com.example.mobilegame",
+                "platforms": ["Android"],
+                "region": "KR",
+                "edition": "Standard",
+                "offerType": "BaseGame",
+            }],
+        })
+        self.catalog.write_text(json.dumps(document), encoding="utf-8")
+        checked_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        with sqlite3.connect(self.database) as connection:
+            connection.execute(
+                "INSERT INTO store_products VALUES(?, ?, ?, ?, ?)",
+                (
+                    "Google Play",
+                    "com.example.mobilegame",
+                    "mobile-game",
+                    1,
+                    checked_at,
+                ),
+            )
+            connection.execute(
+                "INSERT INTO product_platforms VALUES(?, ?, ?)",
+                ("Google Play", "com.example.mobilegame", "Android"),
+            )
+        result = integrity.audit(self.catalog, self.database)
+        mobile_issues = [
+            entry
+            for entry in result["issues"]
+            if entry["productId"] == "com.example.mobilegame"
+        ]
+        self.assertEqual(mobile_issues, [])
 
 
 if __name__ == "__main__":

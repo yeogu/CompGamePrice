@@ -12,6 +12,27 @@ import sqlite3
 import catalog_storage
 
 
+STORE_KEYS = {
+    "Steam": "Steam",
+    "EpicGamesStore": "EpicGamesStore",
+    "Epic Games Store": "EpicGamesStore",
+    "NintendoEShop": "NintendoEShop",
+    "Nintendo eShop": "NintendoEShop",
+    "PlayStationStore": "PlayStationStore",
+    "PlayStation Store": "PlayStationStore",
+    "MicrosoftStore": "MicrosoftStore",
+    "Microsoft Store": "MicrosoftStore",
+    "GooglePlay": "GooglePlay",
+    "Google Play": "GooglePlay",
+    "AppleAppStore": "AppleAppStore",
+    "Apple App Store": "AppleAppStore",
+}
+
+
+def store_key(store: str) -> str:
+    return STORE_KEYS.get(store, store)
+
+
 def parsed_time(value: str | None) -> datetime | None:
     if not value:
         return None
@@ -25,7 +46,7 @@ def catalog_products(document: dict) -> dict[tuple[str, str], dict]:
     products = {}
     for game in document["games"]:
         for product in game.get("products", []):
-            products[(product["store"], product["productId"])] = {
+            products[(store_key(product["store"]), product["productId"])] = {
                 "gameId": game["id"],
                 "gameTitle": game["title"],
                 **product,
@@ -58,7 +79,7 @@ def database_products(connection: sqlite3.Connection) -> dict[tuple[str, str], d
                 (store, product_id),
             )
         }
-        products[(store, product_id)] = {
+        products[(store_key(store), product_id)] = {
             "gameId": game_id,
             "purchasable": bool(purchasable),
             "lastSuccessfulCheckAt": checked_at,
