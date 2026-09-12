@@ -37,6 +37,8 @@ STORE_KEYS = {
     "BattleNet": "BattleNet",
     "itch.io": "ItchIo",
     "ItchIo": "ItchIo",
+    "Humble Store": "HumbleStore",
+    "HumbleStore": "HumbleStore",
 }
 
 PLATFORM_KEYS = {

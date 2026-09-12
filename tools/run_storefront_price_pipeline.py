@@ -18,6 +18,7 @@ import collect_meta_quest_snapshot
 import collect_ea_app_snapshot
 import collect_battle_net_snapshot
 import collect_itch_io_snapshot
+import collect_humble_store_snapshot
 import sync_steam_catalog as collection_status
 
 
@@ -71,6 +72,11 @@ COLLECTORS = {
         collect_itch_io_snapshot,
         "itch_io_products.txt",
         "collect-itch-io-all",
+    ),
+    "HumbleStore": (
+        collect_humble_store_snapshot,
+        "humble_store_products.txt",
+        "collect-humble-store-all",
     ),
 }
 

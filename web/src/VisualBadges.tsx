@@ -78,6 +78,8 @@ const storeVisuals: Record<string, { accent: string, label?: string, tone: strin
   BattleNet: { accent: '#9bcfff', label: 'Battle.net', tone: 'battle-net' },
   'itch.io': { accent: '#fa5c5c', tone: 'itch-io' },
   ItchIo: { accent: '#fa5c5c', label: 'itch.io', tone: 'itch-io' },
+  'Humble Store': { accent: '#f39b5f', tone: 'humble-store' },
+  HumbleStore: { accent: '#f39b5f', label: 'Humble Store', tone: 'humble-store' },
 }
 
 export const storeAccentColor = (store: string) =>

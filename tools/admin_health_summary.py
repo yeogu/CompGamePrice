@@ -30,6 +30,7 @@ STORE_NAMES = (
     "EAApp",
     "BattleNet",
     "ItchIo",
+    "HumbleStore",
 )
 
 

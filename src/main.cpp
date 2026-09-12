@@ -269,6 +269,16 @@ CollectionResult collectAllItchIoProducts(
     return collectAllStoreProducts(catalog, repository, itchIo, "itch.io");
 }
 
+CollectionResult collectAllHumbleStoreProducts(
+    const GameCatalog& catalog,
+    StoreProductRepository& repository,
+    const std::string& dataDirectory) {
+    EpicGamesProvider humbleStore(
+        dataDirectory + "/humble_store_products.txt", Store::HumbleStore);
+    return collectAllStoreProducts(
+        catalog, repository, humbleStore, "Humble Store");
+}
+
 CollectionResult collectAllNintendoProducts(
     const GameCatalog& catalog,
     StoreProductRepository& repository,
@@ -588,6 +598,15 @@ int main(int argc, char* argv[]) {
                 catalog, repository, options.dataDirectory.value());
             std::cout << "Saved " << result.totalProducts
                       << " normalized itch.io products to SQLite.\n";
+            return static_cast<int>(collectionCompletedSuccessfully(result)
+                ? AppExitCode::Success : AppExitCode::CollectionFailed);
+        }
+        if (options.command == AppCommand::CollectHumbleStoreAll) {
+            std::cout << "Humble Store catalog collection:\n";
+            const auto result = collectAllHumbleStoreProducts(
+                catalog, repository, options.dataDirectory.value());
+            std::cout << "Saved " << result.totalProducts
+                      << " normalized Humble Store products to SQLite.\n";
             return static_cast<int>(collectionCompletedSuccessfully(result)
                 ? AppExitCode::Success : AppExitCode::CollectionFailed);
         }

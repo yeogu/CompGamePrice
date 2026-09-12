@@ -133,6 +133,18 @@ CommandLineOptions parseCommandLine(const std::vector<std::string>& arguments) {
         }
         return {AppCommand::CollectItchIoAll, "", std::nullopt, arguments[2]};
     }
+    if (command == "collect-humble-store-all") {
+        if (arguments.size() != 3 || arguments[1] != "--data-dir" ||
+            arguments[2].empty()) {
+            throw std::invalid_argument(
+                "collect-humble-store-all requires --data-dir PATH");
+        }
+        return {
+            AppCommand::CollectHumbleStoreAll,
+            "",
+            std::nullopt,
+            arguments[2]};
+    }
     if (command == "collect-nintendo-all") {
         if (arguments.size() != 3 || arguments[1] != "--data-dir" ||
             arguments[2].empty()) {
@@ -249,6 +261,7 @@ std::string commandLineHelp() {
         "  collect-ea-app-all  Collect EA app snapshots for every catalog game\n"
         "  collect-battle-net-all  Collect Battle.net snapshots for every catalog game\n"
         "  collect-itch-io-all  Collect itch.io snapshots for every catalog game\n"
+        "  collect-humble-store-all  Collect Humble Store snapshots for every catalog game\n"
         "            Required: collect-ubisoft-all --data-dir PATH\n"
         "  collect-nintendo-all  Collect Nintendo snapshots for every catalog game\n"
         "            Required: collect-nintendo-all --data-dir PATH\n"

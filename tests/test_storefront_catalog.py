@@ -126,6 +126,16 @@ ITCH_IO_PRODUCT = b'''<html><head>
 <a href="https://itch.io/games/platform-osx">macOS</a>
 <a href="https://itch.io/games/platform-linux">Linux</a></body></html>'''
 
+HUMBLE_PRODUCT = b'''<html><head>
+<script type="application/ld+json">
+{"@type":["Product","VideoGame"],"applicationCategory":"VideoGame",
+ "name":"Celeste","sku":"celeste_storefront",
+ "publisher":"Maddy Makes Games Inc.",
+ "image":"https://image.example/celeste.jpg",
+ "offers":{"priceCurrency":"USD","price":19.99,
+ "availability":"http://schema.org/InStock"}}
+</script></head></html>'''
+
 META_QUEST_PRODUCT = b'''<html><head>
 <meta property="og:image" content="https://image.example/beat-saber.jpg" />
 <script type="application/ld+json">{"@graph":[
@@ -282,6 +292,30 @@ class StorefrontCatalogTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "not identified as a video game"):
             storefront_catalog.verified_product(
                 raw, "ItchIo", "https://artist.itch.io/assets")
+
+    def test_parses_humble_store_video_game(self):
+        url = "https://www.humblebundle.com/store/celeste"
+        self.assertEqual(
+            storefront_catalog.product_id_from_url("HumbleStore", url),
+            "celeste",
+        )
+        metadata = storefront_catalog.verified_product(
+            HUMBLE_PRODUCT, "HumbleStore", url)
+        self.assertEqual(metadata["productId"], "celeste_storefront")
+        self.assertEqual(metadata["title"], "Celeste")
+        self.assertEqual(metadata["developer"], "Maddy Makes Games Inc.")
+        self.assertEqual(metadata["priceMinor"], 1999)
+        self.assertEqual(metadata["currency"], "USD")
+        self.assertEqual(metadata["platforms"], ["Windows"])
+
+    def test_rejects_humble_store_non_game_product(self):
+        raw = HUMBLE_PRODUCT.replace(
+            b'["Product","VideoGame"]', b'"Product"').replace(
+            b'"VideoGame"', b'"SoftwareApplication"')
+        with self.assertRaisesRegex(ValueError, "not identified as a video game"):
+            storefront_catalog.verified_product(
+                raw, "HumbleStore",
+                "https://www.humblebundle.com/store/not-a-game")
 
     def test_distinguishes_playstation_console_generation(self):
         metadata = storefront_catalog.verified_product(

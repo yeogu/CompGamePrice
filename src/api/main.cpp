@@ -738,6 +738,9 @@ private:
         } else if (store == "itch.io") {
             pipeline = "tools/run_storefront_price_pipeline.py";
             pipelineArguments = " --store ItchIo";
+        } else if (store == "Humble Store") {
+            pipeline = "tools/run_storefront_price_pipeline.py";
+            pipelineArguments = " --store HumbleStore";
         } else {
             pipeline = "tools/run_steam_pipeline.py";
         }
@@ -1178,6 +1181,7 @@ std::optional<Store> storeFromParameter(const std::string& value) {
     if (value == "EA app") return Store::EAApp;
     if (value == "Battle.net") return Store::BattleNet;
     if (value == "itch.io") return Store::ItchIo;
+    if (value == "Humble Store") return Store::HumbleStore;
     throw std::invalid_argument("unsupported store");
 }
 
@@ -2152,6 +2156,7 @@ int main() {
                     "EAApp",
                     "BattleNet",
                     "ItchIo",
+                    "HumbleStore",
                 };
                 if (supportedStores.count(store) == 0 || productId.empty()) {
                     callback(jsonError(
@@ -2414,7 +2419,8 @@ int main() {
                      store != "MetaQuestStore" &&
                      store != "EAApp" &&
                      store != "BattleNet" &&
-                     store != "ItchIo") ||
+                     store != "ItchIo" &&
+                     store != "HumbleStore") ||
                     productUrl.empty() ||
                     !validCanonicalGameId(gameId)) {
                     callback(jsonError(
@@ -2482,7 +2488,8 @@ int main() {
                     store != "Microsoft Store" &&
                     store != "Ubisoft Store" && store != "GOG" &&
                     store != "Meta Quest Store" && store != "EA app" &&
-                    store != "Battle.net" && store != "itch.io") {
+                    store != "Battle.net" && store != "itch.io" &&
+                    store != "Humble Store") {
                     callback(jsonError(
                         drogon::k400BadRequest,
                         "unsupported collection store"));
@@ -2907,7 +2914,8 @@ int main() {
                     Store::MetaQuestStore,
                     Store::EAApp,
                     Store::BattleNet,
-                    Store::ItchIo};
+                    Store::ItchIo,
+                    Store::HumbleStore};
                 const std::vector<Platform> supportedPlatforms{
                     Platform::Windows,
                     Platform::MacOS,

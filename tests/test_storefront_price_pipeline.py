@@ -22,6 +22,7 @@ class StorefrontPricePipelineTest(unittest.TestCase):
             ("EAApp", "collect-ea-app-all"),
             ("BattleNet", "collect-battle-net-all"),
             ("ItchIo", "collect-itch-io-all"),
+            ("HumbleStore", "collect-humble-store-all"),
         ]
         for store, expected_command in cases:
             collector = pipeline.COLLECTORS[store][0]

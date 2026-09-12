@@ -17,7 +17,8 @@ enum class Store {
     MetaQuestStore,
     EAApp,
     BattleNet,
-    ItchIo
+    ItchIo,
+    HumbleStore
 };
 
 enum class Platform {

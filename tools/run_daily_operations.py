@@ -312,6 +312,18 @@ def run_operations(
             ],
         ),
         (
+            "humble-store",
+            [
+                python,
+                str(project / "tools" / "run_storefront_price_pipeline.py"),
+                "--store", "HumbleStore",
+                "--tracker", str(tracker),
+                "--catalog", str(catalog),
+                "--output-dir", str(output_directory),
+                "--database", str(database),
+            ],
+        ),
+        (
             "nintendo-eshop",
             [
                 python,

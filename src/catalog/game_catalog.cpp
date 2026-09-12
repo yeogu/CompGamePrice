@@ -107,6 +107,7 @@ Store storeFromString(const std::string& value) {
     if (value == "EAApp") return Store::EAApp;
     if (value == "BattleNet") return Store::BattleNet;
     if (value == "ItchIo") return Store::ItchIo;
+    if (value == "HumbleStore") return Store::HumbleStore;
     throw std::runtime_error("Unsupported Game Catalog Store: " + value);
 }
 

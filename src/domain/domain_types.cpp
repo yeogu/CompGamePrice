@@ -17,6 +17,7 @@ std::string toString(Store store) {
         case Store::EAApp: return "EA app";
         case Store::BattleNet: return "Battle.net";
         case Store::ItchIo: return "itch.io";
+        case Store::HumbleStore: return "Humble Store";
     }
     return "Unknown Store";
 }

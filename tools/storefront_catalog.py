@@ -107,6 +107,14 @@ STORE_CONFIG = {
         "productPath": "/",
         "platforms": ["Windows", "macOS", "Linux"],
     },
+    "HumbleStore": {
+        "display": "Humble Store",
+        "hosts": ["www.humblebundle.com", "humblebundle.com"],
+        "search": "https://www.humblebundle.com/store/search",
+        "searchParameters": {},
+        "productPath": "/store/",
+        "platforms": ["Windows"],
+    },
 }
 
 
@@ -185,6 +193,11 @@ def product_id_from_url(store: str, product_url: str) -> str:
         if len(parts) != 1 or not re.fullmatch(r"[a-z0-9-]+", parts[0]):
             raise ValueError("invalid itch.io game URL")
         return f"{parsed.hostname.split('.', 1)[0]}/{parts[0]}"
+    if store == "HumbleStore":
+        if (len(parts) != 2 or parts[0] != "store" or
+                not re.fullmatch(r"[a-z0-9-]+", parts[1])):
+            raise ValueError("invalid Humble Store product URL")
+        return parts[1]
     if not parts:
         raise ValueError("invalid Nintendo eShop product URL")
     identifier = parts[-1].removesuffix(".html")
@@ -532,6 +545,51 @@ def nintendo_publisher(document: str) -> str:
 
 
 def verified_product(raw: bytes, store: str, product_url: str) -> dict:
+    if store == "HumbleStore":
+        html_document = raw.decode("utf-8", errors="replace")
+        parser = ProductDocumentParser()
+        parser.feed(html_document)
+        product = first_product(parser.documents)
+        product_types = product.get("@type", [])
+        if isinstance(product_types, str):
+            product_types = [product_types]
+        category = str(product.get("applicationCategory", ""))
+        if ("VideoGame" not in product_types and
+                category.casefold() != "videogame"):
+            raise ValueError("Humble Store page is not identified as a video game")
+        offer = product.get("offers") or {}
+        if isinstance(offer, list):
+            offer = next((item for item in offer if isinstance(item, dict)), {})
+        availability = str(offer.get("availability", ""))
+        if availability and not availability.endswith("InStock"):
+            raise ValueError("Humble Store game is not currently available")
+        currency = str(offer.get("priceCurrency", "")).upper()
+        price_minor = decimal_minor(offer.get("price"), currency)
+        if not currency or price_minor is None or price_minor <= 0:
+            raise ValueError("Humble Store game has no purchasable price")
+        title = named_value(product.get("name"))
+        product_id = named_value(product.get("sku"))
+        if not title or not product_id:
+            raise ValueError("Humble Store game has incomplete product data")
+        publisher = named_value(product.get("publisher") or product.get("brand"))
+        return {
+            "productId": product_id,
+            "title": title,
+            "developer": publisher,
+            "priceMinor": price_minor,
+            "regularPriceMinor": price_minor,
+            "currency": currency,
+            "discountPercent": 0,
+            "allowMissingPrice": False,
+            "isGame": True,
+            "supportsTargetPlatform": True,
+            "platforms": ["Windows"],
+            "imageUrl": named_value(product.get("image")),
+            "excludedWords": sorted(
+                catalog_matcher.normalized_words(title) &
+                catalog_matcher.EXCLUDED_TITLE_WORDS
+            ),
+        }
     if store == "ItchIo":
         html_document = raw.decode("utf-8", errors="replace")
         if not re.search(
