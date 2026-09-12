@@ -23,7 +23,8 @@ Currency parseProviderCurrency(const std::string& value) {
 EpicGamesProvider::EpicGamesProvider(const std::string& dataPath, Store store)
     : store_(store) {
     if (store != Store::EpicGamesStore && store != Store::UbisoftStore &&
-        store != Store::GOG && store != Store::MetaQuestStore) {
+        store != Store::GOG && store != Store::MetaQuestStore &&
+        store != Store::EAApp) {
         throw std::invalid_argument("unsupported PC storefront provider");
     }
     std::ifstream input(dataPath);

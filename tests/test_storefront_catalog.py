@@ -74,6 +74,30 @@ GOG_PRODUCT = json.dumps({
     },
 }).encode()
 
+EA_PRODUCT = ("""
+<script id="__NEXT_DATA__" type="application/json">%s</script>
+""" % json.dumps({
+    "props": {"pageProps": {"gameDetails": {
+        "name": "EA SPORTS FC 26",
+        "developer": "EA Canada",
+        "isPurchasableGame": True,
+        "packArt": {"ar16X9": "https://image.example/fc26.jpg"},
+        "platformDetails": [{
+            "slug": "EA-APP",
+            "editions": [
+                {"slug": "standard", "checkoutId": "Origin.OFR.50.0005763",
+                 "isUngatedTrial": False,
+                 "price": {"displayTotal": "₩ 77,000",
+                           "displayTotalWithDiscount": "₩ 53,900",
+                           "discountPercentage": 30, "currency": "KRW"}},
+                {"slug": "trial", "checkoutId": "Origin.TRIAL",
+                 "isUngatedTrial": True,
+                 "price": {"displayTotal": "₩ 0", "currency": "KRW"}},
+            ],
+        }],
+    }}}},
+)).encode()
+
 META_QUEST_PRODUCT = b'''<html><head>
 <meta property="og:image" content="https://image.example/beat-saber.jpg" />
 <script type="application/ld+json">{"@graph":[
@@ -179,6 +203,19 @@ class StorefrontCatalogTest(unittest.TestCase):
         self.assertEqual(metadata["currency"], "KRW")
         self.assertEqual(metadata["platforms"], ["MetaQuest"])
         self.assertEqual(metadata["imageUrl"], "https://image.example/beat-saber.jpg")
+
+    def test_parses_ea_app_standard_edition_and_ignores_trial(self):
+        url = "https://www.ea.com/ko/games/ea-sports-fc/fc-26/buy"
+        self.assertEqual(
+            storefront_catalog.product_id_from_url("EAApp", url), "fc-26")
+        metadata = storefront_catalog.verified_product(EA_PRODUCT, "EAApp", url)
+        self.assertEqual(metadata["productId"], "Origin.OFR.50.0005763")
+        self.assertEqual(metadata["title"], "EA SPORTS FC 26")
+        self.assertEqual(metadata["priceMinor"], 53900)
+        self.assertEqual(metadata["regularPriceMinor"], 77000)
+        self.assertEqual(metadata["discountPercent"], 30)
+        self.assertEqual(metadata["currency"], "KRW")
+        self.assertEqual(metadata["platforms"], ["Windows"])
 
     def test_distinguishes_playstation_console_generation(self):
         metadata = storefront_catalog.verified_product(

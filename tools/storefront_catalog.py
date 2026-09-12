@@ -82,6 +82,14 @@ STORE_CONFIG = {
         "productPath": "/experiences/",
         "platforms": ["MetaQuest"],
     },
+    "EAApp": {
+        "display": "EA app",
+        "hosts": ["www.ea.com", "ea.com"],
+        "search": "https://www.ea.com/ko/games",
+        "searchParameters": {},
+        "productPath": "/games/",
+        "platforms": ["Windows"],
+    },
 }
 
 
@@ -136,6 +144,13 @@ def product_id_from_url(store: str, product_url: str) -> str:
         if "experiences" not in parts or not parts[-1].isdigit():
             raise ValueError("invalid Meta Quest Store product URL")
         return parts[-1]
+    if store == "EAApp":
+        if "games" not in parts or "buy" not in parts:
+            raise ValueError("invalid EA app product URL")
+        marker = parts.index("games")
+        if len(parts) <= marker + 2:
+            raise ValueError("invalid EA app product URL")
+        return parts[marker + 2]
     if not parts:
         raise ValueError("invalid Nintendo eShop product URL")
     identifier = parts[-1].removesuffix(".html")
@@ -468,6 +483,75 @@ def nintendo_publisher(document: str) -> str:
 
 
 def verified_product(raw: bytes, store: str, product_url: str) -> dict:
+    if store == "EAApp":
+        html_document = raw.decode("utf-8", errors="replace")
+        next_data = re.search(
+            r'<script[^>]+id="__NEXT_DATA__"[^>]*>(.*?)</script>',
+            html_document,
+            re.IGNORECASE | re.DOTALL,
+        )
+        if not next_data:
+            raise ValueError("EA product page has no server-rendered product data")
+        try:
+            document = json.loads(unescape(next_data.group(1)))
+            game = document["props"]["pageProps"]["gameDetails"]
+        except (KeyError, TypeError, json.JSONDecodeError) as error:
+            raise ValueError("EA product page data is invalid") from error
+        if not game.get("isPurchasableGame"):
+            raise ValueError("EA page is not a purchasable game")
+        ea_platform = next(
+            (item for item in game.get("platformDetails", [])
+             if str(item.get("slug", "")).upper() == "EA-APP"),
+            {},
+        )
+        editions = [
+            item for item in ea_platform.get("editions", [])
+            if item.get("checkoutId") and not item.get("isUngatedTrial")
+            and str(item.get("slug", "")).casefold() not in {
+                "play-for-free", "trial", "demo"
+            }
+        ]
+        edition = next(
+            (item for item in editions
+             if str(item.get("slug", "")).casefold() == "standard"),
+            editions[0] if editions else {},
+        )
+        if not edition:
+            raise ValueError("EA page has no purchasable EA app edition")
+        price = edition.get("price") or {}
+        currency = str(price.get("currency", "")).upper()
+        current_text = price.get("displayTotalWithDiscount") or price.get("displayTotal")
+        regular_text = price.get("displayTotal") or current_text
+        current_minor = decimal_minor(
+            re.sub(r"[^0-9.]", "", str(current_text)), currency)
+        regular_minor = decimal_minor(
+            re.sub(r"[^0-9.]", "", str(regular_text)), currency)
+        image = game.get("packArt") or game.get("heroImage") or {}
+        image_url = str(
+            image.get("ar16X9") or image.get("ar2X1") or
+            image.get("ar3X1") or image.get("ar1X1") or ""
+        )
+        title = str(game.get("name", "")).strip()
+        if not title:
+            raise ValueError("EA product has no title")
+        return {
+            "productId": str(edition.get("checkoutId", "")).strip(),
+            "title": title,
+            "developer": str(game.get("developer") or game.get("publisher") or "").strip(),
+            "priceMinor": current_minor,
+            "regularPriceMinor": regular_minor,
+            "currency": currency,
+            "discountPercent": int(price.get("discountPercentage") or 0),
+            "allowMissingPrice": current_minor is None,
+            "isGame": True,
+            "supportsTargetPlatform": True,
+            "platforms": ["Windows"],
+            "imageUrl": image_url,
+            "excludedWords": sorted(
+                catalog_matcher.normalized_words(title) &
+                catalog_matcher.EXCLUDED_TITLE_WORDS
+            ),
+        }
     if store == "GOG" and raw.lstrip().startswith(b"{"):
         product = json.loads(raw)
         if product.get("productType") != "game":

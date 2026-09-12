@@ -15,6 +15,7 @@ import collect_console_snapshot
 import collect_ubisoft_snapshot
 import collect_gog_snapshot
 import collect_meta_quest_snapshot
+import collect_ea_app_snapshot
 import sync_steam_catalog as collection_status
 
 
@@ -53,6 +54,11 @@ COLLECTORS = {
         collect_meta_quest_snapshot,
         "meta_quest_products.txt",
         "collect-meta-quest-all",
+    ),
+    "EAApp": (
+        collect_ea_app_snapshot,
+        "ea_app_products.txt",
+        "collect-ea-app-all",
     ),
 }
 

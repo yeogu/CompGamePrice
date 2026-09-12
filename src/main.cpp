@@ -243,6 +243,14 @@ CollectionResult collectAllMetaQuestProducts(
         catalog, repository, metaQuest, "Meta Quest");
 }
 
+CollectionResult collectAllEaAppProducts(
+    const GameCatalog& catalog,
+    StoreProductRepository& repository,
+    const std::string& dataDirectory) {
+    EpicGamesProvider eaApp(dataDirectory + "/ea_app_products.txt", Store::EAApp);
+    return collectAllStoreProducts(catalog, repository, eaApp, "EA app");
+}
+
 CollectionResult collectAllNintendoProducts(
     const GameCatalog& catalog,
     StoreProductRepository& repository,
@@ -537,6 +545,15 @@ int main(int argc, char* argv[]) {
                 collectionCompletedSuccessfully(result)
                     ? AppExitCode::Success
                     : AppExitCode::CollectionFailed);
+        }
+        if (options.command == AppCommand::CollectEaAppAll) {
+            std::cout << "EA app catalog collection:\n";
+            const auto result = collectAllEaAppProducts(
+                catalog, repository, options.dataDirectory.value());
+            std::cout << "Saved " << result.totalProducts
+                      << " normalized EA app products to SQLite.\n";
+            return static_cast<int>(collectionCompletedSuccessfully(result)
+                ? AppExitCode::Success : AppExitCode::CollectionFailed);
         }
         if (options.command == AppCommand::CollectNintendoAll) {
             std::cout << "Nintendo catalog collection:\n";

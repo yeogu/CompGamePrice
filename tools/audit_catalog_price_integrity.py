@@ -31,6 +31,8 @@ STORE_KEYS = {
     "GOG": "GOG",
     "Meta Quest Store": "MetaQuestStore",
     "MetaQuestStore": "MetaQuestStore",
+    "EA app": "EAApp",
+    "EAApp": "EAApp",
 }
 
 PLATFORM_KEYS = {

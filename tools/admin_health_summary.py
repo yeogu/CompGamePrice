@@ -27,6 +27,7 @@ STORE_NAMES = (
     "UbisoftStore",
     "GOG",
     "MetaQuestStore",
+    "EAApp",
 )
 
 
