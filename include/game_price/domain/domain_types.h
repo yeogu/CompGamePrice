@@ -16,7 +16,8 @@ enum class Store {
     GOG,
     MetaQuestStore,
     EAApp,
-    BattleNet
+    BattleNet,
+    ItchIo
 };
 
 enum class Platform {

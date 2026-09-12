@@ -260,6 +260,15 @@ CollectionResult collectAllBattleNetProducts(
     return collectAllStoreProducts(catalog, repository, battleNet, "Battle.net");
 }
 
+CollectionResult collectAllItchIoProducts(
+    const GameCatalog& catalog,
+    StoreProductRepository& repository,
+    const std::string& dataDirectory) {
+    EpicGamesProvider itchIo(
+        dataDirectory + "/itch_io_products.txt", Store::ItchIo);
+    return collectAllStoreProducts(catalog, repository, itchIo, "itch.io");
+}
+
 CollectionResult collectAllNintendoProducts(
     const GameCatalog& catalog,
     StoreProductRepository& repository,
@@ -570,6 +579,15 @@ int main(int argc, char* argv[]) {
                 catalog, repository, options.dataDirectory.value());
             std::cout << "Saved " << result.totalProducts
                       << " normalized Battle.net products to SQLite.\n";
+            return static_cast<int>(collectionCompletedSuccessfully(result)
+                ? AppExitCode::Success : AppExitCode::CollectionFailed);
+        }
+        if (options.command == AppCommand::CollectItchIoAll) {
+            std::cout << "itch.io catalog collection:\n";
+            const auto result = collectAllItchIoProducts(
+                catalog, repository, options.dataDirectory.value());
+            std::cout << "Saved " << result.totalProducts
+                      << " normalized itch.io products to SQLite.\n";
             return static_cast<int>(collectionCompletedSuccessfully(result)
                 ? AppExitCode::Success : AppExitCode::CollectionFailed);
         }

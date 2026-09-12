@@ -17,6 +17,7 @@ import collect_gog_snapshot
 import collect_meta_quest_snapshot
 import collect_ea_app_snapshot
 import collect_battle_net_snapshot
+import collect_itch_io_snapshot
 import sync_steam_catalog as collection_status
 
 
@@ -65,6 +66,11 @@ COLLECTORS = {
         collect_battle_net_snapshot,
         "battle_net_products.txt",
         "collect-battle-net-all",
+    ),
+    "ItchIo": (
+        collect_itch_io_snapshot,
+        "itch_io_products.txt",
+        "collect-itch-io-all",
     ),
 }
 

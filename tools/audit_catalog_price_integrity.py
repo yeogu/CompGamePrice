@@ -35,6 +35,8 @@ STORE_KEYS = {
     "EAApp": "EAApp",
     "Battle.net": "BattleNet",
     "BattleNet": "BattleNet",
+    "itch.io": "ItchIo",
+    "ItchIo": "ItchIo",
 }
 
 PLATFORM_KEYS = {

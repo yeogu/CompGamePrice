@@ -735,6 +735,9 @@ private:
         } else if (store == "Battle.net") {
             pipeline = "tools/run_storefront_price_pipeline.py";
             pipelineArguments = " --store BattleNet";
+        } else if (store == "itch.io") {
+            pipeline = "tools/run_storefront_price_pipeline.py";
+            pipelineArguments = " --store ItchIo";
         } else {
             pipeline = "tools/run_steam_pipeline.py";
         }
@@ -1174,6 +1177,7 @@ std::optional<Store> storeFromParameter(const std::string& value) {
     if (value == "Meta Quest Store") return Store::MetaQuestStore;
     if (value == "EA app") return Store::EAApp;
     if (value == "Battle.net") return Store::BattleNet;
+    if (value == "itch.io") return Store::ItchIo;
     throw std::invalid_argument("unsupported store");
 }
 
@@ -2147,6 +2151,7 @@ int main() {
                     "MetaQuestStore",
                     "EAApp",
                     "BattleNet",
+                    "ItchIo",
                 };
                 if (supportedStores.count(store) == 0 || productId.empty()) {
                     callback(jsonError(
@@ -2408,7 +2413,8 @@ int main() {
                      store != "GOG" &&
                      store != "MetaQuestStore" &&
                      store != "EAApp" &&
-                     store != "BattleNet") ||
+                     store != "BattleNet" &&
+                     store != "ItchIo") ||
                     productUrl.empty() ||
                     !validCanonicalGameId(gameId)) {
                     callback(jsonError(
@@ -2476,7 +2482,7 @@ int main() {
                     store != "Microsoft Store" &&
                     store != "Ubisoft Store" && store != "GOG" &&
                     store != "Meta Quest Store" && store != "EA app" &&
-                    store != "Battle.net") {
+                    store != "Battle.net" && store != "itch.io") {
                     callback(jsonError(
                         drogon::k400BadRequest,
                         "unsupported collection store"));
@@ -2900,7 +2906,8 @@ int main() {
                     Store::GOG,
                     Store::MetaQuestStore,
                     Store::EAApp,
-                    Store::BattleNet};
+                    Store::BattleNet,
+                    Store::ItchIo};
                 const std::vector<Platform> supportedPlatforms{
                     Platform::Windows,
                     Platform::MacOS,

@@ -17,6 +17,7 @@ enum class AppCommand {
     CollectMetaQuestAll,
     CollectEaAppAll,
     CollectBattleNetAll,
+    CollectItchIoAll,
     CollectNintendoAll,
     CollectPlayStationAll,
     CollectMicrosoftAll,

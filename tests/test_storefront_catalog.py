@@ -115,6 +115,17 @@ BATTLE_NET_PRODUCT = (
     ')</script>'
 ).encode()
 
+ITCH_IO_PRODUCT = b'''<html><head>
+<meta content="games/424895" name="itch:path" />
+<meta content="https://image.example/a-short-hike.png" property="og:image" />
+<script type="application/ld+json">
+{"@type":"Product","name":"A Short Hike","offers":{"priceCurrency":"USD",
+ "price":"7.99","seller":{"@type":"Organization","name":"adamgryu"}}}
+</script></head><body><p>A downloadable game for Windows, macOS, and Linux</p>
+<a href="https://itch.io/games/platform-windows">Windows</a>
+<a href="https://itch.io/games/platform-osx">macOS</a>
+<a href="https://itch.io/games/platform-linux">Linux</a></body></html>'''
+
 META_QUEST_PRODUCT = b'''<html><head>
 <meta property="og:image" content="https://image.example/beat-saber.jpg" />
 <script type="application/ld+json">{"@graph":[
@@ -249,6 +260,28 @@ class StorefrontCatalogTest(unittest.TestCase):
         self.assertEqual(metadata["discountPercent"], 75)
         self.assertEqual(metadata["currency"], "KRW")
         self.assertEqual(metadata["platforms"], ["Windows"])
+
+    def test_parses_paid_itch_io_desktop_game(self):
+        url = "https://adamgryu.itch.io/a-short-hike"
+        self.assertEqual(
+            storefront_catalog.product_id_from_url("ItchIo", url),
+            "adamgryu/a-short-hike",
+        )
+        metadata = storefront_catalog.verified_product(
+            ITCH_IO_PRODUCT, "ItchIo", url)
+        self.assertEqual(metadata["productId"], "424895")
+        self.assertEqual(metadata["title"], "A Short Hike")
+        self.assertEqual(metadata["developer"], "adamgryu")
+        self.assertEqual(metadata["priceMinor"], 799)
+        self.assertEqual(metadata["currency"], "USD")
+        self.assertEqual(metadata["platforms"], ["Windows", "macOS", "Linux"])
+
+    def test_rejects_itch_io_non_game_project(self):
+        raw = ITCH_IO_PRODUCT.replace(
+            b"A downloadable game", b"A downloadable asset pack")
+        with self.assertRaisesRegex(ValueError, "not identified as a video game"):
+            storefront_catalog.verified_product(
+                raw, "ItchIo", "https://artist.itch.io/assets")
 
     def test_distinguishes_playstation_console_generation(self):
         metadata = storefront_catalog.verified_product(

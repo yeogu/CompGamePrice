@@ -76,6 +76,8 @@ const storeVisuals: Record<string, { accent: string, label?: string, tone: strin
   EAApp: { accent: '#ffb59f', label: 'EA app', tone: 'ea-app' },
   'Battle.net': { accent: '#9bcfff', tone: 'battle-net' },
   BattleNet: { accent: '#9bcfff', label: 'Battle.net', tone: 'battle-net' },
+  'itch.io': { accent: '#fa5c5c', tone: 'itch-io' },
+  ItchIo: { accent: '#fa5c5c', label: 'itch.io', tone: 'itch-io' },
 }
 
 export const storeAccentColor = (store: string) =>

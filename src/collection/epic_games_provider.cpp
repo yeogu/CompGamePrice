@@ -24,7 +24,8 @@ EpicGamesProvider::EpicGamesProvider(const std::string& dataPath, Store store)
     : store_(store) {
     if (store != Store::EpicGamesStore && store != Store::UbisoftStore &&
         store != Store::GOG && store != Store::MetaQuestStore &&
-        store != Store::EAApp && store != Store::BattleNet) {
+        store != Store::EAApp && store != Store::BattleNet &&
+        store != Store::ItchIo) {
         throw std::invalid_argument("unsupported PC storefront provider");
     }
     std::ifstream input(dataPath);

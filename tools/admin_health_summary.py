@@ -29,6 +29,7 @@ STORE_NAMES = (
     "MetaQuestStore",
     "EAApp",
     "BattleNet",
+    "ItchIo",
 )
 
 

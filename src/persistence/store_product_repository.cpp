@@ -93,6 +93,7 @@ Store parseStore(const std::string& value) {
     if (value == "Meta Quest Store") return Store::MetaQuestStore;
     if (value == "EA app") return Store::EAApp;
     if (value == "Battle.net") return Store::BattleNet;
+    if (value == "itch.io") return Store::ItchIo;
     throw std::runtime_error("Unknown Store value in database: " + value);
 }
 

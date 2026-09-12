@@ -99,6 +99,14 @@ STORE_CONFIG = {
         "productPath": "/product/",
         "platforms": ["Windows"],
     },
+    "ItchIo": {
+        "display": "itch.io",
+        "hosts": ["itch.io"],
+        "search": "https://itch.io/games",
+        "searchParameters": {},
+        "productPath": "/",
+        "platforms": ["Windows", "macOS", "Linux"],
+    },
 }
 
 
@@ -112,7 +120,11 @@ def config(store: str) -> dict:
 def product_id_from_url(store: str, product_url: str) -> str:
     settings = config(store)
     parsed = urlparse(product_url)
-    if parsed.hostname not in settings["hosts"]:
+    valid_itch_host = (
+        store == "ItchIo" and parsed.hostname and
+        parsed.hostname.endswith(".itch.io") and parsed.hostname != "itch.io"
+    )
+    if parsed.hostname not in settings["hosts"] and not valid_itch_host:
         raise ValueError(
             "product URL must use " + " or ".join(settings["hosts"])
         )
@@ -169,6 +181,10 @@ def product_id_from_url(store: str, product_url: str) -> str:
         if not re.fullmatch(r"[a-z0-9-]+", identifier):
             raise ValueError("invalid Battle.net product URL")
         return identifier
+    if store == "ItchIo":
+        if len(parts) != 1 or not re.fullmatch(r"[a-z0-9-]+", parts[0]):
+            raise ValueError("invalid itch.io game URL")
+        return f"{parsed.hostname.split('.', 1)[0]}/{parts[0]}"
     if not parts:
         raise ValueError("invalid Nintendo eShop product URL")
     identifier = parts[-1].removesuffix(".html")
@@ -516,6 +532,64 @@ def nintendo_publisher(document: str) -> str:
 
 
 def verified_product(raw: bytes, store: str, product_url: str) -> dict:
+    if store == "ItchIo":
+        html_document = raw.decode("utf-8", errors="replace")
+        if not re.search(
+            r"A (?:downloadable|browser) game(?:\s|<)", html_document,
+            re.IGNORECASE,
+        ):
+            raise ValueError("itch.io page is not identified as a video game")
+        parser = ProductDocumentParser()
+        parser.feed(html_document)
+        product = first_product(parser.documents)
+        offer = product.get("offers") or {}
+        if isinstance(offer, list):
+            offer = next((item for item in offer if isinstance(item, dict)), {})
+        currency = str(offer.get("priceCurrency", "")).upper()
+        price_minor = decimal_minor(offer.get("price"), currency)
+        if price_minor is None or price_minor <= 0:
+            raise ValueError(
+                "itch.io free or donation-only games require manual pricing review")
+        itch_path = re.search(
+            r'<meta[^>]+content="games/(\d+)"[^>]+name="itch:path"',
+            html_document,
+            re.IGNORECASE,
+        )
+        if not itch_path:
+            raise ValueError("itch.io page has no stable game ID")
+        platforms = []
+        normalized = html_document.casefold()
+        if "platform-windows" in normalized:
+            platforms.append("Windows")
+        if "platform-osx" in normalized:
+            platforms.append("macOS")
+        if "platform-linux" in normalized:
+            platforms.append("Linux")
+        if not platforms:
+            raise ValueError("itch.io game has no supported desktop download")
+        title = named_value(product.get("name"))
+        if not title:
+            raise ValueError("itch.io game has no title")
+        image_url = parser.meta.get("og:image", "").strip()
+        seller = offer.get("seller") or {}
+        return {
+            "productId": itch_path.group(1),
+            "title": title,
+            "developer": named_value(seller),
+            "priceMinor": price_minor,
+            "regularPriceMinor": price_minor,
+            "currency": currency,
+            "discountPercent": 0,
+            "allowMissingPrice": False,
+            "isGame": True,
+            "supportsTargetPlatform": True,
+            "platforms": platforms,
+            "imageUrl": image_url,
+            "excludedWords": sorted(
+                catalog_matcher.normalized_words(title) &
+                catalog_matcher.EXCLUDED_TITLE_WORDS
+            ),
+        }
     if store == "BattleNet":
         html_document = raw.decode("utf-8", errors="replace")
         chunks = []
