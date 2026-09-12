@@ -17,6 +17,7 @@ class StorefrontPricePipelineTest(unittest.TestCase):
         cases = [
             ("EpicGamesStore", "collect-epic-all"),
             ("NintendoEShop", "collect-nintendo-all"),
+            ("GOG", "collect-gog-all"),
         ]
         for store, expected_command in cases:
             collector = pipeline.COLLECTORS[store][0]
@@ -53,6 +54,17 @@ class StorefrontPricePipelineTest(unittest.TestCase):
                 Path("output"),
             )
         self.assertEqual(result, 1)
+        run.assert_not_called()
+
+    def test_empty_store_is_not_a_collection_failure(self):
+        collector = pipeline.COLLECTORS["GOG"][0]
+        with patch.object(collector, "collect", return_value=(0, [])), patch.object(
+            pipeline.subprocess,
+            "run",
+        ) as run:
+            result = pipeline.run_pipeline(
+                "GOG", Path("tracker"), Path("catalog"), Path("output"))
+        self.assertEqual(result, 0)
         run.assert_not_called()
 
     def test_records_provider_failure_before_cpp_import(self):

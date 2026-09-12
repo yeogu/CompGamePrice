@@ -22,8 +22,9 @@ private:
     struct RawProduct {
         std::string offerId;
         std::string gameId;
-        std::int64_t regularPriceWon{};
-        std::int64_t currentPriceWon{};
+        std::int64_t regularPriceMinor{};
+        std::int64_t currentPriceMinor{};
+        Currency currency{Currency::KRW};
         int discountPercent{};
         std::string compatibleOs;
         bool active{false};

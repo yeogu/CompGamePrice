@@ -13,6 +13,7 @@ import collect_epic_snapshot
 import collect_nintendo_snapshot
 import collect_console_snapshot
 import collect_ubisoft_snapshot
+import collect_gog_snapshot
 import sync_steam_catalog as collection_status
 
 
@@ -42,6 +43,11 @@ COLLECTORS = {
         "ubisoft_store_products.txt",
         "collect-ubisoft-all",
     ),
+    "GOG": (
+        collect_gog_snapshot,
+        "gog_products.txt",
+        "collect-gog-all",
+    ),
 }
 
 
@@ -63,6 +69,16 @@ def run_pipeline(
             f"{store} partial collection failure: {product_id}: {error}",
             file=sys.stderr,
         )
+    if collected == 0 and not failures:
+        if database is not None:
+            collection_status.record_price_collection(
+                database,
+                "NOT_REQUIRED",
+                0,
+                None,
+                store,
+            )
+        return 0
     if collected == 0:
         if database is not None:
             error = collection_error(failures, "No products were collected")

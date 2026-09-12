@@ -25,6 +25,7 @@ STORE_NAMES = (
     "PlayStationStore",
     "MicrosoftStore",
     "UbisoftStore",
+    "GOG",
 )
 
 

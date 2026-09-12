@@ -7,11 +7,24 @@
 #include <stdexcept>
 
 namespace game_price {
+namespace {
+
+Currency parseProviderCurrency(const std::string& value) {
+    if (value == "KRW") return Currency::KRW;
+    if (value == "USD") return Currency::USD;
+    if (value == "EUR") return Currency::EUR;
+    if (value == "GBP") return Currency::GBP;
+    if (value == "JPY") return Currency::JPY;
+    throw std::runtime_error("unsupported currency");
+}
+
+}  // namespace
 
 EpicGamesProvider::EpicGamesProvider(const std::string& dataPath, Store store)
     : store_(store) {
-    if (store != Store::EpicGamesStore && store != Store::UbisoftStore) {
-        throw std::invalid_argument("PC storefront provider requires Epic or Ubisoft");
+    if (store != Store::EpicGamesStore && store != Store::UbisoftStore &&
+        store != Store::GOG) {
+        throw std::invalid_argument("unsupported PC storefront provider");
     }
     std::ifstream input(dataPath);
     if (!input) throw std::runtime_error("Cannot open Epic Games data: " + dataPath);
@@ -20,21 +33,27 @@ EpicGamesProvider::EpicGamesProvider(const std::string& dataPath, Store store)
     const auto appendProduct = [&]() {
         if (fields.empty()) return;
         try {
-            const auto regularPrice = std::stoll(fields.at("regular_price_krw"));
-            const auto currentPrice = std::stoll(fields.at("current_price_krw"));
+            const auto regularKey = fields.count("regular_price_minor")
+                ? "regular_price_minor" : "regular_price_krw";
+            const auto currentKey = fields.count("current_price_minor")
+                ? "current_price_minor" : "current_price_krw";
+            const auto regularPrice = std::stoll(fields.at(regularKey));
+            const auto currentPrice = std::stoll(fields.at(currentKey));
+            const auto currency = parseProviderCurrency(
+                fields.count("currency") ? fields.at("currency") : "KRW");
             const auto discount = std::stoi(fields.at("discount_percent"));
             if (regularPrice < currentPrice || currentPrice < 0 ||
                 discount < 0 || discount > 100) {
                 throw std::runtime_error("invalid price");
             }
             for (const auto& os : split(fields.at("compatible_os"), '|')) {
-                if (os != "WIN" && os != "MAC") {
+                if (os != "WIN" && os != "MAC" && os != "LINUX") {
                     throw std::runtime_error("unsupported operating system");
                 }
             }
             products_.push_back(RawProduct{
                 fields.at("offer_id"), fields.at("game_id"), regularPrice,
-                currentPrice, discount, fields.at("compatible_os"),
+                currentPrice, currency, discount, fields.at("compatible_os"),
                 fields.at("status") == "ACTIVE"});
         } catch (const std::exception& error) {
             rejections_.push_back(ProviderRejection{
@@ -88,11 +107,12 @@ std::vector<StoreProduct> EpicGamesProvider::findProducts(
         for (const auto& os : split(raw.compatibleOs, '|')) {
             if (os == "WIN") platforms.push_back(Platform::Windows);
             else if (os == "MAC") platforms.push_back(Platform::MacOS);
+            else if (os == "LINUX") platforms.push_back(Platform::Linux);
         }
         result.push_back(StoreProduct{
             raw.offerId, raw.gameId, store_, std::move(platforms),
-            Money{raw.currentPriceWon, Currency::KRW}, raw.active, std::nullopt,
-            Money{raw.regularPriceWon, Currency::KRW}, raw.discountPercent,
+            Money{raw.currentPriceMinor, raw.currency}, raw.active, std::nullopt,
+            Money{raw.regularPriceMinor, raw.currency}, raw.discountPercent,
             Region::KR, GameEdition::Standard, OfferType::BaseGame});
     }
     return result;

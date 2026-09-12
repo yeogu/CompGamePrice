@@ -222,6 +222,16 @@ CollectionResult collectAllUbisoftProducts(
     return collectAllStoreProducts(catalog, repository, ubisoft, "Ubisoft");
 }
 
+CollectionResult collectAllGogProducts(
+    const GameCatalog& catalog,
+    StoreProductRepository& repository,
+    const std::string& dataDirectory) {
+    EpicGamesProvider gog(
+        dataDirectory + "/gog_products.txt",
+        Store::GOG);
+    return collectAllStoreProducts(catalog, repository, gog, "GOG");
+}
+
 CollectionResult collectAllNintendoProducts(
     const GameCatalog& catalog,
     StoreProductRepository& repository,
@@ -490,6 +500,17 @@ int main(int argc, char* argv[]) {
                 catalog, repository, options.dataDirectory.value());
             std::cout << "Saved " << result.totalProducts
                       << " normalized Ubisoft products to SQLite.\n";
+            return static_cast<int>(
+                collectionCompletedSuccessfully(result)
+                    ? AppExitCode::Success
+                    : AppExitCode::CollectionFailed);
+        }
+        if (options.command == AppCommand::CollectGogAll) {
+            std::cout << "GOG catalog collection:\n";
+            const auto result = collectAllGogProducts(
+                catalog, repository, options.dataDirectory.value());
+            std::cout << "Saved " << result.totalProducts
+                      << " normalized GOG products to SQLite.\n";
             return static_cast<int>(
                 collectionCompletedSuccessfully(result)
                     ? AppExitCode::Success

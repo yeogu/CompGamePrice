@@ -12,6 +12,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import collect_epic_snapshot as epic
 import collect_nintendo_snapshot as nintendo
 import collect_ubisoft_snapshot as ubisoft
+import collect_gog_snapshot as gog
 import storefront_price_support as support
 
 
@@ -82,6 +83,28 @@ class StorefrontPriceCollectorsTest(unittest.TestCase):
             "https://store.ubisoft.com/kr/hades/660e5a03fbff4e2940488bcd.html")
         self.assertIn("current_price_krw: 26000", block)
         self.assertIn("compatible_os: WIN", block)
+
+    def test_gog_normalizes_usd_discount_and_platforms(self):
+        raw = json.dumps({
+            "id": "1207658787",
+            "slug": "heroes_3",
+            "productType": "game",
+            "title": "Heroes 3",
+            "operatingSystems": ["windows", "osx", "linux"],
+            "price": {
+                "finalMoney": {"amount": "2.49", "currency": "USD"},
+                "baseMoney": {"amount": "9.99", "currency": "USD"},
+                "discount": "-75%",
+            },
+        }).encode()
+        block = gog.normalized_block(
+            raw, "1207658787", "heroes-3",
+            "https://www.gog.com/en/game/heroes_3")
+        self.assertIn("current_price_minor: 249", block)
+        self.assertIn("regular_price_minor: 999", block)
+        self.assertIn("currency: USD", block)
+        self.assertIn("discount_percent: 75", block)
+        self.assertIn("compatible_os: WIN|MAC|LINUX", block)
 
     def test_nintendo_rejects_final_price_above_regular_price(self):
         raw = b'''<meta itemprop="priceCurrency" content="KRW"><script>

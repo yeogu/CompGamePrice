@@ -59,6 +59,21 @@ UBISOFT_PRODUCT = b"""
 </script></head></html>
 """
 
+GOG_PRODUCT = json.dumps({
+    "id": "1207658787",
+    "slug": "heroes_of_might_and_magic_3_complete_edition",
+    "productType": "game",
+    "title": "Heroes of Might and Magic 3: Complete",
+    "developers": ["New World Computing, Inc."],
+    "operatingSystems": ["windows", "linux"],
+    "coverHorizontal": "https://images.gog-statics.com/hero.png",
+    "price": {
+        "finalMoney": {"amount": "2.49", "currency": "USD"},
+        "baseMoney": {"amount": "9.99", "currency": "USD"},
+        "discount": "-75%",
+    },
+}).encode()
+
 
 class StorefrontCatalogTest(unittest.TestCase):
     def test_parses_epic_and_nintendo_search_results(self):
@@ -108,6 +123,39 @@ class StorefrontCatalogTest(unittest.TestCase):
         finally:
             storefront_catalog.fetch = original_fetch
         self.assertEqual(results[0]["title"], "Hades")
+
+    def test_parses_gog_identity_platforms_and_usd_price(self):
+        url = "https://www.gog.com/en/game/heroes_of_might_and_magic_3_complete_edition"
+        self.assertEqual(
+            storefront_catalog.product_id_from_url("GOG", url),
+            "heroes_of_might_and_magic_3_complete_edition",
+        )
+        metadata = storefront_catalog.verified_product(GOG_PRODUCT, "GOG", url)
+        self.assertEqual(metadata["productId"], "1207658787")
+        self.assertEqual(metadata["priceMinor"], 249)
+        self.assertEqual(metadata["regularPriceMinor"], 999)
+        self.assertEqual(metadata["discountPercent"], 75)
+        self.assertEqual(metadata["currency"], "USD")
+        self.assertEqual(metadata["platforms"], ["Windows", "Linux"])
+
+    def test_gog_search_only_returns_base_games(self):
+        raw = json.dumps({"products": [
+            {"id": "1", "slug": "game", "productType": "game",
+             "title": "Game", "operatingSystems": ["windows"]},
+            {"id": "2", "slug": "game_dlc", "productType": "dlc",
+             "title": "Game DLC", "operatingSystems": ["windows"]},
+        ]}).encode()
+        original_fetch = storefront_catalog.fetch
+        storefront_catalog.fetch = lambda url, timeout: raw
+        try:
+            results = storefront_catalog.search("GOG", "Game", 10)
+        finally:
+            storefront_catalog.fetch = original_fetch
+        self.assertEqual([result["externalProductId"] for result in results], ["1"])
+        self.assertEqual(
+            results[0]["productUrl"],
+            "https://www.gog.com/en/game/game?productId=1",
+        )
 
     def test_distinguishes_playstation_console_generation(self):
         metadata = storefront_catalog.verified_product(

@@ -28,6 +28,7 @@ STORE_KEYS = {
     "Apple App Store": "AppleAppStore",
     "UbisoftStore": "UbisoftStore",
     "Ubisoft Store": "UbisoftStore",
+    "GOG": "GOG",
 }
 
 PLATFORM_KEYS = {

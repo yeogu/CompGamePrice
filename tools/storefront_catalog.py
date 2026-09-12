@@ -6,7 +6,8 @@ from html.parser import HTMLParser
 from html import unescape
 import json
 import re
-from urllib.parse import urlencode, urljoin, urlparse
+from decimal import Decimal, InvalidOperation
+from urllib.parse import parse_qs, urlencode, urljoin, urlparse
 from urllib.request import Request, urlopen
 
 import catalog_matcher
@@ -59,6 +60,20 @@ STORE_CONFIG = {
         "productPath": "/kr/",
         "platforms": ["Windows"],
     },
+    "GOG": {
+        "display": "GOG",
+        "hosts": ["www.gog.com", "gog.com"],
+        "search": "https://catalog.gog.com/v1/catalog",
+        "searchParameters": {
+            "productType": "in:game",
+            "countryCode": "KR",
+            "locale": "en-US",
+            "currencyCode": "USD",
+            "page": "1",
+        },
+        "productPath": "/en/game/",
+        "platforms": ["Windows", "macOS", "Linux"],
+    },
 }
 
 
@@ -99,6 +114,15 @@ def product_id_from_url(store: str, product_url: str) -> str:
         identifier = parts[-1].removesuffix(".html")
         if not re.fullmatch(r"[0-9a-f]{24}", identifier):
             raise ValueError("invalid Ubisoft Store product URL")
+        return identifier
+    if store == "GOG":
+        try:
+            marker = parts.index("game")
+            identifier = parts[marker + 1]
+        except (ValueError, IndexError) as error:
+            raise ValueError("invalid GOG product URL") from error
+        if not re.fullmatch(r"[a-z0-9_]+", identifier):
+            raise ValueError("invalid GOG product URL")
         return identifier
     if not parts:
         raise ValueError("invalid Nintendo eShop product URL")
@@ -198,7 +222,74 @@ def fetch_product(store: str, product_url: str, timeout: float = 15.0) -> bytes:
             identifier
         )
         return fetch(url, timeout)
+    if store == "GOG":
+        product_ids = parse_qs(urlparse(product_url).query).get("productId", [])
+        if product_ids and product_ids[0].isdigit():
+            return fetch_gog_product(product_ids[0], timeout)
+        parameters = dict(config(store)["searchParameters"])
+        parameters.update({"query": identifier, "limit": "20"})
+        document = json.loads(fetch(
+            f"{config(store)['search']}?{urlencode(parameters)}", timeout))
+        product = next(
+            (item for item in document.get("products", [])
+             if item.get("slug") == identifier),
+            None,
+        )
+        if product is None:
+            raise ValueError("GOG product was not found")
+        return json.dumps(product).encode("utf-8")
     return fetch(product_url, timeout)
+
+
+def fetch_gog_product(product_id: str, timeout: float = 15.0) -> bytes:
+    if not str(product_id).isdigit():
+        raise ValueError("invalid GOG product ID")
+    detail = json.loads(fetch(
+        f"https://api.gog.com/products/{product_id}", timeout))
+    price_document = json.loads(fetch(
+        f"https://api.gog.com/products/{product_id}/prices?countryCode=KR",
+        timeout,
+    ))
+    prices = price_document.get("_embedded", {}).get("prices", [])
+    price = prices[0] if prices else {}
+    currency = str(price.get("currency", {}).get("code", ""))
+
+    def price_amount(value: str) -> str | None:
+        text = str(value or "").strip()
+        minor = text.split(" ", 1)[0]
+        if not minor.isdigit() or not currency:
+            return None
+        exponent = 0 if currency in {"KRW", "JPY"} else 2
+        return str(Decimal(minor) / (10 ** exponent))
+
+    compatibility = detail.get("content_system_compatibility", {})
+    platforms = []
+    if compatibility.get("windows"):
+        platforms.append("windows")
+    if compatibility.get("osx"):
+        platforms.append("osx")
+    if compatibility.get("linux"):
+        platforms.append("linux")
+    images = detail.get("images", {})
+    image = str(images.get("background") or images.get("logo2x") or "")
+    if image.startswith("//"):
+        image = "https:" + image
+    base_amount = price_amount(price.get("basePrice", ""))
+    final_amount = price_amount(price.get("finalPrice", ""))
+    return json.dumps({
+        "id": str(detail.get("id", product_id)),
+        "slug": detail.get("slug", ""),
+        "productType": "game" if detail.get("game_type") == "game" else detail.get("game_type", "game"),
+        "title": detail.get("title", ""),
+        "developers": [],
+        "operatingSystems": platforms,
+        "coverHorizontal": image,
+        "price": {
+            "finalMoney": {"amount": final_amount, "currency": currency},
+            "baseMoney": {"amount": base_amount, "currency": currency},
+            "discount": None,
+        },
+    }).encode("utf-8")
 
 
 def search(store: str, query: str, limit: int = 10, timeout: float = 15.0) -> list[dict]:
@@ -209,6 +300,38 @@ def search(store: str, query: str, limit: int = 10, timeout: float = 15.0) -> li
     settings = config(store)
     parameters = dict(settings["searchParameters"])
     parameters["q"] = query.strip()
+    if store == "GOG":
+        parameters.pop("q")
+        parameters.update({"query": query.strip(), "limit": str(limit)})
+        document = json.loads(fetch(
+            f"{settings['search']}?{urlencode(parameters)}", timeout))
+        results = []
+        for product in document.get("products", []):
+            if product.get("productType") != "game":
+                continue
+            slug = str(product.get("slug", "")).strip()
+            title = str(product.get("title", "")).strip()
+            if not slug or not title:
+                continue
+            price = product.get("price") or {}
+            final_money = price.get("finalMoney") or {}
+            currency = str(final_money.get("currency", "")).upper()
+            results.append({
+                "store": settings["display"],
+                "externalProductId": str(product.get("id", slug)),
+                "title": title,
+                "productUrl": (
+                    f"https://www.gog.com/en/game/{slug}?"
+                    f"{urlencode({'productId': str(product.get('id', ''))})}"
+                ),
+                "platforms": gog_platforms(product),
+                "imageUrl": str(product.get("coverHorizontal", "")),
+                "developer": next(iter(product.get("developers") or []), ""),
+                "priceMinor": decimal_minor(final_money.get("amount"), currency)
+                if currency else None,
+                "currency": currency,
+            })
+        return results[:limit]
     url = f"{settings['search']}?{urlencode(parameters)}"
     parse_limit = 200 if store == "UbisoftStore" else limit
     results = parse_search_results(fetch(url, timeout), store, parse_limit)
@@ -296,6 +419,29 @@ def named_value(value) -> str:
     return ""
 
 
+def gog_platforms(product: dict) -> list[str]:
+    names = {str(value).casefold() for value in product.get("operatingSystems", [])}
+    platforms = []
+    if "windows" in names:
+        platforms.append("Windows")
+    if "osx" in names or "mac" in names or "macos" in names:
+        platforms.append("macOS")
+    if "linux" in names:
+        platforms.append("Linux")
+    return platforms or ["Windows"]
+
+
+def decimal_minor(value, currency: str) -> int | None:
+    if value is None:
+        return None
+    try:
+        decimal = Decimal(str(value))
+    except InvalidOperation as error:
+        raise ValueError("Store product has an invalid price") from error
+    exponent = 0 if currency in {"KRW", "JPY"} else 2
+    return int(decimal * (10 ** exponent))
+
+
 def nintendo_publisher(document: str) -> str:
     publisher = re.search(
         r'class="product-attribute\s+publisher[^\"]*".*?'
@@ -310,6 +456,44 @@ def nintendo_publisher(document: str) -> str:
 
 
 def verified_product(raw: bytes, store: str, product_url: str) -> dict:
+    if store == "GOG" and raw.lstrip().startswith(b"{"):
+        product = json.loads(raw)
+        if product.get("productType") != "game":
+            raise ValueError("GOG product is not a base game")
+        title = str(product.get("title", "")).strip()
+        if not title:
+            raise ValueError("Store product has no title")
+        price = product.get("price") or {}
+        final_money = price.get("finalMoney") or {}
+        base_money = price.get("baseMoney") or {}
+        currency = str(final_money.get("currency", "")).upper()
+        if currency not in {"KRW", "USD", "EUR", "GBP", "JPY"}:
+            raise ValueError("GOG product uses an unsupported currency")
+        current_minor = decimal_minor(final_money.get("amount"), currency)
+        regular_minor = decimal_minor(base_money.get("amount"), currency)
+        discount_text = str(price.get("discount") or "").strip("-%")
+        discount_percent = int(discount_text) if discount_text.isdigit() else 0
+        if not discount_percent and current_minor is not None and regular_minor:
+            discount_percent = round(
+                (regular_minor - current_minor) * 100 / regular_minor)
+        return {
+            "productId": str(product.get("id", "")).strip(),
+            "title": title,
+            "developer": next(iter(product.get("developers") or []), ""),
+            "priceMinor": current_minor,
+            "regularPriceMinor": regular_minor,
+            "currency": currency,
+            "discountPercent": max(0, discount_percent),
+            "allowMissingPrice": final_money.get("amount") is None,
+            "isGame": True,
+            "supportsTargetPlatform": True,
+            "platforms": gog_platforms(product),
+            "imageUrl": str(product.get("coverHorizontal", "")),
+            "excludedWords": sorted(
+                catalog_matcher.normalized_words(title) &
+                catalog_matcher.EXCLUDED_TITLE_WORDS
+            ),
+        }
     if store == "EpicGamesStore" and raw.lstrip().startswith(b"{"):
         document = json.loads(raw)
         pages = document.get("pages", [])

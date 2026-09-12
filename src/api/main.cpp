@@ -613,7 +613,7 @@ Json::Value runStoreSearch(const std::string& store, const std::string& query) {
     std::lock_guard<std::mutex> toolLock(catalogToolMutex());
     if (store != "Steam" && store != "Google Play" &&
         store != "Apple App Store" && store != "Nintendo eShop" &&
-        store != "Ubisoft Store") {
+        store != "Ubisoft Store" && store != "GOG") {
         throw std::invalid_argument("store is not supported yet");
     }
     const auto temporary = std::filesystem::temp_directory_path() /
@@ -633,6 +633,7 @@ Json::Value runStoreSearch(const std::string& store, const std::string& query) {
     const auto script = projectPath() / scriptName;
     auto command = "python3 " + shellQuoted(script.string());
     if (store == "Ubisoft Store") command += " --store UbisoftStore";
+    if (store == "GOG") command += " --store GOG";
     command +=
         " --query " + shellQuoted(query) +
         " > " + shellQuoted(temporary.string()) + " 2>&1";
@@ -722,6 +723,9 @@ private:
         } else if (store == "Ubisoft Store") {
             pipeline = "tools/run_storefront_price_pipeline.py";
             pipelineArguments = " --store UbisoftStore";
+        } else if (store == "GOG") {
+            pipeline = "tools/run_storefront_price_pipeline.py";
+            pipelineArguments = " --store GOG";
         } else {
             pipeline = "tools/run_steam_pipeline.py";
         }
@@ -2130,6 +2134,7 @@ int main() {
                     "PlayStationStore",
                     "MicrosoftStore",
                     "UbisoftStore",
+                    "GOG",
                 };
                 if (supportedStores.count(store) == 0 || productId.empty()) {
                     callback(jsonError(
@@ -2387,7 +2392,8 @@ int main() {
                      store != "NintendoEShop" &&
                      store != "PlayStationStore" &&
                      store != "MicrosoftStore" &&
-                     store != "UbisoftStore") ||
+                     store != "UbisoftStore" &&
+                     store != "GOG") ||
                     productUrl.empty() ||
                     !validCanonicalGameId(gameId)) {
                     callback(jsonError(
@@ -2453,7 +2459,7 @@ int main() {
                     store != "Apple App Store" &&
                     store != "PlayStation Store" &&
                     store != "Microsoft Store" &&
-                    store != "Ubisoft Store") {
+                    store != "Ubisoft Store" && store != "GOG") {
                     callback(jsonError(
                         drogon::k400BadRequest,
                         "unsupported collection store"));
