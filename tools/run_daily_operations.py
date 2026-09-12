@@ -259,6 +259,23 @@ def run_operations(
             ],
         ),
         (
+            "meta-quest-store",
+            [
+                python,
+                str(project / "tools" / "run_storefront_price_pipeline.py"),
+                "--store",
+                "MetaQuestStore",
+                "--tracker",
+                str(tracker),
+                "--catalog",
+                str(catalog),
+                "--output-dir",
+                str(output_directory),
+                "--database",
+                str(database),
+            ],
+        ),
+        (
             "nintendo-eshop",
             [
                 python,

@@ -14,6 +14,7 @@ import collect_nintendo_snapshot
 import collect_console_snapshot
 import collect_ubisoft_snapshot
 import collect_gog_snapshot
+import collect_meta_quest_snapshot
 import sync_steam_catalog as collection_status
 
 
@@ -47,6 +48,11 @@ COLLECTORS = {
         collect_gog_snapshot,
         "gog_products.txt",
         "collect-gog-all",
+    ),
+    "MetaQuestStore": (
+        collect_meta_quest_snapshot,
+        "meta_quest_products.txt",
+        "collect-meta-quest-all",
     ),
 }
 

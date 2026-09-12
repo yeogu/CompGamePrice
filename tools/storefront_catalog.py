@@ -74,6 +74,14 @@ STORE_CONFIG = {
         "productPath": "/en/game/",
         "platforms": ["Windows", "macOS", "Linux"],
     },
+    "MetaQuestStore": {
+        "display": "Meta Quest Store",
+        "hosts": ["www.meta.com", "meta.com"],
+        "search": "https://www.meta.com/experiences/search/",
+        "searchParameters": {},
+        "productPath": "/experiences/",
+        "platforms": ["MetaQuest"],
+    },
 }
 
 
@@ -124,6 +132,10 @@ def product_id_from_url(store: str, product_url: str) -> str:
         if not re.fullmatch(r"[a-z0-9_]+", identifier):
             raise ValueError("invalid GOG product URL")
         return identifier
+    if store == "MetaQuestStore":
+        if "experiences" not in parts or not parts[-1].isdigit():
+            raise ValueError("invalid Meta Quest Store product URL")
+        return parts[-1]
     if not parts:
         raise ValueError("invalid Nintendo eShop product URL")
     identifier = parts[-1].removesuffix(".html")

@@ -232,6 +232,17 @@ CollectionResult collectAllGogProducts(
     return collectAllStoreProducts(catalog, repository, gog, "GOG");
 }
 
+CollectionResult collectAllMetaQuestProducts(
+    const GameCatalog& catalog,
+    StoreProductRepository& repository,
+    const std::string& dataDirectory) {
+    EpicGamesProvider metaQuest(
+        dataDirectory + "/meta_quest_products.txt",
+        Store::MetaQuestStore);
+    return collectAllStoreProducts(
+        catalog, repository, metaQuest, "Meta Quest");
+}
+
 CollectionResult collectAllNintendoProducts(
     const GameCatalog& catalog,
     StoreProductRepository& repository,
@@ -511,6 +522,17 @@ int main(int argc, char* argv[]) {
                 catalog, repository, options.dataDirectory.value());
             std::cout << "Saved " << result.totalProducts
                       << " normalized GOG products to SQLite.\n";
+            return static_cast<int>(
+                collectionCompletedSuccessfully(result)
+                    ? AppExitCode::Success
+                    : AppExitCode::CollectionFailed);
+        }
+        if (options.command == AppCommand::CollectMetaQuestAll) {
+            std::cout << "Meta Quest Store catalog collection:\n";
+            const auto result = collectAllMetaQuestProducts(
+                catalog, repository, options.dataDirectory.value());
+            std::cout << "Saved " << result.totalProducts
+                      << " normalized Meta Quest products to SQLite.\n";
             return static_cast<int>(
                 collectionCompletedSuccessfully(result)
                     ? AppExitCode::Success

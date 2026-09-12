@@ -25,6 +25,7 @@ STORE_PRIORITY = (
     "AppleAppStore",
     "UbisoftStore",
     "GOG",
+    "MetaQuestStore",
 )
 
 
@@ -35,7 +36,7 @@ def product_image(product: dict, timeout: float) -> str:
     if store == "Steam":
         raw = sync_steam_metadata.fetch_steam_metadata(product_id)
         metadata = sync_steam_metadata.proposed_metadata(raw, product_id)
-    elif store in {"EpicGamesStore", "UbisoftStore", "GOG"}:
+    elif store in {"EpicGamesStore", "UbisoftStore", "GOG", "MetaQuestStore"}:
         raw = storefront_catalog.fetch_product(store, product_url, timeout)
         metadata = storefront_catalog.verified_product(raw, store, product_url)
     else:

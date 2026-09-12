@@ -74,6 +74,14 @@ GOG_PRODUCT = json.dumps({
     },
 }).encode()
 
+META_QUEST_PRODUCT = b'''<html><head>
+<meta property="og:image" content="https://image.example/beat-saber.jpg" />
+<script type="application/ld+json">{"@graph":[
+{"@type":["SoftwareApplication","Product"],"name":"Beat Saber",
+ "sku":"2448060205267927","applicationCategory":"Games",
+ "offers":{"price":"30800","priceCurrency":"KRW"}}
+]}</script></head></html>'''
+
 
 class StorefrontCatalogTest(unittest.TestCase):
     def test_parses_epic_and_nintendo_search_results(self):
@@ -156,6 +164,21 @@ class StorefrontCatalogTest(unittest.TestCase):
             results[0]["productUrl"],
             "https://www.gog.com/en/game/game?productId=1",
         )
+
+    def test_parses_meta_quest_product_identity_and_krw_price(self):
+        url = "https://www.meta.com/experiences/beat-saber/2448060205267927/"
+        self.assertEqual(
+            storefront_catalog.product_id_from_url("MetaQuestStore", url),
+            "2448060205267927",
+        )
+        metadata = storefront_catalog.verified_product(
+            META_QUEST_PRODUCT, "MetaQuestStore", url)
+        self.assertEqual(metadata["productId"], "2448060205267927")
+        self.assertEqual(metadata["title"], "Beat Saber")
+        self.assertEqual(metadata["priceMinor"], 30800)
+        self.assertEqual(metadata["currency"], "KRW")
+        self.assertEqual(metadata["platforms"], ["MetaQuest"])
+        self.assertEqual(metadata["imageUrl"], "https://image.example/beat-saber.jpg")
 
     def test_distinguishes_playstation_console_generation(self):
         metadata = storefront_catalog.verified_product(

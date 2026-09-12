@@ -29,6 +29,8 @@ STORE_KEYS = {
     "UbisoftStore": "UbisoftStore",
     "Ubisoft Store": "UbisoftStore",
     "GOG": "GOG",
+    "Meta Quest Store": "MetaQuestStore",
+    "MetaQuestStore": "MetaQuestStore",
 }
 
 PLATFORM_KEYS = {

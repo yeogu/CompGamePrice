@@ -23,7 +23,7 @@ Currency parseProviderCurrency(const std::string& value) {
 EpicGamesProvider::EpicGamesProvider(const std::string& dataPath, Store store)
     : store_(store) {
     if (store != Store::EpicGamesStore && store != Store::UbisoftStore &&
-        store != Store::GOG) {
+        store != Store::GOG && store != Store::MetaQuestStore) {
         throw std::invalid_argument("unsupported PC storefront provider");
     }
     std::ifstream input(dataPath);
@@ -47,7 +47,8 @@ EpicGamesProvider::EpicGamesProvider(const std::string& dataPath, Store store)
                 throw std::runtime_error("invalid price");
             }
             for (const auto& os : split(fields.at("compatible_os"), '|')) {
-                if (os != "WIN" && os != "MAC" && os != "LINUX") {
+                if (os != "WIN" && os != "MAC" && os != "LINUX" &&
+                    os != "META") {
                     throw std::runtime_error("unsupported operating system");
                 }
             }
@@ -108,6 +109,7 @@ std::vector<StoreProduct> EpicGamesProvider::findProducts(
             if (os == "WIN") platforms.push_back(Platform::Windows);
             else if (os == "MAC") platforms.push_back(Platform::MacOS);
             else if (os == "LINUX") platforms.push_back(Platform::Linux);
+            else if (os == "META") platforms.push_back(Platform::MetaQuest);
         }
         result.push_back(StoreProduct{
             raw.offerId, raw.gameId, store_, std::move(platforms),

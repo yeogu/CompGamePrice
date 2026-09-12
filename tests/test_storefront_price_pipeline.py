@@ -18,6 +18,7 @@ class StorefrontPricePipelineTest(unittest.TestCase):
             ("EpicGamesStore", "collect-epic-all"),
             ("NintendoEShop", "collect-nintendo-all"),
             ("GOG", "collect-gog-all"),
+            ("MetaQuestStore", "collect-meta-quest-all"),
         ]
         for store, expected_command in cases:
             collector = pipeline.COLLECTORS[store][0]

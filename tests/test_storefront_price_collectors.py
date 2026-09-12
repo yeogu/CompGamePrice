@@ -13,6 +13,7 @@ import collect_epic_snapshot as epic
 import collect_nintendo_snapshot as nintendo
 import collect_ubisoft_snapshot as ubisoft
 import collect_gog_snapshot as gog
+import collect_meta_quest_snapshot as meta_quest
 import storefront_price_support as support
 
 
@@ -105,6 +106,17 @@ class StorefrontPriceCollectorsTest(unittest.TestCase):
         self.assertIn("currency: USD", block)
         self.assertIn("discount_percent: 75", block)
         self.assertIn("compatible_os: WIN|MAC|LINUX", block)
+
+    def test_meta_quest_normalizes_official_krw_price(self):
+        raw = b'''<script type="application/ld+json">{"@graph":[
+        {"@type":["SoftwareApplication","Product"],"name":"Beat Saber",
+        "sku":"2448060205267927",
+        "offers":{"price":"30800","priceCurrency":"KRW"}}]}</script>'''
+        block = meta_quest.normalized_block(
+            raw, "2448060205267927", "beat-saber",
+            "https://www.meta.com/experiences/beat-saber/2448060205267927/")
+        self.assertIn("current_price_krw: 30800", block)
+        self.assertIn("compatible_os: META", block)
 
     def test_nintendo_rejects_final_price_above_regular_price(self):
         raw = b'''<meta itemprop="priceCurrency" content="KRW"><script>

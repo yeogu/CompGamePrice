@@ -101,6 +101,14 @@ CommandLineOptions parseCommandLine(const std::vector<std::string>& arguments) {
         }
         return {AppCommand::CollectGogAll, "", std::nullopt, arguments[2]};
     }
+    if (command == "collect-meta-quest-all") {
+        if (arguments.size() != 3 || arguments[1] != "--data-dir" ||
+            arguments[2].empty()) {
+            throw std::invalid_argument(
+                "collect-meta-quest-all requires --data-dir PATH");
+        }
+        return {AppCommand::CollectMetaQuestAll, "", std::nullopt, arguments[2]};
+    }
     if (command == "collect-nintendo-all") {
         if (arguments.size() != 3 || arguments[1] != "--data-dir" ||
             arguments[2].empty()) {
@@ -213,6 +221,7 @@ std::string commandLineHelp() {
         "            Required: collect-epic-all --data-dir PATH\n"
         "  collect-ubisoft-all  Collect Ubisoft snapshots for every catalog game\n"
         "  collect-gog-all      Collect GOG snapshots for every catalog game\n"
+        "  collect-meta-quest-all  Collect Meta Quest snapshots for every catalog game\n"
         "            Required: collect-ubisoft-all --data-dir PATH\n"
         "  collect-nintendo-all  Collect Nintendo snapshots for every catalog game\n"
         "            Required: collect-nintendo-all --data-dir PATH\n"
