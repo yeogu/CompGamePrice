@@ -251,6 +251,15 @@ CollectionResult collectAllEaAppProducts(
     return collectAllStoreProducts(catalog, repository, eaApp, "EA app");
 }
 
+CollectionResult collectAllBattleNetProducts(
+    const GameCatalog& catalog,
+    StoreProductRepository& repository,
+    const std::string& dataDirectory) {
+    EpicGamesProvider battleNet(
+        dataDirectory + "/battle_net_products.txt", Store::BattleNet);
+    return collectAllStoreProducts(catalog, repository, battleNet, "Battle.net");
+}
+
 CollectionResult collectAllNintendoProducts(
     const GameCatalog& catalog,
     StoreProductRepository& repository,
@@ -552,6 +561,15 @@ int main(int argc, char* argv[]) {
                 catalog, repository, options.dataDirectory.value());
             std::cout << "Saved " << result.totalProducts
                       << " normalized EA app products to SQLite.\n";
+            return static_cast<int>(collectionCompletedSuccessfully(result)
+                ? AppExitCode::Success : AppExitCode::CollectionFailed);
+        }
+        if (options.command == AppCommand::CollectBattleNetAll) {
+            std::cout << "Battle.net catalog collection:\n";
+            const auto result = collectAllBattleNetProducts(
+                catalog, repository, options.dataDirectory.value());
+            std::cout << "Saved " << result.totalProducts
+                      << " normalized Battle.net products to SQLite.\n";
             return static_cast<int>(collectionCompletedSuccessfully(result)
                 ? AppExitCode::Success : AppExitCode::CollectionFailed);
         }

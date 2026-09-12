@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from html.parser import HTMLParser
 from html import unescape
+from http.cookiejar import CookieJar
 import json
 import re
 from decimal import Decimal, InvalidOperation
 from urllib.parse import parse_qs, urlencode, urljoin, urlparse
-from urllib.request import Request, urlopen
+from urllib.request import HTTPCookieProcessor, HTTPSHandler, Request, build_opener, urlopen
 
 import catalog_matcher
 import collect_steam_snapshot as network_support
@@ -90,6 +91,14 @@ STORE_CONFIG = {
         "productPath": "/games/",
         "platforms": ["Windows"],
     },
+    "BattleNet": {
+        "display": "Battle.net",
+        "hosts": ["kr.shop.battle.net"],
+        "search": "https://kr.shop.battle.net/en-us",
+        "searchParameters": {},
+        "productPath": "/product/",
+        "platforms": ["Windows"],
+    },
 }
 
 
@@ -151,6 +160,15 @@ def product_id_from_url(store: str, product_url: str) -> str:
         if len(parts) <= marker + 2:
             raise ValueError("invalid EA app product URL")
         return parts[marker + 2]
+    if store == "BattleNet":
+        try:
+            marker = parts.index("product")
+            identifier = parts[marker + 1]
+        except (ValueError, IndexError) as error:
+            raise ValueError("invalid Battle.net product URL") from error
+        if not re.fullmatch(r"[a-z0-9-]+", identifier):
+            raise ValueError("invalid Battle.net product URL")
+        return identifier
     if not parts:
         raise ValueError("invalid Nintendo eShop product URL")
     identifier = parts[-1].removesuffix(".html")
@@ -265,6 +283,21 @@ def fetch_product(store: str, product_url: str, timeout: float = 15.0) -> bytes:
         if product is None:
             raise ValueError("GOG product was not found")
         return json.dumps(product).encode("utf-8")
+    if store == "BattleNet":
+        url = f"https://kr.shop.battle.net/en-us/product/{identifier}"
+        request = Request(url, headers={
+            "User-Agent": (
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                "Chrome/124 Safari/537.36"
+            ),
+            "Accept-Language": "en-US,en;q=0.9",
+        })
+        opener = build_opener(
+            HTTPCookieProcessor(CookieJar()),
+            HTTPSHandler(context=network_support.tls_context()),
+        )
+        with opener.open(request, timeout=timeout) as response:
+            return response.read()
     return fetch(product_url, timeout)
 
 
@@ -483,6 +516,83 @@ def nintendo_publisher(document: str) -> str:
 
 
 def verified_product(raw: bytes, store: str, product_url: str) -> dict:
+    if store == "BattleNet":
+        html_document = raw.decode("utf-8", errors="replace")
+        chunks = []
+        for match in re.finditer(
+            r'self\.__next_f\.push\((\[.*?\])\)</script>',
+            html_document,
+            re.DOTALL,
+        ):
+            try:
+                payload = json.loads(match.group(1))
+            except json.JSONDecodeError:
+                continue
+            if len(payload) > 1 and isinstance(payload[1], str):
+                chunks.append(payload[1])
+        stream = "".join(chunks)
+        decoder = json.JSONDecoder()
+        products = {}
+        for marker in re.finditer(
+            r'\{\s*"id"\s*:\s*\d+\s*,\s*"subscriptionId"', stream
+        ):
+            try:
+                candidate, _ = decoder.raw_decode(stream[marker.start():])
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(candidate, dict) or not candidate.get("id"):
+                continue
+            price = (candidate.get("priceInfo") or {}).get("price") or {}
+            if not price or price.get("virtualCurrency"):
+                continue
+            category = str((candidate.get("analytics") or {}).get("category", ""))
+            if category.casefold() != "game":
+                continue
+            products[str(candidate["id"])] = candidate
+        editions = list(products.values())
+        standard = next(
+            (item for item in editions if re.search(
+                r"(?:standard edition|일반판)$", str(item.get("name", "")),
+                re.IGNORECASE)),
+            editions[0] if len(editions) == 1 else {},
+        )
+        if not standard:
+            raise ValueError("Battle.net page has no unambiguous base game edition")
+        price = standard["priceInfo"]["price"]
+        currency = str(price.get("currency", "")).upper()
+        current_minor = price.get("raw")
+        regular_text = price.get("fullAmount")
+        regular_minor = decimal_minor(
+            re.sub(r"[^0-9.]", "", str(regular_text)), currency)
+        if current_minor is None:
+            current_minor = regular_minor
+        title = re.sub(
+            r"\s*[-–:]?\s*(?:standard edition|일반판)$", "",
+            str(standard.get("name", "")).strip(), flags=re.IGNORECASE)
+        image_url = str(
+            standard.get("productComparisonImageUrl") or
+            standard.get("imageUrl") or ""
+        )
+        if image_url.startswith("//"):
+            image_url = "https:" + image_url
+        return {
+            "productId": str(standard["id"]),
+            "title": title,
+            "developer": "Blizzard Entertainment",
+            "priceMinor": int(current_minor),
+            "regularPriceMinor": regular_minor,
+            "currency": currency,
+            "discountPercent": int(price.get("discountPercentage") or 0),
+            "allowMissingPrice": False,
+            "isGame": True,
+            "supportsTargetPlatform": True,
+            "platforms": ["Windows"],
+            "imageUrl": image_url,
+            "excludedWords": sorted(
+                catalog_matcher.normalized_words(title) &
+                catalog_matcher.EXCLUDED_TITLE_WORDS
+            ),
+        }
     if store == "EAApp":
         html_document = raw.decode("utf-8", errors="replace")
         next_data = re.search(

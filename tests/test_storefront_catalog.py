@@ -98,6 +98,23 @@ EA_PRODUCT = ("""
     }}}},
 )).encode()
 
+BATTLE_NET_CARD = {
+    "id": 1831178,
+    "subscriptionId": None,
+    "name": "Diablo IV - Standard Edition",
+    "productComparisonImageUrl": "//image.example/diablo.jpg",
+    "priceInfo": {"price": {
+        "currency": "KRW", "fullAmount": "₩62,400", "raw": 15600,
+        "discountPercentage": 75, "virtualCurrency": False,
+    }},
+    "analytics": {"category": "Game"},
+}
+BATTLE_NET_PRODUCT = (
+    '<script>self.__next_f.push(' +
+    json.dumps([1, '0:{"products":[' + json.dumps(BATTLE_NET_CARD) + ']}']) +
+    ')</script>'
+).encode()
+
 META_QUEST_PRODUCT = b'''<html><head>
 <meta property="og:image" content="https://image.example/beat-saber.jpg" />
 <script type="application/ld+json">{"@graph":[
@@ -214,6 +231,22 @@ class StorefrontCatalogTest(unittest.TestCase):
         self.assertEqual(metadata["priceMinor"], 53900)
         self.assertEqual(metadata["regularPriceMinor"], 77000)
         self.assertEqual(metadata["discountPercent"], 30)
+        self.assertEqual(metadata["currency"], "KRW")
+        self.assertEqual(metadata["platforms"], ["Windows"])
+
+    def test_parses_battle_net_base_game_price(self):
+        url = "https://kr.shop.battle.net/ko-kr/product/diablo-iv"
+        self.assertEqual(
+            storefront_catalog.product_id_from_url("BattleNet", url),
+            "diablo-iv",
+        )
+        metadata = storefront_catalog.verified_product(
+            BATTLE_NET_PRODUCT, "BattleNet", url)
+        self.assertEqual(metadata["productId"], "1831178")
+        self.assertEqual(metadata["title"], "Diablo IV")
+        self.assertEqual(metadata["priceMinor"], 15600)
+        self.assertEqual(metadata["regularPriceMinor"], 62400)
+        self.assertEqual(metadata["discountPercent"], 75)
         self.assertEqual(metadata["currency"], "KRW")
         self.assertEqual(metadata["platforms"], ["Windows"])
 

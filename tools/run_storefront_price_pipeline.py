@@ -16,6 +16,7 @@ import collect_ubisoft_snapshot
 import collect_gog_snapshot
 import collect_meta_quest_snapshot
 import collect_ea_app_snapshot
+import collect_battle_net_snapshot
 import sync_steam_catalog as collection_status
 
 
@@ -59,6 +60,11 @@ COLLECTORS = {
         collect_ea_app_snapshot,
         "ea_app_products.txt",
         "collect-ea-app-all",
+    ),
+    "BattleNet": (
+        collect_battle_net_snapshot,
+        "battle_net_products.txt",
+        "collect-battle-net-all",
     ),
 }
 

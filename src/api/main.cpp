@@ -732,6 +732,9 @@ private:
         } else if (store == "EA app") {
             pipeline = "tools/run_storefront_price_pipeline.py";
             pipelineArguments = " --store EAApp";
+        } else if (store == "Battle.net") {
+            pipeline = "tools/run_storefront_price_pipeline.py";
+            pipelineArguments = " --store BattleNet";
         } else {
             pipeline = "tools/run_steam_pipeline.py";
         }
@@ -2143,6 +2146,7 @@ int main() {
                     "GOG",
                     "MetaQuestStore",
                     "EAApp",
+                    "BattleNet",
                 };
                 if (supportedStores.count(store) == 0 || productId.empty()) {
                     callback(jsonError(
@@ -2403,7 +2407,8 @@ int main() {
                      store != "UbisoftStore" &&
                      store != "GOG" &&
                      store != "MetaQuestStore" &&
-                     store != "EAApp") ||
+                     store != "EAApp" &&
+                     store != "BattleNet") ||
                     productUrl.empty() ||
                     !validCanonicalGameId(gameId)) {
                     callback(jsonError(
@@ -2470,7 +2475,8 @@ int main() {
                     store != "PlayStation Store" &&
                     store != "Microsoft Store" &&
                     store != "Ubisoft Store" && store != "GOG" &&
-                    store != "Meta Quest Store" && store != "EA app") {
+                    store != "Meta Quest Store" && store != "EA app" &&
+                    store != "Battle.net") {
                     callback(jsonError(
                         drogon::k400BadRequest,
                         "unsupported collection store"));

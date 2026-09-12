@@ -175,7 +175,7 @@ const matchDecisionGuide = {
 } as const
 
 type AppView = 'games' | 'favorites' | 'alerts' | 'notifications' | 'account' | 'collection' | 'members' | 'admin'
-type AdminSection = 'dashboard' | 'steam' | 'epic-games' | 'ubisoft-store' | 'gog' | 'meta-quest-store' | 'ea-app' | 'nintendo-eshop' | 'playstation-store' | 'microsoft-store' | 'google-play' | 'apple-app-store' | 'integrity' | 'audit'
+type AdminSection = 'dashboard' | 'steam' | 'epic-games' | 'ubisoft-store' | 'gog' | 'meta-quest-store' | 'ea-app' | 'battle-net' | 'nintendo-eshop' | 'playstation-store' | 'microsoft-store' | 'google-play' | 'apple-app-store' | 'integrity' | 'audit'
 
 const catalogProviderLabel = (provider: MobileCatalogSyncJob['provider']) => {
   if (provider === 'GooglePlay') {
@@ -221,6 +221,7 @@ const collectionStoreName = (store: string) => {
     GOG: 'GOG',
     MetaQuestStore: 'Meta Quest Store',
     EAApp: 'EA app',
+    BattleNet: 'Battle.net',
   }
   return names[store] ?? store
 }
@@ -257,6 +258,8 @@ const adminSectionForStore = (store: string): AdminSection | null => {
     MetaQuestStore: 'meta-quest-store',
     'EA app': 'ea-app',
     EAApp: 'ea-app',
+    'Battle.net': 'battle-net',
+    BattleNet: 'battle-net',
   }
   return sections[store] ?? null
 }
@@ -270,6 +273,7 @@ const isOfficialUrlStore = (store: string) => [
   'GOG',
   'Meta Quest Store',
   'EA app',
+  'Battle.net',
 ].includes(store)
 
 const officialStoreUrlExample = (store: string) => {
@@ -293,6 +297,9 @@ const officialStoreUrlExample = (store: string) => {
   }
   if (store === 'EA app') {
     return '예: https://www.ea.com/ko/games/ea-sports-fc/fc-26/buy'
+  }
+  if (store === 'Battle.net') {
+    return '예: https://kr.shop.battle.net/ko-kr/product/diablo-iv'
   }
   return '예: https://www.xbox.com/ko-KR/games/store/...'
 }
@@ -598,6 +605,8 @@ function App() {
       setAdminStore('Meta Quest Store')
     } else if (section === 'ea-app') {
       setAdminStore('EA app')
+    } else if (section === 'battle-net') {
+      setAdminStore('Battle.net')
     } else if (section === 'nintendo-eshop') {
       setAdminStore('Nintendo eShop')
       setMobileSyncStore('NintendoEShop')
@@ -887,6 +896,7 @@ function App() {
         GOG: 'GOG',
         'Meta Quest Store': 'MetaQuestStore',
         'EA app': 'EAApp',
+        'Battle.net': 'BattleNet',
       } as const
       const storefrontStore = storefrontStores[adminStore as keyof typeof storefrontStores]
       const result = storefrontStore
@@ -2305,6 +2315,7 @@ function App() {
           <button className={adminSection === 'gog' ? 'active' : ''} onClick={() => selectAdminSection('gog')}><StoreBadge compact store="GOG" /></button>
           <button className={adminSection === 'meta-quest-store' ? 'active' : ''} onClick={() => selectAdminSection('meta-quest-store')}><StoreBadge compact store="Meta Quest Store" /></button>
           <button className={adminSection === 'ea-app' ? 'active' : ''} onClick={() => selectAdminSection('ea-app')}><StoreBadge compact store="EA app" /></button>
+          <button className={adminSection === 'battle-net' ? 'active' : ''} onClick={() => selectAdminSection('battle-net')}><StoreBadge compact store="Battle.net" /></button>
           <button className={adminSection === 'nintendo-eshop' ? 'active' : ''} onClick={() => selectAdminSection('nintendo-eshop')}><StoreBadge compact store="Nintendo eShop" /></button>
           <button className={adminSection === 'playstation-store' ? 'active' : ''} onClick={() => selectAdminSection('playstation-store')}><StoreBadge compact store="PlayStation Store" /></button>
           <button className={adminSection === 'microsoft-store' ? 'active' : ''} onClick={() => selectAdminSection('microsoft-store')}><StoreBadge compact store="Microsoft Store" /></button>
@@ -2358,6 +2369,7 @@ function App() {
         {adminSection === 'gog' && <div className="admin-store-workspace"><article className="catalog-sync-panel"><div><h2>GOG 상품 연결</h2><p>공식 카탈로그에서 DRM-free PC 게임을 검색하고 Windows·macOS·Linux 지원 및 USD 가격을 확인해 연결합니다.</p></div><div className="catalog-step-actions"><button onClick={openAdminProductWorkspace}>1. 상품 검색·연결</button><button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectCatalogPrices()}>{catalogJob?.status === 'RUNNING' ? '가격 수집 중…' : '2. 가격 수집'}</button></div></article></div>}
         {adminSection === 'meta-quest-store' && <div className="admin-store-workspace"><article className="catalog-sync-panel"><div><h2>Meta Quest Store 상품 연결</h2><p>Meta 공식 Store에서 Quest 게임을 확인하고 canonical Game에 연결한 뒤 KRW 가격을 수집합니다.</p></div><div className="catalog-step-actions"><a className="button-link" href={`https://www.meta.com/experiences/search/?q=${encodeURIComponent(adminQuery || 'Beat Saber')}`} target="_blank" rel="noreferrer">1. 공식 Store 검색</a><button onClick={openAdminProductWorkspace}>2. URL 검증·연결</button><button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectCatalogPrices()}>{catalogJob?.status === 'RUNNING' ? '가격 수집 중…' : '3. 가격 수집'}</button></div></article></div>}
         {adminSection === 'ea-app' && <div className="admin-store-workspace"><article className="catalog-sync-panel"><div><h2>EA app 상품 연결</h2><p>EA 공식 게임 페이지에서 EA app용 정식 PC 기본판을 연결하고 한국 원화 가격과 할인 정보를 수집합니다.</p></div><div className="catalog-step-actions"><a className="button-link" href="https://www.ea.com/ko/games" target="_blank" rel="noreferrer">1. 공식 게임 찾기</a><button onClick={openAdminProductWorkspace}>2. URL 검증·연결</button><button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectCatalogPrices()}>{catalogJob?.status === 'RUNNING' ? '가격 수집 중…' : '3. 가격 수집'}</button></div></article></div>}
+        {adminSection === 'battle-net' && <div className="admin-store-workspace"><article className="catalog-sync-panel"><div><h2>Battle.net 상품 연결</h2><p>한국 Battle.net의 Windows 기본 게임 일반판을 연결하고 KRW 정가·할인가·할인율을 수집합니다.</p></div><div className="catalog-step-actions"><a className="button-link" href="https://kr.shop.battle.net/ko-kr" target="_blank" rel="noreferrer">1. 공식 게임 찾기</a><button onClick={openAdminProductWorkspace}>2. URL 검증·연결</button><button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectCatalogPrices()}>{catalogJob?.status === 'RUNNING' ? '가격 수집 중…' : '3. 가격 수집'}</button></div></article></div>}
         {(adminSection === 'nintendo-eshop' || adminSection === 'playstation-store' || adminSection === 'microsoft-store' || adminSection === 'google-play' || adminSection === 'apple-app-store') && <div className="admin-store-workspace"><header><StoreBadge store={adminStore} /><div><h2>{adminStore}</h2><p>Store 상품 후보 탐색, 검토, 연결과 가격 수집을 관리합니다.</p></div></header><article className="catalog-sync-panel">
           <div>
             <h2>{adminStore} 상품 연결</h2>
@@ -2390,11 +2402,12 @@ function App() {
           </div>
         </article>
         </div>}
-        {(adminSection === 'steam' || adminSection === 'epic-games' || adminSection === 'ubisoft-store' || adminSection === 'gog' || adminSection === 'meta-quest-store' || adminSection === 'ea-app' || adminSection === 'nintendo-eshop' || adminSection === 'playstation-store' || adminSection === 'microsoft-store' || adminSection === 'google-play' || adminSection === 'apple-app-store') && <div className="admin-product-workspace" id="admin-product-workspace"><h2>{adminStore} 상품 검색·연결</h2><p>게임 이름이나 공식 상품 URL로 canonical Game에 연결합니다.</p>
+        {(adminSection === 'steam' || adminSection === 'epic-games' || adminSection === 'ubisoft-store' || adminSection === 'gog' || adminSection === 'meta-quest-store' || adminSection === 'ea-app' || adminSection === 'battle-net' || adminSection === 'nintendo-eshop' || adminSection === 'playstation-store' || adminSection === 'microsoft-store' || adminSection === 'google-play' || adminSection === 'apple-app-store') && <div className="admin-product-workspace" id="admin-product-workspace"><h2>{adminStore} 상품 검색·연결</h2><p>게임 이름이나 공식 상품 URL로 canonical Game에 연결합니다.</p>
         {adminStore === 'Epic Games Store' && <div className="admin-feedback review-note"><strong>Epic 공식 검색에서 상품을 확인하세요.</strong><span>Epic Games Store가 서버 검색 요청을 제한하므로 공식 검색 결과에서 상품을 연 뒤 URL을 아래 입력란에 붙여넣습니다.</span><input aria-label="Epic 게임 이름" value={adminQuery} onChange={(event) => setAdminQuery(event.target.value)} placeholder="예: Hades" /><a href={`https://store.epicgames.com/ko/browse?q=${encodeURIComponent(adminQuery || 'Hades')}&category=Game&sortBy=relevancy&sortDir=DESC`} target="_blank" rel="noreferrer">Epic Games Store 검색 열기 ↗</a></div>}
         {adminStore === 'Meta Quest Store' && <div className="admin-feedback review-note"><strong>Meta 공식 검색에서 Quest 게임을 확인하세요.</strong><span>상품을 연 뒤 주소를 아래 공식 Store 상품 URL 입력란에 붙여넣습니다.</span><input aria-label="Meta Quest 게임 이름" value={adminQuery} onChange={(event) => setAdminQuery(event.target.value)} placeholder="예: Beat Saber" /><a href={`https://www.meta.com/experiences/search/?q=${encodeURIComponent(adminQuery || 'Beat Saber')}`} target="_blank" rel="noreferrer">Meta Quest Store 검색 열기 ↗</a></div>}
         {adminStore === 'EA app' && <div className="admin-feedback review-note"><strong>EA 공식 게임 페이지에서 구매 페이지를 확인하세요.</strong><span>게임의 구매 페이지 URL(`/buy`)을 아래 입력란에 붙여넣으면 EA app 기본판만 검증합니다. 구독과 무료 체험판은 제외됩니다.</span><a href="https://www.ea.com/ko/games" target="_blank" rel="noreferrer">EA 게임 목록 열기 ↗</a></div>}
-        {adminStore !== 'Epic Games Store' && adminStore !== 'Meta Quest Store' && adminStore !== 'EA app' && adminStore !== 'PlayStation Store' && adminStore !== 'Microsoft Store' && <div className="admin-search">
+        {adminStore === 'Battle.net' && <div className="admin-feedback review-note"><strong>Battle.net 공식 상품 페이지를 사용하세요.</strong><span>기본 게임의 상품 URL을 붙여넣으면 일반판만 연결합니다. 확장팩·게임 화폐·구독·서비스 상품은 제외됩니다.</span><a href="https://kr.shop.battle.net/ko-kr" target="_blank" rel="noreferrer">Battle.net 상점 열기 ↗</a></div>}
+        {adminStore !== 'Epic Games Store' && adminStore !== 'Meta Quest Store' && adminStore !== 'EA app' && adminStore !== 'Battle.net' && adminStore !== 'PlayStation Store' && adminStore !== 'Microsoft Store' && <div className="admin-search">
           <input aria-label="Store 게임 이름" value={adminQuery} onChange={(event) => setAdminQuery(event.target.value)} placeholder="예: Sekiro" />
           <button disabled={!adminQuery.trim() || adminSearching} onClick={() => void searchCatalogCandidates()}>{adminSearching ? '검색 중…' : 'Store 검색'}</button>
         </div>}

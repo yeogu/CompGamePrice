@@ -33,6 +33,8 @@ STORE_KEYS = {
     "MetaQuestStore": "MetaQuestStore",
     "EA app": "EAApp",
     "EAApp": "EAApp",
+    "Battle.net": "BattleNet",
+    "BattleNet": "BattleNet",
 }
 
 PLATFORM_KEYS = {
