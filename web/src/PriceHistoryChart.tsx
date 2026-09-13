@@ -18,12 +18,19 @@ const formatDate = (value: string) =>
     .format(new Date(value))
 
 interface Props { histories: ProductPriceHistory[] }
-type DisplayObservation = PriceObservation & { originalPrice?: Money }
+type PriceChangeKind = 'INITIAL' | 'STORE_PRICE' | 'EXCHANGE_RATE_ONLY'
+type DisplayObservation = PriceObservation & {
+  originalPrice?: Money
+  priceChangeKind?: PriceChangeKind
+}
+type DisplayProductHistory = Omit<ProductPriceHistory, 'observations'> & {
+  observations: DisplayObservation[]
+}
 interface ChartPoint { x: number; y: number; observation: DisplayObservation }
 interface TooltipState { store: string; observation: DisplayObservation; left: number; top: number }
 
-const dailyObservations = (history: ProductPriceHistory) => {
-  const byDate = new Map<string, ProductPriceHistory['observations'][number]>()
+const dailyObservations = (history: DisplayProductHistory) => {
+  const byDate = new Map<string, DisplayObservation>()
   for (const observation of history.observations) {
     byDate.set(observation.observedAt.slice(0, 10), observation)
   }
@@ -31,13 +38,45 @@ const dailyObservations = (history: ProductPriceHistory) => {
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([date, observation]) => ({ date, observation }))
   return daily.filter((item, index) => {
-    if (index === 0) return true
+    if (index === 0 || index === daily.length - 1) return true
+    if (item.observation.priceChangeKind === 'STORE_PRICE') return true
+    if (item.observation.priceChangeKind === 'EXCHANGE_RATE_ONLY') return false
     const previous = daily[index - 1].observation
     return previous.price.minorAmount !== item.observation.price.minorAmount ||
       previous.price.currency !== item.observation.price.currency ||
       previous.purchasable !== item.observation.purchasable
   })
 }
+
+const comparableHistory = (history: ProductPriceHistory): DisplayProductHistory => {
+  let previous: PriceObservation | undefined
+  const observations = history.observations.flatMap((item): DisplayObservation[] => {
+    const sourcePriceChanged = previous !== undefined && (
+      previous.price.minorAmount !== item.price.minorAmount ||
+      previous.price.currency !== item.price.currency ||
+      previous.discountPercent !== item.discountPercent ||
+      previous.purchasable !== item.purchasable
+    )
+    const priceChangeKind: PriceChangeKind = previous === undefined
+      ? 'INITIAL'
+      : sourcePriceChanged ? 'STORE_PRICE' : 'EXCHANGE_RATE_ONLY'
+    previous = item
+    if (item.price.currency === 'KRW') return [{ ...item, priceChangeKind }]
+    if (!item.krwConversion) return []
+    return [{
+      ...item,
+      originalPrice: item.price,
+      price: item.krwConversion.price,
+      priceChangeKind,
+    }]
+  })
+  return { ...history, observations }
+}
+
+const daysBetween = (later: string, earlier: string) => Math.max(0, Math.floor(
+  (new Date(`${later.slice(0, 10)}T00:00:00Z`).getTime() -
+    new Date(`${earlier.slice(0, 10)}T00:00:00Z`).getTime()) / 86_400_000,
+))
 
 function PointShape({ point, store, onPointer, onLeave }: {
   point: ChartPoint
@@ -64,16 +103,15 @@ function PriceHistoryChart({ histories }: Props) {
     history.observations.some((item) => item.price.currency !== 'KRW' && item.krwConversion),
   )
   const comparable = useMemo(
-    () => available.map((history) => ({
-      ...history,
-      observations: history.observations.flatMap((item) => {
-        if (item.price.currency === 'KRW') return [item]
-        if (!item.krwConversion) return []
-        return [{ ...item, originalPrice: item.price, price: item.krwConversion.price }]
-      }),
-    })).filter((history) => history.observations.length > 0),
+    () => available.map(comparableHistory)
+      .filter((history) => history.observations.length > 0),
     [available],
   )
+  const staleExchangeRateDays = useMemo(() => Math.max(0, ...available.flatMap((history) =>
+    history.observations.flatMap((item) => item.price.currency !== 'KRW' && item.krwConversion
+      ? [daysBetween(item.observedAt, item.krwConversion.rateDate)]
+      : []),
+  )), [available])
   const [hiddenStores, setHiddenStores] = useState<Set<string>>(new Set())
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   const chartWrapRef = useRef<HTMLDivElement>(null)
@@ -157,6 +195,7 @@ function PriceHistoryChart({ histories }: Props) {
       </div>
 
       {hasConvertedForeignPrices && <p className="data-note">외화 가격은 ECB의 관측일 기준환율로 원화 환산했습니다. 휴일에는 직전 영업일 환율을 사용하며 실제 카드 결제액과 다를 수 있습니다.</p>}
+      {staleExchangeRateDays > 4 && <p className="data-note exchange-warning">일부 가격에는 관측일보다 {staleExchangeRateDays}일 오래된 환율이 적용됐습니다. 관리자 화면에서 환율 동기화 상태를 확인하세요.</p>}
 
       {chart ? (
         <>
@@ -194,7 +233,16 @@ function PriceHistoryChart({ histories }: Props) {
                 <strong>{formatMoney(tooltip.observation.price)}</strong>
                 {tooltip.observation.originalPrice && <small>원가격 {formatMoney(tooltip.observation.originalPrice)}</small>}
                 {tooltip.observation.krwConversion && tooltip.observation.originalPrice && (
-                  <small>1 {tooltip.observation.originalPrice.currency} = ₩{tooltip.observation.krwConversion.rate.toLocaleString('ko-KR', { maximumFractionDigits: 2 })} · {tooltip.observation.krwConversion.rateDate} {tooltip.observation.krwConversion.source}</small>
+                  <>
+                    <small className={`price-change-kind ${tooltip.observation.priceChangeKind === 'STORE_PRICE' ? 'store-price-change' : ''}`}>
+                      {tooltip.observation.priceChangeKind === 'STORE_PRICE'
+                        ? 'Store 원가격 변경'
+                        : tooltip.observation.priceChangeKind === 'EXCHANGE_RATE_ONLY'
+                          ? '원가격 동일 · 환율 변동 반영'
+                          : '첫 가격 관측'}
+                    </small>
+                    <small>1 {tooltip.observation.originalPrice.currency} = ₩{tooltip.observation.krwConversion.rate.toLocaleString('ko-KR', { maximumFractionDigits: 2 })} · {tooltip.observation.krwConversion.rateDate} {tooltip.observation.krwConversion.source}</small>
+                  </>
                 )}
                 {tooltip.observation.regularPrice && tooltip.observation.discountPercent > 0 && (
                   <small>
