@@ -264,7 +264,7 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .grid-line { stroke: #2b4035; stroke-dasharray: 5 8; }
 .trend-line { fill: none; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
 .trend-point { fill: #07110d; stroke-width: 4; cursor: crosshair; }
-.chart-tooltip { position: absolute; z-index: 5; display: grid; gap: 3px; min-width: 150px; padding: 10px 12px; color: #e9f4ed; background: rgba(5, 13, 9, 0.96); border: 1px solid #365244; border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.32); pointer-events: none; transform: translateY(-50%); }
+.chart-tooltip { position: absolute; z-index: 5; display: grid; gap: 3px; width: min(270px, calc(100% - 24px)); padding: 10px 12px; color: #e9f4ed; background: rgba(5, 13, 9, 0.96); border: 1px solid #365244; border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.32); box-sizing: border-box; overflow-wrap: anywhere; pointer-events: none; transform: translateY(-50%); }
 .chart-tooltip .price-change-kind { color: #c9b98e; font-weight: 800; }
 .chart-tooltip .price-change-kind.store-price-change { color: #73e2a7; }
 .exchange-warning { color: #f2c48d; }

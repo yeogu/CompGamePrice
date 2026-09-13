@@ -169,10 +169,14 @@ function PriceHistoryChart({ histories }: Props) {
   const showTooltip = (event: PointerEvent<SVGElement>, store: string, observation: DisplayObservation) => {
     const bounds = chartWrapRef.current?.getBoundingClientRect()
     if (!bounds) return
+    const tooltipWidth = Math.min(270, Math.max(180, bounds.width - 24))
+    const pointerLeft = event.clientX - bounds.left
+    const preferredLeft = pointerLeft + 14
+    const left = Math.max(12, Math.min(preferredLeft, bounds.width - tooltipWidth - 12))
     setTooltip({
       store,
       observation,
-      left: event.clientX - bounds.left + 14,
+      left,
       top: event.clientY - bounds.top + 14,
     })
   }
