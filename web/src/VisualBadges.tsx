@@ -8,6 +8,7 @@ import {
   Terminal,
   type LucideIcon,
 } from 'lucide-react'
+import type { CSSProperties } from 'react'
 
 type BadgeProps = {
   compact?: boolean
@@ -106,8 +107,9 @@ export const PlatformBadge = ({ compact = false, iconOnly = false, label, platfo
 export const StoreBadge = ({ compact = false, label, store }: StoreBadgeProps) => {
   const visual = storeVisuals[store] ?? { accent: '#dcebe3', tone: 'other' }
   const displayLabel = label ?? visual.label ?? store
+  const style = { '--store-accent': visual.accent } as CSSProperties
 
-  return <span className={`visual-store-badge ${visual.tone}${compact ? ' compact' : ''}`} data-store={store}>
+  return <span className={`visual-store-badge ${visual.tone}${compact ? ' compact' : ''}`} data-store={store} style={style}>
     <ShoppingBag aria-hidden="true" size={compact ? 14 : 16} strokeWidth={2.2} />
     <span>{displayLabel}</span>
   </span>
