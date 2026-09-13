@@ -93,7 +93,7 @@ for _attempt in $(seq 1 30); do
             echo "Web revision 불일치: expected=${deploy_revision}, served=${served_revision}" >&2
             exit 1
         fi
-        if ! sudo "${compose_binary}" -f "${compose_file}" exec -T api \
+        if ! sudo "${docker_binary}" exec compgameprice_api_1 \
             python3 /app/tools/sync_ecb_exchange_rates.py \
             --database /data/game_prices.db; then
             echo "경고: ECB 환율 초기 동기화에 실패했습니다. 다음 자동 수집에서 재시도합니다." >&2
