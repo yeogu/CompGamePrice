@@ -24,6 +24,13 @@ export interface Money {
   currency: string
 }
 
+export interface KrwConversion {
+  price: Money
+  rate: number
+  rateDate: string
+  source: string
+}
+
 export interface PriceHistory {
   lowestPrice: Money
   highestPrice: Money
@@ -49,6 +56,7 @@ export interface StoreProduct {
   edition: string
   offerType: string
   price: Money
+  krwConversion?: KrwConversion
   regularPrice?: Money
   discountPercent: number
   purchasable: boolean
@@ -78,12 +86,7 @@ export interface PriceObservation {
   discountPercent: number
   purchasable: boolean
   observedAt: string
-  krwConversion?: {
-    price: Money
-    rate: number
-    rateDate: string
-    source: string
-  }
+  krwConversion?: KrwConversion
 }
 
 export interface ProductPriceHistory {

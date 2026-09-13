@@ -2163,6 +2163,15 @@ function App() {
                     {product.region} · {product.edition} · {product.offerType}
                   </p>
                   <strong className="price">{offerPriceLabel(product.store, product.price)}</strong>
+                  {product.krwConversion && (
+                    <div className="converted-card-price">
+                      <strong>약 {formatMoney(product.krwConversion.price)}</strong>
+                      <small>
+                        1 {product.price.currency} = ₩{product.krwConversion.rate.toLocaleString('ko-KR', { maximumFractionDigits: 2 })}
+                        {' · '}{product.krwConversion.rateDate} {product.krwConversion.source} 기준
+                      </small>
+                    </div>
+                  )}
                   {isMobileFreeOffer(product.store, product.price) && <p className="iap-notice"><strong>인앱 결제 안내</strong><span>다운로드는 무료지만 체험판이거나 전체 콘텐츠 이용에 별도 인앱 결제가 필요할 수 있습니다.</span></p>}
                   {product.regularPrice && product.discountPercent > 0 && (
                     <div className="discount-summary">

@@ -219,7 +219,9 @@ std::optional<Json::Value> convertedKrwJson(
     return result;
 }
 
-Json::Value productJson(const ProductPriceReport& report) {
+Json::Value productJson(
+    const ProductPriceReport& report,
+    Database* database = nullptr) {
     Json::Value json;
     json["productId"] = report.product.productId;
     json["store"] = toString(report.product.store);
@@ -239,6 +241,14 @@ Json::Value productJson(const ProductPriceReport& report) {
     if (report.product.lastSuccessfulCheckAt) {
         json["lastSuccessfulCheckAt"] =
             *report.product.lastSuccessfulCheckAt;
+        if (database != nullptr) {
+            if (const auto converted = convertedKrwJson(
+                    *database,
+                    report.product.currentPrice,
+                    *report.product.lastSuccessfulCheckAt)) {
+                json["krwConversion"] = *converted;
+            }
+        }
     }
     json["freshness"] = toString(report.product.freshness);
     json["stale"] = report.product.freshness != PriceFreshness::Fresh;
@@ -3040,7 +3050,7 @@ int main() {
 
         drogon::app().registerHandler(
             "/api/games/{1}/prices",
-            [&queryService](const drogon::HttpRequestPtr& request,
+            [&queryService, &database](const drogon::HttpRequestPtr& request,
                             std::function<void(const HttpResponsePtr&)>&& callback,
                             const std::string& gameId) {
                 PriceComparisonCriteria criteria;
@@ -3060,7 +3070,8 @@ int main() {
                 response["game"] = gameJson(report->comparison.game);
                 response["products"] = Json::arrayValue;
                 for (const auto& productReport : report->productReports) {
-                    response["products"].append(productJson(productReport));
+                    response["products"].append(
+                        productJson(productReport, &database));
                 }
                 if (report->comparison.cheapestProduct) {
                     response["cheapest"]["productId"] =
