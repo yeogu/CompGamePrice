@@ -3,10 +3,15 @@ import type { PointerEvent } from 'react'
 import type { Money, PriceObservation, ProductPriceHistory } from './types'
 import { storeAccentColor } from './VisualBadges'
 
-const formatMoney = (money: Money) =>
-  new Intl.NumberFormat('ko-KR', {
-    style: 'currency', currency: money.currency, maximumFractionDigits: 0,
-  }).format(money.minorAmount)
+const formatMoney = (money: Money) => {
+  const zeroDecimalCurrency = money.currency === 'KRW' || money.currency === 'JPY'
+  const amount = zeroDecimalCurrency ? money.minorAmount : money.minorAmount / 100
+  return new Intl.NumberFormat('ko-KR', {
+    style: 'currency',
+    currency: money.currency,
+    maximumFractionDigits: zeroDecimalCurrency ? 0 : 2,
+  }).format(amount)
+}
 
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' })

@@ -8,12 +8,17 @@ import { PlatformBadge, StoreBadge } from './VisualBadges'
 import { gameDetailPath, gameIdFromLocation } from './gameRoutes'
 import type { AdminHealthSummary, AdminUser, AdminUserAudit, AlertRule, AlertRuleType, CatalogAdminResult, CatalogChangeAudit, CatalogCollectionJob, CatalogDiscoveryJob, CatalogFilterOptions, CatalogMetadataUpdateResult, CatalogPriceIntegrity, CatalogPriceIntegrityIssue, CatalogSyncJob, CollectionRun, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSort, GameSummary, MetadataSyncStatus, MobileCatalogSyncJob, MobileCatalogSyncReview, Money, Notification, StoreProductCandidate, User, UserPreferences } from './types'
 
-const formatMoney = (money: Money) =>
+const formatMoney = (money: Money) => {
+  const zeroDecimalCurrency = money.currency === 'KRW' || money.currency === 'JPY'
+  const amount = zeroDecimalCurrency ? money.minorAmount : money.minorAmount / 100
+  return (
   new Intl.NumberFormat('ko-KR', {
     style: 'currency',
     currency: money.currency,
-    maximumFractionDigits: 0,
-  }).format(money.minorAmount)
+    maximumFractionDigits: zeroDecimalCurrency ? 0 : 2,
+  }).format(amount)
+  )
+}
 
 const isMobileFreeOffer = (store: string, money: Money) =>
   (store === 'Google Play' || store === 'Apple App Store') &&
@@ -2438,7 +2443,7 @@ function App() {
           <button disabled={!adminQuery.trim() || adminSearching} onClick={() => void searchCatalogCandidates()}>{adminSearching ? '검색 중…' : 'Store 검색'}</button>
         </div>}
         {adminError && <p className="admin-feedback error" role="alert">{adminError}</p>}
-        {adminCandidates.length > 0 && <div className="candidate-list">{adminCandidates.map((candidate) => <button key={`${candidate.store}:${candidate.externalProductId}`} onClick={() => chooseCatalogCandidate(candidate)}><GameArtwork compact imageUrl={candidate.imageUrl} title={candidate.title} /><strong>{candidate.title}</strong><span className="candidate-badges"><StoreBadge compact store={candidate.store} />{(candidate.platforms ?? []).map((platform) => <PlatformBadge compact key={platform} platform={platform} />)}</span>{(candidate.platforms ?? []).length === 0 && <small>플랫폼 확인 필요</small>}{candidate.developer && <small>{candidate.developer}</small>}<small>상품 ID {candidate.externalProductId}{typeof candidate.priceMinor === 'number' && Number.isFinite(candidate.priceMinor) ? ` · ${candidate.priceMinor.toLocaleString('ko-KR')} ${candidate.currency ?? ''}` : ' · 가격 확인 필요'}</small></button>)}</div>}
+        {adminCandidates.length > 0 && <div className="candidate-list">{adminCandidates.map((candidate) => <button key={`${candidate.store}:${candidate.externalProductId}`} onClick={() => chooseCatalogCandidate(candidate)}><GameArtwork compact imageUrl={candidate.imageUrl} title={candidate.title} /><strong>{candidate.title}</strong><span className="candidate-badges"><StoreBadge compact store={candidate.store} />{(candidate.platforms ?? []).map((platform) => <PlatformBadge compact key={platform} platform={platform} />)}</span>{(candidate.platforms ?? []).length === 0 && <small>플랫폼 확인 필요</small>}{candidate.developer && <small>{candidate.developer}</small>}<small>상품 ID {candidate.externalProductId}{typeof candidate.priceMinor === 'number' && Number.isFinite(candidate.priceMinor) && candidate.currency ? ` · ${formatMoney({ minorAmount: candidate.priceMinor, currency: candidate.currency })}` : ' · 가격 확인 필요'}</small></button>)}</div>}
         {pendingCandidate && !adminResult && <div className="candidate-confirmation">
           <div><strong>{pendingCandidate.title}</strong><span>상품 ID {pendingCandidate.externalProductId}</span></div>
           <label>영문 게임명 또는 Canonical Game ID
@@ -2465,7 +2470,7 @@ function App() {
           {pendingCandidate?.productUrl && <p><a href={pendingCandidate.productUrl} target="_blank" rel="noreferrer">Store 상품 페이지에서 직접 확인 ↗</a></p>}
           {adminResult.game.matchedProduct?.developer && <p><strong>개발사</strong> {adminResult.game.matchedProduct.developer}</p>}
           {adminResult.game.matchDecision?.priceStatus && <p><strong>가격 상태</strong> {catalogPriceStatusLabel(adminResult.game.matchDecision.priceStatus)}</p>}
-          {adminResult.game.matchedProduct?.priceMinor !== undefined && adminResult.game.matchedProduct.priceMinor !== null && <p><strong>현재 가격</strong> {adminResult.game.matchedProduct.priceMinor === 0 ? adminStore === 'Google Play' || adminStore === 'Apple App Store' ? '무료 다운로드 · 인앱 결제 가능' : '무료' : `${adminResult.game.matchedProduct.priceMinor.toLocaleString('ko-KR')} ${adminResult.game.matchedProduct.currency}`}</p>}
+          {adminResult.game.matchedProduct?.priceMinor !== undefined && adminResult.game.matchedProduct.priceMinor !== null && <p><strong>현재 가격</strong> {adminResult.game.matchedProduct.priceMinor === 0 ? adminStore === 'Google Play' || adminStore === 'Apple App Store' ? '무료 다운로드 · 인앱 결제 가능' : '무료' : adminResult.game.matchedProduct.currency ? formatMoney({ minorAmount: adminResult.game.matchedProduct.priceMinor, currency: adminResult.game.matchedProduct.currency }) : '통화 확인 필요'}</p>}
           {adminImporting && <p className="admin-feedback progress" role="status">Store 상품을 확인하고 카탈로그에 연결하는 중입니다. 잠시만 기다려주세요.</p>}
           {adminError && <p className="admin-feedback error" role="alert"><strong>연결하지 못했습니다.</strong><span>{adminError}</span><small>Store 상품 페이지와 canonical Game ID를 확인한 뒤 다시 시도하세요.</small></p>}
           {adminResult.applied && !adminError && <p className="admin-feedback success" role="status"><strong>카탈로그 연결 완료</strong><span>{adminStore} 상품이 {adminResult.game.title}에 연결되었습니다.</span></p>}

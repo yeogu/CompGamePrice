@@ -57,7 +57,12 @@ def price_status(offer: dict) -> str:
     currency = offer.get("currency", "")
     if price_minor is None and not currency:
         return "PRICE_UNKNOWN"
-    if currency != "KRW" or not isinstance(price_minor, int) or price_minor < 0:
+    supported_currency = currency == "KRW" or (
+        offer.get("allowsForeignCurrency") and
+        currency in {"USD", "EUR", "GBP", "JPY"}
+    )
+    if (not supported_currency or
+            not isinstance(price_minor, int) or price_minor < 0):
         return "INVALID"
     if price_minor == 0:
         return "FREE"
@@ -86,7 +91,8 @@ def evaluate(game: dict, offer: dict) -> dict:
     elif offer_price_status == "FREE":
         reasons.append("Store explicitly identifies this game as free")
     else:
-        reasons.append("Store identifies this game as a paid KRW purchase")
+        reasons.append(
+            f"Store identifies this game as a paid {offer['currency']} purchase")
     if offer["excludedWords"]:
         reasons.append("Title indicates guide, demo, companion, or media content")
         rejected = True

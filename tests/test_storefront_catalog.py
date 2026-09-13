@@ -307,6 +307,18 @@ class StorefrontCatalogTest(unittest.TestCase):
         self.assertEqual(metadata["priceMinor"], 1999)
         self.assertEqual(metadata["currency"], "USD")
         self.assertEqual(metadata["platforms"], ["Windows"])
+        game = {
+            "title": "Celeste",
+            "aliases": [],
+            "developers": ["Maddy Makes Games Inc."],
+            "publishers": [],
+        }
+        decision = catalog_import.catalog_matcher.evaluate(game, metadata)
+        self.assertEqual(decision["status"], "ApprovedCandidate")
+        self.assertIn(
+            "Store identifies this game as a paid USD purchase",
+            decision["reasons"],
+        )
 
     def test_rejects_humble_store_non_game_product(self):
         raw = HUMBLE_PRODUCT.replace(
