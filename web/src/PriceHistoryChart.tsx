@@ -91,7 +91,7 @@ function PointShape({ point, store, onPointer, onLeave }: {
     onPointerDown: (event: PointerEvent<SVGElement>) => onPointer(event, store, point.observation),
     onPointerLeave: onLeave,
   }
-  return <circle {...events} className="trend-point" cx={point.x} cy={point.y} r="7" stroke={color} />
+  return <circle {...events} className="trend-point" cx={point.x} cy={point.y} r="4.5" stroke={color} />
 }
 
 function PriceHistoryChart({ histories }: Props) {
@@ -112,17 +112,21 @@ function PriceHistoryChart({ histories }: Props) {
       ? [daysBetween(item.observedAt, item.krwConversion.rateDate)]
       : []),
   )), [available])
+  const trendable = useMemo(
+    () => comparable.filter((history) => history.observations.length >= 2),
+    [comparable],
+  )
   const [hiddenStores, setHiddenStores] = useState<Set<string>>(new Set())
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   const chartWrapRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setHiddenStores((current) => new Set(
-      [...current].filter((store) => comparable.some((history) => history.store === store)),
+      [...current].filter((store) => trendable.some((history) => history.store === store)),
     ))
-  }, [comparable])
+  }, [trendable])
 
-  const visible = comparable.filter((history) => !hiddenStores.has(history.store))
+  const visible = trendable.filter((history) => !hiddenStores.has(history.store))
   const chart = useMemo(() => {
     const dailySeries = visible.map((history) => ({
       ...history,
@@ -132,24 +136,40 @@ function PriceHistoryChart({ histories }: Props) {
     if (observations.length === 0) return null
     const amounts = observations.map((item) => item.observation.price.minorAmount)
     const times = observations.map((item) => new Date(`${item.date}T00:00:00Z`).getTime())
-    const low = Math.min(...amounts)
-    const high = Math.max(...amounts)
+    const observedLow = Math.min(...amounts)
+    const observedHigh = Math.max(...amounts)
+    const flatRangePadding = Math.max(500, Math.round(observedHigh * 0.05))
+    const low = observedLow === observedHigh
+      ? Math.max(0, observedLow - flatRangePadding)
+      : observedLow
+    const high = observedLow === observedHigh
+      ? observedHigh + flatRangePadding
+      : observedHigh
     const firstTime = Math.min(...times)
     const lastTime = Math.max(...times)
-    const width = 640
-    const height = 240
-    const padding = 30
+    const width = 760
+    const height = 220
+    const leftPadding = 72
+    const rightPadding = 22
+    const topPadding = 20
+    const bottomPadding = 28
     const priceRange = Math.max(high - low, 1)
     const timeRange = Math.max(lastTime - firstTime, 1)
+    const plotWidth = width - leftPadding - rightPadding
+    const plotHeight = height - topPadding - bottomPadding
     const series = dailySeries.map((history) => ({
       ...history,
       points: history.daily.map((item) => ({
-        x: firstTime === lastTime ? width / 2 : padding + ((new Date(`${item.date}T00:00:00Z`).getTime() - firstTime) * (width - padding * 2)) / timeRange,
-        y: high === low ? height / 2 : height - padding - ((item.observation.price.minorAmount - low) * (height - padding * 2)) / priceRange,
+        x: firstTime === lastTime ? leftPadding + plotWidth / 2 : leftPadding + ((new Date(`${item.date}T00:00:00Z`).getTime() - firstTime) * plotWidth) / timeRange,
+        y: height - bottomPadding - ((item.observation.price.minorAmount - low) * plotHeight) / priceRange,
         observation: item.observation,
       })),
     }))
-    return { low, high, firstTime, lastTime, width, height, series }
+    const ticks = [high, Math.round((high + low) / 2), low].map((amount) => ({
+      amount,
+      y: height - bottomPadding - ((amount - low) * plotHeight) / priceRange,
+    }))
+    return { low, high, firstTime, lastTime, width, height, leftPadding, rightPadding, series, ticks }
   }, [visible])
 
   if (available.length === 0) {
@@ -185,7 +205,7 @@ function PriceHistoryChart({ histories }: Props) {
     <section className="trend-panel">
       <div className="trend-heading">
         <div className="store-legend" aria-label="표시할 Store 선택">
-          {comparable.map((history) => {
+          {trendable.map((history) => {
             const color = storeAccentColor(history.store)
             const active = !hiddenStores.has(history.store)
             return (
@@ -204,13 +224,11 @@ function PriceHistoryChart({ histories }: Props) {
       {chart ? (
         <>
           <div className="chart-wrap" ref={chartWrapRef}>
-            <div className="chart-labels">
-              <span>최고 {formatMoney({ minorAmount: chart.high, currency: 'KRW' })}</span>
-              <span>최저 {formatMoney({ minorAmount: chart.low, currency: 'KRW' })}</span>
-            </div>
             <svg aria-label="Store별 가격 추이 비교" role="img" viewBox={`0 0 ${chart.width} ${chart.height}`}>
-              <line className="grid-line" x1="30" x2="610" y1="30" y2="30" />
-              <line className="grid-line" x1="30" x2="610" y1="210" y2="210" />
+              {chart.ticks.map((tick) => <g key={tick.amount}>
+                <text className="axis-price" x="0" y={tick.y + 4}>{formatMoney({ minorAmount: tick.amount, currency: 'KRW' })}</text>
+                <line className="grid-line" x1={chart.leftPadding} x2={chart.width - chart.rightPadding} y1={tick.y} y2={tick.y} />
+              </g>)}
               {chart.series.map((series) => {
                 const color = storeAccentColor(series.store)
                 return (
@@ -263,29 +281,36 @@ function PriceHistoryChart({ histories }: Props) {
             </div>
           </div>
 
-          {chart.series.every((series) => series.points.length < 2) && <p className="data-note">각 Store가 하루치 관측값을 가지고 있습니다. 다음 날짜의 가격부터 선으로 연결됩니다.</p>}
-          <div className="latest-price-list">
-            {chart.series.map((series) => {
+        </>
+      ) : trendable.length === 0
+        ? <div className="chart-empty-state"><strong>아직 가격 추이를 그릴 수 없습니다.</strong><span>같은 Store에서 서로 다른 날짜의 가격이 두 번 이상 수집되면 그래프가 표시됩니다.</span></div>
+        : <p className="notice">범례에서 하나 이상의 Store를 선택하세요.</p>}
+
+      <div className="current-price-heading">
+        <strong>현재 비교 가격</strong>
+        <span>모두 원화 기준</span>
+      </div>
+      <div className="latest-price-list">
+            {comparable.map((series) => {
               const latest = series.observations[series.observations.length - 1]
               const color = storeAccentColor(series.store)
+              const hasTrend = series.observations.length >= 2
               return (
                 <div key={series.store}>
                   <span><i style={{ backgroundColor: color }} />{series.store}</span>
                   <time dateTime={latest.observedAt}>{formatDate(latest.observedAt)}</time>
                   <strong>
                     {formatMoney(latest.price)}
+                    {latest.originalPrice && <small className="latest-original">{formatMoney(latest.originalPrice)}</small>}
                     {latest.discountPercent > 0 && (
                       <small className="latest-discount">-{latest.discountPercent}%</small>
                     )}
                   </strong>
+                  {!hasTrend && <small className="trend-insufficient">추이 데이터 부족</small>}
                 </div>
               )
             })}
-          </div>
-        </>
-      ) : comparable.length === 0
-        ? <p className="notice">원화로 비교할 수 있는 가격 데이터가 없습니다. 환율 동기화 상태를 확인하세요.</p>
-        : <p className="notice">범례에서 하나 이상의 Store를 선택하세요.</p>}
+      </div>
     </section>
   )
 }
