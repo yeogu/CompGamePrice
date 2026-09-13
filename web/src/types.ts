@@ -78,6 +78,12 @@ export interface PriceObservation {
   discountPercent: number
   purchasable: boolean
   observedAt: string
+  krwConversion?: {
+    price: Money
+    rate: number
+    rateDate: string
+    source: string
+  }
 }
 
 export interface ProductPriceHistory {

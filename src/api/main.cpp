@@ -9,10 +9,12 @@
 #include <drogon/utils/Utilities.h>
 
 #include <drogon/drogon.h>
+#include <sqlite3.h>
 
 #include <cstdlib>
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <iostream>
 #include <filesystem>
 #include <fstream>
@@ -169,6 +171,52 @@ Json::Value gameJson(const Game& game) {
         json["publishers"].append(publisher);
     }
     return json;
+}
+
+std::optional<Json::Value> convertedKrwJson(
+    Database& database,
+    const Money& money,
+    const std::string& observedAt) {
+    if (money.currency == Currency::KRW) return std::nullopt;
+    sqlite3_stmt* statement = nullptr;
+    const char* sql = R"sql(
+        SELECT rate_date, rate, source
+        FROM exchange_rates
+        WHERE base_currency = ? AND quote_currency = 'KRW'
+          AND rate_date <= ?
+        ORDER BY rate_date DESC
+        LIMIT 1
+    )sql";
+    if (sqlite3_prepare_v2(database.handle(), sql, -1, &statement, nullptr) !=
+        SQLITE_OK) {
+        return std::nullopt;
+    }
+    const auto currency = toString(money.currency);
+    const auto date = observedAt.substr(0, std::min<std::size_t>(10, observedAt.size()));
+    sqlite3_bind_text(
+        statement, 1, currency.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(statement, 2, date.c_str(), -1, SQLITE_TRANSIENT);
+    std::optional<Json::Value> result;
+    if (sqlite3_step(statement) == SQLITE_ROW) {
+        const auto rateDate = reinterpret_cast<const char*>(
+            sqlite3_column_text(statement, 0));
+        const double rate = sqlite3_column_double(statement, 1);
+        const auto source = reinterpret_cast<const char*>(
+            sqlite3_column_text(statement, 2));
+        const double unitAmount = money.currency == Currency::JPY
+            ? static_cast<double>(money.minorAmount)
+            : static_cast<double>(money.minorAmount) / 100.0;
+        Json::Value json;
+        json["price"]["minorAmount"] = Json::Int64(
+            std::llround(unitAmount * rate));
+        json["price"]["currency"] = "KRW";
+        json["rate"] = rate;
+        json["rateDate"] = rateDate;
+        json["source"] = source;
+        result = std::move(json);
+    }
+    sqlite3_finalize(statement);
+    return result;
 }
 
 Json::Value productJson(const ProductPriceReport& report) {
@@ -3028,7 +3076,7 @@ int main() {
 
         drogon::app().registerHandler(
             "/api/games/{1}/price-history",
-            [&queryService](const drogon::HttpRequestPtr& request,
+            [&queryService, &database](const drogon::HttpRequestPtr& request,
                             std::function<void(const HttpResponsePtr&)>&& callback,
                             const std::string& gameId) {
                 const auto since = request->getParameter("since");
@@ -3065,6 +3113,11 @@ int main() {
                         item["discountPercent"] = observation.discountPercent;
                         item["purchasable"] = observation.purchasable;
                         item["observedAt"] = observation.observedAt;
+                        if (const auto converted = convertedKrwJson(
+                                database, observation.price,
+                                observation.observedAt)) {
+                            item["krwConversion"] = *converted;
+                        }
                         history["observations"].append(std::move(item));
                     }
                     response["histories"].append(std::move(history));

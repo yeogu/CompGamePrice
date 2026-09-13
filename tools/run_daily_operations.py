@@ -16,7 +16,7 @@ def step_outcome(name: str, exit_code: int) -> str:
         return "SUCCEEDED"
     if exit_code == 2:
         return "PARTIAL"
-    if name == "collection-health" and exit_code == 1:
+    if name in {"collection-health", "ecb-exchange-rates"} and exit_code == 1:
         return "WARNING"
     return "FAILED"
 
@@ -61,6 +61,15 @@ def run_operations(
     environment["GAME_PRICE_DATABASE_PATH"] = str(database)
     environment["GAME_PRICE_CATALOG_PATH"] = str(catalog)
     steps = [
+        (
+            "ecb-exchange-rates",
+            [
+                python,
+                str(project / "tools" / "sync_ecb_exchange_rates.py"),
+                "--database",
+                str(database),
+            ],
+        ),
         (
             "steam-discovery",
             [

@@ -13,7 +13,7 @@ namespace game_price {
 
 class StoreProductRepository {
 public:
-    static constexpr int CurrentSchemaVersion = 18;
+    static constexpr int CurrentSchemaVersion = 19;
     static constexpr int StaleAfterHours = PriceStaleAfterHours;
 
     explicit StoreProductRepository(Database& database);

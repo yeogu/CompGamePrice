@@ -21,11 +21,15 @@ class DailyOperationsTest(unittest.TestCase):
             daily_operations.step_outcome("collection-health", 1),
             "WARNING",
         )
+        self.assertEqual(
+            daily_operations.step_outcome("ecb-exchange-rates", 1),
+            "WARNING",
+        )
         self.assertEqual(daily_operations.step_outcome("steam", 1), "FAILED")
 
     def test_runs_provider_jobs_independently_and_continues_after_failure(self):
         exit_codes = iter(
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0]
+            [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0]
         )
 
         def fake_run(name, command, environment):
@@ -60,6 +64,7 @@ class DailyOperationsTest(unittest.TestCase):
         self.assertEqual(
             [result["name"] for result in results],
             [
+                "ecb-exchange-rates",
                 "steam-discovery",
                 "steam-catalog-sync",
                 "steam-metadata-sync",
@@ -87,8 +92,8 @@ class DailyOperationsTest(unittest.TestCase):
                 "notification-outbox",
             ],
         )
-        self.assertEqual(results[0]["exitCode"], 1)
-        self.assertEqual(len(results), 25)
+        self.assertEqual(results[1]["exitCode"], 1)
+        self.assertEqual(len(results), 26)
 
 
 if __name__ == "__main__":

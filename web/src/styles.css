@@ -613,3 +613,23 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 @media (max-width: 420px) {
   .game-list { grid-template-columns: 1fr; }
 }
+.currency-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.currency-tabs button {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  padding: 0.55rem 0.9rem;
+}
+
+.currency-tabs button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #07150f;
+}

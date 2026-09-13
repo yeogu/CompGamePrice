@@ -379,6 +379,17 @@ void StoreProductRepository::initializeSchema() const {
                 (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
         );
 
+        CREATE TABLE IF NOT EXISTS exchange_rates (
+            rate_date TEXT NOT NULL,
+            base_currency TEXT NOT NULL,
+            quote_currency TEXT NOT NULL DEFAULT 'KRW',
+            rate REAL NOT NULL CHECK(rate > 0),
+            source TEXT NOT NULL,
+            fetched_at TEXT NOT NULL DEFAULT
+                (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+            PRIMARY KEY(rate_date, base_currency, quote_currency)
+        );
+
         CREATE TABLE IF NOT EXISTS crawl_runs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             store TEXT NOT NULL,
@@ -718,7 +729,21 @@ void StoreProductRepository::initializeSchema() const {
             !tableHasColumn(database_.handle(), "crawl_runs", "game_id")) {
             database_.execute("ALTER TABLE crawl_runs ADD COLUMN game_id TEXT;");
         }
-        database_.execute("PRAGMA user_version = 18;");
+        if (existingVersion > 0 && existingVersion < 19) {
+            database_.execute(R"sql(
+                CREATE TABLE IF NOT EXISTS exchange_rates (
+                    rate_date TEXT NOT NULL,
+                    base_currency TEXT NOT NULL,
+                    quote_currency TEXT NOT NULL DEFAULT 'KRW',
+                    rate REAL NOT NULL CHECK(rate > 0),
+                    source TEXT NOT NULL,
+                    fetched_at TEXT NOT NULL DEFAULT
+                        (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+                    PRIMARY KEY(rate_date, base_currency, quote_currency)
+                );
+            )sql");
+        }
+        database_.execute("PRAGMA user_version = 19;");
         database_.execute("COMMIT;");
     } catch (...) {
         try {

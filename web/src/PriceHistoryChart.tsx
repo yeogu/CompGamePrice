@@ -18,8 +18,9 @@ const formatDate = (value: string) =>
     .format(new Date(value))
 
 interface Props { histories: ProductPriceHistory[] }
-interface ChartPoint { x: number; y: number; observation: PriceObservation }
-interface TooltipState { store: string; observation: PriceObservation; left: number; top: number }
+type DisplayObservation = PriceObservation & { originalPrice?: Money }
+interface ChartPoint { x: number; y: number; observation: DisplayObservation }
+interface TooltipState { store: string; observation: DisplayObservation; left: number; top: number }
 
 const dailyObservations = (history: ProductPriceHistory) => {
   const byDate = new Map<string, ProductPriceHistory['observations'][number]>()
@@ -41,7 +42,7 @@ const dailyObservations = (history: ProductPriceHistory) => {
 function PointShape({ point, store, onPointer, onLeave }: {
   point: ChartPoint
   store: string
-  onPointer: (event: PointerEvent<SVGElement>, store: string, observation: PriceObservation) => void
+  onPointer: (event: PointerEvent<SVGElement>, store: string, observation: DisplayObservation) => void
   onLeave: () => void
 }) {
   const color = storeAccentColor(store)
@@ -59,13 +60,36 @@ function PriceHistoryChart({ histories }: Props) {
     () => histories.filter((history) => history.observations.length > 0),
     [histories],
   )
-  const primaryCurrency = available[0]?.observations[0].price.currency
-  const comparable = useMemo(
-    () => available.filter((history) =>
-      history.observations.every((item) => item.price.currency === primaryCurrency)),
-    [available, primaryCurrency],
+  const currencies = useMemo(() => [...new Set(available.flatMap((history) =>
+    history.observations.map((item) => item.price.currency),
+  ))].sort((left, right) => left === 'KRW' ? -1 : right === 'KRW' ? 1 : left.localeCompare(right)), [available])
+  const hasConvertedForeignPrices = available.some((history) =>
+    history.observations.some((item) => item.price.currency !== 'KRW' && item.krwConversion),
   )
-  const excludedCount = available.length - comparable.length
+  const [currencyMode, setCurrencyMode] = useState('KRW')
+  useEffect(() => {
+    if (currencyMode === 'KRW_CONVERTED' && hasConvertedForeignPrices) return
+    if (!currencies.includes(currencyMode)) setCurrencyMode(currencies[0] ?? 'KRW')
+  }, [currencies, currencyMode, hasConvertedForeignPrices])
+  const comparable = useMemo(
+    () => currencyMode === 'KRW_CONVERTED'
+      ? available.map((history) => ({
+          ...history,
+          observations: history.observations.flatMap((item) => {
+            if (item.price.currency === 'KRW') return [item]
+            if (!item.krwConversion) return []
+            return [{ ...item, originalPrice: item.price, price: item.krwConversion.price }]
+          }),
+        })).filter((history) => history.observations.length > 0)
+      : available.map((history) => ({
+          ...history,
+          observations: history.observations.filter(
+            (item) => item.price.currency === currencyMode,
+          ),
+        })).filter((history) => history.observations.length > 0),
+    [available, currencyMode],
+  )
+  const primaryCurrency = currencyMode === 'KRW_CONVERTED' ? 'KRW' : currencyMode
   const [hiddenStores, setHiddenStores] = useState<Set<string>>(new Set())
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   const chartWrapRef = useRef<HTMLDivElement>(null)
@@ -120,7 +144,7 @@ function PriceHistoryChart({ histories }: Props) {
     })
   }
 
-  const showTooltip = (event: PointerEvent<SVGElement>, store: string, observation: PriceObservation) => {
+  const showTooltip = (event: PointerEvent<SVGElement>, store: string, observation: DisplayObservation) => {
     const bounds = chartWrapRef.current?.getBoundingClientRect()
     if (!bounds) return
     setTooltip({
@@ -133,6 +157,18 @@ function PriceHistoryChart({ histories }: Props) {
 
   return (
     <section className="trend-panel">
+      <div className="currency-tabs" aria-label="가격 그래프 통화 선택">
+        {currencies.map((currency) => (
+          <button aria-pressed={currencyMode === currency} className={currencyMode === currency ? 'active' : ''} key={currency} onClick={() => setCurrencyMode(currency)}>
+            {currency} 원본
+          </button>
+        ))}
+        {hasConvertedForeignPrices && (
+          <button aria-pressed={currencyMode === 'KRW_CONVERTED'} className={currencyMode === 'KRW_CONVERTED' ? 'active' : ''} onClick={() => setCurrencyMode('KRW_CONVERTED')}>
+            원화 환산 비교
+          </button>
+        )}
+      </div>
       <div className="trend-heading">
         <div className="store-legend" aria-label="표시할 Store 선택">
           {comparable.map((history) => {
@@ -148,7 +184,7 @@ function PriceHistoryChart({ histories }: Props) {
         </div>
       </div>
 
-      {excludedCount > 0 && <p className="data-note">통화가 다른 {excludedCount}개 Store는 같은 축에서 제외했습니다.</p>}
+      {currencyMode === 'KRW_CONVERTED' && <p className="data-note">ECB의 관측일 기준환율을 적용한 참고 가격입니다. 휴일에는 직전 영업일 환율을 사용하며 실제 카드 결제액과 다를 수 있습니다.</p>}
 
       {chart ? (
         <>
@@ -184,6 +220,10 @@ function PriceHistoryChart({ histories }: Props) {
                   {tooltip.store}
                 </span>
                 <strong>{formatMoney(tooltip.observation.price)}</strong>
+                {tooltip.observation.originalPrice && <small>원가격 {formatMoney(tooltip.observation.originalPrice)}</small>}
+                {tooltip.observation.krwConversion && tooltip.observation.originalPrice && (
+                  <small>1 {tooltip.observation.originalPrice.currency} = ₩{tooltip.observation.krwConversion.rate.toLocaleString('ko-KR', { maximumFractionDigits: 2 })} · {tooltip.observation.krwConversion.rateDate} {tooltip.observation.krwConversion.source}</small>
+                )}
                 {tooltip.observation.regularPrice && tooltip.observation.discountPercent > 0 && (
                   <small>
                     {tooltip.observation.discountPercent}% 할인 · 정상가{' '}
