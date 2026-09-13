@@ -60,36 +60,20 @@ function PriceHistoryChart({ histories }: Props) {
     () => histories.filter((history) => history.observations.length > 0),
     [histories],
   )
-  const currencies = useMemo(() => [...new Set(available.flatMap((history) =>
-    history.observations.map((item) => item.price.currency),
-  ))].sort((left, right) => left === 'KRW' ? -1 : right === 'KRW' ? 1 : left.localeCompare(right)), [available])
   const hasConvertedForeignPrices = available.some((history) =>
     history.observations.some((item) => item.price.currency !== 'KRW' && item.krwConversion),
   )
-  const [currencyMode, setCurrencyMode] = useState('KRW')
-  useEffect(() => {
-    if (currencyMode === 'KRW_CONVERTED' && hasConvertedForeignPrices) return
-    if (!currencies.includes(currencyMode)) setCurrencyMode(currencies[0] ?? 'KRW')
-  }, [currencies, currencyMode, hasConvertedForeignPrices])
   const comparable = useMemo(
-    () => currencyMode === 'KRW_CONVERTED'
-      ? available.map((history) => ({
-          ...history,
-          observations: history.observations.flatMap((item) => {
-            if (item.price.currency === 'KRW') return [item]
-            if (!item.krwConversion) return []
-            return [{ ...item, originalPrice: item.price, price: item.krwConversion.price }]
-          }),
-        })).filter((history) => history.observations.length > 0)
-      : available.map((history) => ({
-          ...history,
-          observations: history.observations.filter(
-            (item) => item.price.currency === currencyMode,
-          ),
-        })).filter((history) => history.observations.length > 0),
-    [available, currencyMode],
+    () => available.map((history) => ({
+      ...history,
+      observations: history.observations.flatMap((item) => {
+        if (item.price.currency === 'KRW') return [item]
+        if (!item.krwConversion) return []
+        return [{ ...item, originalPrice: item.price, price: item.krwConversion.price }]
+      }),
+    })).filter((history) => history.observations.length > 0),
+    [available],
   )
-  const primaryCurrency = currencyMode === 'KRW_CONVERTED' ? 'KRW' : currencyMode
   const [hiddenStores, setHiddenStores] = useState<Set<string>>(new Set())
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   const chartWrapRef = useRef<HTMLDivElement>(null)
@@ -157,18 +141,6 @@ function PriceHistoryChart({ histories }: Props) {
 
   return (
     <section className="trend-panel">
-      <div className="currency-tabs" aria-label="가격 그래프 통화 선택">
-        {currencies.map((currency) => (
-          <button aria-pressed={currencyMode === currency} className={currencyMode === currency ? 'active' : ''} key={currency} onClick={() => setCurrencyMode(currency)}>
-            {currency} 원본
-          </button>
-        ))}
-        {hasConvertedForeignPrices && (
-          <button aria-pressed={currencyMode === 'KRW_CONVERTED'} className={currencyMode === 'KRW_CONVERTED' ? 'active' : ''} onClick={() => setCurrencyMode('KRW_CONVERTED')}>
-            원화 환산 비교
-          </button>
-        )}
-      </div>
       <div className="trend-heading">
         <div className="store-legend" aria-label="표시할 Store 선택">
           {comparable.map((history) => {
@@ -184,14 +156,14 @@ function PriceHistoryChart({ histories }: Props) {
         </div>
       </div>
 
-      {currencyMode === 'KRW_CONVERTED' && <p className="data-note">ECB의 관측일 기준환율을 적용한 참고 가격입니다. 휴일에는 직전 영업일 환율을 사용하며 실제 카드 결제액과 다를 수 있습니다.</p>}
+      {hasConvertedForeignPrices && <p className="data-note">외화 가격은 ECB의 관측일 기준환율로 원화 환산했습니다. 휴일에는 직전 영업일 환율을 사용하며 실제 카드 결제액과 다를 수 있습니다.</p>}
 
       {chart ? (
         <>
           <div className="chart-wrap" ref={chartWrapRef}>
             <div className="chart-labels">
-              <span>최고 {formatMoney({ minorAmount: chart.high, currency: primaryCurrency! })}</span>
-              <span>최저 {formatMoney({ minorAmount: chart.low, currency: primaryCurrency! })}</span>
+              <span>최고 {formatMoney({ minorAmount: chart.high, currency: 'KRW' })}</span>
+              <span>최저 {formatMoney({ minorAmount: chart.low, currency: 'KRW' })}</span>
             </div>
             <svg aria-label="Store별 가격 추이 비교" role="img" viewBox={`0 0 ${chart.width} ${chart.height}`}>
               <line className="grid-line" x1="30" x2="610" y1="30" y2="30" />
@@ -259,7 +231,9 @@ function PriceHistoryChart({ histories }: Props) {
             })}
           </div>
         </>
-      ) : <p className="notice">범례에서 하나 이상의 Store를 선택하세요.</p>}
+      ) : comparable.length === 0
+        ? <p className="notice">원화로 비교할 수 있는 가격 데이터가 없습니다. 환율 동기화 상태를 확인하세요.</p>
+        : <p className="notice">범례에서 하나 이상의 Store를 선택하세요.</p>}
     </section>
   )
 }
