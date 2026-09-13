@@ -37,7 +37,8 @@ PriceComparisonResult PriceComparisonService::compare(
         if (product.region != criteria.region ||
             product.edition != criteria.edition ||
             product.offerType != criteria.offerType ||
-            product.currentPrice.currency != criteria.currency) {
+            (!criteria.includeForeignCurrencies &&
+             product.currentPrice.currency != criteria.currency)) {
             continue;
         }
         if (criteria.platform) {
@@ -54,10 +55,19 @@ PriceComparisonResult PriceComparisonService::compare(
             if (!native && !compatible) continue;
         }
         result.products.push_back(product);
+        const bool preferredCurrency =
+            product.currentPrice.currency == criteria.currency;
+        const bool currentCheapestIsPreferred = result.cheapestProduct &&
+            result.cheapestProduct->currentPrice.currency == criteria.currency;
+        const bool comparableToCurrent = result.cheapestProduct &&
+            result.cheapestProduct->currentPrice.currency ==
+                product.currentPrice.currency;
         if (product.freshness == PriceFreshness::Fresh &&
             (!result.cheapestProduct ||
-             product.currentPrice.minorAmount <
-                 result.cheapestProduct->currentPrice.minorAmount)) {
+             (preferredCurrency && !currentCheapestIsPreferred) ||
+             ((!currentCheapestIsPreferred || preferredCurrency) &&
+              comparableToCurrent && product.currentPrice.minorAmount <
+                  result.cheapestProduct->currentPrice.minorAmount))) {
             result.cheapestProduct = product;
         }
     }

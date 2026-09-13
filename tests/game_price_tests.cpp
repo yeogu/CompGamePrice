@@ -798,6 +798,9 @@ void testPriceComparisonReadsRepository() {
         makeSteamProduct(11200),
         StoreProduct{"mobile", game->id, Store::GooglePlay, {Platform::Android},
                      Money{6500, Currency::KRW}, true, std::nullopt},
+        StoreProduct{"humble", game->id, Store::HumbleStore,
+                     {Platform::Windows}, Money{1499, Currency::USD}, true,
+                     std::nullopt},
         StoreProduct{"cheap-dlc", game->id, Store::EpicGamesStore,
                      {Platform::Windows}, Money{1000, Currency::KRW}, true,
                      std::nullopt, std::nullopt, 0, Region::KR,
@@ -811,6 +814,15 @@ void testPriceComparisonReadsRepository() {
     expect(result->cheapestProduct.has_value(), "Cheapest product should exist");
     expect(result->cheapestProduct->store == Store::GooglePlay,
            "A cheaper DLC must not replace the cheapest Standard BaseGame");
+
+    PriceComparisonCriteria mixedCurrencyCriteria;
+    mixedCurrencyCriteria.includeForeignCurrencies = true;
+    const auto mixedCurrency = service.compareByGameName(
+        "Stardew Valley", mixedCurrencyCriteria);
+    expect(mixedCurrency->products.size() == 3,
+           "Mixed-currency comparison should expose foreign Store products");
+    expect(mixedCurrency->cheapestProduct->store == Store::GooglePlay,
+           "Foreign prices must not be compared numerically against KRW prices");
 
     PriceComparisonCriteria windowsCriteria;
     windowsCriteria.platform = Platform::Windows;

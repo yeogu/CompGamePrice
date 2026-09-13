@@ -67,9 +67,18 @@ bool catalogSummaryLess(
         return left.game.title > right.game.title;
     }
     if (sort == "lowestPrice") {
-        if (left.lowestPrice && right.lowestPrice &&
-            left.lowestPrice->minorAmount != right.lowestPrice->minorAmount) {
-            return left.lowestPrice->minorAmount < right.lowestPrice->minorAmount;
+        if (left.lowestPrice && right.lowestPrice) {
+            if (left.lowestPrice->currency != right.lowestPrice->currency) {
+                if (left.lowestPrice->currency == Currency::KRW) return true;
+                if (right.lowestPrice->currency == Currency::KRW) return false;
+                return toString(left.lowestPrice->currency) <
+                    toString(right.lowestPrice->currency);
+            }
+            if (left.lowestPrice->minorAmount !=
+                right.lowestPrice->minorAmount) {
+                return left.lowestPrice->minorAmount <
+                    right.lowestPrice->minorAmount;
+            }
         }
         if (left.lowestPrice.has_value() != right.lowestPrice.has_value()) {
             return left.lowestPrice.has_value();
@@ -1193,6 +1202,8 @@ PriceComparisonCriteria comparisonCriteria(
     const auto offerType = request->getParameter("offerType");
     const auto currency = request->getParameter("currency");
     const auto platform = request->getParameter("platform");
+    const auto includeForeignCurrencies =
+        request->getParameter("includeForeignCurrencies");
 
     if (!region.empty() && region != "KR") {
         throw std::invalid_argument("region must be KR");
@@ -1224,6 +1235,16 @@ PriceComparisonCriteria comparisonCriteria(
     else if (currency == "JPY") criteria.currency = Currency::JPY;
     else if (!currency.empty() && currency != "KRW")
         throw std::invalid_argument("unsupported currency");
+    if (!includeForeignCurrencies.empty()) {
+        if (includeForeignCurrencies == "true" ||
+            includeForeignCurrencies == "1") {
+            criteria.includeForeignCurrencies = true;
+        } else if (includeForeignCurrencies != "false" &&
+                   includeForeignCurrencies != "0") {
+            throw std::invalid_argument(
+                "includeForeignCurrencies must be true or false");
+        }
+    }
     const auto parsedPlatform = platformFromParameter(platform);
     if (parsedPlatform) {
         criteria.platform = *parsedPlatform;
@@ -2806,6 +2827,7 @@ int main() {
                 for (const auto& game : games) {
                     PriceComparisonCriteria criteria;
                     criteria.platform = filter.platform;
+                    criteria.includeForeignCurrencies = true;
                     const auto report = queryService.getGamePriceReportById(
                         game.id,
                         std::nullopt,
@@ -2835,8 +2857,17 @@ int main() {
                         if (product.freshness != PriceFreshness::Fresh) {
                             continue;
                         }
+                        const bool preferredCurrency =
+                            product.currentPrice.currency == Currency::KRW;
+                        const bool currentLowestIsPreferred = lowestPrice &&
+                            lowestPrice->currency == Currency::KRW;
+                        const bool comparable = lowestPrice &&
+                            lowestPrice->currency == product.currentPrice.currency;
                         if (!lowestPrice ||
-                            product.currentPrice.minorAmount < lowestPrice->minorAmount) {
+                            (preferredCurrency && !currentLowestIsPreferred) ||
+                            (comparable &&
+                             product.currentPrice.minorAmount <
+                                 lowestPrice->minorAmount)) {
                             lowestPrice = product.currentPrice;
                         }
                         if (!maxDiscountPercent ||

@@ -16,6 +16,7 @@ struct PriceComparisonCriteria {
     GameEdition edition{GameEdition::Standard};
     OfferType offerType{OfferType::BaseGame};
     Currency currency{Currency::KRW};
+    bool includeForeignCurrencies{false};
     std::optional<Platform> platform;
 };
 

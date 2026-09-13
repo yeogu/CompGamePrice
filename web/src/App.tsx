@@ -27,6 +27,12 @@ const isMobileFreeOffer = (store: string, money: Money) =>
 const offerPriceLabel = (store: string, money: Money) =>
   isMobileFreeOffer(store, money) ? '무료 다운로드' : formatMoney(money)
 
+const lowestComparableMoney = (prices: Money[]) => prices.reduce((lowest, price) => {
+  if (price.currency === 'KRW' && lowest.currency !== 'KRW') return price
+  if (price.currency !== lowest.currency) return lowest
+  return price.minorAmount < lowest.minorAmount ? price : lowest
+})
+
 const catalogPriceStatus = (game: GameSummary) => {
   if (game.priceStatus === 'Stale') {
     return '가격 갱신 필요'
@@ -2119,7 +2125,7 @@ function App() {
 
           <div className="game-summary" aria-label="게임 가격 요약">
             <div><span>비교 Store</span><strong>{report.products.length}곳</strong></div>
-            <div><span>역대 최저</span><strong>{report.products.some((product) => product.history) ? formatMoney(report.products.filter((product) => product.history).reduce((lowest, product) => product.history!.lowestPrice.minorAmount < lowest.minorAmount ? product.history!.lowestPrice : lowest, report.products.find((product) => product.history)!.history!.lowestPrice)) : '데이터 없음'}</strong></div>
+            <div><span>역대 최저</span><strong>{report.products.some((product) => product.history) ? formatMoney(lowestComparableMoney(report.products.flatMap((product) => product.history ? [product.history.lowestPrice] : []))) : '데이터 없음'}</strong></div>
             <div><span>최대 할인</span><strong>{Math.max(0, ...report.products.map((product) => product.discountPercent))}%</strong></div>
             <div><span>최신 가격</span><strong>{report.products.filter((product) => !product.stale).length}/{report.products.length}</strong></div>
           </div>

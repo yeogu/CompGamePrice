@@ -77,7 +77,9 @@ export function getGamePrices(
   gameId: string,
   platform = '',
 ): Promise<GamePriceResponse> {
-  const query = platform ? `?platform=${encodeURIComponent(platform)}` : ''
+  const parameters = new URLSearchParams({ includeForeignCurrencies: 'true' })
+  if (platform) parameters.set('platform', platform)
+  const query = `?${parameters}`
   return getJson<GamePriceResponse>(
     `/api/games/${encodeURIComponent(gameId)}/prices${query}`,
   )
@@ -89,6 +91,7 @@ export function getGamePriceHistory(
   platform = '',
 ): Promise<GamePriceHistoryResponse> {
   const parameters = new URLSearchParams()
+  parameters.set('includeForeignCurrencies', 'true')
   if (since) parameters.set('since', since)
   if (platform) parameters.set('platform', platform)
   const query = parameters.size > 0 ? `?${parameters}` : ''
