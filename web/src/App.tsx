@@ -27,6 +27,18 @@ const isMobileFreeOffer = (store: string, money: Money) =>
 const offerPriceLabel = (store: string, money: Money) =>
   isMobileFreeOffer(store, money) ? '무료 다운로드' : formatMoney(money)
 
+const compatibilityLabel = (platform: string, status: string) => {
+  if (status === 'Native') return `${platform} 정식 지원`
+  if (status === 'Compatible') {
+    return platform === 'Nintendo Switch 2'
+      ? 'Nintendo Switch 버전 호환 실행'
+      : `${platform} 호환 실행`
+  }
+  if (status === 'Limited') return `${platform} 일부 기능 제한`
+  if (status === 'Unsupported') return `${platform} 지원하지 않음`
+  return `${platform} 호환 여부 확인 필요`
+}
+
 const lowestComparableMoney = (prices: Money[]) => prices.reduce((lowest, price) => {
   if (price.currency === 'KRW' && lowest.currency !== 'KRW') return price
   if (price.currency !== lowest.currency) return lowest
@@ -2186,8 +2198,8 @@ function App() {
                       : '확인되지 않음'}
                   </p>
                   {product.compatibility.map((entry) => (
-                    <p className="platforms" key={entry.platform}>
-                      {entry.platform}: {entry.status}
+                    <p className={`compatibility-note compatibility-${entry.status.toLowerCase()}`} key={entry.platform}>
+                      {compatibilityLabel(entry.platform, entry.status)}
                     </p>
                   ))}
                   <a
