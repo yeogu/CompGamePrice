@@ -16,9 +16,14 @@ def run_pipeline(
     catalog: Path,
     output_directory: Path,
     database: Path | None = None,
+    product_id: str | None = None,
 ) -> int:
     output = output_directory / "apple_app_store_products.csv"
-    collected = collector.collect(catalog, output)
+    collected = (
+        collector.collect(catalog, output)
+        if product_id is None
+        else collector.collect(catalog, output, product_id)
+    )
     if collected == 0:
         return 1
     environment = dict(os.environ)
@@ -45,12 +50,14 @@ def main() -> int:
     parser.add_argument("--catalog", default=root / "data/game_catalog.json", type=Path)
     parser.add_argument("--output-dir", default=root / "snapshots/latest", type=Path)
     parser.add_argument("--database", type=Path)
+    parser.add_argument("--product-id")
     arguments = parser.parse_args()
     return run_pipeline(
         arguments.tracker,
         arguments.catalog,
         arguments.output_dir,
         arguments.database,
+        arguments.product_id,
     )
 
 

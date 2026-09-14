@@ -50,9 +50,14 @@ def normalized_row(raw: bytes, track_id: str, game_id: str) -> str:
     return f"{track_id},{game_id},{int(price)},{'+'.join(device_families)},true"
 
 
-def collect(catalog: Path, output: Path) -> int:
+def collect(catalog: Path, output: Path, product_id: str | None = None) -> int:
     rows = []
-    for track_id, game_id in apple_targets(catalog):
+    targets = apple_targets(catalog)
+    if product_id is not None:
+        targets = [target for target in targets if target[0] == product_id]
+        if not targets:
+            raise ValueError(f"unknown Apple App Store product: {product_id}")
+    for track_id, game_id in targets:
         url = f"https://itunes.apple.com/lookup?id={track_id}&country=kr&entity=software"
         with urlopen(
             url,

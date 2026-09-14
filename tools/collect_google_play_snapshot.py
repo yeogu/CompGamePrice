@@ -94,10 +94,16 @@ def collect(
     max_attempts: int = 3,
     retry_delay: float = 1.0,
     fetcher=fetch,
+    product_id: str | None = None,
 ) -> tuple[int, list[tuple[str, str]]]:
     blocks = []
     failures = []
-    for package_name, game_id in google_play_targets(catalog):
+    targets = google_play_targets(catalog)
+    if product_id is not None:
+        targets = [target for target in targets if target[0] == product_id]
+        if not targets:
+            raise ValueError(f"unknown Google Play product: {product_id}")
+    for package_name, game_id in targets:
         last_error = ""
         for attempt in range(max_attempts):
             try:

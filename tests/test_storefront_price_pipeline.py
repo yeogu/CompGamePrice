@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import sqlite3
 import sys
 import tempfile
@@ -127,6 +128,47 @@ class StorefrontPricePipelineTest(unittest.TestCase):
                 ).fetchone()[0]
         self.assertEqual(result, 2)
         self.assertEqual(status, "PARTIAL")
+
+    def test_targeted_collection_uses_only_requested_product(self):
+        collector = pipeline.COLLECTORS["PlayStationStore"][0]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            catalog = root / "catalog.json"
+            catalog.write_text(json.dumps({
+                "schemaVersion": 4,
+                "games": [{
+                    "id": "game",
+                    "title": "Game",
+                    "products": [
+                        {"store": "PlayStationStore", "productId": "wanted", "productUrl": "https://example.com/wanted"},
+                        {"store": "PlayStationStore", "productId": "other", "productUrl": "https://example.com/other"},
+                    ],
+                }],
+            }), encoding="utf-8")
+
+            def collect(store, selected_catalog, output):
+                document = json.loads(selected_catalog.read_text(encoding="utf-8"))
+                products = document["games"][0]["products"]
+                self.assertEqual(store, "PlayStationStore")
+                self.assertEqual([product["productId"] for product in products], ["wanted"])
+                output.write_text("snapshot", encoding="utf-8")
+                return 1, []
+
+            with patch.object(collector, "collect", side_effect=collect), patch.object(
+                pipeline.subprocess,
+                "run",
+            ) as run:
+                run.return_value.returncode = 0
+                result = pipeline.run_pipeline(
+                    "PlayStationStore",
+                    Path("tracker"),
+                    catalog,
+                    root / "output",
+                    product_id="wanted",
+                )
+
+        self.assertEqual(result, 0)
+        self.assertNotEqual(run.call_args.args[0][-1], str(root / "output"))
 
 
 if __name__ == "__main__":

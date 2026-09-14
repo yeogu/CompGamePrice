@@ -4,10 +4,13 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
+import tempfile
 
 import collect_epic_snapshot
 import collect_nintendo_snapshot
@@ -80,6 +83,20 @@ COLLECTORS = {
     ),
 }
 
+STORE_MAX_WORKERS = {
+    "EpicGamesStore": 3,
+    "NintendoEShop": 2,
+    "PlayStationStore": 2,
+    "MicrosoftStore": 2,
+    "UbisoftStore": 3,
+    "GOG": 4,
+    "MetaQuestStore": 2,
+    "EAApp": 3,
+    "BattleNet": 3,
+    "ItchIo": 4,
+    "HumbleStore": 3,
+}
+
 
 def run_pipeline(
     store: str,
@@ -87,13 +104,56 @@ def run_pipeline(
     catalog: Path,
     output_directory: Path,
     database: Path | None = None,
+    product_id: str | None = None,
 ) -> int:
     collector, filename, command = COLLECTORS[store]
+    temporary_directory: Path | None = None
+    selected_catalog = catalog
     output = output_directory / filename
-    if collector is collect_console_snapshot:
-        collected, failures = collector.collect(store, catalog, output)
-    else:
-        collected, failures = collector.collect(catalog, output)
+    if product_id:
+        output_directory.mkdir(parents=True, exist_ok=True)
+        temporary_directory = Path(tempfile.mkdtemp(
+            prefix="target-collection-",
+            dir=output_directory,
+        ))
+        selected_catalog = temporary_directory / "catalog.json"
+        output = temporary_directory / filename
+        document = json.loads(catalog.read_text(encoding="utf-8"))
+        games = []
+        for game in document.get("games", []):
+            products = [
+                product for product in game.get("products", [])
+                if product.get("store") == store
+                and product.get("productId") == product_id
+            ]
+            if products:
+                games.append({**game, "products": products})
+        if not games:
+            shutil.rmtree(temporary_directory)
+            raise ValueError(f"unknown {store} product: {product_id}")
+        document["games"] = games
+        selected_catalog.write_text(
+            json.dumps(document, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+    previous_workers = os.environ.get("STORE_COLLECTION_MAX_WORKERS")
+    os.environ["STORE_COLLECTION_MAX_WORKERS"] = (
+        previous_workers or str(STORE_MAX_WORKERS[store])
+    )
+    try:
+        if collector is collect_console_snapshot:
+            collected, failures = collector.collect(store, selected_catalog, output)
+        else:
+            collected, failures = collector.collect(selected_catalog, output)
+    except Exception:
+        if temporary_directory is not None:
+            shutil.rmtree(temporary_directory)
+        raise
+    finally:
+        if previous_workers is None:
+            os.environ.pop("STORE_COLLECTION_MAX_WORKERS", None)
+        else:
+            os.environ["STORE_COLLECTION_MAX_WORKERS"] = previous_workers
     for product_id, error in failures:
         print(
             f"{store} partial collection failure: {product_id}: {error}",
@@ -108,7 +168,10 @@ def run_pipeline(
                 None,
                 store,
             )
-        return 0
+        result = 0
+        if temporary_directory is not None:
+            shutil.rmtree(temporary_directory)
+        return result
     if collected == 0:
         if database is not None:
             error = collection_error(failures, "No products were collected")
@@ -119,13 +182,15 @@ def run_pipeline(
                 error,
                 store,
             )
+        if temporary_directory is not None:
+            shutil.rmtree(temporary_directory)
         return 1
     environment = dict(os.environ)
     environment["GAME_PRICE_CATALOG_PATH"] = str(catalog)
     if database is not None:
         environment["GAME_PRICE_DATABASE_PATH"] = str(database)
     completed = subprocess.run(
-        [str(tracker), command, "--data-dir", str(output_directory)],
+        [str(tracker), command, "--data-dir", str(output.parent)],
         check=False,
         env=environment,
     )
@@ -138,6 +203,8 @@ def run_pipeline(
                 "C++ snapshot import failed",
                 store,
             )
+        if temporary_directory is not None:
+            shutil.rmtree(temporary_directory)
         return completed.returncode
     result = 2 if failures else 0
     if database is not None:
@@ -150,6 +217,8 @@ def run_pipeline(
             error if failures else None,
             store,
         )
+    if temporary_directory is not None:
+        shutil.rmtree(temporary_directory)
     return result
 
 
@@ -174,6 +243,7 @@ def main() -> int:
     parser.add_argument("--catalog", default=root / "data/game_catalog.json", type=Path)
     parser.add_argument("--output-dir", default=root / "snapshots/latest", type=Path)
     parser.add_argument("--database", type=Path)
+    parser.add_argument("--product-id")
     arguments = parser.parse_args()
     return run_pipeline(
         arguments.store,
@@ -181,6 +251,7 @@ def main() -> int:
         arguments.catalog,
         arguments.output_dir,
         arguments.database,
+        arguments.product_id,
     )
 
 

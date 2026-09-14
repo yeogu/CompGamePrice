@@ -17,9 +17,17 @@ def run_pipeline(
     catalog: Path,
     output_directory: Path,
     database: Path | None = None,
+    product_id: str | None = None,
 ) -> int:
     output = output_directory / "google_play_products.txt"
-    collected, failures = collector.collect(catalog, output)
+    if product_id is None:
+        collected, failures = collector.collect(catalog, output)
+    else:
+        collected, failures = collector.collect(
+            catalog,
+            output,
+            product_id=product_id,
+        )
     for product_id, error in failures:
         print(
             f"GooglePlay partial collection failure: {product_id}: {error}",
@@ -53,12 +61,14 @@ def main() -> int:
     parser.add_argument("--catalog", default=root / "data/game_catalog.json", type=Path)
     parser.add_argument("--output-dir", default=root / "snapshots/latest", type=Path)
     parser.add_argument("--database", type=Path)
+    parser.add_argument("--product-id")
     arguments = parser.parse_args()
     return run_pipeline(
         arguments.tracker,
         arguments.catalog,
         arguments.output_dir,
         arguments.database,
+        arguments.product_id,
     )
 
 

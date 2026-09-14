@@ -3,6 +3,8 @@ import json
 from pathlib import Path
 import sys
 import tempfile
+import threading
+import time
 import unittest
 
 
@@ -196,6 +198,37 @@ class StorefrontPriceCollectorsTest(unittest.TestCase):
         self.assertEqual(rows, ["ok"])
         self.assertEqual(failures, [])
         self.assertEqual(sleeps, [2, 4])
+
+    def test_parallel_collection_preserves_catalog_order_and_bounds_workers(self):
+        active = 0
+        maximum_active = 0
+        lock = threading.Lock()
+
+        def fetcher(product_id, game_id, product_url, timeout):
+            nonlocal active, maximum_active
+            del game_id, product_url, timeout
+            with lock:
+                active += 1
+                maximum_active = max(maximum_active, active)
+            time.sleep(0.02)
+            with lock:
+                active -= 1
+            return product_id.encode()
+
+        rows, failures = support.collect_with_retry(
+            [(str(index), "game", "url") for index in range(4)],
+            lambda raw, *_args: raw.decode(),
+            fetcher,
+            1,
+            1,
+            0,
+            0,
+            max_workers=2,
+        )
+
+        self.assertEqual(rows, ["0", "1", "2", "3"])
+        self.assertEqual(failures, [])
+        self.assertEqual(maximum_active, 2)
 
 
 if __name__ == "__main__":

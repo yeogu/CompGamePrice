@@ -112,12 +112,17 @@ COLLECTION_METADATA_BATCH_SIZE=20
 COLLECTION_STEAM_DISCOVERY_LIMIT=100
 COLLECTION_STEAM_DISCOVERY_PAGES=6
 COLLECTION_ENABLED=true
+# 비워 두면 Store별 안전 기본값(2~4개)을 사용합니다.
+STORE_COLLECTION_MAX_WORKERS=
 ```
 
 기본값은 한 주기마다 Store별 50개 후보를 처리하고, Steam은 소스별 100개씩
 6페이지를 탐색합니다. 이 주기에는 대표 이미지와 신원 메타데이터가 없는 Steam
 게임을 최대 20개씩 보완하는 단계도 포함됩니다. NAS 부하나 Store 제한이 보이면
 배치 크기부터 낮추세요.
+가격 수집은 Store별 기본 동시성 범위 안에서 실행되고, HTTP 429가 발생하면 같은
+Store의 작업 전체가 자동으로 감속됩니다. 운영 환경에서 동시성을 직접 제한하려면
+`STORE_COLLECTION_MAX_WORKERS`를 1 이상의 값으로 설정하세요.
 관리자 대시보드의 `카탈로그 탐색 신뢰도`에서 자동 등록률과 실패율을 확인할 수
 있으며, 실패율이 발생한 Store는 수집 로그와 검토 대기를 먼저 확인합니다.
 

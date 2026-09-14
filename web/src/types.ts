@@ -251,7 +251,7 @@ export interface CatalogAdminResult {
   applied: boolean
   requiresApiRestart: boolean
 }
-export interface CatalogCollectionJob { id: number; store?: string; status: 'IDLE' | 'RUNNING' | 'SUCCEEDED' | 'PARTIAL' | 'FAILED'; error?: string; integrityIssueCount?: number }
+export interface CatalogCollectionJob { id: number; store?: string; productId?: string; status: 'IDLE' | 'RUNNING' | 'SUCCEEDED' | 'PARTIAL' | 'FAILED'; error?: string; integrityIssueCount?: number }
 export interface CatalogDiscoveryJob {
   provider: 'Steam'
   status: 'IDLE' | 'RUNNING' | 'SUCCEEDED' | 'PARTIAL' | 'FAILED'

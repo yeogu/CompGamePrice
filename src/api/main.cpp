@@ -739,7 +739,9 @@ Json::Value runPriceIntegrityAudit() {
 
 class CatalogCollectionJob {
 public:
-    bool start(const std::string& store) {
+    bool start(
+        const std::string& store,
+        const std::optional<std::string>& productId = std::nullopt) {
         std::lock_guard<std::mutex> lock(mutex_);
         if (status_ == "RUNNING") {
             return false;
@@ -750,12 +752,14 @@ public:
         }
         ++id_;
         store_ = store;
+        productId_ = productId.value_or("");
         status_ = "RUNNING";
         error_.clear();
         integrityIssueCount_ = 0;
         const auto selectedStore = store_;
-        std::thread([this, selectedStore, lockDescriptor]() {
-            run(selectedStore, lockDescriptor);
+        const auto selectedProductId = productId_;
+        std::thread([this, selectedStore, selectedProductId, lockDescriptor]() {
+            run(selectedStore, selectedProductId, lockDescriptor);
         }).detach();
         return true;
     }
@@ -766,6 +770,9 @@ public:
         result["id"] = Json::UInt64(id_);
         result["status"] = status_;
         result["store"] = store_;
+        if (!productId_.empty()) {
+            result["productId"] = productId_;
+        }
         if (!error_.empty()) {
             result["error"] = error_;
         }
@@ -774,7 +781,10 @@ public:
     }
 
 private:
-    void run(const std::string& store, int lockDescriptor) {
+    void run(
+        const std::string& store,
+        const std::string& productId,
+        int lockDescriptor) {
         const auto project = projectPath();
         std::string pipeline;
         std::string pipelineArguments;
@@ -818,6 +828,13 @@ private:
         } else {
             pipeline = "tools/run_steam_pipeline.py";
         }
+        if (!productId.empty() &&
+            (pipeline == "tools/run_storefront_price_pipeline.py" ||
+             pipeline == "tools/run_steam_pipeline.py" ||
+             pipeline == "tools/run_google_play_pipeline.py" ||
+             pipeline == "tools/run_apple_pipeline.py")) {
+            pipelineArguments += " --product-id " + shellQuoted(productId);
+        }
         const auto command = "python3 " + shellQuoted(
             (project / pipeline).string()) + pipelineArguments +
             " --tracker " + shellQuoted(trackerPath().string()) +
@@ -853,6 +870,7 @@ private:
     std::uint64_t id_{};
     std::string status_{"IDLE"};
     std::string store_{"Steam"};
+    std::string productId_;
     std::string error_;
     std::size_t integrityIssueCount_{};
 };
@@ -2575,6 +2593,15 @@ int main() {
                 const auto store = body && (*body)["store"].isString()
                     ? (*body)["store"].asString()
                     : std::string{"Steam"};
+                const auto productId = body && (*body)["productId"].isString()
+                    ? std::optional<std::string>{(*body)["productId"].asString()}
+                    : std::nullopt;
+                if (productId && (productId->empty() || productId->size() > 256)) {
+                    callback(jsonError(
+                        drogon::k400BadRequest,
+                        "invalid collection product id"));
+                    return;
+                }
                 if (store != "Steam" && store != "Epic Games Store" &&
                     store != "Nintendo eShop" && store != "Google Play" &&
                     store != "Apple App Store" &&
@@ -2589,7 +2616,7 @@ int main() {
                         "unsupported collection store"));
                     return;
                 }
-                if (!catalogCollectionJob.start(store)) {
+                if (!catalogCollectionJob.start(store, productId)) {
                     callback(jsonError(
                         drogon::k409Conflict,
                         "collection is already running"));

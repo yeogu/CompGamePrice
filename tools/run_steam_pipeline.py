@@ -116,10 +116,15 @@ def run_pipeline(
     batch_size: int | None = None,
     fetcher=None,
     command_runner=subprocess.run,
+    product_id: str | None = None,
 ) -> int:
     started_at = timestamp()
     with exclusive_lock(output_directory / ".steam_pipeline.lock"):
         all_targets = collector.load_steam_targets(catalog_path)
+        if product_id is not None:
+            all_targets = [target for target in all_targets if target[0] == product_id]
+            if not all_targets:
+                raise ValueError(f"unknown Steam product: {product_id}")
         targets = prioritized_targets(all_targets, database_path, batch_size)
         statistics = {"retryCount": 0}
         collection_arguments = {
@@ -230,6 +235,7 @@ def main() -> int:
     parser.add_argument("--database-backup-dir", type=Path)
     parser.add_argument("--database-backup-retention-days", default=30, type=int)
     parser.add_argument("--batch-size", type=int)
+    parser.add_argument("--product-id")
     parser.add_argument(
         "--input",
         type=Path,
@@ -281,6 +287,7 @@ def main() -> int:
             arguments.database_backup_retention_days,
             arguments.batch_size,
             fetcher,
+            product_id=arguments.product_id,
         )
     except PipelineAlreadyRunning as error:
         print(error, file=sys.stderr)

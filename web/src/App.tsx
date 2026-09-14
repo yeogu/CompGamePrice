@@ -1222,7 +1222,7 @@ function App() {
     })
     setIntegrityCollectionStarting(true)
     try {
-      setCatalogJob(await startCatalogCollection(collectionStoreName(issue.store)))
+      setCatalogJob(await startCatalogCollection(collectionStoreName(issue.store), issue.productId))
       setActionMessage(`${collectionStoreName(issue.store)} 가격 재수집을 시작했습니다.`)
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : '가격 재수집을 시작하지 못했습니다.'
