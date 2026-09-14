@@ -15,6 +15,7 @@ struct PriceComparisonCriteria {
     Region region{Region::KR};
     GameEdition edition{GameEdition::Standard};
     OfferType offerType{OfferType::BaseGame};
+    bool includeBundles{true};
     Currency currency{Currency::KRW};
     bool includeForeignCurrencies{false};
     std::optional<Platform> platform;

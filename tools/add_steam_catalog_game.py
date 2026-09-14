@@ -86,6 +86,8 @@ def catalog_game(raw: bytes, app_id: str, game_id: str | None = None) -> dict:
     title = data.get("name")
     if not isinstance(title, str) or not title.strip():
         raise CatalogImportError("Steam game has no title")
+    if steam.is_demo_title(title):
+        raise CatalogImportError("Steam demo products are not catalog candidates")
     platform_data = data.get("platforms")
     if not isinstance(platform_data, dict):
         raise CatalogImportError("Steam game has no platform data")

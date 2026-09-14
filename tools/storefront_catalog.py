@@ -869,6 +869,12 @@ def verified_product(raw: bytes, store: str, product_url: str) -> dict:
     title = named_value(product.get("name")) or parser.meta.get("og:title", "").strip()
     if not title:
         raise ValueError("Store product has no title")
+    if store == "PlayStationStore" and re.search(
+        r"(?:친구\s*패스|friend(?:'s)?\s+pass|무료\s*체험판|\bdemo\b|\btrial\b)",
+        title,
+        re.IGNORECASE,
+    ):
+        raise ValueError("PlayStation demo or friend-pass product is not supported")
     offer = product.get("offers", {})
     if isinstance(offer, list):
         offer = next((item for item in offer if isinstance(item, dict)), {})
@@ -879,6 +885,8 @@ def verified_product(raw: bytes, store: str, product_url: str) -> dict:
         normalized = re.sub(r"[^0-9]", "", str(price_text))
         if normalized:
             price_minor = int(normalized)
+    regular_price_minor = price_minor
+    discount_percent = 0
     product_id = named_value(product.get("sku"))
     if not product_id:
         product_id = str(product.get("productID", "")).strip()
@@ -894,6 +902,18 @@ def verified_product(raw: bytes, store: str, product_url: str) -> dict:
         platforms = ["NintendoSwitch2"]
     normalized_document = html_document.casefold()
     if store == "PlayStationStore":
+        decoded_document = unescape(html_document)
+        for occurrence in re.finditer(re.escape(product_id), decoded_document):
+            window = decoded_document[occurrence.start():occurrence.start() + 7000]
+            original = re.search(r'"originalPriceValue":(\d+)', window)
+            discounted = re.search(r'"discountPriceValue":(\d+)', window)
+            if original and discounted and int(discounted.group(1)) == price_minor:
+                regular_price_minor = int(original.group(1))
+                break
+        if regular_price_minor and price_minor is not None and regular_price_minor >= price_minor:
+            discount_percent = round(
+                (regular_price_minor - price_minor) * 100 / regular_price_minor
+            )
         platforms = []
         if "ps4" in normalized_document:
             platforms.append("PlayStation4")
@@ -921,6 +941,8 @@ def verified_product(raw: bytes, store: str, product_url: str) -> dict:
         "title": title,
         "developer": developer,
         "priceMinor": price_minor,
+        "regularPriceMinor": regular_price_minor,
+        "discountPercent": discount_percent,
         "currency": str(offer.get("priceCurrency", "")),
         "allowMissingPrice": price_minor is None,
         "isGame": True,
@@ -931,4 +953,10 @@ def verified_product(raw: bytes, store: str, product_url: str) -> dict:
             catalog_matcher.normalized_words(title) &
             catalog_matcher.EXCLUDED_TITLE_WORDS
         ),
+        "offerType": (
+            "Bundle"
+            if store == "PlayStationStore" and re.search(r"(?:\bbundle\b|번들)", title, re.IGNORECASE)
+            else "BaseGame"
+        ),
+        "offerName": title if store == "PlayStationStore" else "",
     }

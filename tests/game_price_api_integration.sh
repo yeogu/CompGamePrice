@@ -45,11 +45,69 @@ catalog["games"].append({
         "offerType": "BaseGame",
     }],
 })
+catalog["games"].append({
+    "id": "bundle-price-test",
+    "title": "Bundle Price Test",
+    "platforms": ["PlayStation5"],
+    "genres": ["Test"],
+    "tags": [],
+    "aliases": [],
+    "developers": ["Test Studio"],
+    "publishers": ["Test Publisher"],
+    "products": [{
+        "store": "PlayStationStore",
+        "productId": "BASE-GAME",
+        "productUrl": "https://example.invalid/base-game",
+        "platforms": ["PlayStation5"],
+        "region": "KR",
+        "edition": "Standard",
+        "offerType": "BaseGame",
+    }, {
+        "store": "PlayStationStore",
+        "productId": "TWO-GAME-BUNDLE",
+        "productUrl": "https://example.invalid/two-game-bundle",
+        "platforms": ["PlayStation5"],
+        "region": "KR",
+        "edition": "Standard",
+        "offerType": "Bundle",
+        "offerName": "Jennie Bundle",
+    }],
+})
 with open(sys.argv[2], "w", encoding="utf-8") as output:
     json.dump(catalog, output)
 PY
 
 GAME_PRICE_DATABASE_PATH="${test_database}" "${tracker_binary}" seed-demo >/dev/null
+python3 - "${test_database}" <<'PY'
+from datetime import datetime, timezone
+import sqlite3
+import sys
+
+now = datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+with sqlite3.connect(sys.argv[1]) as connection:
+    connection.execute(
+        "INSERT INTO games(id, title, normalized_title) VALUES(?, ?, ?)",
+        ("bundle-price-test", "Bundle Price Test", "bundle price test"),
+    )
+    connection.executemany(
+        """
+        INSERT INTO store_products(
+            store, external_product_id, game_id, price_minor,
+            regular_price_minor, discount_percent, currency, purchasable,
+            region, edition, offer_type, last_checked_at,
+            last_successful_check_at
+        ) VALUES(?, ?, ?, ?, ?, ?, 'KRW', 1, 'KR', 'Standard', ?, ?, ?)
+        """,
+        [
+            ("PlayStation Store", "BASE-GAME", "bundle-price-test", 47000, 47000, 0, "BaseGame", now, now),
+            ("PlayStation Store", "TWO-GAME-BUNDLE", "bundle-price-test", 23760, 72000, 67, "Bundle", now, now),
+        ],
+    )
+    connection.executemany(
+        "INSERT INTO product_platforms(store, external_product_id, platform) VALUES('PlayStation Store', ?, 'PlayStation 5')",
+        [("BASE-GAME",), ("TWO-GAME-BUNDLE",)],
+    )
+PY
 GAME_PRICE_DATABASE_PATH="${test_database}" "${tracker_binary}" collect \
     --data-dir "${project_directory}/data" Hades >/dev/null
 GAME_PRICE_DATABASE_PATH="${test_database}" GAME_PRICE_CATALOG_PATH="${test_catalog}" \
@@ -199,6 +257,25 @@ grep -q '"freshness":"Fresh"' "${response_body}"
 grep -q '"stale":false' "${response_body}"
 grep -q '"lastCheckedAt"' "${response_body}"
 grep -q '"lastSuccessfulCheckAt"' "${response_body}"
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/games/bundle-price-test/prices")
+[[ "${status}" == "200" ]]
+python3 - "${response_body}" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as source:
+    products = json.load(source)["products"]
+
+assert len(products) == 2
+bundle = next(product for product in products if product["offerType"] == "Bundle")
+assert bundle["offerName"] == "Jennie Bundle"
+assert bundle["price"]["minorAmount"] == 23760
+assert bundle["regularPrice"]["minorAmount"] == 72000
+assert bundle["effectiveAllocatedPrice"]["minorAmount"] == 15510
+assert bundle["effectivePriceMethod"] == "ProportionalToStandaloneRegularPrice"
+PY
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     "${api_base}/api/games/stardew-valley/price-history")

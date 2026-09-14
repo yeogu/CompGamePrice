@@ -93,6 +93,7 @@ class AdminHealthSummaryTest(unittest.TestCase):
                     INSERT INTO crawl_runs VALUES(1, 'Steam', 'FAILED', 'timeout', '2026-01-01T00:00:00Z');
                     INSERT INTO crawl_runs VALUES(2, 'Steam', 'FAILED', 'HTTP 429 Too Many Requests', '2026-01-02T00:00:00Z');
                     INSERT INTO crawl_runs VALUES(3, 'EpicGamesStore', 'FAILED', 'rate limit exceeded', '2026-01-03T00:00:00Z');
+                    INSERT INTO crawl_runs VALUES(4, 'EpicGamesStore', 'SUCCEEDED', NULL, '2026-01-03T01:00:00Z');
                     CREATE TABLE notification_outbox(
                         notification_id INTEGER PRIMARY KEY, channel TEXT, status TEXT
                     );
@@ -147,6 +148,18 @@ class AdminHealthSummaryTest(unittest.TestCase):
             self.assertEqual(
                 result["collection"]["errorCategories"][0]["count"],
                 2,
+            )
+            self.assertEqual(
+                result["collection"]["errorCategories"][0]["latestRecoveredAt"],
+                "2026-01-03T01:00:00Z",
+            )
+            self.assertEqual(
+                result["collection"]["errorCategories"][0]["recoveredCount"],
+                1,
+            )
+            self.assertEqual(
+                result["collection"]["errorCategories"][0]["unresolvedCount"],
+                1,
             )
             self.assertEqual(
                 result["collection"]["errorCategories"][1]["category"],

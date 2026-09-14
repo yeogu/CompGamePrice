@@ -1,4 +1,5 @@
 #include "game_price/persistence/database.h"
+#include "game_price/persistence/sqlite_retry.h"
 
 #include <sqlite3.h>
 
@@ -16,7 +17,7 @@ Database::Database(const std::string& path) {
         }
         throw std::runtime_error("Cannot open SQLite database: " + message);
     }
-    if (sqlite3_busy_timeout(handle_, 5000) != SQLITE_OK) {
+    if (sqlite3_busy_timeout(handle_, SqliteBusyTimeoutMilliseconds) != SQLITE_OK) {
         const std::string message = sqlite3_errmsg(handle_);
         sqlite3_close(handle_);
         handle_ = nullptr;
@@ -41,11 +42,17 @@ sqlite3* Database::handle() const noexcept {
 }
 
 void Database::execute(const std::string& sql) const {
-    char* errorMessage = nullptr;
-    const int result = sqlite3_exec(handle_, sql.c_str(), nullptr, nullptr, &errorMessage);
-    if (result != SQLITE_OK) {
+    for (int retry = 0;; ++retry) {
+        char* errorMessage = nullptr;
+        const int result = sqlite3_exec(handle_, sql.c_str(), nullptr, nullptr, &errorMessage);
+        if (result == SQLITE_OK) return;
+
         const std::string message = errorMessage ? errorMessage : "unknown error";
         sqlite3_free(errorMessage);
+        if (isSqliteLockError(result) && retry < SqliteLockRetryCount) {
+            waitForSqliteLockRetry(retry);
+            continue;
+        }
         throw std::runtime_error("SQLite error: " + message);
     }
 }

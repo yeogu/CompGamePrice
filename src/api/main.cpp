@@ -221,7 +221,8 @@ std::optional<Json::Value> convertedKrwJson(
 
 Json::Value productJson(
     const ProductPriceReport& report,
-    Database* database = nullptr) {
+    Database* database = nullptr,
+    const std::optional<Money>& effectiveAllocatedPrice = std::nullopt) {
     Json::Value json;
     json["productId"] = report.product.productId;
     json["store"] = toString(report.product.store);
@@ -229,11 +230,16 @@ Json::Value productJson(
     json["region"] = toString(report.product.region);
     json["edition"] = toString(report.product.edition);
     json["offerType"] = toString(report.product.offerType);
+    if (!report.offerName.empty()) json["offerName"] = report.offerName;
     json["price"] = moneyJson(report.product.currentPrice);
     if (report.product.regularPrice) {
         json["regularPrice"] = moneyJson(*report.product.regularPrice);
     }
     json["discountPercent"] = report.product.discountPercent;
+    if (effectiveAllocatedPrice) {
+        json["effectiveAllocatedPrice"] = moneyJson(*effectiveAllocatedPrice);
+        json["effectivePriceMethod"] = "ProportionalToStandaloneRegularPrice";
+    }
     json["purchasable"] = report.product.purchasable;
     if (report.product.lastCheckedAt) {
         json["lastCheckedAt"] = *report.product.lastCheckedAt;
@@ -1275,6 +1281,7 @@ PriceComparisonCriteria comparisonCriteria(
             "edition must be Standard, Deluxe, or Switch2Edition");
     }
     if (!offerType.empty()) {
+        criteria.includeBundles = false;
         if (offerType == "BaseGame") criteria.offerType = OfferType::BaseGame;
         else if (offerType == "DLC") criteria.offerType = OfferType::DLC;
         else if (offerType == "Bundle") criteria.offerType = OfferType::Bundle;
@@ -3070,8 +3077,31 @@ int main() {
                 response["game"] = gameJson(report->comparison.game);
                 response["products"] = Json::arrayValue;
                 for (const auto& productReport : report->productReports) {
+                    std::optional<Money> effectivePrice;
+                    const auto& product = productReport.product;
+                    std::optional<Money> standaloneReferencePrice;
+                    for (const auto& candidate : report->productReports) {
+                        const auto& base = candidate.product;
+                        if (base.offerType != OfferType::BaseGame) continue;
+                        const Money reference = base.regularPrice.value_or(base.currentPrice);
+                        if (reference.currency == product.currentPrice.currency &&
+                            (!standaloneReferencePrice ||
+                             reference.minorAmount > standaloneReferencePrice->minorAmount)) {
+                            standaloneReferencePrice = reference;
+                        }
+                    }
+                    if (product.offerType == OfferType::Bundle && product.regularPrice &&
+                        standaloneReferencePrice && product.regularPrice->minorAmount > 0 &&
+                        standaloneReferencePrice->minorAmount <= product.regularPrice->minorAmount) {
+                        effectivePrice = Money{
+                            static_cast<std::int64_t>(std::llround(
+                                static_cast<double>(product.currentPrice.minorAmount) *
+                                standaloneReferencePrice->minorAmount /
+                                product.regularPrice->minorAmount)),
+                            product.currentPrice.currency};
+                    }
                     response["products"].append(
-                        productJson(productReport, &database));
+                        productJson(productReport, &database, effectivePrice));
                 }
                 if (report->comparison.cheapestProduct) {
                     response["cheapest"]["productId"] =
@@ -3114,6 +3144,10 @@ int main() {
                     Json::Value history;
                     history["productId"] = productHistory.product.productId;
                     history["store"] = toString(productHistory.product.store);
+                    history["offerType"] = toString(productHistory.product.offerType);
+                    if (!productHistory.offerName.empty()) {
+                        history["offerName"] = productHistory.offerName;
+                    }
                     history["observations"] = Json::arrayValue;
                     for (const auto& observation : productHistory.observations) {
                         Json::Value item;

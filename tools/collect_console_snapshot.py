@@ -67,6 +67,9 @@ def normalizer_for(store: str):
         except ValueError as error:
             raise support.PermanentCollectionError(str(error)) from error
         price = metadata.get("priceMinor")
+        regular_price = metadata.get("regularPriceMinor", price)
+        discount_percent = metadata.get("discountPercent", 0)
+        offer_type = metadata.get("offerType", "BaseGame")
         currency = metadata.get("currency")
         if price is None:
             raise support.PermanentCollectionError(
@@ -80,12 +83,13 @@ def normalizer_for(store: str):
         return ",".join([
             product_id,
             game_id,
+            str(regular_price),
             str(price),
-            str(price),
-            "0",
+            str(discount_percent),
             "|".join(platforms),
             "KR",
             "AVAILABLE",
+            offer_type,
         ])
 
     return normalized_row
@@ -117,7 +121,7 @@ def collect(
         support.atomic_write_text(
             output,
             "product_id,game_id,regular_price_krw,current_price_krw,"
-            "discount_percent,platforms,country,availability\n" +
+            "discount_percent,platforms,country,availability,offer_type\n" +
             "\n".join(rows) +
             "\n",
         )

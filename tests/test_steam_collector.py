@@ -48,9 +48,19 @@ class SteamCollectorTest(unittest.TestCase):
             self.assertEqual(product_fields[7], metadata["collectedAt"])
 
     def test_rejects_a_response_without_krw_price(self):
-        raw = b'{"413150":{"success":true,"data":{"steam_appid":413150,"platforms":{"windows":true}}}}'
+        raw = b'{"413150":{"success":true,"data":{"steam_appid":413150,"type":"game","name":"Stardew Valley","is_free":false,"platforms":{"windows":true}}}}'
         with self.assertRaisesRegex(ValueError, "no KRW price"):
             steam_collector.normalized_row(raw, "413150", "stardew-valley")
+
+    def test_rejects_demo_snapshot_even_if_it_contains_a_price(self):
+        payload = json.loads(
+            (ROOT / "tests" / "fixtures" / "steam_appdetails_413150.json").read_text()
+        )
+        payload["413150"]["data"]["name"] = "Stardew Valley Demo"
+        with self.assertRaisesRegex(ValueError, "demos"):
+            steam_collector.normalized_row(
+                json.dumps(payload).encode(), "413150", "stardew-valley"
+            )
 
     def test_archives_compressed_raw_response(self):
         raw = (ROOT / "tests" / "fixtures" / "steam_appdetails_413150.json").read_bytes()

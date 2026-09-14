@@ -56,8 +56,16 @@ std::optional<GamePriceHistoryReport> GameQueryService::getGamePriceHistoryById(
             ? repository_.findPriceHistorySince(
                   product.store, product.productId, *observedSince)
             : repository_.findPriceHistory(product.store, product.productId);
-        histories.push_back(
-            ProductPriceHistoryReport{product, std::move(observations)});
+        std::string offerName;
+        for (const auto& catalogProduct : catalog_.storeProducts(product.store)) {
+            if (catalogProduct.gameId == comparison->game.id &&
+                catalogProduct.productId == product.productId) {
+                offerName = catalogProduct.offerName;
+                break;
+            }
+        }
+        histories.push_back(ProductPriceHistoryReport{
+            product, std::move(offerName), std::move(observations)});
     }
     return GamePriceHistoryReport{comparison->game, std::move(histories)};
 }
@@ -74,16 +82,19 @@ std::optional<GamePriceReport> GameQueryService::buildReport(
     for (const auto& product : comparison->products) {
         const auto history = historyService.analyze(product, observedSince);
         std::string purchaseUrl;
+        std::string offerName;
         for (const auto& catalogProduct : catalog_.storeProducts(product.store)) {
             if (catalogProduct.gameId == comparison->game.id &&
                 catalogProduct.productId == product.productId) {
                 purchaseUrl = catalogProduct.productUrl;
+                offerName = catalogProduct.offerName;
                 break;
             }
         }
         productReports.push_back(ProductPriceReport{
             product,
             std::move(purchaseUrl),
+            std::move(offerName),
             history,
             history && product.freshness == PriceFreshness::Fresh
                 ? std::optional<PurchaseRecommendationResult>{

@@ -27,6 +27,12 @@ class SteamCatalogSearchTest(unittest.TestCase):
         raw = (ROOT / "tests/fixtures/steam_search_elden_ring.html").read_bytes()
         self.assertEqual(len(catalog_search.parse_results(raw, 1)), 1)
 
+    def test_hides_demo_candidates(self):
+        raw = b'''<a class="search_result_row" data-ds-appid="1"><span class="title">Game Demo</span></a>
+<a class="search_result_row" data-ds-appid="2"><span class="title">Full Game</span></a>'''
+        candidates = catalog_search.parse_results(raw)
+        self.assertEqual([candidate["externalProductId"] for candidate in candidates], ["2"])
+
 
 if __name__ == "__main__":
     unittest.main()

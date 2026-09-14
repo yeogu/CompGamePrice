@@ -249,6 +249,10 @@ if(BUILD_TESTING)
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_remove_catalog_product.py
         )
         add_test(
+            NAME cleanup_unsupported_catalog_offers_tests
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_cleanup_unsupported_catalog_offers.py
+        )
+        add_test(
             NAME set_user_role_tests
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_set_user_role.py
         )

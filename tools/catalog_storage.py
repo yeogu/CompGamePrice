@@ -64,6 +64,13 @@ def validate_catalog(document: dict) -> None:
                 raise CatalogStorageError(f"Store product has no Store: {game_id}")
             if not isinstance(product_id, str) or not product_id:
                 raise CatalogStorageError(f"Store product has no product id: {game_id}")
+            offer_name = product.get("offerName")
+            if offer_name is not None and (
+                not isinstance(offer_name, str) or not offer_name.strip()
+            ):
+                raise CatalogStorageError(
+                    f"Store product has an invalid offer name: {game_id}"
+                )
             identity = (store, product_id)
             if identity in product_ids:
                 raise CatalogStorageError(

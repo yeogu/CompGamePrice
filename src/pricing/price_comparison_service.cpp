@@ -36,7 +36,9 @@ PriceComparisonResult PriceComparisonService::compare(
         if (!product.purchasable) continue;
         if (product.region != criteria.region ||
             product.edition != criteria.edition ||
-            product.offerType != criteria.offerType ||
+            (product.offerType != criteria.offerType &&
+             !(criteria.includeBundles && criteria.offerType == OfferType::BaseGame &&
+               product.offerType == OfferType::Bundle)) ||
             (!criteria.includeForeignCurrencies &&
              product.currentPrice.currency != criteria.currency)) {
             continue;

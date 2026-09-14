@@ -233,15 +233,22 @@ def collection_summary(database: Path) -> dict:
             }
         failures = connection.execute(
             """
-            SELECT store, error_message, started_at
-            FROM crawl_runs
-            WHERE status = 'FAILED'
-            ORDER BY id DESC
+            SELECT failed.store, failed.error_message, failed.started_at,
+                   (
+                       SELECT MIN(recovered.started_at)
+                       FROM crawl_runs AS recovered
+                       WHERE recovered.store = failed.store
+                         AND recovered.status = 'SUCCEEDED'
+                         AND recovered.started_at > failed.started_at
+                   ) AS recovered_at
+            FROM crawl_runs AS failed
+            WHERE failed.status = 'FAILED'
+            ORDER BY failed.id DESC
             LIMIT 20
             """
         ).fetchall()
     categories: dict[str, dict] = {}
-    for store, error, started_at in failures:
+    for store, error, started_at, recovered_at in failures:
         category, label = collection_error_category(error)
         current = categories.setdefault(
             category,
@@ -252,15 +259,23 @@ def collection_summary(database: Path) -> dict:
                 "latestStore": store,
                 "latestError": error,
                 "latestAt": started_at,
+                "latestRecoveredAt": recovered_at,
+                "recoveredCount": 0,
+                "unresolvedCount": 0,
             },
         )
         current["count"] += 1
+        if recovered_at:
+            current["recoveredCount"] += 1
+        else:
+            current["unresolvedCount"] += 1
     return {
         "recentFailures": len(failures),
         "lastFailure": None if not failures else {
             "store": failures[0][0],
             "error": failures[0][1],
             "startedAt": failures[0][2],
+            "recoveredAt": failures[0][3],
         },
         "errorCategories": sorted(
             categories.values(),

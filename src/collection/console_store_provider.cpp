@@ -36,6 +36,12 @@ bool platformBelongsToStore(Store store, Platform platform) {
     return false;
 }
 
+OfferType parseOfferType(const std::string& value) {
+    if (value.empty() || value == "BaseGame") return OfferType::BaseGame;
+    if (value == "Bundle") return OfferType::Bundle;
+    throw std::runtime_error("unsupported console offer type");
+}
+
 std::vector<Platform> parsePlatforms(Store store, const std::string& value) {
     std::vector<Platform> result;
     for (const auto& token : split(value, '|')) {
@@ -76,7 +82,7 @@ ConsoleStoreProvider::ConsoleStoreProvider(
         const auto productId = fields.empty() ? std::string{} : trim(fields[0]);
         const auto gameId = fields.size() > 1 ? trim(fields[1]) : std::string{};
         try {
-            if (fields.size() != 8) {
+            if (fields.size() != 8 && fields.size() != 9) {
                 throw std::runtime_error("unexpected field count");
             }
             const auto regularPrice = std::stoll(trim(fields[2]));
@@ -96,6 +102,7 @@ ConsoleStoreProvider::ConsoleStoreProvider(
                 discount,
                 platforms,
                 trim(fields[7]) == "AVAILABLE",
+                fields.size() == 9 ? parseOfferType(trim(fields[8])) : OfferType::BaseGame,
             });
         } catch (const std::exception& error) {
             rejections_.push_back(ProviderRejection{
@@ -142,7 +149,7 @@ std::vector<StoreProduct> ConsoleStoreProvider::findProducts(
             raw.discountPercent,
             Region::KR,
             GameEdition::Standard,
-            OfferType::BaseGame,
+            raw.offerType,
         });
     }
     return result;

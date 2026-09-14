@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import ssl
 import tempfile
 import time
@@ -17,9 +18,16 @@ from urllib.parse import urlencode
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-
 USER_AGENT = "CompGamePricePrototype/0.1 (local development)"
 ENDPOINT = "https://store.steampowered.com/api/appdetails"
+DEMO_TITLE_PATTERN = re.compile(
+    r"(?:\b(?:demo|trial|prologue|playtest)\b|데모|체험판)",
+    re.IGNORECASE,
+)
+
+
+def is_demo_title(title: object) -> bool:
+    return isinstance(title, str) and DEMO_TITLE_PATTERN.search(title) is not None
 
 
 class PermanentCollectionError(ValueError):
@@ -104,6 +112,10 @@ def normalized_row(raw: bytes, app_id: str, game_id: str) -> str:
     data = envelope.get("data")
     if not isinstance(data, dict) or data.get("steam_appid") != int(app_id):
         raise SnapshotValidationError("Steam response contains an unexpected app id")
+    if data.get("type") != "game" or is_demo_title(data.get("name")):
+        raise SnapshotValidationError("Steam demos and non-base-game products are not supported")
+    if data.get("is_free") is True:
+        raise SnapshotValidationError("Free Steam products are not price-comparison candidates")
 
     price = data.get("price_overview")
     if not isinstance(price, dict) or price.get("currency") != "KRW":

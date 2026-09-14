@@ -55,7 +55,10 @@ export interface StoreProduct {
   region: string
   edition: string
   offerType: string
+  offerName?: string
   price: Money
+  effectiveAllocatedPrice?: Money
+  effectivePriceMethod?: 'ProportionalToStandaloneRegularPrice'
   krwConversion?: KrwConversion
   regularPrice?: Money
   discountPercent: number
@@ -92,6 +95,8 @@ export interface PriceObservation {
 export interface ProductPriceHistory {
   productId: string
   store: string
+  offerType?: string
+  offerName?: string
   observations: PriceObservation[]
 }
 
@@ -192,7 +197,7 @@ export interface AdminHealthSummary {
   metadata: { complete: number; incomplete: number; total: number }
   collection: {
     recentFailures: number
-    lastFailure?: { store: string; error?: string; startedAt: string }
+    lastFailure?: { store: string; error?: string; startedAt: string; recoveredAt?: string | null }
     errorCategories?: Array<{
       category: 'RATE_LIMIT' | 'TIMEOUT' | 'NETWORK' | 'MALFORMED_RESPONSE' | 'VALIDATION' | 'PROVIDER_UNAVAILABLE' | 'OTHER'
       label: string
@@ -200,6 +205,9 @@ export interface AdminHealthSummary {
       latestStore: string
       latestError?: string
       latestAt: string
+      latestRecoveredAt?: string | null
+      recoveredCount?: number
+      unresolvedCount?: number
     }>
     steamPipeline?: {
       startedAt?: string
@@ -237,7 +245,7 @@ export interface CatalogAdminResult {
     developers?: string[]
     publishers?: string[]
     products: Array<{ store: string; productId: string; productUrl: string }>
-    matchedProduct?: { store: string; productId: string; productUrl?: string; title?: string; developer?: string; priceMinor?: number; currency?: string; imageUrl?: string }
+    matchedProduct?: { store: string; productId: string; productUrl?: string; title?: string; developer?: string; priceMinor?: number; regularPriceMinor?: number; discountPercent?: number; currency?: string; imageUrl?: string; offerType?: string; offerName?: string }
     matchDecision?: CatalogMatchDecision
   }
   applied: boolean
@@ -253,7 +261,7 @@ export interface CatalogDiscoveryJob {
 }
 export interface CatalogPriceIntegrityIssue { type: 'MISSING_PRICE' | 'STALE_PRICE' | 'NOT_PURCHASABLE' | 'PLATFORM_MISMATCH' | 'GAME_MISMATCH' | 'ORPHAN_PRICE'; severity: 'ERROR' | 'WARNING'; store: string; productId: string; gameId: string; gameTitle: string; reason: string; productUrl?: string }
 export interface CatalogPriceIntegrity { checkedAt: string; catalogProductCount: number; issueCount: number; counts: Record<string, number>; issues: CatalogPriceIntegrityIssue[] }
-export interface StoreProductCandidate { store: string; externalProductId: string; title: string; productUrl: string; platforms: string[]; developer?: string; priceMinor?: number; currency?: string; imageUrl?: string }
+export interface StoreProductCandidate { store: string; externalProductId: string; title: string; productUrl: string; platforms: string[]; developer?: string; priceMinor?: number; regularPriceMinor?: number; discountPercent?: number; currency?: string; imageUrl?: string; offerType?: string; offerName?: string }
 export interface CatalogSyncReview { externalProductId: string; title: string; reason: string; status: 'PENDING' | 'APPROVED' | 'REJECTED'; createdAt: string }
 export interface MobileCatalogSyncReview extends CatalogSyncReview { gameId: string; decision: CatalogMatchStatus; productUrl?: string }
 export interface MobileCatalogSyncFailure { gameId: string; title?: string; reason: string }

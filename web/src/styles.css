@@ -134,9 +134,11 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .collection-summary-grid span { color: #eaf5ee; font-size: 1.3rem; font-weight: 800; }
 .collection-error-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; }
 .collection-error-grid article { display: grid; align-content: start; gap: 9px; padding: 16px; background: #0c1912; border: 1px solid #633a34; border-radius: 11px; }
+.collection-error-grid article.recovered { border-color: #315141; }
 .collection-error-grid header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .collection-error-grid header b { color: #ffb4a8; }
 .collection-error-grid article > span, .collection-error-grid p { margin: 0; color: #91a79b; font-size: .76rem; }
+.collection-error-grid article > .collection-recovered { color: #73e2a7; font-weight: 800; }
 .collection-error-grid details { color: #ffb4a8; font-size: .73rem; }
 .collection-error-grid code { display: block; max-height: 100px; margin-top: 7px; overflow: auto; white-space: pre-wrap; }
 .collection-recovery-actions { display: flex; flex-wrap: wrap; gap: 7px; }
@@ -226,6 +228,12 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .card-topline { display: flex; align-items: center; justify-content: space-between; }
 .store { color: #a9bcb1; font-weight: 700; }
 .offer-meta { margin: 9px 0 0; color: #71877a; font-size: 0.74rem; }
+.bundle-offer-notice { display: grid; gap: 3px; margin: 10px 0 0; padding: 10px 12px; color: #d7c69e; background: #2a2414; border: 1px solid #6c5925; border-radius: 9px; font-size: .76rem; }
+.bundle-offer-notice strong { color: #f6c85f; }
+.bundle-effective-price { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 3px 10px; margin: 8px 0 12px; padding: 10px 12px; background: #14261d; border-radius: 9px; }
+.bundle-effective-price span, .bundle-effective-price small { color: #91a79b; font-size: .72rem; }
+.bundle-effective-price strong { color: #73e2a7; }
+.bundle-effective-price small { grid-column: 1 / -1; line-height: 1.45; }
 .badge { padding: 5px 8px; color: #07110d; background: #73e2a7; border-radius: 999px; font-size: 0.7rem; font-weight: 900; }
 .stale-badge { color: #241b09; background: #d9a85f; }
 .price { display: block; margin: 24px 0 6px; font-size: 2.15rem; letter-spacing: -0.04em; }

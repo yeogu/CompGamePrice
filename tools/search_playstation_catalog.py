@@ -112,13 +112,20 @@ def platform_names(values: list[str]) -> list[str]:
 
 
 def candidate_from_product(product: dict) -> dict | None:
-    if product.get("storeDisplayClassification") != "FULL_GAME":
+    if product.get("storeDisplayClassification") not in {"FULL_GAME", "GAME_BUNDLE"}:
         return None
     product_id = str(product.get("id", "")).strip()
     title = str(product.get("name", "")).strip()
     platforms = platform_names(product.get("platforms", []))
     if not product_id or not title or not platforms:
         return None
+    if re.search(
+        r"(?:친구\s*패스|friend(?:'s)?\s+pass|무료\s*체험판|\bdemo\b|\btrial\b)",
+        title,
+        re.IGNORECASE,
+    ):
+        return None
+    offer_type = "Bundle" if re.search(r"(?:\bbundle\b|번들)", title, re.IGNORECASE) else "BaseGame"
     return {
         "store": "PlayStation Store",
         "externalProductId": product_id,
@@ -126,6 +133,8 @@ def candidate_from_product(product: dict) -> dict | None:
         "productUrl": f"https://store.playstation.com/ko-kr/product/{product_id}",
         "platforms": platforms,
         "imageUrl": image_url(product),
+        "offerType": offer_type,
+        "offerName": title,
     }
 
 
@@ -220,6 +229,12 @@ def verified_product(raw: bytes, product_id: str) -> dict:
     title = str(product.get("name", "")).strip()
     if not title:
         raise ValueError("PlayStation product has no title")
+    if re.search(
+        r"(?:친구\s*패스|friend(?:'s)?\s+pass|무료\s*체험판|\bdemo\b|\btrial\b)",
+        title,
+        re.IGNORECASE,
+    ):
+        raise ValueError("PlayStation demo or friend-pass product is not supported")
     price = product.get("price")
     price = price if isinstance(price, dict) else {}
     current_price = price_minor(price)
@@ -241,4 +256,6 @@ def verified_product(raw: bytes, product_id: str) -> dict:
             catalog_matcher.normalized_words(title) &
             catalog_matcher.EXCLUDED_TITLE_WORDS
         ),
+        "offerType": "Bundle" if re.search(r"(?:\bbundle\b|번들)", title, re.IGNORECASE) else "BaseGame",
+        "offerName": title,
     }

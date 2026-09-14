@@ -50,7 +50,7 @@ class SearchResultParser(HTMLParser):
         if tag == "span":
             self.in_title = False
         if tag == "a" and self.current is not None:
-            if self.current["title"]:
+            if self.current["title"] and not steam.is_demo_title(self.current["title"]):
                 self.results.append(self.current)
             self.current = None
 

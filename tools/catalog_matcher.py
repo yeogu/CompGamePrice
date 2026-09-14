@@ -97,6 +97,13 @@ def evaluate(game: dict, offer: dict) -> dict:
         reasons.append("Title indicates guide, demo, companion, or media content")
         rejected = True
 
+    is_bundle = offer.get("offerType") == "Bundle"
+    if is_bundle:
+        reasons.append(
+            "Bundle offers require confirmation that the target game is included"
+        )
+        needs_review = True
+
     product_title = normalized_identity(offer["title"])
     canonical_titles = [game.get("title", ""), *game.get("aliases", [])]
     title_source = next(
@@ -136,11 +143,12 @@ def evaluate(game: dict, offer: dict) -> dict:
         reasons.append("Official publisher matches the canonical game")
     elif (canonical_developers or canonical_publishers) and product_developer:
         reasons.append("Developer or publisher differs from the canonical game")
-        rejected = True
+        if not is_bundle:
+            rejected = True
     else:
         reasons.append("Developer and publisher information is incomplete")
 
-    if rejected or not title_source:
+    if rejected or (not title_source and not is_bundle):
         status = "Rejected"
     elif title_source and (developer_matches or publisher_matches) and not needs_review:
         status = "ApprovedCandidate"

@@ -1,4 +1,5 @@
 #include "game_price/persistence/store_product_repository.h"
+#include "game_price/persistence/sqlite_retry.h"
 
 #include "game_price/domain/domain_types.h"
 #include "game_price/domain/store_product_validator.h"
@@ -32,18 +33,30 @@ public:
     sqlite3_stmt* get() const noexcept { return statement_; }
 
     void execute() {
-        if (sqlite3_step(statement_) != SQLITE_DONE) {
+        for (int retry = 0;; ++retry) {
+            const int result = sqlite3_step(statement_);
+            if (result == SQLITE_DONE) return;
+            if (isSqliteLockError(result) && retry < SqliteLockRetryCount) {
+                waitForSqliteLockRetry(retry);
+                continue;
+            }
             throw std::runtime_error("Cannot execute SQL statement: " +
                                      std::string(sqlite3_errmsg(sqlite3_db_handle(statement_))));
         }
     }
 
     bool next() {
-        const int result = sqlite3_step(statement_);
-        if (result == SQLITE_ROW) return true;
-        if (result == SQLITE_DONE) return false;
-        throw std::runtime_error("Cannot read SQL result: " +
-                                 std::string(sqlite3_errmsg(sqlite3_db_handle(statement_))));
+        for (int retry = 0;; ++retry) {
+            const int result = sqlite3_step(statement_);
+            if (result == SQLITE_ROW) return true;
+            if (result == SQLITE_DONE) return false;
+            if (isSqliteLockError(result) && retry < SqliteLockRetryCount) {
+                waitForSqliteLockRetry(retry);
+                continue;
+            }
+            throw std::runtime_error("Cannot read SQL result: " +
+                                     std::string(sqlite3_errmsg(sqlite3_db_handle(statement_))));
+        }
     }
 
 private:

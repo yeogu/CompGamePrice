@@ -16,6 +16,7 @@ namespace game_price {
 struct ProductPriceReport {
     StoreProduct product;
     std::string purchaseUrl;
+    std::string offerName;
     std::optional<PriceHistorySummary> history;
     std::optional<PurchaseRecommendationResult> recommendation;
 };
@@ -27,6 +28,7 @@ struct GamePriceReport {
 
 struct ProductPriceHistoryReport {
     StoreProduct product;
+    std::string offerName;
     std::vector<PriceObservation> observations;
 };
 

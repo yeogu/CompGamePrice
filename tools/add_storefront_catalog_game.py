@@ -43,8 +43,10 @@ def updated_catalog(
         "platforms": metadata.get("platforms", settings["platforms"]),
         "region": "KR",
         "edition": "Standard",
-        "offerType": "BaseGame",
+        "offerType": metadata.get("offerType", "BaseGame"),
     }
+    if metadata.get("offerName"):
+        product["offerName"] = metadata["offerName"]
     preview = {
         **game,
         "matchedProduct": {**product, **metadata},

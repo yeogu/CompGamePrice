@@ -1,0 +1,2 @@
+product_id,game_id,regular_price_krw,current_price_krw,discount_percent,platforms,country,availability,offer_type
+BUNDLE-1,it-takes-two,72000,23760,67,PS4|PS5,KR,AVAILABLE,Bundle

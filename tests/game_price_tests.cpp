@@ -6,6 +6,7 @@
 #include "game_price/collection/console_store_provider.h"
 #include "game_price/collection/epic_games_provider.h"
 #include "game_price/persistence/database.h"
+#include "game_price/persistence/sqlite_retry.h"
 #include "game_price/catalog/game_catalog.h"
 #include "game_price/collection/google_play_provider.h"
 #include "game_price/collection/nintendo_eshop_provider.h"
@@ -147,6 +148,17 @@ void testProviderNormalization() {
         microsoftProducts.front().supportedPlatforms ==
             std::vector<Platform>{Platform::XboxOne, Platform::XboxSeries},
         "One Microsoft offer may explicitly support both Xbox generations");
+
+    ConsoleStoreProvider playStationBundle(
+        Store::PlayStationStore,
+        dataDirectory + "/../tests/fixtures/playstation_store_bundle_products.csv");
+    const auto bundleProducts = playStationBundle.findProducts("it-takes-two");
+    expect(bundleProducts.size() == 1 &&
+               bundleProducts.front().offerType == OfferType::Bundle &&
+               bundleProducts.front().currentPrice.minorAmount == 23760 &&
+               bundleProducts.front().regularPrice->minorAmount == 72000 &&
+               bundleProducts.front().discountPercent == 67,
+           "PlayStation bundle offers should preserve checkout and reference prices");
 
     SteamProvider discounted(
         std::string(TEST_SAMPLE_DATA_DIR) +
@@ -672,6 +684,27 @@ void testDatabaseAllowsReadsDuringWriteTransaction() {
     std::filesystem::remove(databasePath.string() + "-wal", ignored);
 }
 
+void testDatabaseConfiguresLockHandling() {
+    Database database(":memory:");
+    sqlite3_stmt* statement = nullptr;
+    expect(
+        sqlite3_prepare_v2(database.handle(), "PRAGMA busy_timeout;", -1, &statement, nullptr) ==
+            SQLITE_OK,
+        "SQLite busy timeout should be readable");
+    expect(sqlite3_step(statement) == SQLITE_ROW, "SQLite busy timeout should return a row");
+    expect(
+        sqlite3_column_int(statement, 0) == SqliteBusyTimeoutMilliseconds,
+        "SQLite should wait 30 seconds for a competing writer");
+    sqlite3_finalize(statement);
+
+    expect(isSqliteLockError(SQLITE_BUSY), "SQLITE_BUSY should be retryable");
+    expect(isSqliteLockError(SQLITE_LOCKED), "SQLITE_LOCKED should be retryable");
+    expect(
+        isSqliteLockError(SQLITE_BUSY_SNAPSHOT),
+        "Extended SQLITE_BUSY errors should be retryable");
+    expect(!isSqliteLockError(SQLITE_CONSTRAINT), "Non-lock SQL errors must not be retried");
+}
+
 void testDiscountChangeHistory() {
     Database database(":memory:");
     StoreProductRepository repository(database);
@@ -801,6 +834,10 @@ void testPriceComparisonReadsRepository() {
         StoreProduct{"humble", game->id, Store::HumbleStore,
                      {Platform::Windows}, Money{1499, Currency::USD}, true,
                      std::nullopt},
+        StoreProduct{"playstation-bundle", game->id, Store::PlayStationStore,
+                     {Platform::PlayStation5}, Money{23760, Currency::KRW}, true,
+                     std::nullopt, Money{72000, Currency::KRW}, 67, Region::KR,
+                     GameEdition::Standard, OfferType::Bundle},
         StoreProduct{"cheap-dlc", game->id, Store::EpicGamesStore,
                      {Platform::Windows}, Money{1000, Currency::KRW}, true,
                      std::nullopt, std::nullopt, 0, Region::KR,
@@ -809,8 +846,8 @@ void testPriceComparisonReadsRepository() {
     PriceComparisonService service(catalog, repository);
     const auto result = service.compareByGameName("Stardew Valley");
     expect(result.has_value(), "Comparison result should exist");
-    expect(result->products.size() == 2,
-           "Default comparison should expose only comparable BaseGame products");
+    expect(result->products.size() == 3,
+           "Default comparison should expose BaseGame and verified bundle offers");
     expect(result->cheapestProduct.has_value(), "Cheapest product should exist");
     expect(result->cheapestProduct->store == Store::GooglePlay,
            "A cheaper DLC must not replace the cheapest Standard BaseGame");
@@ -819,7 +856,7 @@ void testPriceComparisonReadsRepository() {
     mixedCurrencyCriteria.includeForeignCurrencies = true;
     const auto mixedCurrency = service.compareByGameName(
         "Stardew Valley", mixedCurrencyCriteria);
-    expect(mixedCurrency->products.size() == 3,
+    expect(mixedCurrency->products.size() == 4,
            "Mixed-currency comparison should expose foreign Store products");
     expect(mixedCurrency->cheapestProduct->store == Store::GooglePlay,
            "Foreign prices must not be compared numerically against KRW prices");
@@ -837,6 +874,13 @@ void testPriceComparisonReadsRepository() {
     expect(android->products.size() == 1 &&
                android->cheapestProduct->store == Store::GooglePlay,
            "Android criteria should only compare Android Store products");
+
+    PriceComparisonCriteria baseOnlyCriteria;
+    baseOnlyCriteria.includeBundles = false;
+    const auto baseOnly = service.compareByGameName(
+        "Stardew Valley", baseOnlyCriteria);
+    expect(baseOnly->products.size() == 2,
+           "An explicit BaseGame filter should exclude bundle offers");
 
     PriceComparisonCriteria deluxeCriteria;
     deluxeCriteria.edition = GameEdition::Deluxe;
@@ -1808,6 +1852,7 @@ int main() {
         {"Database schema version", testDatabaseSchemaVersion},
         {"Database concurrent detail read",
          testDatabaseAllowsReadsDuringWriteTransaction},
+        {"Database lock handling", testDatabaseConfiguresLockHandling},
         {"Discount change history", testDiscountChangeHistory},
         {"Store product price validation", testStoreProductPriceValidation},
         {"Repository-backed comparison", testPriceComparisonReadsRepository},

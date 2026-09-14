@@ -351,7 +351,9 @@ GameCatalog::GameCatalog(const std::string& dataPath) {
                    json_extract(value, '$.edition'), json_type(value, '$.edition'),
                    json_extract(value, '$.offerType'), json_type(value, '$.offerType'),
                    json_extract(value, '$.compatibility'),
-                   json_type(value, '$.compatibility')
+                   json_type(value, '$.compatibility'),
+                   json_extract(value, '$.offerName'),
+                   json_type(value, '$.offerName')
             FROM json_each(?1);
         )sql");
         products.bindJson(*productsJson);
@@ -363,12 +365,16 @@ GameCatalog::GameCatalog(const std::string& dataPath) {
             const auto regionName = products.optionalText(8);
             const auto editionName = products.optionalText(10);
             const auto offerTypeName = products.optionalText(12);
+            const auto offerName = products.optionalText(16);
             requireJsonString(storeName, products.optionalText(1), "products[].store");
             requireJsonString(productId, products.optionalText(3), "products[].productId");
             requireJsonString(productUrl, products.optionalText(5), "products[].productUrl");
             requireJsonString(regionName, products.optionalText(9), "products[].region");
             requireJsonString(editionName, products.optionalText(11), "products[].edition");
             requireJsonString(offerTypeName, products.optionalText(13), "products[].offerType");
+            if (offerName && products.optionalText(17) != std::optional<std::string>{"text"}) {
+                throw std::runtime_error("Game Catalog products[].offerName must be a string");
+            }
             if (productUrl->rfind("https://", 0) != 0) {
                 throw std::runtime_error("Game Catalog productUrl must use HTTPS");
             }
@@ -406,7 +412,8 @@ GameCatalog::GameCatalog(const std::string& dataPath) {
             }
             storeProducts_.push_back(CatalogStoreProduct{
                 *id, store, *productId, *productUrl, std::move(productPlatforms),
-                region, edition, offerType, std::move(compatibility)});
+                region, edition, offerType, offerName.value_or(""),
+                std::move(compatibility)});
             foundProduct = true;
         }
         if (!foundProduct) {

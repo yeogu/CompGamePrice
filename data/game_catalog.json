@@ -28,7 +28,10 @@
         "Linux",
         "Android",
         "iOS",
-        "iPadOS"
+        "iPadOS",
+        "NintendoSwitch",
+        "XboxOne",
+        "XboxSeries"
       ],
       "products": [
         {
@@ -66,8 +69,32 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000104430",
+          "productUrl": "https://store.nintendo.co.kr/70010000104430",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "C3D891Z6TNQM",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/C3D891Z6TNQM",
+          "platforms": [
+            "XboxOne",
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/413150/header.jpg?t=1786554168"
     },
     {
       "id": "terraria",
@@ -133,7 +160,8 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://play-lh.googleusercontent.com/47ylywbi2wh_pogL2XorXhg5HEbRDW1k_IqacSd3_2t-6sh7PIniak-k2lhTE0Y360TmO0coyJ7U_Ea_g-ym"
     },
     {
       "id": "hollow-knight",
@@ -150,7 +178,10 @@
       "platforms": [
         "Windows",
         "macOS",
-        "Linux"
+        "Linux",
+        "NintendoSwitch",
+        "XboxOne",
+        "XboxSeries"
       ],
       "products": [
         {
@@ -165,6 +196,29 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000065700",
+          "productUrl": "https://store.nintendo.co.kr/70010000065700",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9N116V0599HB",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9N116V0599HB",
+          "platforms": [
+            "XboxOne",
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
       ],
       "developers": [
@@ -172,7 +226,8 @@
       ],
       "publishers": [
         "Team Cherry"
-      ]
+      ],
+      "imageUrl": "https://store.nintendo.co.kr/media/catalog/product/cache/6517c62f5899ad6aa0ba23ceb3eeff97/4/6/4643fb058642335c523910f3a7910575f56372f612f7c0c9a497aaae978d3e51_1679300070.jpg"
     },
     {
       "id": "hades",
@@ -190,7 +245,11 @@
         "Windows",
         "macOS",
         "NintendoSwitch",
-        "NintendoSwitch2"
+        "NintendoSwitch2",
+        "PlayStation4",
+        "PlayStation5",
+        "XboxOne",
+        "XboxSeries"
       ],
       "products": [
         {
@@ -233,6 +292,30 @@
               "status": "Compatible"
             }
           ]
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "UP2125-PPSA03355_00-3466019145463410",
+          "productUrl": "https://store.playstation.com/ko-kr/product/UP2125-PPSA03355_00-3466019145463410",
+          "platforms": [
+            "PlayStation4",
+            "PlayStation5"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9P8DL6W0JBB8",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9P8DL6W0JBB8",
+          "platforms": [
+            "XboxOne",
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
       ],
       "developers": [
@@ -240,13 +323,19 @@
       ],
       "publishers": [
         "Supergiant Games"
-      ]
+      ],
+      "imageUrl": "https://store.nintendo.co.kr/media/catalog/product/cache/6517c62f5899ad6aa0ba23ceb3eeff97/2/3/230620-nintendo_hades_storepage_final_1920x1080.jpeg"
     },
     {
       "id": "elden-ring",
       "title": "ELDEN RING",
       "platforms": [
-        "Windows"
+        "Windows",
+        "NintendoSwitch",
+        "PlayStation4",
+        "PlayStation5",
+        "XboxOne",
+        "XboxSeries"
       ],
       "products": [
         {
@@ -255,6 +344,41 @@
           "productUrl": "https://store.steampowered.com/app/1245620",
           "platforms": [
             "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000097554",
+          "productUrl": "https://store.nintendo.co.kr/70010000097554",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "HP0700-PPSA04608_00-ELDENRING0000000",
+          "productUrl": "https://store.playstation.com/ko-kr/product/HP0700-PPSA04608_00-ELDENRING0000000",
+          "platforms": [
+            "PlayStation4",
+            "PlayStation5"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9P3J32CTXLRZ",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9P3J32CTXLRZ",
+          "platforms": [
+            "XboxOne",
+            "XboxSeries"
           ],
           "region": "KR",
           "edition": "Standard",
@@ -271,7 +395,8 @@
       "genres": [
         "Action",
         "RPG"
-      ]
+      ],
+      "imageUrl": "https://store.nintendo.co.kr/media/catalog/product/cache/6517c62f5899ad6aa0ba23ceb3eeff97/c/c/ccf64f7f15fac582b44bada9c37361fbd21013b3451b794b40a2f89ad1dabc86.jpg"
     },
     {
       "id": "cyberpunk-2077",
@@ -309,7 +434,8 @@
       "title": "Baldur's Gate 3",
       "platforms": [
         "Windows",
-        "macOS"
+        "macOS",
+        "XboxSeries"
       ],
       "products": [
         {
@@ -319,6 +445,17 @@
           "platforms": [
             "Windows",
             "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9ND58LQTG09T",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9ND58LQTG09T",
+          "platforms": [
+            "XboxSeries"
           ],
           "region": "KR",
           "edition": "Standard",
@@ -335,7 +472,8 @@
         "Adventure",
         "RPG",
         "Strategy"
-      ]
+      ],
+      "imageUrl": "https://store-images.s-microsoft.com/image/apps.11593.13550459053619040.9c555c73-a698-4992-b0f3-c5084cf18b5e.82a9ea41-c628-4d02-8a0f-d0304eba31c7"
     },
     {
       "id": "dave-the-diver",
@@ -351,7 +489,12 @@
       ],
       "platforms": [
         "Windows",
-        "macOS"
+        "macOS",
+        "NintendoSwitch",
+        "PlayStation4",
+        "PlayStation5",
+        "XboxOne",
+        "XboxSeries"
       ],
       "products": [
         {
@@ -365,8 +508,44 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000060369",
+          "productUrl": "https://store.nintendo.co.kr/70010000060369",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "UP8236-PPSA19115_00-0015587721224151",
+          "productUrl": "https://store.playstation.com/ko-kr/product/UP8236-PPSA19115_00-0015587721224151",
+          "platforms": [
+            "PlayStation4",
+            "PlayStation5"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9PC1ZMD65L0T",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9PC1ZMD65L0T",
+          "platforms": [
+            "XboxOne",
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://store.nintendo.co.kr/media/catalog/product/cache/6517c62f5899ad6aa0ba23ceb3eeff97/e/7/e77cbe3c83da8de952bce5bc0f0960092dbc2e08d377f0e082673239322301bb.jpg"
     },
     {
       "id": "palworld",
@@ -382,7 +561,10 @@
         "Pocketpair"
       ],
       "platforms": [
-        "Windows"
+        "Windows",
+        "PlayStation5",
+        "XboxOne",
+        "XboxSeries"
       ],
       "products": [
         {
@@ -395,7 +577,37 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "UP6360-PPSA23126_00-0112788005082769",
+          "productUrl": "https://store.playstation.com/ko-kr/product/UP6360-PPSA23126_00-0112788005082769",
+          "platforms": [
+            "PlayStation5"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9NKV34XDW014",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9NKV34XDW014",
+          "platforms": [
+            "XboxOne",
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1623730/6912f19c43a95ff5fe514eedd35e68bf12335459/header.jpg?t=1784714419",
+      "genres": [
+        "Action",
+        "Adventure",
+        "Indie",
+        "RPG"
       ]
     },
     {
@@ -406,7 +618,10 @@
       ],
       "platforms": [
         "Windows",
-        "macOS"
+        "macOS",
+        "Android",
+        "iOS",
+        "iPadOS"
       ],
       "products": [
         {
@@ -416,6 +631,29 @@
           "platforms": [
             "Windows",
             "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "GooglePlay",
+          "productId": "com.SinkHoleStudio.OguForest",
+          "productUrl": "https://play.google.com/store/apps/details?id=com.SinkHoleStudio.OguForest",
+          "platforms": [
+            "Android"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "AppleAppStore",
+          "productId": "1639026748",
+          "productUrl": "https://apps.apple.com/app/id1639026748",
+          "platforms": [
+            "iOS",
+            "iPadOS"
           ],
           "region": "KR",
           "edition": "Standard",
@@ -432,7 +670,8 @@
       ],
       "genres": [
         "Adventure"
-      ]
+      ],
+      "imageUrl": "https://play-lh.googleusercontent.com/taLmfT-WJJshyjnwSz1a0ozrsENArwWWyWKf_bEyP3H9EuNM7-fW9Zd4ihXEggA8hfiAvEvYx_mpLMVm6zWB"
     },
     {
       "id": "project-zomboid",
@@ -509,7 +748,8 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/269210/1d4674142878a3683379122f28537a784d1c5c56/header.jpg?t=1787306700"
     },
     {
       "id": "rimworld",
@@ -546,7 +786,8 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/294100/76e0613b8197327299d5dbabb0a7fd7828a689a2/header.jpg?t=1782756789"
     },
     {
       "id": "dead-by-daylight",
@@ -559,7 +800,10 @@
         "Behaviour Interactive Inc."
       ],
       "platforms": [
-        "Windows"
+        "Windows",
+        "NintendoSwitch",
+        "XboxOne",
+        "XboxSeries"
       ],
       "genres": [
         "Action"
@@ -580,8 +824,32 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000016123",
+          "productUrl": "https://store.nintendo.co.kr/70010000016123",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9PNZFX8ST2JQ",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9PNZFX8ST2JQ",
+          "platforms": [
+            "XboxOne",
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://store.nintendo.co.kr/media/catalog/product/cache/6517c62f5899ad6aa0ba23ceb3eeff97/f/e/fe28c7ebca96e110b3dd09bfe34d11c8ac72577e25c55a435d56c34dc59aa00d.jpg"
     },
     {
       "id": "helldivers-2",
@@ -615,7 +883,8 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/553850/850e2f9e5bb15c5706bb9a1edc832f4f782e8be5/header.jpg?t=1788431424"
     },
     {
       "id": "djmax-respect-v",
@@ -650,7 +919,8 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/960170/header.jpg?t=1772009068"
     },
     {
       "id": "red-dead-redemption-2",
@@ -663,7 +933,9 @@
         "Rockstar Games"
       ],
       "platforms": [
-        "Windows"
+        "Windows",
+        "XboxOne",
+        "XboxSeries"
       ],
       "genres": [
         "Action",
@@ -684,8 +956,21 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9N2ZDN7NWQKV",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9N2ZDN7NWQKV",
+          "platforms": [
+            "XboxOne",
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1174180/header.jpg?t=1759502961"
     },
     {
       "id": "big-ambitions",
@@ -719,7 +1004,8 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1331550/6ef350077eee961864c78ac396a16195ef385fae/header.jpg?t=1788186935"
     },
     {
       "id": "big-walk",
@@ -733,7 +1019,9 @@
       ],
       "platforms": [
         "Windows",
-        "macOS"
+        "macOS",
+        "NintendoSwitch",
+        "PlayStation5"
       ],
       "genres": [
         "Adventure"
@@ -755,8 +1043,31 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000109973",
+          "productUrl": "https://store.nintendo.co.kr/70010000109973",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "UP3971-PPSA33764_00-WALKWALKWALKWALK",
+          "productUrl": "https://store.playstation.com/ko-kr/product/UP3971-PPSA33764_00-WALKWALKWALKWALK",
+          "platforms": [
+            "PlayStation5"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://store.nintendo.co.kr/media/catalog/product/cache/6517c62f5899ad6aa0ba23ceb3eeff97/5/8/5864b7ecf7a65a0812e3421b6d6807434475f13176e99f4ea95e4fd142d1e86b.jpg"
     },
     {
       "id": "doloc-town",
@@ -792,7 +1103,8 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2285550/6c2919e6f64b0efa4976b0bfc4864893508da68a/header_alt_assets_1.jpg?t=1788425486"
     },
     {
       "id": "bodycam",
@@ -830,7 +1142,8 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2406770/8d2765de57931435f802fa6757ad6920aea8646a/header_alt_assets_0.jpg?t=1788548796"
     },
     {
       "id": "forza-horizon-6",
@@ -843,7 +1156,8 @@
         "Xbox Game Studios"
       ],
       "platforms": [
-        "Windows"
+        "Windows",
+        "XboxSeries"
       ],
       "genres": [
         "Racing",
@@ -866,8 +1180,20 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9N431PX143P8",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9N431PX143P8",
+          "platforms": [
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2483190/aec13616ef2adf9908ab2bf185f6e0557d6603ef/header_alt_assets_3.jpg?t=1788545100"
     },
     {
       "id": "way-of-the-sword",
@@ -880,7 +1206,9 @@
         "CAPCOM Co., Ltd."
       ],
       "platforms": [
-        "Windows"
+        "Windows",
+        "NintendoSwitch",
+        "XboxSeries"
       ],
       "genres": [
         "Action",
@@ -901,8 +1229,31 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000112824",
+          "productUrl": "https://store.nintendo.co.kr/70010000112824",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9NH6PQ3L7TTP",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9NH6PQ3L7TTP",
+          "platforms": [
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://store.nintendo.co.kr/media/catalog/product/cache/6517c62f5899ad6aa0ba23ceb3eeff97/c/c/ccd6309cf2c73ce948f5c342b7352fea9df3fe7ef41e489df2bca1226b502bb5.jpg"
     },
     {
       "id": "marvel-s-spider-man-2",
@@ -939,7 +1290,8 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2651280/header.jpg?t=1763569811"
     },
     {
       "id": "grand-theft-auto-v",
@@ -975,7 +1327,8 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3240220/header.jpg?t=1781187782"
     },
     {
       "id": "enhanced",
@@ -989,7 +1342,8 @@
       ],
       "platforms": [
         "Windows",
-        "macOS"
+        "macOS",
+        "XboxSeries"
       ],
       "genres": [
         "Action",
@@ -1010,8 +1364,20 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9P6HVHDP2PGK",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9P6HVHDP2PGK",
+          "platforms": [
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3321460/236f3814be7a97d86831800691b6096d449222a8/header.jpg?t=1788450739"
     },
     {
       "id": "peak",
@@ -1049,7 +1415,8 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3527290/89f65be18915d2dc5566de1de322379d62c1dcac/header_alt_assets_3.jpg?t=1786470571"
     },
     {
       "id": "hogwarts-legacy",
@@ -1062,7 +1429,8 @@
         "Warner Bros. Games"
       ],
       "platforms": [
-        "Windows"
+        "Windows",
+        "XboxSeries"
       ],
       "genres": [
         "Action",
@@ -1083,8 +1451,20 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9MT5NJ5W7B8Z",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9MT5NJ5W7B8Z",
+          "platforms": [
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/990080/a3cdc6f40d97df8ac993679c2dd1edeb5222421e/header.jpg?t=1788224492"
     },
     {
       "id": "gamble-with-your-friends",
@@ -1120,7 +1500,8 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3892270/395e6d7972474333a698b26f8aa5597bf38109a1/header.jpg?t=1788800889"
     },
     {
       "id": "escape-from-tarkov",
@@ -1157,7 +1538,8 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3932890/4dd12ea3b00a4f8b67bfd629f3b9abbf8d5cab05/header_alt_assets_2.jpg?t=1785782094"
     },
     {
       "id": "machine-party",
@@ -1196,7 +1578,8 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4108000/00ae7d0e0fd0ad72635bddb1dd80ee68cc94eed5/header.jpg?t=1786561627"
     },
     {
       "id": "bills-must-be-paid",
@@ -1235,7 +1618,8 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4421010/fc7d507e465320493fbf224b54d769c043601390/header.jpg?t=1787749429"
     },
     {
       "id": "eslabong",
@@ -1272,7 +1656,8 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4560660/2f57705341159c9893b7626b1b9c55fa0562d4ed/header.jpg?t=1788705826"
     },
     {
       "id": "meccha-chameleon",
@@ -1305,7 +1690,8 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4704690/163e2a742e5fb8e1f5d1e3a890da98f04ab809d4/header.jpg?t=1785908480"
     },
     {
       "id": "vii",
@@ -1320,7 +1706,8 @@
       "platforms": [
         "Windows",
         "macOS",
-        "Linux"
+        "Linux",
+        "NintendoSwitch"
       ],
       "genres": [
         "Simulation",
@@ -1343,8 +1730,20 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000041427",
+          "productUrl": "https://store.nintendo.co.kr/70010000041427",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://store.nintendo.co.kr/media/catalog/product/cache/6517c62f5899ad6aa0ba23ceb3eeff97/e/e/eee1009248f482d2fff3a17775545647b4146c36001a6d670af617e8ed4af705_1.jpg"
     },
     {
       "id": "outer-wilds",
@@ -1357,7 +1756,12 @@
         "Annapurna Interactive"
       ],
       "platforms": [
-        "Windows"
+        "Windows",
+        "NintendoSwitch",
+        "PlayStation4",
+        "PlayStation5",
+        "XboxOne",
+        "XboxSeries"
       ],
       "genres": [
         "Action",
@@ -1377,8 +1781,44 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000038709",
+          "productUrl": "https://store.nintendo.co.kr/70010000038709",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "UP2470-PPSA08101_00-OUTERWILDSSIEA00",
+          "productUrl": "https://store.playstation.com/ko-kr/product/UP2470-PPSA08101_00-OUTERWILDSSIEA00",
+          "platforms": [
+            "PlayStation4",
+            "PlayStation5"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "C596FKDKMQN7",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/C596FKDKMQN7",
+          "platforms": [
+            "XboxOne",
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://store.nintendo.co.kr/media/catalog/product/cache/6517c62f5899ad6aa0ba23ceb3eeff97/f/8/f82902db3c1f0b19b1e00c324aba9509c0f9ebec784bcd249e21cffc39151a4e_1699646445.jpg"
     },
     {
       "id": "wakuwaku-park",
@@ -1410,7 +1850,8 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3850800/800d347055852e5ec65abd6e0b417ef3809cae32/header.jpg?t=1787904537"
     },
     {
       "id": "garden-of-witches",
@@ -1445,7 +1886,8 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2530470/dca6cc6022641ac768d68f899fa7d2a3c71215eb/header.jpg?t=1787907620"
     },
     {
       "id": "star-wars-zero-company",
@@ -1460,7 +1902,8 @@
         "Electronic Arts"
       ],
       "platforms": [
-        "Windows"
+        "Windows",
+        "PlayStation5"
       ],
       "genres": [
         "Adventure",
@@ -1481,8 +1924,20 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "UP0006-PPSA18054_00-BRUNOSTANDGAME00",
+          "productUrl": "https://store.playstation.com/ko-kr/product/UP0006-PPSA18054_00-BRUNOSTANDGAME00",
+          "platforms": [
+            "PlayStation5"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2075800/2c7d5dad080c4888faaa03c4a955136c50f5bfae/header.jpg?t=1788256323"
     },
     {
       "id": "sephiria",
@@ -1524,7 +1979,8 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2436940/cb7dc6f4ed2f0012eb557365966be9b69815f7ae/header.jpg?t=1788149163"
     },
     {
       "id": "how-to-fish",
@@ -1564,7 +2020,8 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4001890/45c4ddff4901e32c4b8b643e1b97d0d01898d299/header.jpg?t=1788788717"
     },
     {
       "id": "dragonsword-awakening",
@@ -1602,7 +2059,8 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4570720/96a897e98f4472e656fbe6681191b3066cab6056/header.jpg?t=1788398112"
     },
     {
       "id": "the-first-berserker-khazan",
@@ -1617,7 +2075,8 @@
         "NEXON"
       ],
       "platforms": [
-        "Windows"
+        "Windows",
+        "XboxSeries"
       ],
       "genres": [
         "Action",
@@ -1638,8 +2097,20 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9PKJWMBBGK38",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9PKJWMBBGK38",
+          "platforms": [
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2680010/header.jpg?t=1776936760"
     },
     {
       "id": "darkest-dungeon",
@@ -1654,7 +2125,12 @@
       "platforms": [
         "Windows",
         "macOS",
-        "Linux"
+        "Linux",
+        "NintendoSwitch",
+        "PlayStation4",
+        "PlayStation5",
+        "XboxOne",
+        "XboxSeries"
       ],
       "genres": [
         "Indie",
@@ -1675,8 +2151,44 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000082555",
+          "productUrl": "https://store.nintendo.co.kr/70010000082555",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "UP2619-PPSA19590_00-0191103846959805",
+          "productUrl": "https://store.playstation.com/ko-kr/product/UP2619-PPSA19590_00-0191103846959805",
+          "platforms": [
+            "PlayStation4",
+            "PlayStation5"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "BXKVN6G9C5WJ",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/BXKVN6G9C5WJ",
+          "platforms": [
+            "XboxOne",
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://store.nintendo.co.kr/media/catalog/product/cache/6517c62f5899ad6aa0ba23ceb3eeff97/4/6/466e3204dc6beb4d318d107616282fa38f2270b1f375e2b8d7d9128965d56b5a_1.jpg"
     },
     {
       "id": "ark-survival-evolved",
@@ -1694,7 +2206,9 @@
       ],
       "platforms": [
         "Windows",
-        "macOS"
+        "macOS",
+        "XboxOne",
+        "XboxSeries"
       ],
       "genres": [
         "Action",
@@ -1720,8 +2234,21 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "BNBLC4ZGFNKB",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/BNBLC4ZGFNKB",
+          "platforms": [
+            "XboxOne",
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/346110/header.jpg?t=1765677889"
     },
     {
       "id": "risk-of-rain-2",
@@ -1735,7 +2262,10 @@
         "2K"
       ],
       "platforms": [
-        "Windows"
+        "Windows",
+        "NintendoSwitch",
+        "XboxOne",
+        "XboxSeries"
       ],
       "genres": [
         "Action",
@@ -1757,8 +2287,32 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000022858",
+          "productUrl": "https://store.nintendo.co.kr/70010000022858",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9P6F6TBGGVK3",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9P6F6TBGGVK3",
+          "platforms": [
+            "XboxOne",
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://store.nintendo.co.kr/media/catalog/product/cache/6517c62f5899ad6aa0ba23ceb3eeff97/b/2/b2a63667a03275fb2167a344c0a64f5e253709f0c8d03f564769d2518235e94e.jpg"
     },
     {
       "id": "super-bunny-man",
@@ -1773,7 +2327,10 @@
       "platforms": [
         "Windows",
         "macOS",
-        "Linux"
+        "Linux",
+        "NintendoSwitch",
+        "PlayStation4",
+        "PlayStation5"
       ],
       "genres": [
         "Action",
@@ -1797,8 +2354,32 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000075281",
+          "productUrl": "https://store.nintendo.co.kr/70010000075281",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "UB0876-PPSA24033_00-0357412205143914",
+          "productUrl": "https://store.playstation.com/ko-kr/product/UB0876-PPSA24033_00-0357412205143914",
+          "platforms": [
+            "PlayStation4",
+            "PlayStation5"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://store.nintendo.co.kr/media/catalog/product/cache/6517c62f5899ad6aa0ba23ceb3eeff97/f/e/fe017bc26a9bddca8f6090e2f9375b7c27faafa5504292a39f1bc853c37fc165.jpg"
     },
     {
       "id": "world-war-z",
@@ -1833,7 +2414,8 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/699130/b35277055fbb7e07c26c5e31e4398684c6461d53/header.jpg?t=1786453804"
     },
     {
       "id": "phasmophobia",
@@ -1846,7 +2428,9 @@
         "Kinetic Games"
       ],
       "platforms": [
-        "Windows"
+        "Windows",
+        "PlayStation5",
+        "XboxSeries"
       ],
       "genres": [
         "Action",
@@ -1868,8 +2452,31 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "EP7789-PPSA09030_00-5648706170853559",
+          "productUrl": "https://store.playstation.com/ko-kr/product/EP7789-PPSA09030_00-5648706170853559",
+          "platforms": [
+            "PlayStation5"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9N6D60SBZN05",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9N6D60SBZN05",
+          "platforms": [
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/739630/c227a2855aba60f3657bc0c3a46515b8c41fb2b6/header.jpg?t=1787675345"
     },
     {
       "id": "the-riftbreaker",
@@ -1883,7 +2490,8 @@
         "Surefire.Games"
       ],
       "platforms": [
-        "Windows"
+        "Windows",
+        "XboxSeries"
       ],
       "genres": [
         "Action",
@@ -1909,8 +2517,20 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9P94PCKP864B",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9P94PCKP864B",
+          "platforms": [
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/780310/de1ba1c78b0664b2c3016ddf528e007824fbecbc/header_alt_assets_7.jpg?t=1788599578"
     },
     {
       "id": "dead-island-2",
@@ -1924,7 +2544,8 @@
       ],
       "platforms": [
         "Windows",
-        "macOS"
+        "macOS",
+        "PlayStation4"
       ],
       "genres": [
         "Action",
@@ -1947,8 +2568,20 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "EP4062-CUSA27043_00-DI2MAINSIEEPS400",
+          "productUrl": "https://store.playstation.com/ko-kr/product/EP4062-CUSA27043_00-DI2MAINSIEEPS400",
+          "platforms": [
+            "PlayStation4"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/934700/header.jpg?t=1761231459"
     },
     {
       "id": "a-dance-of-fire-and-ice",
@@ -1984,7 +2617,8 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/977950/header.jpg?t=1779922968"
     },
     {
       "id": "ixion",
@@ -1997,7 +2631,9 @@
         "Kasedo Games"
       ],
       "platforms": [
-        "Windows"
+        "Windows",
+        "PlayStation5",
+        "XboxSeries"
       ],
       "genres": [
         "Indie",
@@ -2016,8 +2652,31 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "UP8597-PPSA23281_00-0258217052011846",
+          "productUrl": "https://store.playstation.com/ko-kr/product/UP8597-PPSA23281_00-0258217052011846",
+          "platforms": [
+            "PlayStation5"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9MVMPHF8NKHB",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9MVMPHF8NKHB",
+          "platforms": [
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1113120/header.jpg?t=1733140180"
     },
     {
       "id": "icarus",
@@ -2053,7 +2712,8 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1149460/header.jpg?t=1784744651"
     },
     {
       "id": "overcooked-all-you-can-eat",
@@ -2067,7 +2727,9 @@
         "Team17 Digital"
       ],
       "platforms": [
-        "Windows"
+        "Windows",
+        "PlayStation4",
+        "PlayStation5"
       ],
       "genres": [
         "Casual",
@@ -2091,8 +2753,21 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "EP4064-PPSA01528_00-0538983162460184",
+          "productUrl": "https://store.playstation.com/ko-kr/product/EP4064-PPSA01528_00-0538983162460184",
+          "platforms": [
+            "PlayStation4",
+            "PlayStation5"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1243830/header.jpg?t=1780480509"
     },
     {
       "id": "powerwash-simulator",
@@ -2105,7 +2780,12 @@
         "FuturLab"
       ],
       "platforms": [
-        "Windows"
+        "Windows",
+        "NintendoSwitch",
+        "PlayStation4",
+        "PlayStation5",
+        "XboxOne",
+        "XboxSeries"
       ],
       "genres": [
         "Casual",
@@ -2128,8 +2808,44 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000059242",
+          "productUrl": "https://store.nintendo.co.kr/70010000059242",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "UP0082-PPSA04987_00-3528315769842001",
+          "productUrl": "https://store.playstation.com/ko-kr/product/UP0082-PPSA04987_00-3528315769842001",
+          "platforms": [
+            "PlayStation4",
+            "PlayStation5"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9NHDJC0NW20M",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9NHDJC0NW20M",
+          "platforms": [
+            "XboxOne",
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://store.nintendo.co.kr/media/catalog/product/cache/6517c62f5899ad6aa0ba23ceb3eeff97/0/5/050db8610fa9593b531cd2b7d563b5115bbe5431ea3db42962da435f70edb39c.jpg"
     },
     {
       "id": "stray",
@@ -2143,7 +2859,12 @@
       ],
       "platforms": [
         "Windows",
-        "macOS"
+        "macOS",
+        "NintendoSwitch",
+        "PlayStation4",
+        "PlayStation5",
+        "XboxOne",
+        "XboxSeries"
       ],
       "genres": [
         "Adventure",
@@ -2164,8 +2885,44 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000119349",
+          "productUrl": "https://store.nintendo.co.kr/70010000119349",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "HP2418-PPSA02103_00-STRAYSIEASIA0000",
+          "productUrl": "https://store.playstation.com/ko-kr/product/HP2418-PPSA02103_00-STRAYSIEASIA0000",
+          "platforms": [
+            "PlayStation4",
+            "PlayStation5"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9NMPDQ2NRX34",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9NMPDQ2NRX34",
+          "platforms": [
+            "XboxOne",
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://store.nintendo.co.kr/media/catalog/product/cache/6517c62f5899ad6aa0ba23ceb3eeff97/8/1/81288d89dbe5ab9147e5d0a6ab8b975744850b3cf9f6fba7d4ffc080f2696bb5.jpg"
     },
     {
       "id": "against-the-storm",
@@ -2178,7 +2935,11 @@
         "Hooded Horse"
       ],
       "platforms": [
-        "Windows"
+        "Windows",
+        "NintendoSwitch",
+        "PlayStation4",
+        "XboxOne",
+        "XboxSeries"
       ],
       "genres": [
         "Simulation",
@@ -2196,8 +2957,43 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000081352",
+          "productUrl": "https://store.nintendo.co.kr/70010000081352",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "UP8522-CUSA48868_00-000000000000AGTS",
+          "productUrl": "https://store.playstation.com/ko-kr/product/UP8522-CUSA48868_00-000000000000AGTS",
+          "platforms": [
+            "PlayStation4"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9NRLRJPV4HWL",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9NRLRJPV4HWL",
+          "platforms": [
+            "XboxOne",
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://store.nintendo.co.kr/media/catalog/product/cache/6517c62f5899ad6aa0ba23ceb3eeff97/3/8/38a09ebfed2d2737b0662e5671e26f114afe83f0f6bb10568a0f8f79d79b1bd0.jpg"
     },
     {
       "id": "warhammer-40-000-darktide",
@@ -2210,7 +3006,8 @@
         "Fatshark"
       ],
       "platforms": [
-        "Windows"
+        "Windows",
+        "XboxSeries"
       ],
       "genres": [
         "Action",
@@ -2232,8 +3029,20 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9NT3WC6RKBVQ",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9NT3WC6RKBVQ",
+          "platforms": [
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1361210/f07ebcb73a34112ac61c54608b1f1ded7e45eb8a/header.jpg?t=1782226781"
     },
     {
       "id": "manor-lords",
@@ -2265,7 +3074,8 @@
           "edition": "Standard",
           "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1363080/header.jpg?t=1787906126"
     },
     {
       "id": "forza-horizon-5",
@@ -2278,7 +3088,9 @@
         "Xbox Game Studios"
       ],
       "platforms": [
-        "Windows"
+        "Windows",
+        "XboxOne",
+        "XboxSeries"
       ],
       "genres": [
         "Action",
@@ -2303,8 +3115,21 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9NKX70BBCDRN",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9NKX70BBCDRN",
+          "platforms": [
+            "XboxOne",
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1551360/header.jpg?t=1788546569"
     },
     {
       "id": "longvinter",
@@ -2357,7 +3182,8 @@
         "4Divinity (China and South East Asia)"
       ],
       "platforms": [
-        "Windows"
+        "Windows",
+        "XboxSeries"
       ],
       "genres": [
         "Action",
@@ -2376,8 +3202,20 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9P7ZBF3S7PSS",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9P7ZBF3S7PSS",
+          "platforms": [
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://store-images.s-microsoft.com/image/apps.8027.14102836618611203.f0cb3265-be6e-427a-b40b-327076d7be33.13831555-73ee-4557-b782-520585fa222f"
     },
     {
       "id": "minecraft-dungeons",
@@ -2429,7 +3267,15 @@
       ],
       "platforms": [
         "Windows",
-        "macOS"
+        "macOS",
+        "NintendoSwitch",
+        "Android",
+        "iOS",
+        "iPadOS",
+        "PlayStation4",
+        "PlayStation5",
+        "XboxOne",
+        "XboxSeries"
       ],
       "genres": [
         "Action",
@@ -2454,8 +3300,67 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000058999",
+          "productUrl": "https://store.nintendo.co.kr/70010000058999",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "GooglePlay",
+          "productId": "com.poncle.vampiresurvivors",
+          "productUrl": "https://play.google.com/store/apps/details?id=com.poncle.vampiresurvivors",
+          "platforms": [
+            "Android"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "AppleAppStore",
+          "productId": "6444525702",
+          "productUrl": "https://apps.apple.com/app/id6444525702",
+          "platforms": [
+            "iOS",
+            "iPadOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "EB0324-PPSA21703_00-0027916840515656",
+          "productUrl": "https://store.playstation.com/ko-kr/product/EB0324-PPSA21703_00-0027916840515656",
+          "platforms": [
+            "PlayStation4",
+            "PlayStation5"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9PD5BM2Z8C4L",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9PD5BM2Z8C4L",
+          "platforms": [
+            "XboxOne",
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://store.nintendo.co.kr/media/catalog/product/cache/6517c62f5899ad6aa0ba23ceb3eeff97/e/2/e2c326b8fbab42b3f48c86c10c728b8bc04cf59fa51302c54837823879e6749f.jpg"
     },
     {
       "id": "clair-obscur-expedition-33",
@@ -2470,7 +3375,9 @@
         "Kepler Interactive"
       ],
       "platforms": [
-        "Windows"
+        "Windows",
+        "PlayStation5",
+        "XboxSeries"
       ],
       "genres": [
         "Action",
@@ -2490,8 +3397,31 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "EP7579-PPSA17599_00-EXP33000000PS5EU",
+          "productUrl": "https://store.playstation.com/ko-kr/product/EP7579-PPSA17599_00-EXP33000000PS5EU",
+          "platforms": [
+            "PlayStation5"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9PPT8K6GQHRZ",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9PPT8K6GQHRZ",
+          "platforms": [
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://image.api.playstation.com/vulcan/ap/rnd/202501/2217/e5833a53529ff9879e87689f1e8b04d45ba7e6c97fa791e2.png"
     },
     {
       "id": "bits-bops",
@@ -2545,7 +3475,8 @@
         "CAPCOM Co., Ltd."
       ],
       "platforms": [
-        "Windows"
+        "Windows",
+        "XboxSeries"
       ],
       "genres": [
         "Action",
@@ -2563,8 +3494,20 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9PJQMBMJ3154",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9PJQMBMJ3154",
+          "platforms": [
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://store-images.s-microsoft.com/image/apps.35227.14277259033847105.7852260c-8a58-4e28-9e97-dd6d1a7f62f9.92aee604-ef74-4fe3-aede-b71a63fa45dd"
     },
     {
       "id": "ark-survival-ascended",
@@ -2619,7 +3562,8 @@
         "Xbox Game Studios"
       ],
       "platforms": [
-        "Windows"
+        "Windows",
+        "XboxSeries"
       ],
       "genres": [
         "Simulation"
@@ -2638,8 +3582,20 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9P2VGCTBMM52",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9P2VGCTBMM52",
+          "platforms": [
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://store-images.s-microsoft.com/image/apps.59000.14550648823552491.458517e5-6b50-4124-b28b-b87004bdb3d1.961d2dcc-23a2-4997-a317-7237e2d47bbc"
     },
     {
       "id": "powerwash-simulator-2",
@@ -2652,7 +3608,10 @@
         "FuturLab"
       ],
       "platforms": [
-        "Windows"
+        "Windows",
+        "NintendoSwitch",
+        "PlayStation5",
+        "XboxSeries"
       ],
       "genres": [
         "Casual",
@@ -2675,8 +3634,42 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000098327",
+          "productUrl": "https://store.nintendo.co.kr/70010000098327",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "EP4143-PPSA23671_00-0913383672682674",
+          "productUrl": "https://store.playstation.com/ko-kr/product/EP4143-PPSA23671_00-0913383672682674",
+          "platforms": [
+            "PlayStation5"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9P45GGDTFNSM",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9P45GGDTFNSM",
+          "platforms": [
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://store.nintendo.co.kr/media/catalog/product/cache/6517c62f5899ad6aa0ba23ceb3eeff97/e/c/ecd34507c574e8be94774800a50d47c11f38a03f728dddc45c3daf2583779738.jpg"
     },
     {
       "id": "windrose",
@@ -3024,7 +4017,8 @@
       "platforms": [
         "Windows",
         "macOS",
-        "Linux"
+        "Linux",
+        "XboxSeries"
       ],
       "genres": [
         "Action",
@@ -3052,8 +4046,20 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9P6DWL7R6NTL",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9P6DWL7R6NTL",
+          "platforms": [
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://store-images.s-microsoft.com/image/apps.30927.14462686581050864.93a2d9b9-578d-4597-a687-6a6d4257696e.b1acece7-fa9f-4f36-9977-c2fd60a38b3c"
     },
     {
       "id": "subnautica",
@@ -3069,7 +4075,13 @@
       ],
       "platforms": [
         "Windows",
-        "macOS"
+        "macOS",
+        "iOS",
+        "iPadOS",
+        "NintendoSwitch",
+        "PlayStation4",
+        "PlayStation5",
+        "XboxSeries"
       ],
       "genres": [
         "Adventure",
@@ -3090,8 +4102,55 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "AppleAppStore",
+          "productId": "6478639011",
+          "productUrl": "https://apps.apple.com/app/id6478639011",
+          "platforms": [
+            "iOS",
+            "iPadOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000030086",
+          "productUrl": "https://store.nintendo.co.kr/70010000030086",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "UP5245-PPSA02452_00-6063362694848820",
+          "productUrl": "https://store.playstation.com/ko-kr/product/UP5245-PPSA02452_00-6063362694848820",
+          "platforms": [
+            "PlayStation4",
+            "PlayStation5"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9PJPCB188SVG",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9PJPCB188SVG",
+          "platforms": [
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/eb/5b/e8/eb5be8e8-3c4a-fcff-b2b6-f4661b30475d/AppIcon-0-0-1x_U007emarketing-0-8-0-85-220.png/512x512bb.jpg"
     },
     {
       "id": "the-long-dark",
@@ -3146,7 +4205,8 @@
       "platforms": [
         "Windows",
         "macOS",
-        "Linux"
+        "Linux",
+        "NintendoSwitch"
       ],
       "genres": [
         "Action",
@@ -3174,8 +4234,20 @@
           "region": "KR",
           "edition": "Standard",
           "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000060781",
+          "productUrl": "https://store.nintendo.co.kr/70010000060781",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
         }
-      ]
+      ],
+      "imageUrl": "https://store.nintendo.co.kr/media/catalog/product/cache/6517c62f5899ad6aa0ba23ceb3eeff97/0/8/081425533fd5a75ad96eb4333f260edf690b91110402ac801e07fd332035da8e.jpg"
     },
     {
       "id": "raft",
@@ -3188,7 +4260,8 @@
         "Axolot Games"
       ],
       "platforms": [
-        "Windows"
+        "Windows",
+        "XboxSeries"
       ],
       "genres": [
         "Adventure",
@@ -3204,6 +4277,4510 @@
           "store": "Steam",
           "productId": "648800",
           "productUrl": "https://store.steampowered.com/app/648800",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9P7RBKDTN18T",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9P7RBKDTN18T",
+          "platforms": [
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ],
+      "imageUrl": "https://store-images.s-microsoft.com/image/apps.32463.14102062639781722.573266e7-686b-44fb-9e48-a2585bc2170f.5424f649-5154-402f-88e5-905dae685f22"
+    },
+    {
+      "id": "enshrouded",
+      "title": "인슈라오디드 (Enshrouded)",
+      "aliases": [],
+      "developers": [
+        "Keen Games GmbH"
+      ],
+      "publishers": [
+        "Keen Games GmbH"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Indie",
+        "RPG"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1203620",
+          "productUrl": "https://store.steampowered.com/app/1203620",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "sons-of-the-forest",
+      "title": "Sons Of The Forest",
+      "aliases": [],
+      "developers": [
+        "Endnight Games Ltd"
+      ],
+      "publishers": [
+        "Newnight"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Indie",
+        "Simulation"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1326470",
+          "productUrl": "https://store.steampowered.com/app/1326470",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "core-keeper",
+      "title": "Core Keeper",
+      "aliases": [],
+      "developers": [
+        "Pugstorm"
+      ],
+      "publishers": [
+        "Fireshine Games",
+        "bilibili"
+      ],
+      "platforms": [
+        "Windows",
+        "Linux",
+        "NintendoSwitch",
+        "PlayStation4",
+        "XboxOne",
+        "XboxSeries"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Indie",
+        "RPG",
+        "Simulation"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1621690",
+          "productUrl": "https://store.steampowered.com/app/1621690",
+          "platforms": [
+            "Windows",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000079457",
+          "productUrl": "https://store.nintendo.co.kr/70010000079457",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "EP2520-CUSA45871_00-0208640006777278",
+          "productUrl": "https://store.playstation.com/ko-kr/product/EP2520-CUSA45871_00-0208640006777278",
+          "platforms": [
+            "PlayStation4"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9PKW4GMX4J8K",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9PKW4GMX4J8K",
+          "platforms": [
+            "XboxOne",
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ],
+      "imageUrl": "https://store.nintendo.co.kr/media/catalog/product/cache/6517c62f5899ad6aa0ba23ceb3eeff97/5/8/5835c3aa413e077c036dfa630b447667f317f4a3698fcb8630c57a6ffc38643a.jpg"
+    },
+    {
+      "id": "8-ace-combat-8-wings-of-theve",
+      "title": "에이스 컴뱃 8: 시브의 날개 (ACE COMBAT 8: WINGS OF THEVE)",
+      "aliases": [],
+      "developers": [
+        "Bandai Namco Aces Inc."
+      ],
+      "publishers": [
+        "Bandai Namco Entertainment Inc."
+      ],
+      "platforms": [
+        "Windows",
+        "PlayStation5",
+        "XboxSeries"
+      ],
+      "genres": [
+        "Action"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2288340",
+          "productUrl": "https://store.steampowered.com/app/2288340",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "JP0700-PPSA24913_00-MAINGAME00000000",
+          "productUrl": "https://store.playstation.com/ko-kr/product/JP0700-PPSA24913_00-MAINGAME00000000",
+          "platforms": [
+            "PlayStation5"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9MWJ5CX0WBBR",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9MWJ5CX0WBBR",
+          "platforms": [
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ],
+      "imageUrl": "https://image.api.playstation.com/vulcan/ap/rnd/202511/1905/5b1e1e52f2aefd528167ef0e65d03276863d5104794d5a21.png"
+    },
+    {
+      "id": "breathedge-2",
+      "title": "Breathedge 2",
+      "aliases": [],
+      "developers": [
+        "RedRuins Softworks"
+      ],
+      "publishers": [
+        "HypeTrain Digital"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "RPG",
+        "Simulation"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2412960",
+          "productUrl": "https://store.steampowered.com/app/2412960",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "crime-scene-cleaner",
+      "title": "Crime Scene Cleaner",
+      "aliases": [],
+      "developers": [
+        "President Studio"
+      ],
+      "publishers": [
+        "President Studio",
+        "PlayWay S.A."
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Simulation"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1040200",
+          "productUrl": "https://store.steampowered.com/app/1040200",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "rpg-maker-mz",
+      "title": "RPG Maker MZ",
+      "aliases": [],
+      "developers": [
+        "Gotcha Gotcha Games",
+        "KADOKAWA",
+        "Yoji Ojima"
+      ],
+      "publishers": [
+        "Gotcha Gotcha Games"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS"
+      ],
+      "genres": [
+        "RPG"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1096900",
+          "productUrl": "https://store.steampowered.com/app/1096900",
+          "platforms": [
+            "Windows",
+            "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "deep-blue-sushi",
+      "title": "Deep Blue Sushi",
+      "aliases": [],
+      "developers": [
+        "PaperPixel Games"
+      ],
+      "publishers": [
+        "PaperPixel Games"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Casual",
+        "Indie",
+        "Simulation"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "4005220",
+          "productUrl": "https://store.steampowered.com/app/4005220",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "the-forest",
+      "title": "The Forest",
+      "aliases": [],
+      "developers": [
+        "Endnight Games Ltd"
+      ],
+      "publishers": [
+        "Endnight Games Ltd"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Indie",
+        "Simulation"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "242760",
+          "productUrl": "https://store.steampowered.com/app/242760",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "astroneer",
+      "title": "ASTRONEER",
+      "aliases": [],
+      "developers": [
+        "System Era Softworks"
+      ],
+      "publishers": [
+        "System Era Softworks"
+      ],
+      "platforms": [
+        "Windows",
+        "PlayStation4",
+        "PlayStation5",
+        "XboxSeries"
+      ],
+      "genres": [
+        "Adventure",
+        "Indie"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "361420",
+          "productUrl": "https://store.steampowered.com/app/361420",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "UP2467-PPSA27622_00-ASTRONEER0000000",
+          "productUrl": "https://store.playstation.com/ko-kr/product/UP2467-PPSA27622_00-ASTRONEER0000000",
+          "platforms": [
+            "PlayStation4",
+            "PlayStation5"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9NTZH69PZSH0",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9NTZH69PZSH0",
+          "platforms": [
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ],
+      "imageUrl": "https://image.api.playstation.com/vulcan/ap/rnd/202306/2101/0367df8de23c764cf34cb0295eedf887da7e751f9ab5a2fd.png"
+    },
+    {
+      "id": "conan-exiles-enhanced",
+      "title": "Conan Exiles Enhanced",
+      "aliases": [],
+      "developers": [
+        "Funcom",
+        "Inflexion Games"
+      ],
+      "publishers": [
+        "Funcom"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "MMO",
+        "RPG",
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "440900",
+          "productUrl": "https://store.steampowered.com/app/440900",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "subnautica-below-zero",
+      "title": "Subnautica: Below Zero",
+      "aliases": [
+        "서브노티카: 빌로우 제로"
+      ],
+      "developers": [
+        "Unknown Worlds Entertainment"
+      ],
+      "publishers": [
+        "Unknown Worlds Entertainment"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "iOS",
+        "iPadOS",
+        "NintendoSwitch",
+        "PlayStation4",
+        "PlayStation5",
+        "XboxOne",
+        "XboxSeries"
+      ],
+      "genres": [
+        "Adventure",
+        "Indie"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "848450",
+          "productUrl": "https://store.steampowered.com/app/848450",
+          "platforms": [
+            "Windows",
+            "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "AppleAppStore",
+          "productId": "6749406060",
+          "productUrl": "https://apps.apple.com/app/id6749406060",
+          "platforms": [
+            "iOS",
+            "iPadOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000043569",
+          "productUrl": "https://store.nintendo.co.kr/70010000043569",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "UP5245-PPSA02456_00-BELOWZERSUB38637",
+          "productUrl": "https://store.playstation.com/ko-kr/product/UP5245-PPSA02456_00-BELOWZERSUB38637",
+          "platforms": [
+            "PlayStation4",
+            "PlayStation5"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9NDCJXL11096",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9NDCJXL11096",
+          "platforms": [
+            "XboxOne",
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ],
+      "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/92/e8/6e/92e86ead-3282-eb59-1c1d-a3ca7e6d5590/AppIcon-0-0-1x_U007emarketing-0-8-0-85-220.png/512x512bb.jpg"
+    },
+    {
+      "id": "grounded",
+      "title": "Grounded",
+      "aliases": [],
+      "developers": [
+        "Obsidian Entertainment"
+      ],
+      "publishers": [
+        "Xbox Game Studios"
+      ],
+      "platforms": [
+        "Windows",
+        "XboxOne",
+        "XboxSeries"
+      ],
+      "genres": [
+        "Action",
+        "Adventure"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "962130",
+          "productUrl": "https://store.steampowered.com/app/962130",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9PJTHRNVH62H",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9PJTHRNVH62H",
+          "platforms": [
+            "XboxOne",
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ],
+      "imageUrl": "https://store-images.s-microsoft.com/image/apps.20293.14280109286674604.0f240f37-6e7f-43b4-bd81-aabc884bc103.16d2c3ac-d4fa-4540-8f7d-4c716d393513"
+    },
+    {
+      "id": "medieval-dynasty",
+      "title": "Medieval Dynasty",
+      "aliases": [],
+      "developers": [
+        "Render Cube"
+      ],
+      "publishers": [
+        "Toplitz Productions"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Indie",
+        "RPG",
+        "Simulation"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1129580",
+          "productUrl": "https://store.steampowered.com/app/1129580",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "the-planet-crafter",
+      "title": "The Planet Crafter",
+      "aliases": [],
+      "developers": [
+        "Miju Games"
+      ],
+      "publishers": [
+        "Miju Games"
+      ],
+      "platforms": [
+        "Windows",
+        "XboxSeries"
+      ],
+      "genres": [
+        "Adventure"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1284190",
+          "productUrl": "https://store.steampowered.com/app/1284190",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9N072VV7MFK7",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9N072VV7MFK7",
+          "platforms": [
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ],
+      "imageUrl": "https://store-images.s-microsoft.com/image/apps.6037.13926241205782582.d41e8478-bfd5-4760-8d82-8f74d1584c38.1d690ce8-4d41-4e20-acc0-b66de6aa216e"
+    },
+    {
+      "id": "grim-dawn",
+      "title": "Grim Dawn",
+      "aliases": [],
+      "developers": [
+        "Crate Entertainment"
+      ],
+      "publishers": [
+        "Crate Entertainment"
+      ],
+      "platforms": [
+        "Windows",
+        "XboxOne",
+        "XboxSeries"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Indie",
+        "RPG"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "219990",
+          "productUrl": "https://store.steampowered.com/app/219990",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9PNQ7KRWCRW3",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9PNQ7KRWCRW3",
+          "platforms": [
+            "XboxOne",
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ],
+      "imageUrl": "https://store-images.s-microsoft.com/image/apps.30485.14339795716426406.9d974dac-c1f9-4154-a543-1c96c66411e9.f00ecfe5-90e2-48f9-a49b-b266c906b651"
+    },
+    {
+      "id": "romance-of-the-three-kingdoms-xiv",
+      "title": "ROMANCE OF THE THREE KINGDOMS XIV",
+      "aliases": [
+        "삼국지14"
+      ],
+      "developers": [
+        "KOEI TECMO GAMES CO., LTD."
+      ],
+      "publishers": [
+        "KOEI TECMO GAMES CO., LTD."
+      ],
+      "platforms": [
+        "Windows",
+        "PlayStation5"
+      ],
+      "genres": [
+        "Simulation"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "872410",
+          "productUrl": "https://store.steampowered.com/app/872410",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "JP0106-PPSA36167_00-SAN14WPKCE000000",
+          "productUrl": "https://store.playstation.com/ko-kr/product/JP0106-PPSA36167_00-SAN14WPKCE000000",
+          "platforms": [
+            "PlayStation5"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame",
+          "offerName": "삼국지14 with 파워업키트 Complete Edition (PS5) (중국어(간체자), 한국어, 일본어, 중국어(번체자))"
+        }
+      ],
+      "imageUrl": "https://image.api.playstation.com/vulcan/ap/rnd/202606/1209/7c083c016038596ccab9d53299b4b0e145af6ecbb7922ab8.png"
+    },
+    {
+      "id": "total-war-warhammer-iii",
+      "title": "Total War: WARHAMMER III",
+      "aliases": [
+        "토탈워: 워해머 3"
+      ],
+      "developers": [
+        "CREATIVE ASSEMBLY",
+        "Feral Interactive"
+      ],
+      "publishers": [
+        "SEGA",
+        "Feral Interactive"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "genres": [
+        "Action",
+        "Strategy"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1142710",
+          "productUrl": "https://store.steampowered.com/app/1142710",
+          "platforms": [
+            "Windows",
+            "macOS",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "tekken-8",
+      "title": "TEKKEN 8",
+      "aliases": [
+        "철권 8"
+      ],
+      "developers": [
+        "Bandai Namco Studios Inc."
+      ],
+      "publishers": [
+        "Bandai Namco Entertainment"
+      ],
+      "platforms": [
+        "Windows",
+        "PlayStation5",
+        "XboxSeries"
+      ],
+      "genres": [
+        "Action"
+      ],
+      "tags": [
+        "Multiplayer"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1778820",
+          "productUrl": "https://store.steampowered.com/app/1778820",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "HP0700-PPSA10593_00-TEKKEN8000000000",
+          "productUrl": "https://store.playstation.com/ko-kr/product/HP0700-PPSA10593_00-TEKKEN8000000000",
+          "platforms": [
+            "PlayStation5"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame",
+          "offerName": "철권 8 (중국어(간체자), 한국어, 중국어(번체자))"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9PPSM14VKCLW",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9PPSM14VKCLW",
+          "platforms": [
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ],
+      "imageUrl": "https://image.api.playstation.com/vulcan/ap/rnd/202212/2101/CxnQHVI3gzboBTHqEEQVWZJ6.png"
+    },
+    {
+      "id": "moonlighter-2-the-endless-vault",
+      "title": "Moonlighter 2: The Endless Vault",
+      "aliases": [],
+      "developers": [
+        "Digital Sun"
+      ],
+      "publishers": [
+        "11 bit studios"
+      ],
+      "platforms": [
+        "Windows",
+        "NintendoSwitch",
+        "PlayStation5",
+        "XboxSeries"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "RPG"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2350790",
+          "productUrl": "https://store.steampowered.com/app/2350790",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000118045",
+          "productUrl": "https://store.nintendo.co.kr/70010000118045",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "EP4361-PPSA15789_00-0000MOONLIGHTER2",
+          "productUrl": "https://store.playstation.com/ko-kr/product/EP4361-PPSA15789_00-0000MOONLIGHTER2",
+          "platforms": [
+            "PlayStation5"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame",
+          "offerName": "Moonlighter 2: The Endless Vault (중국어(간체자), 한국어, 영어, 일본어)"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9NDJX252Q5BW",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9NDJX252Q5BW",
+          "platforms": [
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ],
+      "imageUrl": "https://store.nintendo.co.kr/media/catalog/product/cache/6517c62f5899ad6aa0ba23ceb3eeff97/5/1/5107377ee6bc41d268e06944e91dcf6c4c530fdc66f614de307db6e7cc90cf9d.jpg"
+    },
+    {
+      "id": "007-first-light",
+      "title": "007 First Light",
+      "aliases": [
+        "007 퍼스트 라이트"
+      ],
+      "developers": [
+        "IO Interactive A/S"
+      ],
+      "publishers": [
+        "IO Interactive A/S"
+      ],
+      "platforms": [
+        "Windows",
+        "XboxSeries"
+      ],
+      "genres": [
+        "Action",
+        "Adventure"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "3768760",
+          "productUrl": "https://store.steampowered.com/app/3768760",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9NPF9F0DCVKS",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9NPF9F0DCVKS",
+          "platforms": [
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ],
+      "imageUrl": "https://store-images.s-microsoft.com/image/apps.8071.14287567326939893.1fdb2217-3463-49e6-b44c-c16587b03bc8.d8033845-8141-4dc4-b49e-2a8e6749235d"
+    },
+    {
+      "id": "nba-2k27",
+      "title": "NBA 2K27",
+      "aliases": [],
+      "developers": [
+        "Visual Concepts"
+      ],
+      "publishers": [
+        "2K"
+      ],
+      "platforms": [
+        "Windows",
+        "NintendoSwitch",
+        "XboxSeries"
+      ],
+      "genres": [
+        "Sports"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "4356430",
+          "productUrl": "https://store.steampowered.com/app/4356430",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000116957",
+          "productUrl": "https://store.nintendo.co.kr/70010000116957",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "MicrosoftStore",
+          "productId": "9N3D82TFF6C4",
+          "productUrl": "https://www.xbox.com/ko-KR/games/store/_/9N3D82TFF6C4",
+          "platforms": [
+            "XboxSeries"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ],
+      "imageUrl": "https://store.nintendo.co.kr/media/catalog/product/cache/6517c62f5899ad6aa0ba23ceb3eeff97/9/c/9c9c88c3f60c207da15e721011d6c043972712f15a89420c810b2bcf9f0044e9.jpg"
+    },
+    {
+      "id": "bombanana",
+      "title": "BOMBANANA!",
+      "aliases": [],
+      "developers": [
+        "Lefto Studio"
+      ],
+      "publishers": [
+        "TARK"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS"
+      ],
+      "genres": [
+        "Casual",
+        "Indie"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "4656000",
+          "productUrl": "https://store.steampowered.com/app/4656000",
+          "platforms": [
+            "Windows",
+            "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "payday-2",
+      "title": "PAYDAY 2",
+      "aliases": [],
+      "developers": [
+        "OVERKILL - a Starbreeze Studio."
+      ],
+      "publishers": [
+        "Starbreeze Entertainment"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "RPG"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "218620",
+          "productUrl": "https://store.steampowered.com/app/218620",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "gtfo",
+      "title": "GTFO",
+      "aliases": [],
+      "developers": [
+        "10 Chambers"
+      ],
+      "publishers": [
+        "10 Chambers"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "493520",
+          "productUrl": "https://store.steampowered.com/app/493520",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "green-hell",
+      "title": "Green Hell",
+      "aliases": [],
+      "developers": [
+        "Creepy Jar"
+      ],
+      "publishers": [
+        "Creepy Jar"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Indie",
+        "Simulation"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "815370",
+          "productUrl": "https://store.steampowered.com/app/815370",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "everspace-2",
+      "title": "EVERSPACE™ 2",
+      "aliases": [],
+      "developers": [
+        "ROCKFISH Games"
+      ],
+      "publishers": [
+        "ROCKFISH Games"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "NintendoSwitch"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "RPG",
+        "Simulation"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1128920",
+          "productUrl": "https://store.steampowered.com/app/1128920",
+          "platforms": [
+            "Windows",
+            "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000131860",
+          "productUrl": "https://store.nintendo.co.kr/70010000131860",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ],
+      "imageUrl": "https://store.nintendo.co.kr/media/catalog/product/cache/6517c62f5899ad6aa0ba23ceb3eeff97/4/a/4ab1b5f167beab6dd67ff534a929e00923daa4d1d1cc600ac1a7f223ae8de471.jpeg"
+    },
+    {
+      "id": "house-flipper-2",
+      "title": "House Flipper 2",
+      "aliases": [
+        "하우스 플리퍼 2"
+      ],
+      "developers": [
+        "Frozen District"
+      ],
+      "publishers": [
+        "Frozen District"
+      ],
+      "platforms": [
+        "Windows",
+        "PlayStation5"
+      ],
+      "genres": [
+        "Casual",
+        "Indie",
+        "Simulation"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Cross-Platform",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1190970",
+          "productUrl": "https://store.steampowered.com/app/1190970",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "HP5063-PPSA22848_00-0031736322871159",
+          "productUrl": "https://store.playstation.com/ko-kr/product/HP5063-PPSA22848_00-0031736322871159",
+          "platforms": [
+            "PlayStation5"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame",
+          "offerName": "House Flipper 2 (중국어(간체자), 한국어, 영어, 일본어, 중국어(번체자))"
+        }
+      ],
+      "imageUrl": "https://image.api.playstation.com/vulcan/ap/rnd/202311/1614/bfe378bd3e7b0220998dafd485f1daee1b275a5afeeec15c.png"
+    },
+    {
+      "id": "rust",
+      "title": "Rust",
+      "aliases": [],
+      "developers": [
+        "Facepunch Studios"
+      ],
+      "publishers": [
+        "Facepunch Studios"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Indie",
+        "MMO",
+        "RPG"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "252490",
+          "productUrl": "https://store.steampowered.com/app/252490",
+          "platforms": [
+            "Windows",
+            "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "sid-meier-s-civilization-vi",
+      "title": "Sid Meier’s Civilization® VI",
+      "aliases": [],
+      "developers": [
+        "Firaxis Games",
+        "Aspyr (Mac)",
+        "Aspyr (Linux)"
+      ],
+      "publishers": [
+        "2K",
+        "Aspyr (Mac)",
+        "Aspyr (Linux)"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "genres": [
+        "Strategy"
+      ],
+      "tags": [
+        "Multiplayer"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "289070",
+          "productUrl": "https://store.steampowered.com/app/289070",
+          "platforms": [
+            "Windows",
+            "macOS",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "street-fighter-6",
+      "title": "Street Fighter 6",
+      "aliases": [],
+      "developers": [
+        "CAPCOM Co., Ltd."
+      ],
+      "publishers": [
+        "CAPCOM Co., Ltd."
+      ],
+      "platforms": [
+        "Windows",
+        "NintendoSwitch"
+      ],
+      "genres": [
+        "Action",
+        "Adventure"
+      ],
+      "tags": [
+        "Multiplayer"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1364780",
+          "productUrl": "https://store.steampowered.com/app/1364780",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000095205",
+          "productUrl": "https://store.nintendo.co.kr/70010000095205",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ],
+      "imageUrl": "https://store.nintendo.co.kr/media/catalog/product/cache/6517c62f5899ad6aa0ba23ceb3eeff97/1/2/12d36a4c9bbf43a4babba2f203e1e271ef08de143349e08231dff56fd2bef70e.jpg"
+    },
+    {
+      "id": "warhammer-40-000-space-marine-2",
+      "title": "Warhammer 40,000: Space Marine 2",
+      "aliases": [],
+      "developers": [
+        "Saber Interactive"
+      ],
+      "publishers": [
+        "Focus Entertainment"
+      ],
+      "platforms": [
+        "Windows",
+        "PlayStation5"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "RPG"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2183900",
+          "productUrl": "https://store.steampowered.com/app/2183900",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "PlayStationStore",
+          "productId": "EP4133-PPSA04451_00-SPACEMARINESII00",
+          "productUrl": "https://store.playstation.com/ko-kr/product/EP4133-PPSA04451_00-SPACEMARINESII00",
+          "platforms": [
+            "PlayStation5"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame",
+          "offerName": "Warhammer 40,000: Space Marine 2 (중국어(간체자), 한국어, 태국어, 영어, 일본어, 중국어(번체자))"
+        }
+      ],
+      "imageUrl": "https://image.api.playstation.com/vulcan/ap/rnd/202212/0711/MKweDX2LQpXiPcU6Jitg9KAg.png"
+    },
+    {
+      "id": "monster-hunter-wilds",
+      "title": "Monster Hunter Wilds",
+      "aliases": [],
+      "developers": [
+        "CAPCOM Co., Ltd."
+      ],
+      "publishers": [
+        "CAPCOM Co., Ltd."
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "RPG"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2246340",
+          "productUrl": "https://store.steampowered.com/app/2246340",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "ii",
+      "title": "디아블로 II 레저렉션 - 지옥불 에디션",
+      "aliases": [],
+      "developers": [
+        "Blizzard Entertainment, Inc."
+      ],
+      "publishers": [
+        "Blizzard Entertainment, Inc."
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "RPG",
+        "Strategy"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2536520",
+          "productUrl": "https://store.steampowered.com/app/2536520",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "asterika-phantom-rose-refrain",
+      "title": "Asterika: Phantom Rose Refrain",
+      "aliases": [
+        "아스테리카: 팬텀 로즈 리프레인"
+      ],
+      "developers": [
+        "makaroll"
+      ],
+      "publishers": [
+        "Studio Maka"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS"
+      ],
+      "genres": [
+        "Action",
+        "Indie"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "3690850",
+          "productUrl": "https://store.steampowered.com/app/3690850",
+          "platforms": [
+            "Windows",
+            "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "final-fantasy-vii-revelation",
+      "title": "FINAL FANTASY VII REVELATION",
+      "aliases": [],
+      "developers": [
+        "Square Enix"
+      ],
+      "publishers": [
+        "Square Enix"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "RPG"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "4354570",
+          "productUrl": "https://store.steampowered.com/app/4354570",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "zad-archery",
+      "title": "Zad Archery",
+      "aliases": [],
+      "developers": [
+        "Samharia Studios"
+      ],
+      "publishers": [
+        "Samharia Studios"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "genres": [
+        "Action",
+        "Casual",
+        "Indie",
+        "RPG",
+        "Strategy"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "4412000",
+          "productUrl": "https://store.steampowered.com/app/4412000",
+          "platforms": [
+            "Windows",
+            "macOS",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "call-of-duty-modern-warfare-4",
+      "title": "Call of Duty®: Modern Warfare® 4",
+      "aliases": [
+        "콜 오브 듀티®: 모던 워페어 4"
+      ],
+      "developers": [
+        "Infinity Ward",
+        "Beenox",
+        "Digital Legends",
+        "Activision Shanghai",
+        "Raven Software",
+        "Treyarch",
+        "Sledgehammer Games",
+        "High Moon Studios"
+      ],
+      "publishers": [
+        "Activision"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Cross-Platform"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "4435490",
+          "productUrl": "https://store.steampowered.com/app/4435490",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "captain-of-industry",
+      "title": "캡틴 산업 (Captain of Industry)",
+      "aliases": [],
+      "developers": [
+        "MaFi Games"
+      ],
+      "publishers": [
+        "MaFi Games"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Indie",
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1594320",
+          "productUrl": "https://store.steampowered.com/app/1594320",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "romestead",
+      "title": "Romestead",
+      "aliases": [],
+      "developers": [
+        "Beartwigs"
+      ],
+      "publishers": [
+        "Three Friends"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Indie",
+        "RPG"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1805320",
+          "productUrl": "https://store.steampowered.com/app/1805320",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "call-of-duty-wwii",
+      "title": "Call of Duty®: WWII",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/476600/header.jpg?t=1780963893",
+      "aliases": [],
+      "developers": [
+        "Sledgehammer Games",
+        "Raven Software"
+      ],
+      "publishers": [
+        "Activision"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "476600",
+          "productUrl": "https://store.steampowered.com/app/476600",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "victoria-3",
+      "title": "Victoria 3",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/529340/a30a3cd72b8b60ab23a01e692e8844016d158186/header_alt_assets_10_koreana.jpg?t=1788451450",
+      "aliases": [],
+      "developers": [
+        "Paradox Development Studio"
+      ],
+      "publishers": [
+        "Paradox Interactive"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "genres": [
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [
+        "Multiplayer"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "529340",
+          "productUrl": "https://store.steampowered.com/app/529340",
+          "platforms": [
+            "Windows",
+            "macOS",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "atomic-heart",
+      "title": "Atomic Heart",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/668580/header.jpg?t=1786632138",
+      "aliases": [
+        "아토믹 하트"
+      ],
+      "developers": [
+        "Mundfish"
+      ],
+      "publishers": [
+        "Focus Entertainment",
+        "4Divinity",
+        "Mundfish"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "RPG"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "668580",
+          "productUrl": "https://store.steampowered.com/app/668580",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "y",
+      "title": "슈퍼로봇대전 Y",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1909950/76888ae5f3774a1fd099e635f815a5407db46af6/header_alt_assets_1_koreana.jpg?t=1788165639",
+      "aliases": [],
+      "developers": [
+        "Bandai Namco Forge Digitals Inc."
+      ],
+      "publishers": [
+        "Bandai Namco Entertainment Inc."
+      ],
+      "platforms": [
+        "Windows",
+        "NintendoSwitch"
+      ],
+      "genres": [
+        "RPG",
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1909950",
+          "productUrl": "https://store.steampowered.com/app/1909950",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000100593",
+          "productUrl": "https://store.nintendo.co.kr/70010000100593",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "call-of-duty-black-ops-cold-war",
+      "title": "Call of Duty®: Black Ops Cold War",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1985810/header.jpg?t=1780964053",
+      "aliases": [],
+      "developers": [
+        "Treyarch",
+        "Raven Software",
+        "High Moon Studios",
+        "Beenox",
+        "Activision Shanghai",
+        "Sledgehammer Games"
+      ],
+      "publishers": [
+        "Activision"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1985810",
+          "productUrl": "https://store.steampowered.com/app/1985810",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "call-of-duty-modern-warfare",
+      "title": "Call of Duty®: Modern Warfare®",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2000950/header.jpg?t=1778886798",
+      "aliases": [],
+      "developers": [
+        "Infinity Ward",
+        "Beenox",
+        "High Moon Studios",
+        "Raven Software"
+      ],
+      "publishers": [
+        "Activision"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2000950",
+          "productUrl": "https://store.steampowered.com/app/2000950",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "factorio",
+      "title": "Factorio",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/427520/ab9a2df0a77caebde20dc45adc021de8cdcf7cc5/header.jpg?t=1787348817",
+      "aliases": [],
+      "developers": [
+        "Wube Software LTD."
+      ],
+      "publishers": [
+        "Wube Software LTD."
+      ],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux",
+        "NintendoSwitch"
+      ],
+      "genres": [
+        "Casual",
+        "Indie",
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "427520",
+          "productUrl": "https://store.steampowered.com/app/427520",
+          "platforms": [
+            "Windows",
+            "macOS",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000056815",
+          "productUrl": "https://store.nintendo.co.kr/70010000056815",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "timberborn",
+      "title": "Timberborn",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1062090/38d572f59258678e74173b09f51d62b93af90aa3/header_alt_assets_16_koreana.jpg?t=1788438437",
+      "aliases": [],
+      "developers": [
+        "Mechanistry"
+      ],
+      "publishers": [
+        "Mechanistry"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS"
+      ],
+      "genres": [
+        "Indie",
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1062090",
+          "productUrl": "https://store.steampowered.com/app/1062090",
+          "platforms": [
+            "Windows",
+            "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "corsair-cove",
+      "title": "Corsair Cove 커세어 코브",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1368140/2fb68881da724b571001843114515021ee4116a7/header_koreana.jpg?t=1787906322",
+      "aliases": [],
+      "developers": [
+        "Limbic Entertainment"
+      ],
+      "publishers": [
+        "Hooded Horse"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1368140",
+          "productUrl": "https://store.steampowered.com/app/1368140",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "marvel-s-spider-man-remastered",
+      "title": "Marvel’s Spider-Man Remastered",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1817070/header.jpg?t=1787838689",
+      "aliases": [],
+      "developers": [
+        "Insomniac Games",
+        "Nixxes Software"
+      ],
+      "publishers": [
+        "PlayStation Publishing LLC"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Casual"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1817070",
+          "productUrl": "https://store.steampowered.com/app/1817070",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "tales-of-the-shire",
+      "title": "Tales of the Shire: 반지의 제왕™ 게임",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2016460/header.jpg?t=1769187824",
+      "aliases": [],
+      "developers": [
+        "Wētā Workshop"
+      ],
+      "publishers": [
+        "Fictions"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Casual",
+        "Indie",
+        "RPG",
+        "Simulation"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2016460",
+          "productUrl": "https://store.steampowered.com/app/2016460",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "the-bridge-curse-2-the-extrication",
+      "title": "The Bridge Curse 2: The Extrication",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2331330/header.jpg?t=1746430270",
+      "aliases": [
+        "여귀교2: 자유로운 영혼의 길"
+      ],
+      "developers": [
+        "SOFTSTAR ENTERTAINMENT"
+      ],
+      "publishers": [
+        "PQube",
+        "Gamirror Games"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Adventure"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2331330",
+          "productUrl": "https://store.steampowered.com/app/2331330",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "scream-or-die",
+      "title": "Scream or Die",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2700050/header.jpg?t=1702154810",
+      "aliases": [],
+      "developers": [
+        "Hede"
+      ],
+      "publishers": [
+        "Hede"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Casual",
+        "Indie",
+        "Racing",
+        "RPG",
+        "Simulation",
+        "Sports",
+        "Strategy"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2700050",
+          "productUrl": "https://store.steampowered.com/app/2700050",
+          "platforms": [
+            "Windows",
+            "macOS",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "hidden-world-10-top-down-3d",
+      "title": "Hidden World 10 Top-Down 3D",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2703190/header.jpg?t=1701986855",
+      "aliases": [],
+      "developers": [
+        "Top-Down Games"
+      ],
+      "publishers": [
+        "Hede"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Casual",
+        "Indie",
+        "Racing",
+        "RPG",
+        "Simulation",
+        "Sports",
+        "Strategy"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2703190",
+          "productUrl": "https://store.steampowered.com/app/2703190",
+          "platforms": [
+            "Windows",
+            "macOS",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "hidden-western-top-down-3d",
+      "title": "Hidden Western Top-Down 3D",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2703200/header.jpg?t=1701979264",
+      "aliases": [],
+      "developers": [
+        "Top-Down Games"
+      ],
+      "publishers": [
+        "Hede"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Casual",
+        "Indie",
+        "Racing",
+        "RPG",
+        "Simulation",
+        "Sports",
+        "Strategy"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2703200",
+          "productUrl": "https://store.steampowered.com/app/2703200",
+          "platforms": [
+            "Windows",
+            "macOS",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "dungeon-settlers",
+      "title": "던전 세틀러즈 Dungeon Settlers",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2798330/11e1a05d39cd67e8c0958df6ba6f1a4bb289a1c9/header_koreana.jpg?t=1788527075",
+      "aliases": [],
+      "developers": [
+        "CanOpener"
+      ],
+      "publishers": [
+        "CanOpener",
+        "WhisperGames"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS"
+      ],
+      "genres": [
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2798330",
+          "productUrl": "https://store.steampowered.com/app/2798330",
+          "platforms": [
+            "Windows",
+            "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "rune-factory-guardians-of-azuma",
+      "title": "Rune Factory: Guardians of Azuma",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2864560/header.jpg?t=1771027230",
+      "aliases": [
+        "용의 나라 룬 팩토리"
+      ],
+      "developers": [
+        "Marvelous Inc."
+      ],
+      "publishers": [
+        "XSEED Games",
+        "Marvelous USA, Inc.",
+        "Marvelous Europe"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "RPG"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2864560",
+          "productUrl": "https://store.steampowered.com/app/2864560",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "slay-the-spire-2",
+      "title": "Slay the Spire 2",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2868840/b0958d387dc366211e0f353443710cfcf9fdb020/header.jpg?t=1787169309",
+      "aliases": [],
+      "developers": [
+        "Mega Crit"
+      ],
+      "publishers": [
+        "Mega Crit"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "genres": [
+        "Indie",
+        "Strategy"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2868840",
+          "productUrl": "https://store.steampowered.com/app/2868840",
+          "platforms": [
+            "Windows",
+            "macOS",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "princess-maker-children-of-revelation",
+      "title": "Princess Maker: Children of Revelation",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3438810/2eaf69b29fc29d77dddadc8f08c908a091ae9161/header.jpg?t=1787128408",
+      "aliases": [
+        "프린세스 메이커 : 예언의 아이들"
+      ],
+      "developers": [
+        "GEAR2"
+      ],
+      "publishers": [
+        "GEAR2"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "genres": [
+        "Simulation"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "3438810",
+          "productUrl": "https://store.steampowered.com/app/3438810",
+          "platforms": [
+            "Windows",
+            "macOS",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "granblue-fantasy-relink",
+      "title": "Granblue Fantasy: Relink",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/881020/header.jpg?t=1787889010",
+      "aliases": [],
+      "developers": [
+        "Cygames, Inc."
+      ],
+      "publishers": [
+        "Cygames, Inc."
+      ],
+      "platforms": [
+        "Windows",
+        "NintendoSwitch"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "RPG"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "881020",
+          "productUrl": "https://store.steampowered.com/app/881020",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000116689",
+          "productUrl": "https://store.nintendo.co.kr/70010000116689",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "chants-of-sennaar",
+      "title": "Chants of Sennaar",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1931770/header.jpg?t=1774006124",
+      "aliases": [],
+      "developers": [
+        "Rundisc"
+      ],
+      "publishers": [
+        "Focus Entertainment"
+      ],
+      "platforms": [
+        "Windows",
+        "NintendoSwitch"
+      ],
+      "genres": [
+        "Adventure",
+        "Indie"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1931770",
+          "productUrl": "https://store.steampowered.com/app/1931770",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000060397",
+          "productUrl": "https://store.nintendo.co.kr/70010000060397",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "cinderia",
+      "title": "Cinderia",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3214610/fa3f3ed3d74bc05798082d54eb03e35cfbb05173/header.jpg?t=1787153526",
+      "aliases": [],
+      "developers": [
+        "MyACG Studio"
+      ],
+      "publishers": [
+        "MyACG Studio",
+        "NPC Entertainment"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Indie",
+        "RPG"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "3214610",
+          "productUrl": "https://store.steampowered.com/app/3214610",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "final-fantasy-resonance",
+      "title": "FINAL FANTASY RESONANCE",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3259780/710da43babb2043f9f6ad0e50023e31167d94708/header.jpg?t=1788534743",
+      "aliases": [],
+      "developers": [
+        "Square Enix",
+        "LANCARSE Ltd."
+      ],
+      "publishers": [
+        "Square Enix"
+      ],
+      "platforms": [
+        "Windows",
+        "NintendoSwitch"
+      ],
+      "genres": [
+        "RPG"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "3259780",
+          "productUrl": "https://store.steampowered.com/app/3259780",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000117106",
+          "productUrl": "https://store.nintendo.co.kr/70010000117106",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "ii-2022",
+      "title": "콜 오브 듀티®: 모던 워페어 II 2022",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3595230/ce4d5e53b36cb9d3c4309d1df72bf8663bbbc7ef/header.jpg?t=1778886532",
+      "aliases": [],
+      "developers": [
+        "Infinity Ward",
+        "Raven Software",
+        "Beenox",
+        "Treyarch",
+        "High Moon Studios",
+        "Sledgehammer Games",
+        "Demonware",
+        "Toys for Bob"
+      ],
+      "publishers": [
+        "Activision"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "3595230",
+          "productUrl": "https://store.steampowered.com/app/3595230",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "burglin-gnomes",
+      "title": "Burglin' Gnomes",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3844970/d6127e4eabda23e1d1c727a1875e6b6cb0e634ae/header.jpg?t=1787427131",
+      "aliases": [
+        "노움 강도단"
+      ],
+      "developers": [
+        "Fobri"
+      ],
+      "publishers": [
+        "Fobri"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "3844970",
+          "productUrl": "https://store.steampowered.com/app/3844970",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "shadow-dungeon",
+      "title": "Shadow Dungeon",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4423580/c7169de56a893cba3b8dba5674f6c4fe34ca96ab/header.jpg?t=1787744876",
+      "aliases": [
+        "섀도우 던전"
+      ],
+      "developers": [
+        "OO Cat"
+      ],
+      "publishers": [
+        "OO Cat"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "RPG"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "4423580",
+          "productUrl": "https://store.steampowered.com/app/4423580",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "sir-we-have-an-orc-problem",
+      "title": "Sir, We Have an Orc Problem",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4594150/d8a7b3d55e3a2b42350732db0155fc2a9346c10b/header.jpg?t=1787152549",
+      "aliases": [
+        "대장님, 오크가 몰려옵니다"
+      ],
+      "developers": [
+        "Mumpitz Games"
+      ],
+      "publishers": [
+        "Mumpitz Games"
+      ],
+      "platforms": [
+        "Windows",
+        "Linux"
+      ],
+      "genres": [
+        "Indie",
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "4594150",
+          "productUrl": "https://store.steampowered.com/app/4594150",
+          "platforms": [
+            "Windows",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "little-lumi-model",
+      "title": "꼬미 (Little LUMI Model)",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/5075020/0e3b73ccda56e75e0db763bfbd47afb0f6a99e10/header.jpg?t=1788486963",
+      "aliases": [],
+      "developers": [
+        "Studio LUMI"
+      ],
+      "publishers": [
+        "Studio LUMI"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Casual"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "5075020",
+          "productUrl": "https://store.steampowered.com/app/5075020",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "hearts-of-iron-iv",
+      "title": "Hearts of Iron IV",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/394360/67bbd0057627fc2244793bcdd09260c2539499cf/header.jpg?t=1787738793",
+      "aliases": [],
+      "developers": [
+        "Paradox Development Studio"
+      ],
+      "publishers": [
+        "Paradox Interactive"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "genres": [
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "394360",
+          "productUrl": "https://store.steampowered.com/app/394360",
+          "platforms": [
+            "Windows",
+            "macOS",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "valheim",
+      "title": "Valheim",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/892970/de0bdcf6c008c508a79d8e75eb91fc67f4bebd5d/header.jpg?t=1788343866",
+      "aliases": [],
+      "developers": [
+        "Iron Gate AB"
+      ],
+      "publishers": [
+        "Coffee Stain Publishing"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Indie",
+        "RPG"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "892970",
+          "productUrl": "https://store.steampowered.com/app/892970",
+          "platforms": [
+            "Windows",
+            "macOS",
+            "Linux"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "biohazard-re-4",
+      "title": "BIOHAZARD RE:4",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2050650/header_koreana.jpg?t=1772502922",
+      "aliases": [],
+      "developers": [
+        "CAPCOM Co., Ltd."
+      ],
+      "publishers": [
+        "CAPCOM Co., Ltd."
+      ],
+      "platforms": [
+        "Windows",
+        "iOS",
+        "iPadOS",
+        "NintendoSwitch"
+      ],
+      "genres": [
+        "Action",
+        "Adventure"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2050650",
+          "productUrl": "https://store.steampowered.com/app/2050650",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "AppleAppStore",
+          "productId": "6462360082",
+          "productUrl": "https://apps.apple.com/app/id6462360082",
+          "platforms": [
+            "iOS",
+            "iPadOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000122500",
+          "productUrl": "https://store.nintendo.co.kr/70010000122500",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "battlefield-6",
+      "title": "Battlefield™ 6",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2807960/c12d12ce3c7d217398d3fcad77427bfc9d57c570/header.jpg?t=1787669881",
+      "aliases": [],
+      "developers": [
+        "Battlefield Studios"
+      ],
+      "publishers": [
+        "Electronic Arts"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2807960",
+          "productUrl": "https://store.steampowered.com/app/2807960",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "pragmata",
+      "title": "PRAGMATA",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3357650/e32e168b25ed68a0cf6264c220c07e96c2abfb56/header.jpg?t=1777351016",
+      "aliases": [],
+      "developers": [
+        "CAPCOM Co., Ltd."
+      ],
+      "publishers": [
+        "CAPCOM Co., Ltd."
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "3357650",
+          "productUrl": "https://store.steampowered.com/app/3357650",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "biohazard-requiem",
+      "title": "BIOHAZARD requiem",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3764200/46a28870620bab1c2bc4de903bdcbcf4e423c58b/header_koreana.jpg?t=1779840172",
+      "aliases": [],
+      "developers": [
+        "CAPCOM Co., Ltd."
+      ],
+      "publishers": [
+        "CAPCOM Co., Ltd."
+      ],
+      "platforms": [
+        "Windows",
+        "NintendoSwitch"
+      ],
+      "genres": [
+        "Action",
+        "Adventure"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "3764200",
+          "productUrl": "https://store.steampowered.com/app/3764200",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000101677",
+          "productUrl": "https://store.nintendo.co.kr/70010000101677",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "bones-and-coins",
+      "title": "Bones and Coins",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4134650/240d23eedcfd49118547160b7e8f3a808691f3d6/header.jpg?t=1788795391",
+      "aliases": [
+        "무한 던전 피버"
+      ],
+      "developers": [
+        "Troyd Games"
+      ],
+      "publishers": [
+        "Rogue Duck Interactive",
+        "Gamersky Games"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Casual",
+        "RPG",
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "4134650",
+          "productUrl": "https://store.steampowered.com/app/4134650",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "for-the-fatherland-chronicle-of-park-chung-hee",
+      "title": "For the Fatherland: Chronicle of Park Chung-hee",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/5035220/da6a9d583c7009b956bfaefcdb4b29d98612a96c/header.jpg?t=1788612340",
+      "aliases": [
+        "조국과 민족을 위하여: 박정희 일대기"
+      ],
+      "developers": [
+        "KMS STUDIO"
+      ],
+      "publishers": [
+        "KMS STUDIO"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Indie",
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "5035220",
+          "productUrl": "https://store.steampowered.com/app/5035220",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "heroes-of-might-and-magic-olden-era",
+      "title": "Heroes of Might and Magic: Olden Era 히어로즈 오브 마이트 앤 매직: 올든 에라",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3105440/1b4d6c4d876197e9806177e9853ccb8a13fb8274/header_koreana.jpg?t=1788579886",
+      "aliases": [],
+      "developers": [
+        "Unfrozen"
+      ],
+      "publishers": [
+        "Hooded Horse"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "RPG",
+        "Strategy"
+      ],
+      "tags": [
+        "Multiplayer"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "3105440",
+          "productUrl": "https://store.steampowered.com/app/3105440",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "arma-3",
+      "title": "Arma 3",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/107410/header.jpg?t=1786458620",
+      "aliases": [],
+      "developers": [
+        "Bohemia Interactive"
+      ],
+      "publishers": [
+        "Bohemia Interactive"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS"
+      ],
+      "genres": [
+        "Action",
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "107410",
+          "productUrl": "https://store.steampowered.com/app/107410",
+          "platforms": [
+            "Windows",
+            "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "no-man-s-sky",
+      "title": "No Man's Sky",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/275850/84d0df065c36eb8ded7bdf0d8fccd19d43b6c005/header.jpg?t=1787045299",
+      "aliases": [],
+      "developers": [
+        "Hello Games"
+      ],
+      "publishers": [
+        "Hello Games"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS",
+        "NintendoSwitch"
+      ],
+      "genres": [
+        "Action",
+        "Adventure"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "275850",
+          "productUrl": "https://store.steampowered.com/app/275850",
+          "platforms": [
+            "Windows",
+            "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000044639",
+          "productUrl": "https://store.nintendo.co.kr/70010000044639",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "monster-hunter-world",
+      "title": "Monster Hunter: World",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/582010/header.jpg?t=1773328926",
+      "aliases": [],
+      "developers": [
+        "CAPCOM Co., Ltd."
+      ],
+      "publishers": [
+        "CAPCOM Co., Ltd."
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "582010",
+          "productUrl": "https://store.steampowered.com/app/582010",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "hunt-showdown-1896",
+      "title": "Hunt: Showdown 1896",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/594650/2e2def207be0fd8aa77e1ef10f597aa28b482949/header_alt_assets_28.jpg?t=1788809390",
+      "aliases": [],
+      "developers": [
+        "Crytek"
+      ],
+      "publishers": [
+        "Crytek"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "594650",
+          "productUrl": "https://store.steampowered.com/app/594650",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "phoenix-wright-ace-attorney-trilogy",
+      "title": "Phoenix Wright: Ace Attorney Trilogy",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/787480/header.jpg?t=1768866317",
+      "aliases": [],
+      "developers": [
+        "CAPCOM Co., Ltd."
+      ],
+      "publishers": [
+        "CAPCOM Co., Ltd."
+      ],
+      "platforms": [
+        "Windows",
+        "NintendoSwitch"
+      ],
+      "genres": [
+        "Adventure"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "787480",
+          "productUrl": "https://store.steampowered.com/app/787480",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000015845",
+          "productUrl": "https://store.nintendo.co.kr/70010000015845",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "ready-or-not",
+      "title": "Ready or Not",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1144200/2b44644b033a996a9efb95051bb01809215d0d23/header.jpg?t=1781703931",
+      "aliases": [],
+      "developers": [
+        "VOID Interactive"
+      ],
+      "publishers": [
+        "VOID Interactive"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Indie"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1144200",
+          "productUrl": "https://store.steampowered.com/app/1144200",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "monster-hunter-rise",
+      "title": "MONSTER HUNTER RISE",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1446780/header.jpg?t=1768870444",
+      "aliases": [],
+      "developers": [
+        "CAPCOM Co., Ltd."
+      ],
+      "publishers": [
+        "CAPCOM Co., Ltd."
+      ],
+      "platforms": [
+        "Windows",
+        "NintendoSwitch"
+      ],
+      "genres": [
+        "Action"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1446780",
+          "productUrl": "https://store.steampowered.com/app/1446780",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        },
+        {
+          "store": "NintendoEShop",
+          "productId": "70010000029012",
+          "productUrl": "https://store.nintendo.co.kr/70010000029012",
+          "platforms": [
+            "NintendoSwitch"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "wartales",
+      "title": "Wartales",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1527950/b5a76e8c74bde389df6a3f3e2c26f9818b9ef8ae/header_alt_assets_19.jpg?t=1788789153",
+      "aliases": [],
+      "developers": [
+        "Shiro Games"
+      ],
+      "publishers": [
+        "Shiro Games"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Adventure",
+        "Indie",
+        "RPG",
+        "Strategy"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1527950",
+          "productUrl": "https://store.steampowered.com/app/1527950",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "ace-attorney-investigations-collection",
+      "title": "Ace Attorney Investigations Collection",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2401970/header.jpg?t=1768864791",
+      "aliases": [
+        "역전검사 1&2 미츠루기 셀렉션"
+      ],
+      "developers": [
+        "CAPCOM Co., Ltd."
+      ],
+      "publishers": [
+        "CAPCOM Co., Ltd."
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Adventure"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2401970",
+          "productUrl": "https://store.steampowered.com/app/2401970",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "monster-hunter-stories-3-twisted-reflection",
+      "title": "Monster Hunter Stories 3: Twisted Reflection",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2852190/de3717096a093d7bf9ab504563621bc17e37ccf4/header.jpg?t=1782425255",
+      "aliases": [
+        "몬스터헌터 스토리즈 3 엇갈린 운명"
+      ],
+      "developers": [
+        "CAPCOM Co., Ltd."
+      ],
+      "publishers": [
+        "CAPCOM Co., Ltd."
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Adventure",
+        "RPG"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2852190",
+          "productUrl": "https://store.steampowered.com/app/2852190",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "halloween-the-game",
+      "title": "Halloween: The Game",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3219630/153ed105c4b409fe689783e4f9b6aad72c152646/header.jpg?t=1788897758",
+      "aliases": [],
+      "developers": [
+        "IllFonic"
+      ],
+      "publishers": [
+        "IllFonic Publishing",
+        "Co-Publisher: Gun Interactive"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "3219630",
+          "productUrl": "https://store.steampowered.com/app/3219630",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "wanderburg",
+      "title": "Wanderburg 완더버그",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3624140/1af8e0906799b8c9063d0e5031571aef48b55605/header_alt_assets_2.jpg?t=1788882563",
+      "aliases": [],
+      "developers": [
+        "Randwerk"
+      ],
+      "publishers": [
+        "Sidekick Publishing"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Casual",
+        "Indie",
+        "RPG",
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "3624140",
+          "productUrl": "https://store.steampowered.com/app/3624140",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "alchemy-factory",
+      "title": "Alchemy Factory",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3669570/6972705aba17c765ed16a98d81312a6970a9d362/header_alt_assets_0.jpg?t=1788863012",
+      "aliases": [],
+      "developers": [
+        "D5 Copperhead"
+      ],
+      "publishers": [
+        "Gamirror Games"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Casual",
+        "Indie",
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "3669570",
+          "productUrl": "https://store.steampowered.com/app/3669570",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "call-of-duty-black-ops-6",
+      "title": "Call of Duty®: Black Ops 6",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4384550/836828b783fc1208664d6c3f9fe88e9abf060813/header.jpg?t=1783699904",
+      "aliases": [
+        "콜 오브 듀티®: 블랙 옵스 6"
+      ],
+      "developers": [
+        "Treyarch",
+        "Raven Software",
+        "Beenox",
+        "High Moon Studios",
+        "Activision Shanghai",
+        "Sledgehammer Games",
+        "Infinity Ward",
+        "Demonware"
+      ],
+      "publishers": [
+        "Activision"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Cross-Platform"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "4384550",
+          "productUrl": "https://store.steampowered.com/app/4384550",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "borderlands-4",
+      "title": "Borderlands 4",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1285190/71a1e69cbe3f94a3ee77e4735f89c99b57230fe4/header_alt_assets_4.jpg?t=1789062265",
+      "aliases": [
+        "보더랜드® 4"
+      ],
+      "developers": [
+        "Gearbox Software"
+      ],
+      "publishers": [
+        "2K"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "RPG"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Cross-Platform"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1285190",
+          "productUrl": "https://store.steampowered.com/app/1285190",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "iv",
+      "title": "디아블로® IV",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2344520/80f21a42e378b93e8fbb68ee43103be8ab84891b/header.jpg?t=1782839766",
+      "aliases": [],
+      "developers": [
+        "Blizzard Entertainment, Inc."
+      ],
+      "publishers": [
+        "Blizzard Entertainment, Inc."
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "Casual",
+        "MMO",
+        "RPG"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2344520",
+          "productUrl": "https://store.steampowered.com/app/2344520",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "kalpa-cosmic-symphony",
+      "title": "칼파: 코스믹 심포니(KALPA: Cosmic Symphony)",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2717010/52f4b6ad5b54f3c86ee83b248192242142e19389/header.jpg?t=1785151510",
+      "aliases": [],
+      "developers": [
+        "QueseraGames"
+      ],
+      "publishers": [
+        "QueseraGames"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Casual",
+        "Indie",
+        "Sports"
+      ],
+      "tags": [
+        "Multiplayer"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2717010",
+          "productUrl": "https://store.steampowered.com/app/2717010",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "platina-lab",
+      "title": "PLATiNA :: LAB",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3430470/112e60fff52154d1f5c2c406e89ff51b74cd76e8/header.jpg?t=1789028074",
+      "aliases": [],
+      "developers": [
+        "HIGH-END Games"
+      ],
+      "publishers": [
+        "HIGH-END Games",
+        "XD (regional publisher)"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "3430470",
+          "productUrl": "https://store.steampowered.com/app/3430470",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "the-legend-of-fancy-realm-remake",
+      "title": "The Legend of Fancy Realm Remake",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4030150/d0cf2fdb5f7be154aef2a6c5cdacb32d3dc9538a/header.jpg?t=1789030369",
+      "aliases": [
+        "환세록 리메이크"
+      ],
+      "developers": [
+        "USERJOY Technology Co.,Ltd."
+      ],
+      "publishers": [
+        "USERJOY Technology Co.,Ltd."
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Adventure",
+        "RPG",
+        "Strategy"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "4030150",
+          "productUrl": "https://store.steampowered.com/app/4030150",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "artillery-miner",
+      "title": "Artillery Miner",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4391380/715bcdbb8b875a7557a03a890fb415e67aad066d/header.jpg?t=1789044759",
+      "aliases": [],
+      "developers": [
+        "Alextgr8"
+      ],
+      "publishers": [
+        "Alextgr8"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Casual",
+        "Indie",
+        "Simulation"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "4391380",
+          "productUrl": "https://store.steampowered.com/app/4391380",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "new-classic-the-embodiment-of-scarlet-devil",
+      "title": "동방홍마향: New Classic　～ the Embodiment of Scarlet Devil",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4659620/8b4369c7a677250b8583e87cb9e57c2d96a85137/header_koreana.jpg?t=1788964897",
+      "aliases": [],
+      "developers": [
+        "上海アリス幻樂団",
+        "上海アリスReprise"
+      ],
+      "publishers": [
+        "Alliance Arts"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Indie"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "4659620",
+          "productUrl": "https://store.steampowered.com/app/4659620",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "the-witcher-3-wild-hunt-complete-edition",
+      "title": "The Witcher 3: Wild Hunt - Complete Edition",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/292030/97cca1147b256f450331044255b1dbd2d57d609e/header_alt_assets_4.jpg?t=1788333513",
+      "aliases": [
+        "더 위쳐 3: 와일드 헌트 - 컴플리트 에디션"
+      ],
+      "developers": [
+        "CD PROJEKT RED"
+      ],
+      "publishers": [
+        "CD PROJEKT RED"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "RPG"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "292030",
+          "productUrl": "https://store.steampowered.com/app/292030",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "temtem",
+      "title": "Temtem",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/745920/header.jpg?t=1773698361",
+      "aliases": [],
+      "developers": [
+        "Crema"
+      ],
+      "publishers": [
+        "Balor Games"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Adventure",
+        "Indie",
+        "MMO",
+        "RPG"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op",
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "745920",
+          "productUrl": "https://store.steampowered.com/app/745920",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "sniper-elite-5",
+      "title": "Sniper Elite 5",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1029690/header.jpg?t=1770633150",
+      "aliases": [],
+      "developers": [
+        "Rebellion"
+      ],
+      "publishers": [
+        "Rebellion"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1029690",
+          "productUrl": "https://store.steampowered.com/app/1029690",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "death-stranding-director-s-cut",
+      "title": "DEATH STRANDING DIRECTOR'S CUT",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1850570/header.jpg?t=1773400635",
+      "aliases": [],
+      "developers": [
+        "KOJIMA PRODUCTIONS"
+      ],
+      "publishers": [
+        "505 Games"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "1850570",
+          "productUrl": "https://store.steampowered.com/app/1850570",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "the-farmer-was-replaced",
+      "title": "The Farmer Was Replaced",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2060160/a93cdbf3f795ca7736dca7fde208c5cd5fcf2a9e/header.jpg?t=1788960388",
+      "aliases": [
+        "농부는 대체되었다"
+      ],
+      "developers": [
+        "Timon Herzog"
+      ],
+      "publishers": [
+        "Metaroot",
+        "Timon Herzog"
+      ],
+      "platforms": [
+        "Windows",
+        "macOS"
+      ],
+      "genres": [
+        "Casual",
+        "Indie",
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2060160",
+          "productUrl": "https://store.steampowered.com/app/2060160",
+          "platforms": [
+            "Windows",
+            "macOS"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "sniper-elite-resistance",
+      "title": "Sniper Elite: Resistance",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2169200/header.jpg?t=1765448187",
+      "aliases": [],
+      "developers": [
+        "Rebellion"
+      ],
+      "publishers": [
+        "Rebellion"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure"
+      ],
+      "tags": [
+        "Multiplayer",
+        "Co-op"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2169200",
+          "productUrl": "https://store.steampowered.com/app/2169200",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "mortal-shell-ii",
+      "title": "Mortal Shell II",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2584270/0a4c23b70ced29fac344186ea564dae67c80cfd6/header.jpg?t=1788251111",
+      "aliases": [],
+      "developers": [
+        "Cold Symmetry"
+      ],
+      "publishers": [
+        "Playstack"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "RPG"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2584270",
+          "productUrl": "https://store.steampowered.com/app/2584270",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "orc-incremental",
+      "title": "Orc Incremental",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4047270/db22cfcdc39f5f3a44f210e0766a46962b844b51/header.jpg?t=1789178246",
+      "aliases": [],
+      "developers": [
+        "Nice Ride"
+      ],
+      "publishers": [
+        "Playsaurus"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Adventure",
+        "Indie",
+        "RPG",
+        "Simulation",
+        "Strategy"
+      ],
+      "tags": [],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "4047270",
+          "productUrl": "https://store.steampowered.com/app/4047270",
+          "platforms": [
+            "Windows"
+          ],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    },
+    {
+      "id": "black-myth-wukong",
+      "title": "Black Myth: Wukong",
+      "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2358720/header.jpg?t=1760601605",
+      "aliases": [
+        "검은 신화: 오공"
+      ],
+      "developers": [
+        "Game Science"
+      ],
+      "publishers": [
+        "Game Science"
+      ],
+      "platforms": [
+        "Windows"
+      ],
+      "genres": [
+        "Action",
+        "Adventure",
+        "RPG"
+      ],
+      "tags": [
+        "Controller"
+      ],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "2358720",
+          "productUrl": "https://store.steampowered.com/app/2358720",
           "platforms": [
             "Windows"
           ],

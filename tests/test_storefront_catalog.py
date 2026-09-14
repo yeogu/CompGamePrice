@@ -43,6 +43,19 @@ PLAYSTATION_PRODUCT = b"""
 </script></head><body>PS4</body></html>
 """
 
+PLAYSTATION_BUNDLE = """
+<html><script type="application/ld+json">
+{"@type":"Product","name":"Hazelight 번들","sku":"BUNDLE-1",
+ "offers":{"price":"23760","priceCurrency":"KRW"}}
+</script><body>PS4 PS5
+{"productId":"BUNDLE-1","originalPriceValue":72000,"discountPriceValue":23760}
+</body></html>
+""".encode()
+
+PLAYSTATION_FRIEND_PASS = PLAYSTATION_PRODUCT.replace(
+    b'"name":"Hades"', b'"name":"It Takes Two - Friend\'s Pass"'
+).replace(b'"price":"26000"', b'"price":"0"')
+
 MICROSOFT_PRODUCT = b"""
 <script type="application/ld+json">
 {"@type":"Product","name":"Hades","productID":"9P8DL6W0JBB8",
@@ -340,6 +353,64 @@ class StorefrontCatalogTest(unittest.TestCase):
             metadata["imageUrl"],
             "https://image.example/hades.jpg",
         )
+
+    def test_parses_playstation_bundle_purchase_offer(self):
+        metadata = storefront_catalog.verified_product(
+            PLAYSTATION_BUNDLE,
+            "PlayStationStore",
+            "https://store.playstation.com/ko-kr/product/BUNDLE-1",
+        )
+        self.assertEqual(metadata["offerType"], "Bundle")
+        self.assertEqual(metadata["offerName"], "Hazelight 번들")
+        self.assertEqual(metadata["priceMinor"], 23760)
+        self.assertEqual(metadata["regularPriceMinor"], 72000)
+        self.assertEqual(metadata["discountPercent"], 67)
+
+    def test_bundle_requires_review_and_can_attach_to_included_game(self):
+        catalog = {
+            "schemaVersion": 4,
+            "games": [{
+                "id": "it-takes-two",
+                "title": "It Takes Two",
+                "developers": ["Hazelight Studios"],
+                "platforms": ["PlayStation5"],
+                "products": [],
+            }],
+        }
+        metadata = storefront_catalog.verified_product(
+            PLAYSTATION_BUNDLE,
+            "PlayStationStore",
+            "https://store.playstation.com/ko-kr/product/BUNDLE-1",
+        )
+        unchanged, preview = catalog_import.updated_catalog(
+            catalog,
+            "PlayStationStore",
+            "https://store.playstation.com/ko-kr/product/BUNDLE-1",
+            "it-takes-two",
+            metadata,
+        )
+        self.assertEqual(preview["matchDecision"]["status"], "NeedsReview")
+        self.assertEqual(unchanged["games"][0]["products"], [])
+
+        updated, _ = catalog_import.updated_catalog(
+            catalog,
+            "PlayStationStore",
+            "https://store.playstation.com/ko-kr/product/BUNDLE-1",
+            "it-takes-two",
+            metadata,
+            acknowledge_review=True,
+        )
+        product = updated["games"][0]["products"][0]
+        self.assertEqual(product["offerType"], "Bundle")
+        self.assertEqual(product["offerName"], "Hazelight 번들")
+
+    def test_rejects_playstation_friend_pass(self):
+        with self.assertRaisesRegex(ValueError, "friend-pass"):
+            storefront_catalog.verified_product(
+                PLAYSTATION_FRIEND_PASS,
+                "PlayStationStore",
+                "https://store.playstation.com/ko-kr/product/FRIEND-PASS",
+            )
 
     def test_distinguishes_xbox_console_generation(self):
         metadata = storefront_catalog.verified_product(

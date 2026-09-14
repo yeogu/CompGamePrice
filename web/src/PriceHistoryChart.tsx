@@ -27,7 +27,11 @@ type DisplayProductHistory = Omit<ProductPriceHistory, 'observations'> & {
   observations: DisplayObservation[]
 }
 interface ChartPoint { x: number; y: number; observation: DisplayObservation }
-interface TooltipState { store: string; observation: DisplayObservation; left: number; top: number }
+interface TooltipState { store: string; label: string; observation: DisplayObservation; left: number; top: number }
+
+const seriesKey = (history: ProductPriceHistory) => `${history.store}:${history.productId}`
+const seriesLabel = (history: ProductPriceHistory) =>
+  history.offerType === 'Bundle' ? `${history.store} · ${history.offerName || '번들'}` : history.store
 
 const dailyObservations = (history: DisplayProductHistory) => {
   const byDate = new Map<string, DisplayObservation>()
@@ -78,17 +82,18 @@ const daysBetween = (later: string, earlier: string) => Math.max(0, Math.floor(
     new Date(`${earlier.slice(0, 10)}T00:00:00Z`).getTime()) / 86_400_000,
 ))
 
-function PointShape({ point, store, onPointer, onLeave }: {
+function PointShape({ point, store, label, onPointer, onLeave }: {
   point: ChartPoint
   store: string
-  onPointer: (event: PointerEvent<SVGElement>, store: string, observation: DisplayObservation) => void
+  label: string
+  onPointer: (event: PointerEvent<SVGElement>, store: string, label: string, observation: DisplayObservation) => void
   onLeave: () => void
 }) {
   const color = storeAccentColor(store)
   const events = {
-    onPointerEnter: (event: PointerEvent<SVGElement>) => onPointer(event, store, point.observation),
-    onPointerMove: (event: PointerEvent<SVGElement>) => onPointer(event, store, point.observation),
-    onPointerDown: (event: PointerEvent<SVGElement>) => onPointer(event, store, point.observation),
+    onPointerEnter: (event: PointerEvent<SVGElement>) => onPointer(event, store, label, point.observation),
+    onPointerMove: (event: PointerEvent<SVGElement>) => onPointer(event, store, label, point.observation),
+    onPointerDown: (event: PointerEvent<SVGElement>) => onPointer(event, store, label, point.observation),
     onPointerLeave: onLeave,
   }
   return <circle {...events} className="trend-point" cx={point.x} cy={point.y} r="4.5" stroke={color} />
@@ -116,17 +121,17 @@ function PriceHistoryChart({ histories }: Props) {
     () => comparable.filter((history) => history.observations.length >= 2),
     [comparable],
   )
-  const [hiddenStores, setHiddenStores] = useState<Set<string>>(new Set())
+  const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set())
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   const chartWrapRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    setHiddenStores((current) => new Set(
-      [...current].filter((store) => trendable.some((history) => history.store === store)),
+    setHiddenSeries((current) => new Set(
+      [...current].filter((key) => trendable.some((history) => seriesKey(history) === key)),
     ))
   }, [trendable])
 
-  const visible = trendable.filter((history) => !hiddenStores.has(history.store))
+  const visible = trendable.filter((history) => !hiddenSeries.has(seriesKey(history)))
   const chart = useMemo(() => {
     const dailySeries = visible.map((history) => ({
       ...history,
@@ -176,17 +181,17 @@ function PriceHistoryChart({ histories }: Props) {
     return <p className="notice">아직 저장된 가격 관측값이 없습니다.</p>
   }
 
-  const toggleStore = (store: string) => {
+  const toggleSeries = (key: string) => {
     setTooltip(null)
-    setHiddenStores((current) => {
+    setHiddenSeries((current) => {
       const next = new Set(current)
-      if (next.has(store)) next.delete(store)
-      else next.add(store)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
       return next
     })
   }
 
-  const showTooltip = (event: PointerEvent<SVGElement>, store: string, observation: DisplayObservation) => {
+  const showTooltip = (event: PointerEvent<SVGElement>, store: string, label: string, observation: DisplayObservation) => {
     const bounds = chartWrapRef.current?.getBoundingClientRect()
     if (!bounds) return
     const tooltipWidth = Math.min(270, Math.max(180, bounds.width - 24))
@@ -195,6 +200,7 @@ function PriceHistoryChart({ histories }: Props) {
     const left = Math.max(12, Math.min(preferredLeft, bounds.width - tooltipWidth - 12))
     setTooltip({
       store,
+      label,
       observation,
       left,
       top: event.clientY - bounds.top + 14,
@@ -207,11 +213,12 @@ function PriceHistoryChart({ histories }: Props) {
         <div className="store-legend" aria-label="표시할 Store 선택">
           {trendable.map((history) => {
             const color = storeAccentColor(history.store)
-            const active = !hiddenStores.has(history.store)
+            const key = seriesKey(history)
+            const active = !hiddenSeries.has(key)
             return (
-              <button aria-pressed={active} className={active ? 'active' : ''} key={history.store} onClick={() => toggleStore(history.store)}>
+              <button aria-pressed={active} className={active ? 'active' : ''} key={key} onClick={() => toggleSeries(key)}>
                 <span className="legend-shape" style={{ borderColor: color, backgroundColor: active ? color : 'transparent' }} />
-                {history.store}
+                {seriesLabel(history)}
               </button>
             )
           })}
@@ -232,11 +239,12 @@ function PriceHistoryChart({ histories }: Props) {
               {chart.series.map((series) => {
                 const color = storeAccentColor(series.store)
                 return (
-                  <g aria-label={series.store} key={series.store}>
+                  <g aria-label={seriesLabel(series)} key={seriesKey(series)}>
                     {series.points.length > 1 && <polyline className="trend-line" points={series.points.map((point) => `${point.x},${point.y}`).join(' ')} stroke={color} />}
                     {series.points.map((point, index) => (
                       <PointShape
-                        key={`${series.store}-${index}`}
+                        key={`${seriesKey(series)}-${index}`}
+                        label={seriesLabel(series)}
                         onLeave={() => setTooltip(null)}
                         onPointer={showTooltip}
                         point={point}
@@ -250,7 +258,7 @@ function PriceHistoryChart({ histories }: Props) {
             {tooltip && (
               <div className="chart-tooltip" role="status" style={{ left: tooltip.left, top: tooltip.top }}>
                 <span style={{ color: storeAccentColor(tooltip.store) }}>
-                  {tooltip.store}
+                  {tooltip.label}
                 </span>
                 <strong>{formatMoney(tooltip.observation.price)}</strong>
                 {tooltip.observation.originalPrice && <small>원가격 {formatMoney(tooltip.observation.originalPrice)}</small>}
@@ -296,8 +304,8 @@ function PriceHistoryChart({ histories }: Props) {
               const color = storeAccentColor(series.store)
               const hasTrend = series.observations.length >= 2
               return (
-                <div key={series.store}>
-                  <span><i style={{ backgroundColor: color }} />{series.store}</span>
+                <div key={seriesKey(series)}>
+                  <span><i style={{ backgroundColor: color }} />{seriesLabel(series)}</span>
                   <time dateTime={latest.observedAt}>{formatDate(latest.observedAt)}</time>
                   <strong>
                     {formatMoney(latest.price)}

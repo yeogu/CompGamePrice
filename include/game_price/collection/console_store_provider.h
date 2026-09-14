@@ -25,6 +25,7 @@ private:
         int discountPercent{};
         std::vector<Platform> platforms;
         bool purchasable{false};
+        OfferType offerType{OfferType::BaseGame};
     };
 
     Store store_;
