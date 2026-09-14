@@ -141,7 +141,7 @@ def run_pipeline(
         return completed.returncode
     result = 2 if failures else 0
     if database is not None:
-        status = "FAILED" if failures else "SUCCEEDED"
+        status = "PARTIAL" if failures else "SUCCEEDED"
         error = collection_error(failures, "Partial product collection failure")
         collection_status.record_price_collection(
             database,

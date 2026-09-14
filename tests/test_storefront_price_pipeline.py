@@ -106,6 +106,7 @@ class StorefrontPricePipelineTest(unittest.TestCase):
     def test_reports_partial_result_when_some_products_failed(self):
         collector = pipeline.COLLECTORS["EpicGamesStore"][0]
         with tempfile.TemporaryDirectory() as directory:
+            database = Path(directory) / "prices.db"
             with patch.object(
                 collector,
                 "collect",
@@ -117,8 +118,15 @@ class StorefrontPricePipelineTest(unittest.TestCase):
                     Path("tracker"),
                     Path("catalog"),
                     Path(directory),
+                    database,
                 )
+            with sqlite3.connect(database) as connection:
+                status = connection.execute(
+                    "SELECT status FROM catalog_sync_price_collection "
+                    "WHERE provider = 'EpicGamesStore'",
+                ).fetchone()[0]
         self.assertEqual(result, 2)
+        self.assertEqual(status, "PARTIAL")
 
 
 if __name__ == "__main__":

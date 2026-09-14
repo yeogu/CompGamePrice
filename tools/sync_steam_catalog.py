@@ -653,7 +653,7 @@ def record_price_collection(
     error_message: str | None = None,
     provider: str = "Steam",
 ) -> None:
-    if status not in {"NOT_REQUIRED", "RUNNING", "SUCCEEDED", "FAILED"}:
+    if status not in {"NOT_REQUIRED", "RUNNING", "SUCCEEDED", "PARTIAL", "FAILED"}:
         raise ValueError("invalid catalog price collection status")
     with sqlite3.connect(database_path) as connection:
         initialize_state(connection)

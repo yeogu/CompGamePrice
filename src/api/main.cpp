@@ -30,6 +30,7 @@
 #include <map>
 #include <fcntl.h>
 #include <sys/file.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 namespace {
@@ -824,8 +825,11 @@ private:
             " --output-dir " + shellQuoted(
                 (project / "snapshots/latest").string());
         const auto exitCode = std::system(command.c_str());
+        const auto pipelineExitCode = WIFEXITED(exitCode)
+            ? WEXITSTATUS(exitCode)
+            : exitCode;
         std::size_t integrityIssueCount = 0;
-        if (exitCode == 0) {
+        if (pipelineExitCode == 0 || pipelineExitCode == 2) {
             try {
                 integrityIssueCount = runPriceIntegrityAudit()["issueCount"].asUInt64();
             } catch (const std::exception&) {
@@ -834,8 +838,12 @@ private:
         }
         std::lock_guard<std::mutex> lock(mutex_);
         integrityIssueCount_ = integrityIssueCount;
-        status_ = exitCode == 0 ? "SUCCEEDED" : "FAILED";
-        if (exitCode != 0) {
+        status_ = pipelineExitCode == 0
+            ? "SUCCEEDED"
+            : pipelineExitCode == 2 ? "PARTIAL" : "FAILED";
+        if (pipelineExitCode == 2) {
+            error_ = store + " collection completed with unavailable products";
+        } else if (pipelineExitCode != 0) {
             error_ = store + " collection pipeline failed";
         }
         releaseCollectionLock(lockDescriptor);

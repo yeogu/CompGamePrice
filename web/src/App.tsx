@@ -1611,10 +1611,12 @@ function App() {
     const timer = window.setInterval(() => {
       void getCatalogCollectionJob().then((job) => {
         setCatalogJob(job)
-        if (job.status === 'SUCCEEDED' || job.status === 'FAILED') {
+        if (job.status === 'SUCCEEDED' || job.status === 'PARTIAL' || job.status === 'FAILED') {
           setActionMessage(job.status === 'SUCCEEDED'
             ? `${job.store ?? 'Store'} 가격 수집과 정합성 검사가 완료되었습니다.`
-            : `${job.store ?? 'Store'} 가격 수집에 실패했습니다. 수집 이력에서 원인을 확인하세요.`)
+            : job.status === 'PARTIAL'
+              ? `${job.store ?? 'Store'} 가격 수집이 일부 완료되었습니다. 판매 종료·가격 미제공 상품은 정합성 목록에서 확인하세요.`
+              : `${job.store ?? 'Store'} 가격 수집에 실패했습니다. 수집 이력에서 원인을 확인하세요.`)
           void getCollectionRuns().then(setCollectionRuns)
           void getCatalogPriceIntegrity().then(setPriceIntegrity)
           void getAdminHealthSummary().then(setAdminHealth)
@@ -2536,9 +2538,9 @@ function App() {
             <span className={priceIntegrity.issueCount > 0 ? 'warning' : ''}>문제 {priceIntegrity.issueCount}건</span>
             <small>검사 시각 {new Date(priceIntegrity.checkedAt).toLocaleString('ko-KR')}</small>
           </div>}
-          {integrityCollectionTarget && <div className={`integrity-collection-status ${integrityCollectionError || catalogJob?.status === 'FAILED' ? 'failed' : catalogJob?.status === 'SUCCEEDED' ? 'succeeded' : 'running'}`} role={integrityCollectionError || catalogJob?.status === 'FAILED' ? 'alert' : 'status'} aria-live="polite">
+          {integrityCollectionTarget && <div className={`integrity-collection-status ${integrityCollectionError || catalogJob?.status === 'FAILED' ? 'failed' : catalogJob?.status === 'SUCCEEDED' || catalogJob?.status === 'PARTIAL' ? 'succeeded' : 'running'}`} role={integrityCollectionError || catalogJob?.status === 'FAILED' ? 'alert' : 'status'} aria-live="polite">
             <strong>{integrityCollectionTarget.gameTitle} · {integrityCollectionTarget.store}</strong>
-            <span>{integrityCollectionStarting ? '재수집을 요청하는 중입니다…' : integrityCollectionError ? '가격 재수집을 시작하지 못했습니다.' : catalogJob?.status === 'RUNNING' ? '가격을 다시 수집하고 있습니다. 완료되면 정합성 목록을 자동으로 갱신합니다.' : catalogJob?.status === 'SUCCEEDED' ? '가격 재수집이 완료되었습니다. 갱신된 정합성 결과를 확인하세요.' : catalogJob?.status === 'FAILED' ? '가격 재수집에 실패했습니다.' : '가격 재수집 상태를 확인하고 있습니다.'}</span>
+            <span>{integrityCollectionStarting ? '재수집을 요청하는 중입니다…' : integrityCollectionError ? '가격 재수집을 시작하지 못했습니다.' : catalogJob?.status === 'RUNNING' ? '가격을 다시 수집하고 있습니다. 완료되면 정합성 목록을 자동으로 갱신합니다.' : catalogJob?.status === 'SUCCEEDED' ? '가격 재수집이 완료되었습니다. 갱신된 정합성 결과를 확인하세요.' : catalogJob?.status === 'PARTIAL' ? '일부 상품의 가격을 갱신했습니다. 남은 항목은 판매 상태나 상품 연결을 확인하세요.' : catalogJob?.status === 'FAILED' ? '가격 재수집에 실패했습니다.' : '가격 재수집 상태를 확인하고 있습니다.'}</span>
             {(integrityCollectionError || catalogJob?.error) && <small>{integrityCollectionError || catalogJob?.error}</small>}
           </div>}
           <div className="integrity-groups">
