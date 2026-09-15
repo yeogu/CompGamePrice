@@ -46,6 +46,25 @@ catalog["games"].append({
     }],
 })
 catalog["games"].append({
+    "id": "runtime-switch2-compatible-game",
+    "title": "Runtime Switch 2 Compatible Game",
+    "platforms": ["NintendoSwitch"],
+    "genres": ["Test"],
+    "tags": [],
+    "aliases": [],
+    "developers": ["Test"],
+    "publishers": ["Test"],
+    "products": [{
+        "store": "NintendoEShop",
+        "productId": "runtime-switch2-compatible",
+        "productUrl": "https://example.invalid/runtime-switch2-compatible",
+        "platforms": ["NintendoSwitch"],
+        "region": "KR",
+        "edition": "Standard",
+        "offerType": "BaseGame",
+    }],
+})
+catalog["games"].append({
     "id": "bundle-price-test",
     "title": "Bundle Price Test",
     "platforms": ["PlayStation5"],
@@ -107,6 +126,31 @@ with sqlite3.connect(sys.argv[1]) as connection:
         "INSERT INTO product_platforms(store, external_product_id, platform) VALUES('PlayStation Store', ?, 'PlayStation 5')",
         [("BASE-GAME",), ("TWO-GAME-BUNDLE",)],
     )
+    connection.execute(
+        "INSERT INTO games(id, title, normalized_title) VALUES(?, ?, ?)",
+        ("runtime-switch2-compatible-game", "Runtime Switch 2 Compatible Game",
+         "runtime switch 2 compatible game"),
+    )
+    connection.execute("""
+        INSERT INTO store_products(
+            store, external_product_id, game_id, price_minor,
+            regular_price_minor, discount_percent, currency, purchasable,
+            region, edition, offer_type, last_checked_at,
+            last_successful_check_at
+        ) VALUES('Nintendo eShop', 'runtime-switch2-compatible', ?,
+                 28600, 28600, 0, 'KRW', 1, 'KR', 'Standard',
+                 'BaseGame', ?, ?)
+    """, ("runtime-switch2-compatible-game", now, now))
+    connection.execute("""
+        INSERT INTO product_platforms(store, external_product_id, platform)
+        VALUES('Nintendo eShop', 'runtime-switch2-compatible', 'Nintendo Switch')
+    """)
+    connection.execute("""
+        INSERT INTO product_compatibility(
+            store, external_product_id, platform, status)
+        VALUES('Nintendo eShop', 'runtime-switch2-compatible',
+               'Nintendo Switch 2', 'Compatible')
+    """)
 PY
 GAME_PRICE_DATABASE_PATH="${test_database}" "${tracker_binary}" collect \
     --data-dir "${project_directory}/data" Hades >/dev/null
@@ -419,6 +463,12 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
 [[ "${status}" == "200" ]]
 grep -q '"id":"hades"' "${response_body}"
 ! grep -q '"id":"unpriced-nintendo-game"' "${response_body}"
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/games?platform=Nintendo%20Switch%202")
+[[ "${status}" == "200" ]]
+grep -q '"id":"runtime-switch2-compatible-game"' "${response_body}"
+grep -q '"platforms":.*"Nintendo Switch 2"' "${response_body}"
 
 python3 - "${test_database}" <<'PY'
 import sqlite3

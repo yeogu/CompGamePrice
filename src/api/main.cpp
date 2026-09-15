@@ -839,6 +839,7 @@ private:
             (project / pipeline).string()) + pipelineArguments +
             " --tracker " + shellQuoted(trackerPath().string()) +
             " --catalog " + shellQuoted(catalogPath()) +
+            " --database " + shellQuoted(databasePath()) +
             " --output-dir " + shellQuoted(
                 (project / "snapshots/latest").string());
         const auto exitCode = std::system(command.c_str());
@@ -2923,7 +2924,13 @@ int main() {
                     return;
                 }
                 std::vector<CatalogGameSummary> summaries;
-                const auto games = queryService.filterGames(filter);
+                auto catalogFilter = filter;
+                // Runtime product compatibility (for example a Switch title
+                // running on Switch 2) lives in the collected price data, not
+                // necessarily in the canonical game's native platform list.
+                // Let the price comparison apply the platform filter below.
+                catalogFilter.platform.reset();
+                const auto games = queryService.filterGames(catalogFilter);
                 for (const auto& game : games) {
                     PriceComparisonCriteria criteria;
                     criteria.platform = filter.platform;
@@ -2944,6 +2951,15 @@ int main() {
                                 {},
                                 "Collecting"});
                         continue;
+                    }
+                    auto displayGame = game;
+                    if (filter.platform &&
+                        std::find(
+                            displayGame.supportedPlatforms.begin(),
+                            displayGame.supportedPlatforms.end(),
+                            *filter.platform) ==
+                            displayGame.supportedPlatforms.end()) {
+                        displayGame.supportedPlatforms.push_back(*filter.platform);
                     }
                     std::optional<Money> lowestPrice;
                     std::optional<int> maxDiscountPercent;
@@ -2981,7 +2997,7 @@ int main() {
                     }
                     if (lowestPrice) {
                         summaries.push_back(CatalogGameSummary{
-                            game,
+                            displayGame,
                             *lowestPrice,
                             maxDiscountPercent,
                             std::move(lastUpdatedAt),
@@ -2992,7 +3008,7 @@ int main() {
                         continue;
                     }
                     summaries.push_back(CatalogGameSummary{
-                        game,
+                        displayGame,
                         std::nullopt,
                         std::nullopt,
                         {},
