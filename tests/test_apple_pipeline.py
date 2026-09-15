@@ -21,7 +21,8 @@ class ApplePipelineTest(unittest.TestCase):
     def test_collects_then_imports_with_catalog_and_database(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory)
-            with patch.object(pipeline.collector, "collect", return_value=1), patch.object(
+            database = output / "game_prices.db"
+            with patch.object(pipeline.collector, "collect", return_value=(1, [])), patch.object(
                 pipeline.subprocess,
                 "run",
             ) as run:
@@ -30,7 +31,7 @@ class ApplePipelineTest(unittest.TestCase):
                     ROOT / "build/game_price_tracker",
                     ROOT / "data/game_catalog.json",
                     output,
-                    ROOT / "build/game_prices.db",
+                    database,
                 )
             self.assertEqual(result, 0)
             command = run.call_args.args[0]
@@ -38,11 +39,11 @@ class ApplePipelineTest(unittest.TestCase):
             self.assertIn("collect-apple-all", command)
             self.assertEqual(
                 environment["GAME_PRICE_DATABASE_PATH"],
-                str(ROOT / "build/game_prices.db"),
+                str(database),
             )
 
     def test_does_not_import_when_collection_is_empty(self):
-        with patch.object(pipeline.collector, "collect", return_value=0), patch.object(
+        with patch.object(pipeline.collector, "collect", return_value=(0, [])), patch.object(
             pipeline.subprocess,
             "run",
         ) as run:

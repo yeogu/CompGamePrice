@@ -8,11 +8,10 @@ import html
 import json
 from pathlib import Path
 import re
-import tempfile
-import time
 from urllib.request import Request, urlopen
 
 import collect_steam_snapshot as network_support
+import storefront_price_support as support
 
 
 def google_play_targets(catalog: Path) -> list[tuple[str, str]]:
@@ -42,7 +41,9 @@ def product_document(raw: bytes) -> dict:
             "MobileApplication",
         }:
             return candidate
-    raise ValueError("Google Play response has no application metadata")
+    raise support.PermanentCollectionError(
+        "Google Play response has no application metadata"
+    )
 
 
 def normalized_block(raw: bytes, package_name: str, game_id: str) -> str:
@@ -53,15 +54,24 @@ def normalized_block(raw: bytes, package_name: str, game_id: str) -> str:
     else:
         offer = offers
     if not isinstance(offer, dict):
-        raise ValueError("Google Play response has no purchase offer")
+        raise support.PermanentCollectionError(
+            "Google Play response has no purchase offer"
+        )
     if offer.get("priceCurrency") != "KRW":
-        raise ValueError("Google Play response currency must be KRW")
+        raise support.PermanentCollectionError(
+            "REGION_MISMATCH: Google Play KR product returned currency "
+            f"{offer.get('priceCurrency') or 'UNKNOWN'}; expected KRW"
+        )
     try:
         price = int(offer["price"])
     except (KeyError, TypeError, ValueError) as error:
-        raise ValueError("Google Play KRW price must be an integer") from error
+        raise support.PermanentCollectionError(
+            "Google Play KRW price must be an integer"
+        ) from error
     if price < 0:
-        raise ValueError("Google Play KRW price cannot be negative")
+        raise support.PermanentCollectionError(
+            "Google Play KRW price cannot be negative"
+        )
     micros = price * 1_000_000
     return "\n".join(
         [
@@ -96,38 +106,37 @@ def collect(
     fetcher=fetch,
     product_id: str | None = None,
 ) -> tuple[int, list[tuple[str, str]]]:
-    blocks = []
-    failures = []
     targets = google_play_targets(catalog)
     if product_id is not None:
         targets = [target for target in targets if target[0] == product_id]
         if not targets:
             raise ValueError(f"unknown Google Play product: {product_id}")
-    for package_name, game_id in targets:
-        last_error = ""
-        for attempt in range(max_attempts):
-            try:
-                raw = fetcher(package_name, timeout)
-                blocks.append(normalized_block(raw, package_name, game_id))
-                break
-            except Exception as error:
-                last_error = str(error)
-                if attempt + 1 < max_attempts:
-                    time.sleep(retry_delay * (2**attempt))
-        else:
-            failures.append((package_name, last_error))
-    output.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(
-        "w",
-        encoding="utf-8",
-        dir=output.parent,
-        delete=False,
-    ) as temporary:
-        temporary.write("# Generated Google Play KR snapshot\n")
-        temporary.write("\n\n".join(blocks))
-        temporary.write("\n")
-        temporary_path = Path(temporary.name)
-    temporary_path.replace(output)
+    collection_targets = [
+        (package_name, game_id, "") for package_name, game_id in targets
+    ]
+
+    def selected_fetcher(package_name, _game_id, _url, selected_timeout):
+        return fetcher(package_name, selected_timeout)
+
+    def selected_normalizer(raw, package_name, game_id, _url):
+        return normalized_block(raw, package_name, game_id)
+
+    blocks, failures = support.collect_with_retry(
+        collection_targets,
+        selected_normalizer,
+        selected_fetcher,
+        timeout,
+        max_attempts,
+        retry_delay,
+        0,
+        max_workers=1,
+    )
+    if blocks:
+        support.atomic_write_text(
+            output,
+            "# Generated Google Play KR snapshot\n" +
+            "\n\n".join(blocks) + "\n",
+        )
     return len(blocks), failures
 
 

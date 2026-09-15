@@ -76,7 +76,10 @@ def normalizer_for(store: str):
                 f"{storefront_catalog.config(store)['display']} response has no price",
             )
         if currency != "KRW":
-            raise support.PermanentCollectionError("console Store price must be KRW")
+            raise support.PermanentCollectionError(
+                "REGION_MISMATCH: console KR product returned currency "
+                f"{currency or 'UNKNOWN'}; expected KRW"
+            )
         if price < 0:
             raise support.PermanentCollectionError("console Store price cannot be negative")
         platforms = [PLATFORM_VALUES[value] for value in metadata["platforms"]]

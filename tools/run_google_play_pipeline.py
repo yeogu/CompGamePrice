@@ -10,6 +10,7 @@ import subprocess
 import sys
 
 import collect_google_play_snapshot as collector
+from run_storefront_price_pipeline import record_product_results
 
 
 def run_pipeline(
@@ -28,11 +29,21 @@ def run_pipeline(
             output,
             product_id=product_id,
         )
-    for product_id, error in failures:
+    for failed_product_id, error in failures:
         print(
-            f"GooglePlay partial collection failure: {product_id}: {error}",
+            f"GooglePlay partial collection failure: {failed_product_id}: {error}",
             file=sys.stderr,
         )
+    selected_product_ids = set()
+    if catalog.exists():
+        selected_product_ids = {
+            package_name
+            for package_name, _game_id in collector.google_play_targets(catalog)
+            if product_id is None or package_name == product_id
+        }
+    record_product_results(
+        database, "GooglePlay", selected_product_ids, failures
+    )
     if collected == 0:
         return 1
     environment = dict(os.environ)

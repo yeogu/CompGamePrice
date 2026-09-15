@@ -56,7 +56,7 @@ class StorefrontPriceCollectorsTest(unittest.TestCase):
         )
         price = document["data"]["Catalog"]["searchStore"]["elements"][1]["price"]
         price["totalPrice"]["currencyCode"] = "USD"
-        with self.assertRaisesRegex(ValueError, "whole KRW"):
+        with self.assertRaisesRegex(ValueError, "REGION_MISMATCH.*USD"):
             epic.normalized_block(
                 json.dumps(document).encode(),
                 "hades",
@@ -131,6 +131,12 @@ class StorefrontPriceCollectorsTest(unittest.TestCase):
     def test_nintendo_classifies_foreign_currency_as_region_mismatch(self):
         raw = b'''<meta itemprop="priceCurrency" content="USD">
         <meta itemprop="price" content="24.99">'''
+        with self.assertRaisesRegex(ValueError, "REGION_MISMATCH.*USD"):
+            nintendo.normalized_row(raw, "1", "game", "ignored")
+
+    def test_nintendo_checks_currency_before_fractional_krw_validation(self):
+        raw = b'''<script>{"price_info":{"final_price":24.99,
+        "regular_price":24.99,"currency_code":"USD"}}</script>'''
         with self.assertRaisesRegex(ValueError, "REGION_MISMATCH.*USD"):
             nintendo.normalized_row(raw, "1", "game", "ignored")
 

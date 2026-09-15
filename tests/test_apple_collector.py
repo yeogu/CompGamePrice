@@ -63,6 +63,31 @@ class AppleCollectorTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "not categorized as a game"):
             apple_collector.normalized_row(raw, "100", "not-a-game")
 
+    def test_partial_failure_keeps_successful_products(self):
+        catalog = {
+            "games": [
+                {"id": "good", "products": [{"store": "AppleAppStore", "productId": "100"}]},
+                {"id": "bad", "products": [{"store": "AppleAppStore", "productId": "200"}]},
+            ]
+        }
+        raw = b'{"resultCount":1,"results":[{"trackId":100,"primaryGenreId":6014,"currency":"KRW","price":1000,"supportedDevices":["iPhone"]}]}'
+
+        def fetcher(track_id, _timeout):
+            if track_id == "200":
+                raise TimeoutError("timed out")
+            return raw
+
+        with tempfile.TemporaryDirectory() as directory:
+            catalog_path = Path(directory) / "catalog.json"
+            output_path = Path(directory) / "apple.csv"
+            catalog_path.write_text(json.dumps(catalog), encoding="utf-8")
+            count, failures = apple_collector.collect(
+                catalog_path, output_path, max_attempts=1, fetcher=fetcher
+            )
+            self.assertEqual(count, 1)
+            self.assertEqual(failures, [("200", "timed out")])
+            self.assertIn("100,good,1000,IPHONE,true", output_path.read_text())
+
 
 if __name__ == "__main__":
     unittest.main()

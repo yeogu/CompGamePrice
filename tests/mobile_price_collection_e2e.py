@@ -68,7 +68,7 @@ def google_collect_fixture(catalog: Path, output: Path) -> tuple[int, list]:
     return 1, []
 
 
-def apple_collect_fixture(catalog: Path, output: Path) -> int:
+def apple_collect_fixture(catalog: Path, output: Path) -> tuple[int, list]:
     del catalog
     raw = (ROOT / "tests/fixtures/apple_lookup_1406710800.json").read_bytes()
     row = collect_apple_snapshot.normalized_row(
@@ -83,7 +83,7 @@ def apple_collect_fixture(catalog: Path, output: Path) -> int:
         "\n",
         encoding="utf-8",
     )
-    return 1
+    return 1, []
 
 
 def main() -> int:

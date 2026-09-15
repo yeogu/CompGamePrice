@@ -117,7 +117,12 @@ def normalized_block(
         current_raw = total["discountPrice"]
     except (KeyError, TypeError) as error:
         raise support.PermanentCollectionError("Epic response has no price") from error
-    if currency != "KRW" or decimals != 0:
+    if currency != "KRW":
+        raise support.PermanentCollectionError(
+            "REGION_MISMATCH: Epic KR product returned currency "
+            f"{currency or 'UNKNOWN'}; expected KRW"
+        )
+    if decimals != 0:
         raise support.PermanentCollectionError("Epic price must be whole KRW")
     if not isinstance(regular_raw, int) or not isinstance(current_raw, int):
         raise support.PermanentCollectionError("Epic KRW prices must be integers")

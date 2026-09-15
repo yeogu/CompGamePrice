@@ -74,6 +74,27 @@ class GooglePlayCollectorTest(unittest.TestCase):
         self.assertIn("price_micros=0", result)
         self.assertIn("published=true", result)
 
+    def test_permanent_region_mismatch_is_not_retried(self):
+        attempts = 0
+        raw = b'<script type="application/ld+json">{"@type":"SoftwareApplication","offers":{"price":"4.99","priceCurrency":"USD"}}</script>'
+
+        def fetcher(_package_name, _timeout):
+            nonlocal attempts
+            attempts += 1
+            return raw
+
+        catalog = {"games": [{"id": "game", "products": [{"store": "GooglePlay", "productId": "package"}]}]}
+        with tempfile.TemporaryDirectory() as directory:
+            catalog_path = Path(directory) / "catalog.json"
+            catalog_path.write_text(__import__("json").dumps(catalog))
+            count, failures = collector.collect(
+                catalog_path, Path(directory) / "out.txt",
+                max_attempts=3, retry_delay=0, fetcher=fetcher,
+            )
+        self.assertEqual(count, 0)
+        self.assertIn("REGION_MISMATCH", failures[0][1])
+        self.assertEqual(attempts, 1)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -150,6 +150,13 @@ def normalized_row(
     price_text = parser.meta.get("price", "")
     if price_info:
         currency = str(price_info.get("currency_code", currency))
+        currency = currency.upper()
+        if currency != "KRW":
+            actual = currency or "UNKNOWN"
+            raise support.PermanentCollectionError(
+                "REGION_MISMATCH: Nintendo KR product returned currency "
+                f"{actual}; expected KRW"
+            )
         current_value = price_info.get("final_price")
         regular_value = price_info.get("regular_price", current_value)
         current_price = integer_krw(current_value, "final price")
@@ -168,7 +175,7 @@ def normalized_row(
     if currency != "KRW":
         actual = currency or "UNKNOWN"
         raise support.PermanentCollectionError(
-            "REGION_MISMATCH: Nintendo KR product returned "
+            "REGION_MISMATCH: Nintendo KR product returned currency "
             f"{actual}; expected KRW"
         )
     if current_price is None:
