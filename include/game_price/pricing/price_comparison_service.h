@@ -19,6 +19,7 @@ struct PriceComparisonCriteria {
     Currency currency{Currency::KRW};
     bool includeForeignCurrencies{false};
     std::optional<Platform> platform;
+    std::vector<Store> excludedStores;
 };
 
 struct PriceComparisonResult {

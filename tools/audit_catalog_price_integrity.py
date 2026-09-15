@@ -178,6 +178,8 @@ def audit(catalog: Path, database: Path, stale_hours: int = 48) -> dict:
     stale_limit = datetime.now(timezone.utc) - timedelta(hours=stale_hours)
     issues = []
     for key, product in registered.items():
+        if key[0] == "EpicGamesStore":
+            continue  # Intentionally link-only; absence of prices is not a data error.
         observed = collected.get(key)
         failure = failures.get(key)
         if failure and failure["category"] == "REGION_MISMATCH":
@@ -233,6 +235,8 @@ def audit(catalog: Path, database: Path, stale_hours: int = 48) -> dict:
                 "카탈로그와 가격 데이터의 지원 플랫폼이 일치하지 않습니다.",
             ))
     for key, observed in collected.items():
+        if key[0] == "EpicGamesStore":
+            continue
         if key in registered:
             continue
         store, product_id = key

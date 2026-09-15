@@ -852,6 +852,15 @@ void testPriceComparisonReadsRepository() {
     expect(result->cheapestProduct->store == Store::GooglePlay,
            "A cheaper DLC must not replace the cheapest Standard BaseGame");
 
+    PriceComparisonCriteria excludedCriteria;
+    excludedCriteria.excludedStores = {Store::GooglePlay};
+    const auto excluded = service.compareByGameName("Stardew Valley", excludedCriteria);
+    expect(std::none_of(excluded->products.begin(), excluded->products.end(),
+                        [](const StoreProduct& product) { return product.store == Store::GooglePlay; }),
+           "Link-only stores must be excluded from price comparison");
+    expect(excluded->cheapestProduct && excluded->cheapestProduct->store != Store::GooglePlay,
+           "Link-only stores must not become the cheapest offer");
+
     PriceComparisonCriteria mixedCurrencyCriteria;
     mixedCurrencyCriteria.includeForeignCurrencies = true;
     const auto mixedCurrency = service.compareByGameName(

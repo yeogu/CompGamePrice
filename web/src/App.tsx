@@ -46,6 +46,7 @@ const lowestComparableMoney = (prices: Money[]) => prices.reduce((lowest, price)
 })
 
 const catalogPriceStatus = (game: GameSummary) => {
+  if (game.priceStatus === 'LinkOnly') return '공식 Store에서 가격 확인'
   if (game.priceStatus === 'Stale') {
     return '가격 갱신 필요'
   }
@@ -1189,6 +1190,10 @@ function App() {
   }
 
   const collectCatalogPrices = async () => {
+    if (adminStore === 'Epic Games Store') {
+      setActionMessage('Epic Games Store는 구매 링크만 제공합니다. 최신 가격은 공식 Store에서 확인하세요.')
+      return
+    }
     setError('')
     try {
       setCatalogJob(await startCatalogCollection(adminStore))
@@ -1217,6 +1222,24 @@ function App() {
     window.setTimeout(() => {
       document.getElementById('admin-product-workspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     })
+  }
+
+  const collectIntegrityStore = async (store: string) => {
+    setAdminError('')
+    setIntegrityCollectionError('')
+    const storeName = collectionStoreName(store)
+    setIntegrityCollectionTarget({ store: storeName, productId: '', gameTitle: '전체 연결 상품' })
+    setIntegrityCollectionStarting(true)
+    try {
+      setCatalogJob(await startCatalogCollection(storeName))
+      setActionMessage(`${storeName} 전체 가격 재수집을 시작했습니다.`)
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : '일괄 가격 재수집을 시작하지 못했습니다.'
+      setIntegrityCollectionError(message)
+      setAdminError(message)
+    } finally {
+      setIntegrityCollectionStarting(false)
+    }
   }
 
   const collectIntegrityIssue = async (issue: CatalogPriceIntegrityIssue) => {
@@ -2174,6 +2197,7 @@ function App() {
           </div>
 
           <div className="price-grid">
+            {report.purchaseLinks?.map((link) => <article className="price-card" key={`link-${link.store}-${link.productId}`}><StoreBadge store={link.store} /><h3>공식 Store에서 가격 확인</h3><p>{link.notice}</p><a className="purchase-link" href={link.purchaseUrl} target="_blank" rel="noreferrer">{link.store}에서 보기 ↗</a></article>)}
             {report.products.map((product) => {
               const cheapest = report.cheapest?.productId === product.productId
               return (
@@ -2255,7 +2279,7 @@ function App() {
               )
             })}
           </div>
-          {report.products.length === 0 && (
+          {report.products.length === 0 && !report.purchaseLinks?.length && (
             <p className="notice empty">아직 수집된 가격이 없습니다.</p>
           )}
         </section>
@@ -2431,7 +2455,7 @@ function App() {
           </div>}
         </article>
         </div>}
-        {adminSection === 'epic-games' && <div className="admin-store-workspace"><header><StoreBadge store={adminStore} /><div><h2>{adminStore}</h2><p>공식 Store 상품을 canonical Game과 비교하고 검증된 상품만 연결합니다.</p></div></header><article className="catalog-sync-panel"><div><h2>{adminStore} 상품 연결</h2><p>Epic의 서버 검색 제한 때문에 자동 배치 탐색 대신 공식 검색을 사용합니다. 상품 URL을 확인하고 연결한 뒤 가격을 수집하세요.</p></div><div className="catalog-step-actions"><a className="button-link" href={`https://store.epicgames.com/ko/browse?q=${encodeURIComponent(adminQuery || 'Hades')}&category=Game&sortBy=relevancy&sortDir=DESC`} target="_blank" rel="noreferrer">1. 공식 Store 검색</a><button onClick={openAdminProductWorkspace}>2. URL 검증·연결</button><button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectCatalogPrices()}>{catalogJob?.status === 'RUNNING' ? '가격 수집 중…' : '3. 가격 수집'}</button></div></article></div>}
+{adminSection === 'epic-games' && <div className="admin-store-workspace"><header><StoreBadge store={adminStore} /><div><h2>{adminStore}</h2><p>공식 Store 상품을 canonical Game과 비교하고 검증된 상품만 연결합니다.</p></div></header><article className="catalog-sync-panel"><div><h2>{adminStore} 상품 연결</h2><p>Epic 자동 가격 수집은 보안 확인으로 차단되어 중단했습니다. 공식 상품 URL을 검증·연결하면 사용자에게 구매 링크만 제공하며 가격 비교에서는 제외합니다.</p></div><div className="catalog-step-actions"><a className="button-link" href={`https://store.epicgames.com/ko/browse?q=${encodeURIComponent(adminQuery || 'Hades')}&category=Game&sortBy=relevancy&sortDir=DESC`} target="_blank" rel="noreferrer">1. 공식 Store 검색</a><button onClick={openAdminProductWorkspace}>2. URL 검증·연결</button><button disabled={adminStore === 'Epic Games Store' || catalogJob?.status === 'RUNNING'} onClick={() => void collectCatalogPrices()}>{catalogJob?.status === 'RUNNING' ? '가격 수집 중…' : '3. 구매 링크만 제공'}</button></div></article></div>}
         {adminSection === 'ubisoft-store' && <div className="admin-store-workspace"><article className="catalog-sync-panel"><div><h2>Ubisoft Store 상품 연결</h2><p>한국 공식 Store에서 게임을 검색하고 검증된 본편 상품을 연결한 뒤 KRW 가격을 수집합니다.</p></div><div className="catalog-step-actions"><button onClick={openAdminProductWorkspace}>1. 상품 검색·연결</button><button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectCatalogPrices()}>{catalogJob?.status === 'RUNNING' ? '가격 수집 중…' : '2. 가격 수집'}</button></div></article></div>}
         {adminSection === 'gog' && <div className="admin-store-workspace"><article className="catalog-sync-panel"><div><h2>GOG 상품 연결</h2><p>공식 카탈로그에서 DRM-free PC 게임을 검색하고 Windows·macOS·Linux 지원 및 USD 가격을 확인해 연결합니다.</p></div><div className="catalog-step-actions"><button onClick={openAdminProductWorkspace}>1. 상품 검색·연결</button><button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectCatalogPrices()}>{catalogJob?.status === 'RUNNING' ? '가격 수집 중…' : '2. 가격 수집'}</button></div></article></div>}
         {adminSection === 'meta-quest-store' && <div className="admin-store-workspace"><article className="catalog-sync-panel"><div><h2>Meta Quest Store 상품 연결</h2><p>Meta 공식 Store에서 Quest 게임을 확인하고 canonical Game에 연결한 뒤 KRW 가격을 수집합니다.</p></div><div className="catalog-step-actions"><a className="button-link" href={`https://www.meta.com/experiences/search/?q=${encodeURIComponent(adminQuery || 'Beat Saber')}`} target="_blank" rel="noreferrer">1. 공식 Store 검색</a><button onClick={openAdminProductWorkspace}>2. URL 검증·연결</button><button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectCatalogPrices()}>{catalogJob?.status === 'RUNNING' ? '가격 수집 중…' : '3. 가격 수집'}</button></div></article></div>}
@@ -2528,7 +2552,7 @@ function App() {
           </section>
           {!adminResult.applied && adminResult.game.matchDecision?.status !== 'Rejected' && <button disabled={adminImporting || (adminResult.game.matchDecision?.status === 'NeedsReview' && !reviewConfirmed)} onClick={() => void runCatalogImport(true)}>{adminImporting ? 'Store 상품 연결 중…' : adminResult.game.matchDecision?.status === 'NeedsReview' ? `확인 완료 후 ${adminResult.game.title}에 연결` : '검증된 Store 상품 연결'}</button>}
           {adminResult.applied && adminResult.game.matchedProduct && <button className="danger-action" disabled={adminImporting} onClick={() => void disconnectAdminProduct()}>{adminImporting ? '연결 해제 중…' : '잘못 연결된 상품 되돌리기'}</button>}
-          {adminResult.applied && <button disabled={catalogJob?.status === 'RUNNING'} onClick={() => void collectCatalogPrices()}>{catalogJob?.status === 'RUNNING' ? '가격 수집 중…' : `${adminStore} 가격 수집 시작`}</button>}
+          {adminResult.applied && <button disabled={adminStore === 'Epic Games Store' || catalogJob?.status === 'RUNNING'} onClick={() => void collectCatalogPrices()}>{catalogJob?.status === 'RUNNING' ? '가격 수집 중…' : adminStore === 'Epic Games Store' ? '구매 링크만 제공' : `${adminStore} 가격 수집 시작`}</button>}
         </article>}
         {catalogJob && catalogJob.status !== 'IDLE' && <div className={`admin-job ${catalogJob.status.toLowerCase()}`}><strong>{catalogJob.store ?? adminStore} 수집 상태: {catalogJob.status}</strong>{catalogJob.error && <span>{catalogJob.error}</span>}</div>}
         </div>}
@@ -2555,6 +2579,7 @@ function App() {
               <header>
                 <StoreBadge store={storeGroup.store} />
                 <strong>{storeGroup.issueCount}건</strong>
+                {storeGroup.reasons.some(([type]) => type === 'MISSING_PRICE' || type === 'STALE_PRICE') && <button disabled={integrityCollectionStarting || catalogJob?.status === 'RUNNING'} onClick={() => void collectIntegrityStore(storeGroup.store)}>전체 가격 재수집</button>}
               </header>
               {storeGroup.reasons.map(([issueType, issues]) => {
                 const guidance = integrityIssueGuidance[issueType]
@@ -2566,6 +2591,7 @@ function App() {
                     <small>{guidance.cause}</small>
                   </summary>
                   <div className="integrity-resolution">
+                    {(issueType === 'MISSING_PRICE' || issueType === 'STALE_PRICE') && <div><button disabled={integrityCollectionStarting || catalogJob?.status === 'RUNNING'} onClick={() => void collectIntegrityStore(storeGroup.store)}>이 Store 가격 일괄 재수집</button><p>개별 버튼을 누를 필요 없이 이 Store의 전체 연결 상품을 갱신합니다. 완료 후 정합성을 자동 재검사하며, 남은 항목만 연결·판매 상태를 확인하세요.</p></div>}
                     <strong>해결 순서</strong>
                     <ol>{guidance.checks.map((check) => <li key={check}>{check}</li>)}</ol>
                     <p><strong>완료 기준</strong>{guidance.resolvedWhen}</p>

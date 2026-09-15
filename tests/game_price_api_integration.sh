@@ -672,7 +672,15 @@ grep -q '"store":"Epic Games Store"' "${response_body}"
 grep -q '"store":"Nintendo eShop"' "${response_body}"
 grep -q '"platform":"Nintendo Switch 2","status":"Compatible"' "${response_body}"
 grep -q '"purchaseUrl":"https://store.epicgames.com/p/hades"' "${response_body}"
-grep -q '"minorAmount":25000' "${response_body}"
+python3 - "${response_body}" <<'PY'
+import json
+import sys
+with open(sys.argv[1]) as source:
+    report = json.load(source)
+assert all(product["store"] != "Epic Games Store" for product in report["products"])
+assert any(link["store"] == "Epic Games Store" and link["purchaseUrl"] == "https://store.epicgames.com/p/hades" for link in report["purchaseLinks"])
+assert report.get("cheapest", {}).get("store") != "Epic Games Store"
+PY
 grep -q '"region":"KR"' "${response_body}"
 grep -q '"edition":"Standard"' "${response_body}"
 grep -q '"offerType":"BaseGame"' "${response_body}"

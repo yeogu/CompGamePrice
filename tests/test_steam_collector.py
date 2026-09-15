@@ -108,6 +108,21 @@ class SteamCollectorTest(unittest.TestCase):
         )
         self.assertEqual(len(targets), len(set(targets)))
 
+    def test_accepts_added_stores_without_blocking_steam_collection(self):
+        document = json.loads((ROOT / "data/game_catalog.json").read_text())
+        game = document["games"][0]
+        template = game["products"][0]
+        for store in ("UbisoftStore", "GOG", "MetaQuestStore", "EAApp", "BattleNet", "ItchIo", "HumbleStore"):
+            product = {**template, "store": store, "productId": f"test-{store}"}
+            if store == "MetaQuestStore":
+                product["platforms"] = ["MetaQuest"]
+                game["platforms"] = [*game["platforms"], "MetaQuest"]
+            game["products"].append(product)
+        with tempfile.TemporaryDirectory() as directory:
+            catalog = Path(directory) / "catalog.json"
+            catalog.write_text(json.dumps(document))
+            self.assertIn(("413150", "stardew-valley"), steam_collector.load_steam_targets(catalog))
+
     def test_rejects_invalid_unified_catalogs(self):
         for fixture in (
             "game_catalog_duplicate_id.json",

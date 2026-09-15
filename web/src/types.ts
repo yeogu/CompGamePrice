@@ -8,7 +8,7 @@ export interface GameSummary {
   aliases: string[]
   developers: string[]
   publishers: string[]
-  priceStatus?: 'Available' | 'Collecting' | 'Stale'
+  priceStatus?: 'Available' | 'Collecting' | 'Stale' | 'LinkOnly'
   lowestPrice?: Money
   maxDiscountPercent?: number
   lastUpdatedAt?: string
@@ -76,6 +76,7 @@ export interface StoreProduct {
 export interface GamePriceResponse {
   game: GameSummary
   products: StoreProduct[]
+  purchaseLinks?: { store: string; productId: string; purchaseUrl: string; notice: string }[]
   cheapest?: {
     productId: string
     store: string

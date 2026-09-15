@@ -6,6 +6,9 @@ import tempfile
 import threading
 import time
 import unittest
+from unittest.mock import patch
+from urllib.error import HTTPError
+from io import BytesIO
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -49,6 +52,13 @@ class StorefrontPriceCollectorsTest(unittest.TestCase):
         self.assertIn("regular_price_krw: 28000", block)
         self.assertIn("discount_percent: 40", block)
         self.assertIn("compatible_os: WIN|MAC", block)
+
+    def test_epic_reports_security_challenge_without_retrying(self):
+        error = HTTPError(epic.ENDPOINT, 403, "Forbidden", {"Server": "cloudflare"}, BytesIO(b'<div class="cf_challenge">verification</div>'))
+        with patch.object(epic, "urlopen", side_effect=error) as request, patch.object(epic.network_support, "tls_context", return_value=None):
+            with self.assertRaisesRegex(support.PermanentCollectionError, "Cloudflare.*자동 재시도하지"):
+                epic.fetch("hades", "hades", "ignored", 15)
+            request.assert_called_once()
 
     def test_epic_rejects_wrong_currency(self):
         document = json.loads(

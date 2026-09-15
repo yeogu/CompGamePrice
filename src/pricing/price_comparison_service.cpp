@@ -33,6 +33,8 @@ PriceComparisonResult PriceComparisonService::compare(
     PriceComparisonResult result{game, {}, std::nullopt};
 
     for (const auto& product : repository_.findProductsByGameId(game.id)) {
+        if (std::find(criteria.excludedStores.begin(), criteria.excludedStores.end(),
+                      product.store) != criteria.excludedStores.end()) continue;
         if (!product.purchasable) continue;
         if (product.region != criteria.region ||
             product.edition != criteria.edition ||

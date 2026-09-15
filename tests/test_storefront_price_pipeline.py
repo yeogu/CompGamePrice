@@ -14,6 +14,17 @@ import run_storefront_price_pipeline as pipeline
 
 
 class StorefrontPricePipelineTest(unittest.TestCase):
+    def setUp(self):
+        setting = patch.dict(pipeline.os.environ, {"EPIC_PRICE_COLLECTION_ENABLED": "true"})
+        setting.start()
+        self.addCleanup(setting.stop)
+
+    def test_epic_link_only_does_not_fetch_or_import(self):
+        with patch.dict(pipeline.os.environ, {"EPIC_PRICE_COLLECTION_ENABLED": "false"}), patch.object(pipeline.collect_epic_snapshot, "collect") as fetch, patch.object(pipeline.subprocess, "run") as importer:
+            self.assertEqual(pipeline.run_pipeline("EpicGamesStore", Path("tracker"), Path("catalog"), Path("output")), 0)
+            fetch.assert_not_called()
+            importer.assert_not_called()
+
     def test_records_and_clears_product_region_mismatch(self):
         with tempfile.TemporaryDirectory() as directory:
             database = Path(directory) / "prices.db"

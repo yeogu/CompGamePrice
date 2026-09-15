@@ -742,8 +742,12 @@ Google Play, Apple App Store, PlayStation Store, Microsoft Store를 Store별 탭
 Epic, Nintendo, PlayStation, Microsoft Store의 등록 상품 가격은 기존 C++ Provider와
 같은 검증·SQLite 저장
 경로를 통해 수집한다. 관리자 화면에서 Store별 수집을 시작할 수 있고 정기 수집에도
-포함된다. Epic 공식 GraphQL은 Cloudflare 정책에 따라 서버 요청이 403으로 거절될
-수 있으므로, 이 경우 Epic만 실패 처리하고 마지막 정상 가격을 보존한다. Nintendo는
+포함된다. 단, Epic은 공식 가격 요청의 Cloudflare 보안 확인/HTTP 403이 실제로 확인되어
+현재 구매 링크만 제공한다. 상세 가격 비교·최저가·그래프에서 Epic 가격을 제외하고,
+정기 수집은 요청 없이 건너뛰며 Epic의 가격 없음/오래된 가격은 정합성 오류로 취급하지 않는다.
+기존 연결과 가격 기록은 삭제하지 않는다. 공식 경로의 실수집 성공을 검증하기 전까지
+가격 수집 버튼은 비활성화한다. `EPIC_PRICE_COLLECTION_ENABLED=true`는 수집 스크립트의
+진단용 재활성화 옵션일 뿐 사용자 가격 비교를 다시 활성화하지 않는다. Nintendo는
 한국 eShop URL과 한국 NSUID만 허용하며 다른 국가의 상품 ID는 등록하지 않는다.
 PlayStation과 Xbox는 구매처와 기기 세대를 별도 필드로 저장한다. 따라서 같은
 PlayStation Store 상품이라도 PS4/PS5, 같은 Microsoft Store 상품이라도 Xbox One/

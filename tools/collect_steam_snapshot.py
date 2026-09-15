@@ -264,6 +264,7 @@ def load_steam_targets(path: Path) -> list[tuple[str, str]]:
             "Windows", "macOS", "Linux", "Android", "iOS", "iPadOS",
             "NintendoSwitch", "NintendoSwitch2",
             "PlayStation4", "PlayStation5", "XboxOne", "XboxSeries",
+            "MetaQuest",
         }
         if not isinstance(platforms, list) or not platforms:
             raise ValueError(f"Catalog game {game_id} requires platforms")
@@ -283,6 +284,8 @@ def load_steam_targets(path: Path) -> list[tuple[str, str]]:
             if store not in {
                 "Steam", "EpicGamesStore", "GooglePlay", "AppleAppStore",
                 "NintendoEShop", "PlayStationStore", "MicrosoftStore",
+                "UbisoftStore", "GOG", "MetaQuestStore", "EAApp",
+                "BattleNet", "ItchIo", "HumbleStore",
             }:
                 raise ValueError(f"Catalog game {game_id} contains unsupported Store")
             product_id = product.get("productId")

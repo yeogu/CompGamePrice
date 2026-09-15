@@ -59,6 +59,18 @@ class CatalogPriceIntegrityTest(unittest.TestCase):
         result = integrity.audit(self.catalog, self.database)
         self.assertEqual(result["counts"], {"MISSING_PRICE": 1})
 
+    def test_link_only_epic_is_not_reported_as_missing_price(self):
+        document = json.loads(self.catalog.read_text())
+        document["games"][0]["products"].append({
+            **document["games"][0]["products"][0],
+            "store": "EpicGamesStore", "productId": "test-game",
+            "productUrl": "https://store.epicgames.com/p/test-game",
+        })
+        self.catalog.write_text(json.dumps(document))
+        result = integrity.audit(self.catalog, self.database)
+        self.assertEqual(result["counts"], {"MISSING_PRICE": 1})
+        self.assertTrue(all(item["store"] != "EpicGamesStore" for item in result["issues"]))
+
     def test_reports_region_mismatch_instead_of_missing_price(self):
         with sqlite3.connect(self.database) as connection:
             connection.executescript("""

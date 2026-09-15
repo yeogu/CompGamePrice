@@ -14,6 +14,7 @@
 #include <cstdlib>
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <cmath>
 #include <iostream>
 #include <filesystem>
@@ -842,6 +843,8 @@ private:
             " --database " + shellQuoted(databasePath()) +
             " --output-dir " + shellQuoted(
                 (project / "snapshots/latest").string());
+        const auto collectionStartedAt = std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
         const auto exitCode = std::system(command.c_str());
         const auto pipelineExitCode = WIFEXITED(exitCode)
             ? WEXITSTATUS(exitCode)
@@ -863,6 +866,27 @@ private:
             error_ = store + " collection completed with unavailable products";
         } else if (pipelineExitCode != 0) {
             error_ = store + " collection pipeline failed";
+        }
+        if (pipelineExitCode != 0 && store == "Epic Games Store") {
+            try {
+                Database database(databasePath());
+                sqlite3_stmt* statement = nullptr;
+                const char* sql = "SELECT error_message FROM catalog_product_collection_failures "
+                    "WHERE provider = 'EpicGamesStore' AND attempted_at >= datetime(?, 'unixepoch') "
+                    "AND (? = '' OR external_product_id = ?) ORDER BY attempted_at DESC LIMIT 1";
+                if (sqlite3_prepare_v2(database.handle(), sql, -1, &statement, nullptr) == SQLITE_OK) {
+                    sqlite3_bind_int64(statement, 1, collectionStartedAt);
+                    sqlite3_bind_text(statement, 2, productId.c_str(), -1, SQLITE_TRANSIENT);
+                    sqlite3_bind_text(statement, 3, productId.c_str(), -1, SQLITE_TRANSIENT);
+                    if (sqlite3_step(statement) == SQLITE_ROW) {
+                        const auto message = sqlite3_column_text(statement, 0);
+                        if (message) error_ = reinterpret_cast<const char*>(message);
+                    }
+                }
+                sqlite3_finalize(statement);
+            } catch (const std::exception&) {
+                // Preserve the pipeline error when failure details cannot be read.
+            }
         }
         releaseCollectionLock(lockDescriptor);
     }
@@ -1288,6 +1312,7 @@ std::optional<Store> storeFromParameter(const std::string& value) {
 PriceComparisonCriteria comparisonCriteria(
     const drogon::HttpRequestPtr& request) {
     PriceComparisonCriteria criteria;
+    criteria.excludedStores = {Store::EpicGamesStore};
     const auto region = request->getParameter("region");
     const auto edition = request->getParameter("edition");
     const auto offerType = request->getParameter("offerType");
@@ -2617,6 +2642,11 @@ int main() {
                         "unsupported collection store"));
                     return;
                 }
+                if (store == "Epic Games Store") {
+                    callback(jsonError(drogon::k400BadRequest,
+                        "Epic Games Store는 구매 링크만 제공합니다. 자동 가격 수집은 중단되었습니다."));
+                    return;
+                }
                 if (!catalogCollectionJob.start(store, productId)) {
                     callback(jsonError(
                         drogon::k409Conflict,
@@ -2889,7 +2919,7 @@ int main() {
 
         drogon::app().registerHandler(
             "/api/games",
-            [&queryService](const drogon::HttpRequestPtr& request,
+            [&queryService, &catalog](const drogon::HttpRequestPtr& request,
                             std::function<void(const HttpResponsePtr&)>&& callback) {
                 const auto query = request->getParameter("query");
                 const auto store = request->getParameter("store");
@@ -2933,6 +2963,13 @@ int main() {
                 const auto games = queryService.filterGames(catalogFilter);
                 for (const auto& game : games) {
                     PriceComparisonCriteria criteria;
+                    criteria.excludedStores = {Store::EpicGamesStore};
+                    bool hasPurchaseLink = false;
+                    for (const auto& linked : catalog.storeProducts(Store::EpicGamesStore)) {
+                        if (linked.gameId == game.id && (!filter.store || *filter.store == linked.store) &&
+                            (!filter.platform || std::find(linked.supportedPlatforms.begin(), linked.supportedPlatforms.end(),
+                             *filter.platform) != linked.supportedPlatforms.end())) hasPurchaseLink = true;
+                    }
                     criteria.platform = filter.platform;
                     criteria.includeForeignCurrencies = true;
                     const auto report = queryService.getGamePriceReportById(
@@ -2940,7 +2977,7 @@ int main() {
                         std::nullopt,
                         criteria);
                     if (!report || report->productReports.empty()) {
-                        if (filter.store || filter.platform) {
+                        if ((filter.store || filter.platform) && !hasPurchaseLink) {
                             continue;
                         }
                         summaries.push_back(
@@ -2949,7 +2986,7 @@ int main() {
                                 std::nullopt,
                                 std::nullopt,
                                 {},
-                                "Collecting"});
+                                hasPurchaseLink ? "LinkOnly" : "Collecting"});
                         continue;
                     }
                     auto displayGame = game;
@@ -2964,7 +3001,7 @@ int main() {
                     std::optional<Money> lowestPrice;
                     std::optional<int> maxDiscountPercent;
                     std::string lastUpdatedAt;
-                    bool hasMatchingProduct = false;
+                    bool hasMatchingProduct = hasPurchaseLink;
                     for (const auto& product : report->comparison.products) {
                         if (filter.store && product.store != *filter.store) {
                             continue;
@@ -3012,7 +3049,8 @@ int main() {
                         std::nullopt,
                         std::nullopt,
                         {},
-                        "Stale"});
+                        filter.store && *filter.store == Store::EpicGamesStore && hasPurchaseLink
+                            ? "LinkOnly" : "Stale"});
                 }
                 const auto selectedSort = sort.empty() ? "titleAsc" : sort;
                 std::sort(summaries.begin(), summaries.end(), [&](const auto& left, const auto& right) {
@@ -3108,7 +3146,7 @@ int main() {
 
         drogon::app().registerHandler(
             "/api/games/{1}/prices",
-            [&queryService, &database](const drogon::HttpRequestPtr& request,
+            [&queryService, &database, &catalog](const drogon::HttpRequestPtr& request,
                             std::function<void(const HttpResponsePtr&)>&& callback,
                             const std::string& gameId) {
                 PriceComparisonCriteria criteria;
@@ -3127,6 +3165,20 @@ int main() {
                 Json::Value response;
                 response["game"] = gameJson(report->comparison.game);
                 response["products"] = Json::arrayValue;
+                response["purchaseLinks"] = Json::arrayValue;
+                for (const auto& linked : catalog.storeProducts(Store::EpicGamesStore)) {
+                    if (linked.gameId != gameId) continue;
+                    if (linked.region != criteria.region || linked.edition != criteria.edition ||
+                        linked.offerType != criteria.offerType) continue;
+                    if (criteria.platform && std::find(linked.supportedPlatforms.begin(),
+                        linked.supportedPlatforms.end(), *criteria.platform) == linked.supportedPlatforms.end()) continue;
+                    Json::Value item;
+                    item["store"] = toString(linked.store);
+                    item["productId"] = linked.productId;
+                    item["purchaseUrl"] = linked.productUrl;
+                    item["notice"] = "자동 가격 수집이 지원되지 않습니다. 최신 가격은 공식 Store에서 확인하세요.";
+                    response["purchaseLinks"].append(item);
+                }
                 for (const auto& productReport : report->productReports) {
                     std::optional<Money> effectivePrice;
                     const auto& product = productReport.product;

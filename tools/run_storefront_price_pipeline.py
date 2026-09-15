@@ -151,6 +151,11 @@ def run_pipeline(
     database: Path | None = None,
     product_id: str | None = None,
 ) -> int:
+    if store == "EpicGamesStore" and os.getenv("EPIC_PRICE_COLLECTION_ENABLED", "false").lower() != "true":
+        print("Epic Games Store: purchase links only; automatic price collection is disabled")
+        if database is not None:
+            collection_status.record_price_collection(database, "NOT_REQUIRED", 0, None, store)
+        return 0
     collector, filename, command = COLLECTORS[store]
     temporary_directory: Path | None = None
     selected_catalog = catalog

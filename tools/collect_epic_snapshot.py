@@ -7,6 +7,7 @@ import argparse
 import json
 from pathlib import Path
 from urllib.parse import urlencode
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 import collect_steam_snapshot as network_support
@@ -62,12 +63,25 @@ def fetch(product_id: str, game_id: str, product_url: str, timeout: float) -> by
             "User-Agent": "DealQuest/0.1",
         },
     )
-    with urlopen(
-        request,
-        timeout=timeout,
-        context=network_support.tls_context(),
-    ) as response:
-        return response.read()
+    try:
+        with urlopen(
+            request,
+            timeout=timeout,
+            context=network_support.tls_context(),
+        ) as response:
+            return response.read()
+    except HTTPError as error:
+        if error.code == 403:
+            body = error.read(8192).decode("utf-8", errors="replace").lower()
+            server = str(error.headers.get("Server", "")).lower()
+            challenge = "cloudflare" in server and (
+                "cf_challenge" in body or "challenge-platform" in body
+            )
+            detail = "Cloudflare 보안 확인 페이지가 반환되었습니다" if challenge else "가격 API 접근이 거부되었습니다"
+            raise support.PermanentCollectionError(
+                f"Epic HTTP 403: {detail}. 상품 연결 문제가 아니며 자동 재시도하지 않습니다."
+            ) from error
+        raise
 
 
 def product_slug(element: dict) -> str:
