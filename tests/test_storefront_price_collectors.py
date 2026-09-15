@@ -128,6 +128,12 @@ class StorefrontPriceCollectorsTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "cannot exceed"):
             nintendo.normalized_row(raw, "1", "game", "ignored")
 
+    def test_nintendo_classifies_foreign_currency_as_region_mismatch(self):
+        raw = b'''<meta itemprop="priceCurrency" content="USD">
+        <meta itemprop="price" content="24.99">'''
+        with self.assertRaisesRegex(ValueError, "REGION_MISMATCH.*USD"):
+            nintendo.normalized_row(raw, "1", "game", "ignored")
+
     def test_nintendo_preserves_unavailable_product_state(self):
         raw = b'''<meta itemprop="priceCurrency" content="KRW"><script>
         {"price_info":{"final_price":20000,"regular_price":20000,

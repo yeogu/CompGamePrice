@@ -59,6 +59,25 @@ class CatalogPriceIntegrityTest(unittest.TestCase):
         result = integrity.audit(self.catalog, self.database)
         self.assertEqual(result["counts"], {"MISSING_PRICE": 1})
 
+    def test_reports_region_mismatch_instead_of_missing_price(self):
+        with sqlite3.connect(self.database) as connection:
+            connection.executescript("""
+                CREATE TABLE catalog_product_collection_failures(
+                    provider TEXT,
+                    external_product_id TEXT,
+                    category TEXT,
+                    error_message TEXT,
+                    attempted_at TEXT
+                );
+                INSERT INTO catalog_product_collection_failures VALUES(
+                    'Steam', '10', 'REGION_MISMATCH',
+                    'REGION_MISMATCH: expected KRW',
+                    '2026-09-14T00:00:00Z'
+                );
+            """)
+        result = integrity.audit(self.catalog, self.database)
+        self.assertEqual(result["counts"], {"REGION_MISMATCH": 1})
+
     def test_reports_stale_unpurchasable_and_platform_mismatch(self):
         with sqlite3.connect(self.database) as connection:
             connection.execute(

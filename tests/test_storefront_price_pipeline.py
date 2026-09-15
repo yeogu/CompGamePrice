@@ -14,6 +14,35 @@ import run_storefront_price_pipeline as pipeline
 
 
 class StorefrontPricePipelineTest(unittest.TestCase):
+    def test_records_and_clears_product_region_mismatch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database = Path(directory) / "prices.db"
+            pipeline.record_product_results(
+                database,
+                "NintendoEShop",
+                {"70010000000001"},
+                [("70010000000001", "REGION_MISMATCH: returned USD")],
+            )
+            with sqlite3.connect(database) as connection:
+                row = connection.execute("""
+                    SELECT category FROM catalog_product_collection_failures
+                    WHERE provider = 'NintendoEShop'
+                    AND external_product_id = '70010000000001'
+                """).fetchone()
+            self.assertEqual(row, ("REGION_MISMATCH",))
+
+            pipeline.record_product_results(
+                database,
+                "NintendoEShop",
+                {"70010000000001"},
+                [],
+            )
+            with sqlite3.connect(database) as connection:
+                count = connection.execute(
+                    "SELECT COUNT(*) FROM catalog_product_collection_failures"
+                ).fetchone()[0]
+            self.assertEqual(count, 0)
+
     def test_each_store_uses_its_existing_cpp_provider_command(self):
         cases = [
             ("EpicGamesStore", "collect-epic-all"),

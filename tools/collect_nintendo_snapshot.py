@@ -164,8 +164,13 @@ def normalized_row(
                 price_text = str(offer["price"])
                 currency = str(offer.get("priceCurrency", currency))
                 break
+    currency = currency.upper()
     if currency != "KRW":
-        raise support.PermanentCollectionError("Nintendo price must be KRW")
+        actual = currency or "UNKNOWN"
+        raise support.PermanentCollectionError(
+            "REGION_MISMATCH: Nintendo KR product returned "
+            f"{actual}; expected KRW"
+        )
     if current_price is None:
         normalized_price = re.sub(r"[^0-9]", "", price_text)
         if not normalized_price:

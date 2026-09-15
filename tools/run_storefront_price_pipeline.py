@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -23,6 +24,50 @@ import collect_battle_net_snapshot
 import collect_itch_io_snapshot
 import collect_humble_store_snapshot
 import sync_steam_catalog as collection_status
+
+
+def failure_category(error: str) -> str:
+    return ("REGION_MISMATCH" if error.startswith("REGION_MISMATCH:")
+            else "COLLECTION_FAILED")
+
+
+def record_product_results(
+    database: Path | None,
+    store: str,
+    product_ids: set[str],
+    failures: list[tuple[str, str]],
+) -> None:
+    if database is None:
+        return
+    failed = dict(failures)
+    with sqlite3.connect(database, timeout=30) as connection:
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS catalog_product_collection_failures(
+                provider TEXT NOT NULL,
+                external_product_id TEXT NOT NULL,
+                category TEXT NOT NULL,
+                error_message TEXT NOT NULL,
+                attempted_at TEXT NOT NULL,
+                PRIMARY KEY(provider, external_product_id)
+            )
+        """)
+        for product_id in product_ids - failed.keys():
+            connection.execute("""
+                DELETE FROM catalog_product_collection_failures
+                WHERE provider = ? AND external_product_id = ?
+            """, (store, product_id))
+        for product_id, error in failures:
+            connection.execute("""
+                INSERT INTO catalog_product_collection_failures(
+                    provider, external_product_id, category,
+                    error_message, attempted_at
+                ) VALUES(?, ?, ?, ?, datetime('now'))
+                ON CONFLICT(provider, external_product_id) DO UPDATE SET
+                    category = excluded.category,
+                    error_message = excluded.error_message,
+                    attempted_at = excluded.attempted_at
+            """, (store, product_id, failure_category(error), error))
+        connection.commit()
 
 
 COLLECTORS = {
@@ -136,6 +181,15 @@ def run_pipeline(
             json.dumps(document, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
+    selected_product_ids: set[str] = set()
+    if selected_catalog.exists():
+        selected_document = json.loads(selected_catalog.read_text(encoding="utf-8"))
+        selected_product_ids = {
+            product["productId"]
+            for game in selected_document.get("games", [])
+            for product in game.get("products", [])
+            if product.get("store") == store and product.get("productId")
+        }
     previous_workers = os.environ.get("STORE_COLLECTION_MAX_WORKERS")
     os.environ["STORE_COLLECTION_MAX_WORKERS"] = (
         previous_workers or str(STORE_MAX_WORKERS[store])
@@ -159,6 +213,7 @@ def run_pipeline(
             f"{store} partial collection failure: {product_id}: {error}",
             file=sys.stderr,
         )
+    record_product_results(database, store, selected_product_ids, failures)
     if collected == 0 and not failures:
         if database is not None:
             collection_status.record_price_collection(

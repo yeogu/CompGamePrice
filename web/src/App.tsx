@@ -349,6 +349,7 @@ const integrityIssueLabel = (issue: CatalogPriceIntegrityIssue) => {
     PLATFORM_MISMATCH: '플랫폼 불일치',
     GAME_MISMATCH: '게임 연결 불일치',
     ORPHAN_PRICE: '카탈로그 없는 가격',
+    REGION_MISMATCH: '지역 불일치',
   }
   return labels[issue.type]
 }
@@ -394,6 +395,12 @@ const integrityIssueGuidance: Record<CatalogPriceIntegrityIssue['type'], {
     checks: ['이 데이터는 사용자 화면에 노출되지 않으므로 Store 상품을 먼저 확인합니다.', '유효한 게임 상품이면 Store 관리에서 올바른 게임에 다시 연결합니다.', '판매 종료 상품이면 별도 조치 없이 보관해도 됩니다.'],
     resolvedWhen: '유효한 상품을 다시 연결하면 사라집니다. 판매 종료 상품은 사용자 노출에 영향을 주지 않습니다.',
     canRecollect: false,
+  },
+  REGION_MISMATCH: {
+    cause: '한국 상품으로 연결되어 있지만 Store가 KRW가 아닌 해외 통화를 반환했습니다. 잘못된 지역의 가격은 저장하지 않았습니다.',
+    checks: ['Store 확인에서 현재 링크와 통화를 확인합니다.', '한국 상품 다시 찾기를 눌러 같은 게임의 국내 상품을 검색합니다.', '제목과 본편 여부가 확실한 후보만 연결한 뒤 가격을 재수집합니다.', '국내 상품이 없다면 해외 상품을 한국 가격 비교에 연결하지 않습니다.'],
+    resolvedWhen: '한국 상품 연결 후 KRW 가격이 수집되어 이 항목이 사라지면 해결된 것입니다.',
+    canRecollect: true,
   },
 }
 
@@ -2574,7 +2581,7 @@ function App() {
                       <div className="integrity-actions">
                         {issue.productUrl && <a href={issue.productUrl} target="_blank" rel="noreferrer">Store 확인 ↗</a>}
                         {guidance.canRecollect && <button disabled={integrityCollectionStarting || catalogJob?.status === 'RUNNING'} onClick={() => void collectIntegrityIssue(issue)}>{integrityCollectionTarget?.store === collectionStoreName(issue.store) && integrityCollectionTarget?.productId === issue.productId && integrityCollectionStarting ? '요청 중…' : integrityCollectionTarget?.store === collectionStoreName(issue.store) && integrityCollectionTarget?.productId === issue.productId && catalogJob?.status === 'RUNNING' ? '재수집 중…' : '가격 재수집'}</button>}
-                        {adminSectionForStore(issue.store) && <button onClick={() => findReplacementForIntegrityIssue(issue)}>올바른 상품 찾기</button>}
+                        {adminSectionForStore(issue.store) && <button onClick={() => findReplacementForIntegrityIssue(issue)}>{issue.type === 'REGION_MISMATCH' ? '한국 상품 다시 찾기' : '올바른 상품 찾기'}</button>}
                         {issue.type !== 'ORPHAN_PRICE' && <button className="danger" disabled={adminImporting} onClick={() => void disconnectAdminProduct(issue.store, issue.productId, issue.gameTitle)}>연결 해제</button>}
                       </div>
                     </article>)}

@@ -126,6 +126,30 @@ def database_products(connection: sqlite3.Connection) -> dict[tuple[str, str], d
     return products
 
 
+def product_collection_failures(
+    connection: sqlite3.Connection,
+) -> dict[tuple[str, str], dict]:
+    table = connection.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' "
+        "AND name = 'catalog_product_collection_failures'"
+    ).fetchone()
+    if table is None:
+        return {}
+    return {
+        (store_key(store), product_id): {
+            "category": category,
+            "error": error,
+            "attemptedAt": attempted_at,
+        }
+        for store, product_id, category, error, attempted_at
+        in connection.execute("""
+            SELECT provider, external_product_id, category,
+                   error_message, attempted_at
+            FROM catalog_product_collection_failures
+        """)
+    }
+
+
 def issue(
     issue_type: str,
     severity: str,
@@ -150,10 +174,21 @@ def audit(catalog: Path, database: Path, stale_hours: int = 48) -> dict:
     registered = catalog_products(document)
     with sqlite3.connect(database) as connection:
         collected = database_products(connection)
+        failures = product_collection_failures(connection)
     stale_limit = datetime.now(timezone.utc) - timedelta(hours=stale_hours)
     issues = []
     for key, product in registered.items():
         observed = collected.get(key)
+        failure = failures.get(key)
+        if failure and failure["category"] == "REGION_MISMATCH":
+            issues.append(issue(
+                "REGION_MISMATCH",
+                "ERROR",
+                product,
+                "한국 상품으로 등록됐지만 해외 통화가 반환됐습니다. "
+                "가격은 저장하지 않았으며 한국 Store 상품을 다시 확인해야 합니다.",
+            ))
+            continue
         if observed is None:
             issues.append(issue(
                 "MISSING_PRICE",

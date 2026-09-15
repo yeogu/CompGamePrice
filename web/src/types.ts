@@ -259,7 +259,7 @@ export interface CatalogDiscoveryJob {
   failures?: Array<{ source: string; page: number; error: string }>
   error?: string
 }
-export interface CatalogPriceIntegrityIssue { type: 'MISSING_PRICE' | 'STALE_PRICE' | 'NOT_PURCHASABLE' | 'PLATFORM_MISMATCH' | 'GAME_MISMATCH' | 'ORPHAN_PRICE'; severity: 'ERROR' | 'WARNING'; store: string; productId: string; gameId: string; gameTitle: string; reason: string; productUrl?: string }
+export interface CatalogPriceIntegrityIssue { type: 'MISSING_PRICE' | 'STALE_PRICE' | 'NOT_PURCHASABLE' | 'PLATFORM_MISMATCH' | 'GAME_MISMATCH' | 'ORPHAN_PRICE' | 'REGION_MISMATCH'; severity: 'ERROR' | 'WARNING'; store: string; productId: string; gameId: string; gameTitle: string; reason: string; productUrl?: string }
 export interface CatalogPriceIntegrity { checkedAt: string; catalogProductCount: number; issueCount: number; counts: Record<string, number>; issues: CatalogPriceIntegrityIssue[] }
 export interface StoreProductCandidate { store: string; externalProductId: string; title: string; productUrl: string; platforms: string[]; developer?: string; priceMinor?: number; regularPriceMinor?: number; discountPercent?: number; currency?: string; imageUrl?: string; offerType?: string; offerName?: string }
 export interface CatalogSyncReview { externalProductId: string; title: string; reason: string; status: 'PENDING' | 'APPROVED' | 'REJECTED'; createdAt: string }
