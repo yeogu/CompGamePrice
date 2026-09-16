@@ -34,6 +34,7 @@ def run_once(
     output_directory: Path,
     catalog_batch_size: int,
     status_path: Path | None = None,
+    mode: str = "prices",
 ) -> dict:
     started_at = time.time()
     started_at_text = periodic_job_status.timestamp()
@@ -59,20 +60,21 @@ def run_once(
         None,
         catalog_batch_size,
         periodic_job_status.parse_integer(
-            os.environ.get("COLLECTION_METADATA_BATCH_SIZE", "20"),
+            os.environ.get("COLLECTION_METADATA_BATCH_SIZE", "20") if mode == "maintenance" else "20",
             "COLLECTION_METADATA_BATCH_SIZE",
             1,
         ),
         periodic_job_status.parse_integer(
-            os.environ.get("COLLECTION_STEAM_DISCOVERY_LIMIT", "75"),
+            os.environ.get("COLLECTION_STEAM_DISCOVERY_LIMIT", "100") if mode == "catalog" else "75",
             "COLLECTION_STEAM_DISCOVERY_LIMIT",
             1,
         ),
         periodic_job_status.parse_integer(
-            os.environ.get("COLLECTION_STEAM_DISCOVERY_PAGES", "4"),
+            os.environ.get("COLLECTION_STEAM_DISCOVERY_PAGES", "2") if mode == "catalog" else "4",
             "COLLECTION_STEAM_DISCOVERY_PAGES",
             1,
         ),
+        mode=mode,
     )
     failed_steps = [
         result["name"]
@@ -108,6 +110,7 @@ def run_once(
                 "nextRunAt": None,
                 "failedSteps": failed_steps,
                 "partialSteps": partial_steps,
+                "steps": results,
                 "error": None,
             },
         )
@@ -126,6 +129,7 @@ def run_scheduler(
     catalog_batch_size: int,
     single_run: bool = False,
     status_path: Path | None = None,
+    mode: str = "prices",
 ) -> int:
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     output_directory.mkdir(parents=True, exist_ok=True)
@@ -138,6 +142,7 @@ def run_scheduler(
         "collection",
     )
     while not stop_requested:
+        cycle_started_at = time.monotonic()
         lock_busy = False
         with lock_path.open("w", encoding="utf-8") as lock_file:
             try:
@@ -157,6 +162,7 @@ def run_scheduler(
                         output_directory,
                         catalog_batch_size,
                         status_path,
+                        mode,
                     )
                 except Exception as error:
                     print(
@@ -179,17 +185,19 @@ def run_scheduler(
                         )
         if single_run:
             return 2 if lock_busy else 0
+        # Anchor to the start, not completion; a busy lock must not skip a day.
+        wait_seconds = min(300, interval_seconds) if lock_busy else max(300, interval_seconds - int(time.monotonic() - cycle_started_at))
         if status_path is not None:
             current = periodic_job_status.read_status(status_path, "collection")
             periodic_job_status.write_status(
                 status_path,
                 {
                     **current,
-                    "nextRunAt": periodic_job_status.future_timestamp(interval_seconds),
+                    "nextRunAt": periodic_job_status.future_timestamp(wait_seconds),
                 },
             )
         periodic_job_status.wait_with_heartbeat(
-            interval_seconds,
+            wait_seconds,
             lambda: stop_requested,
             status_path,
             "collection",
@@ -200,6 +208,7 @@ def run_scheduler(
 def main() -> int:
     project = Path(os.environ.get("GAME_PRICE_PROJECT_PATH", Path(__file__).resolve().parents[1]))
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--mode", choices=("prices", "catalog", "maintenance"), default="prices")
     parser.add_argument(
         "--tracker",
         default=Path(os.environ.get("GAME_PRICE_TRACKER_PATH", project / "game_price_tracker")),
@@ -222,7 +231,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--interval-seconds",
-        default=os.environ.get("COLLECTION_INTERVAL_SECONDS", "21600"),
+        default=os.environ.get("COLLECTION_INTERVAL_SECONDS", "86400"),
     )
     parser.add_argument(
         "--initial-delay-seconds",
@@ -318,6 +327,7 @@ def main() -> int:
         catalog_batch_size,
         arguments.once,
         arguments.status_file,
+        arguments.mode,
     )
 
 

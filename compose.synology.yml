@@ -14,6 +14,9 @@ services:
       GAME_PRICE_TRACKER_PATH: /app/game_price_tracker
       COLLECTION_LOCK_PATH: /data/.collection-scheduler.lock
       COLLECTION_STATUS_PATH: /data/collection-scheduler-status.json
+      STEAM_COLLECTION_MAX_WORKERS: ${STEAM_COLLECTION_MAX_WORKERS:-2}
+      STEAM_CATALOG_SYNC_MAX_WORKERS: ${STEAM_CATALOG_SYNC_MAX_WORKERS:-2}
+      STEAM_CATALOG_SYNC_REQUEST_DELAY: ${STEAM_CATALOG_SYNC_REQUEST_DELAY:-0.5}
       BACKUP_STATUS_PATH: /data/backup-scheduler-status.json
       ARTWORK_STATUS_PATH: /data/artwork-quality-status.json
       GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
@@ -73,11 +76,72 @@ services:
       COLLECTION_LOCK_PATH: /data/.collection-scheduler.lock
       COLLECTION_STATUS_PATH: /data/collection-scheduler-status.json
       COLLECTION_ENABLED: ${COLLECTION_ENABLED:-true}
-      COLLECTION_INTERVAL_SECONDS: ${COLLECTION_INTERVAL_SECONDS:-21600}
+      COLLECTION_INTERVAL_SECONDS: ${COLLECTION_INTERVAL_SECONDS:-86400}
       COLLECTION_INITIAL_DELAY_SECONDS: ${COLLECTION_INITIAL_DELAY_SECONDS:-120}
       COLLECTION_CATALOG_BATCH_SIZE: ${COLLECTION_CATALOG_BATCH_SIZE:-50}
       COLLECTION_METADATA_BATCH_SIZE: ${COLLECTION_METADATA_BATCH_SIZE:-20}
       COLLECTION_STEAM_PRICE_BATCH_SIZE: ${COLLECTION_STEAM_PRICE_BATCH_SIZE:-40}
+      COLLECTION_PRICE_BATCH_SIZE: ${COLLECTION_PRICE_BATCH_SIZE:-40}
+      COLLECTION_STORE_WORKERS: ${COLLECTION_STORE_WORKERS:-2}
+      COLLECTION_RETRY_DELAY_SECONDS: ${COLLECTION_RETRY_DELAY_SECONDS:-30}
+      STEAM_COLLECTION_MAX_WORKERS: ${STEAM_COLLECTION_MAX_WORKERS:-2}
+      COLLECTION_STEAM_DISCOVERY_LIMIT: ${COLLECTION_STEAM_DISCOVERY_LIMIT:-100}
+      COLLECTION_STEAM_DISCOVERY_PAGES: ${COLLECTION_STEAM_DISCOVERY_PAGES:-6}
+    network_mode: host
+    volumes:
+      - game-price-data:/data
+    restart: unless-stopped
+
+  catalog-growth:
+    image: compgameprice_api:latest
+    command: ["python3", "/app/tools/run_collection_scheduler.py", "--mode", "catalog"]
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      GAME_PRICE_DATABASE_PATH: /data/game_prices.db
+      GAME_PRICE_CATALOG_PATH: /data/game_catalog.json
+      GAME_PRICE_PROJECT_PATH: /app
+      GAME_PRICE_TRACKER_PATH: /app/game_price_tracker
+      COLLECTION_OUTPUT_PATH: /data/catalog-growth-snapshots
+      COLLECTION_LOCK_PATH: /data/.collection-scheduler.lock
+      COLLECTION_STATUS_PATH: /data/catalog-growth-status.json
+      COLLECTION_ENABLED: ${CATALOG_INGEST_ENABLED:-true}
+      COLLECTION_INTERVAL_SECONDS: ${CATALOG_INGEST_INTERVAL_SECONDS:-3600}
+      COLLECTION_INITIAL_DELAY_SECONDS: ${CATALOG_INGEST_INITIAL_DELAY_SECONDS:-300}
+      COLLECTION_CATALOG_BATCH_SIZE: ${CATALOG_INGEST_BATCH_SIZE:-100}
+      CATALOG_INGEST_MAX_BATCHES: ${CATALOG_INGEST_MAX_BATCHES:-2}
+      COLLECTION_STEAM_DISCOVERY_LIMIT: 100
+      COLLECTION_STEAM_DISCOVERY_PAGES: 2
+      STEAM_CATALOG_SYNC_MAX_WORKERS: ${STEAM_CATALOG_SYNC_MAX_WORKERS:-2}
+      STEAM_CATALOG_SYNC_REQUEST_DELAY: ${STEAM_CATALOG_SYNC_REQUEST_DELAY:-0.5}
+      STEAM_COLLECTION_MAX_WORKERS: ${STEAM_COLLECTION_MAX_WORKERS:-2}
+    network_mode: host
+    volumes:
+      - game-price-data:/data
+    restart: unless-stopped
+
+  catalog-maintenance:
+    image: compgameprice_api:latest
+    command: ["python3", "/app/tools/run_collection_scheduler.py", "--mode", "maintenance"]
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      GAME_PRICE_DATABASE_PATH: /data/game_prices.db
+      GAME_PRICE_CATALOG_PATH: /data/game_catalog.json
+      GAME_PRICE_PROJECT_PATH: /app
+      GAME_PRICE_TRACKER_PATH: /app/game_price_tracker
+      COLLECTION_OUTPUT_PATH: /data/catalog-maintenance-snapshots
+      COLLECTION_LOCK_PATH: /data/.collection-scheduler.lock
+      COLLECTION_STATUS_PATH: /data/catalog-maintenance-status.json
+      COLLECTION_ENABLED: ${CATALOG_MAINTENANCE_ENABLED:-true}
+      COLLECTION_INTERVAL_SECONDS: ${CATALOG_MAINTENANCE_INTERVAL_SECONDS:-21600}
+      COLLECTION_INITIAL_DELAY_SECONDS: ${CATALOG_MAINTENANCE_INITIAL_DELAY_SECONDS:-900}
+      COLLECTION_CATALOG_BATCH_SIZE: ${CATALOG_LINK_BATCH_SIZE:-100}
+      CATALOG_LINK_MAX_WORKERS: ${CATALOG_LINK_MAX_WORKERS:-2}
+      CATALOG_LINK_REQUEST_DELAY: ${CATALOG_LINK_REQUEST_DELAY:-1}
+      COLLECTION_METADATA_BATCH_SIZE: ${COLLECTION_METADATA_BATCH_SIZE:-20}
       COLLECTION_STEAM_DISCOVERY_LIMIT: ${COLLECTION_STEAM_DISCOVERY_LIMIT:-100}
       COLLECTION_STEAM_DISCOVERY_PAGES: ${COLLECTION_STEAM_DISCOVERY_PAGES:-6}
     network_mode: host

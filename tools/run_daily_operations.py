@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+from daily_price_refresh import run_command
 
 
 def step_outcome(name: str, exit_code: int) -> str:
@@ -23,13 +24,13 @@ def step_outcome(name: str, exit_code: int) -> str:
 
 def run_step(name: str, command: list[str], environment: dict[str, str]) -> dict:
     try:
-        completed = subprocess.run(command, check=False, env=environment)
+        completed = run_command(command, env=environment)
         return {
             "name": name,
             "exitCode": completed.returncode,
             "outcome": step_outcome(name, completed.returncode),
         }
-    except OSError as error:
+    except (OSError, subprocess.TimeoutExpired) as error:
         print(f"{name} could not start: {error}", file=sys.stderr)
         return {
             "name": name,
@@ -49,7 +50,23 @@ def run_operations(
     metadata_batch_size: int = 20,
     steam_discovery_limit: int = 75,
     steam_discovery_pages: int = 4,
+    mode: str = "all",
 ) -> list[dict]:
+    if mode == "catalog":
+        from catalog_growth import run_growth
+        catalog = Path(os.environ.get("GAME_PRICE_CATALOG_PATH", str(project / "data/game_catalog.json")))
+        return run_growth(project, tracker, database, catalog, output_directory,
+                          catalog_batch_size, steam_discovery_limit, steam_discovery_pages)
+    if mode == "prices":
+        from daily_price_refresh import run_refresh
+        catalog = Path(os.environ.get("GAME_PRICE_CATALOG_PATH", str(project / "data/game_catalog.json")))
+        results = run_refresh(project, tracker, database, catalog, output_directory)
+        environment = {**os.environ, "GAME_PRICE_DATABASE_PATH": str(database), "GAME_PRICE_CATALOG_PATH": str(catalog)}
+        results.append(run_step("ecb-exchange-rates", [sys.executable, str(project / "tools/sync_ecb_exchange_rates.py"), "--database", str(database)], environment))
+        results.append(run_step("collection-health", [sys.executable, str(project / "tools/check_collection_health.py"), "--database", str(database)], environment))
+        return results
+    if mode not in {"all", "maintenance"}:
+        raise ValueError("Unknown operations mode")
     python = sys.executable
     catalog = Path(
         os.environ.get(
@@ -436,12 +453,19 @@ def run_operations(
             outbox_command.extend(["--output-file", str(outbox_file)])
         steps.append(("notification-outbox", outbox_command))
 
+    if mode == "maintenance":
+        steps = [(name, command) for name, command in steps if name in {
+            "steam-metadata-sync", "store-artwork-backfill",
+            "google-play-catalog-discovery", "apple-catalog-discovery", "nintendo-catalog-discovery",
+            "playstation-catalog-discovery", "microsoft-catalog-discovery",
+        }]
     return [run_step(name, command, environment) for name, command in steps]
 
 
 def main() -> int:
     project = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--mode", choices=("prices", "catalog", "maintenance", "all"), default="prices")
     parser.add_argument("--tracker", default=project / "build/game_price_tracker", type=Path)
     parser.add_argument("--database", default=project / "build/game_prices.db", type=Path)
     parser.add_argument("--output-dir", default=project / "snapshots/latest", type=Path)
@@ -461,6 +485,7 @@ def main() -> int:
         arguments.metadata_batch_size,
         arguments.steam_discovery_limit,
         arguments.steam_discovery_pages,
+        mode=arguments.mode,
     )
     print(json.dumps({"steps": results}, ensure_ascii=False, indent=2))
     return 0 if all(step["exitCode"] == 0 for step in results) else 1

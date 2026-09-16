@@ -578,6 +578,12 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
 .identity-comparison span { display: grid; gap: 4px; padding: 10px; background: #101f18; border-radius: 8px; }
 .identity-comparison small { color: #82968b; }
 .admin-job { display: grid; gap: 4px; margin-top: 14px; padding: 14px; background: #0b1812; border: 1px solid #315141; border-radius: 10px; }
+.collection-progress { display: grid; gap: 8px; margin-top: 8px; color: #d7e7de; }
+.collection-progress progress { width: 100%; height: 12px; accent-color: #73e2a7; }
+.daily-price-coverage { margin: 16px 0; padding: 20px; border: 1px solid #315141; border-radius: 12px; }
+.daily-price-coverage progress { width: 100%; accent-color: #73e2a7; }
+.daily-price-coverage > div { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 16px 0; }
+.daily-price-coverage article { display: grid; gap: 8px; }
 .admin-job.succeeded { border-color: #39835a; }
 .admin-job.failed { color: #ffb4a8; border-color: #633a34; }
 .modal-backdrop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px; background: rgba(2, 8, 5, .78); backdrop-filter: blur(8px); }

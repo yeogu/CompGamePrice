@@ -501,7 +501,8 @@ std::string catalogImportError(const std::string& output) {
 
 Json::Value executeCatalogTool(
     std::string command,
-    const std::filesystem::path& temporary) {
+    const std::filesystem::path& temporary,
+    bool acceptFailureReport = false) {
     command += " > " + shellQuoted(temporary.string());
     command += " 2>&1";
     const auto exitCode = std::system(command.c_str());
@@ -511,7 +512,7 @@ Json::Value executeCatalogTool(
         std::istreambuf_iterator<char>{}};
     std::error_code ignored;
     std::filesystem::remove(temporary, ignored);
-    if (exitCode != 0) {
+    if (exitCode != 0 && !acceptFailureReport) {
         const auto message = catalogImportError(output);
         if (message == "Steam title cannot produce a canonical game id") {
             throw std::invalid_argument(
@@ -752,6 +753,13 @@ public:
             return false;
         }
         ++id_;
+        if (!progressPath_.empty()) {
+            std::error_code ignored;
+            std::filesystem::remove(progressPath_, ignored);
+        }
+        progressPath_ = (std::filesystem::temp_directory_path() /
+            ("compgameprice-collection-" + std::to_string(getpid()) + "-" + std::to_string(id_) + ".json")).string();
+        phase_ = "PREPARING";
         store_ = store;
         productId_ = productId.value_or("");
         status_ = "RUNNING";
@@ -778,6 +786,18 @@ public:
             result["error"] = error_;
         }
         result["integrityIssueCount"] = Json::UInt64(integrityIssueCount_);
+        result["phase"] = phase_;
+        std::ifstream progressInput(progressPath_);
+        Json::Value progress;
+        Json::CharReaderBuilder builder;
+        std::string errors;
+        if (progressInput && Json::parseFromStream(builder, progressInput, &progress, &errors)) {
+            result["progress"] = progress;
+            if (status_ == "RUNNING" && phase_ != "AUDITING") {
+                result["phase"] = progress["processed"].asUInt64() < progress["total"].asUInt64()
+                    ? "COLLECTING" : "SAVING";
+            }
+        }
         return result;
     }
 
@@ -836,7 +856,7 @@ private:
              pipeline == "tools/run_apple_pipeline.py")) {
             pipelineArguments += " --product-id " + shellQuoted(productId);
         }
-        const auto command = "python3 " + shellQuoted(
+        const auto command = "GAME_PRICE_COLLECTION_PROGRESS_PATH=" + shellQuoted(progressPath_) + " python3 " + shellQuoted(
             (project / pipeline).string()) + pipelineArguments +
             " --tracker " + shellQuoted(trackerPath().string()) +
             " --catalog " + shellQuoted(catalogPath()) +
@@ -851,6 +871,10 @@ private:
             : exitCode;
         std::size_t integrityIssueCount = 0;
         if (pipelineExitCode == 0 || pipelineExitCode == 2) {
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                phase_ = "AUDITING";
+            }
             try {
                 integrityIssueCount = runPriceIntegrityAudit()["issueCount"].asUInt64();
             } catch (const std::exception&) {
@@ -862,6 +886,7 @@ private:
         status_ = pipelineExitCode == 0
             ? "SUCCEEDED"
             : pipelineExitCode == 2 ? "PARTIAL" : "FAILED";
+        phase_ = "FINISHED";
         if (pipelineExitCode == 2) {
             error_ = store + " collection completed with unavailable products";
         } else if (pipelineExitCode != 0) {
@@ -898,6 +923,8 @@ private:
     std::string productId_;
     std::string error_;
     std::size_t integrityIssueCount_{};
+    std::string progressPath_;
+    std::string phase_{"PREPARING"};
 };
 
 Json::Value runCatalogSyncCommand(
@@ -919,7 +946,12 @@ Json::Value runCatalogSyncCommand(
     const auto parsed = Json::parseFromStream(builder, input, &result, &errors);
     std::error_code ignored;
     std::filesystem::remove(temporary, ignored);
-    if (exitCode != 0 || !parsed) {
+    const bool reportedFailure = parsed && result["provider"].isString() &&
+        (result["status"].asString() == "FAILED" ||
+         result["status"].asString() == "PARTIAL" ||
+         result["status"].asString() == "PARTIAL_FAILURE" ||
+         result.isMember("priceCollection"));
+    if (!parsed || (exitCode != 0 && !reportedFailure)) {
         throw std::runtime_error("catalog synchronization command failed");
     }
     return result;
@@ -949,8 +981,8 @@ Json::Value runSteamCatalogDiscoveryTool() {
     std::string command = "python3 " + shellQuoted(script.string());
     command += " --database " + shellQuoted(databasePath());
     command += " --per-source-limit 100";
-    command += " --pages-per-source 6";
-    return executeCatalogTool(std::move(command), temporary);
+    command += " --pages-per-source 2";
+    return executeCatalogTool(std::move(command), temporary, true);
 }
 
 class SteamCatalogDiscoveryJob {
@@ -986,6 +1018,9 @@ private:
             next["status"] = discovery.isMember("status") ?
                 discovery["status"] : Json::Value("SUCCEEDED");
             next["queued"] = discovery["queued"];
+            next["existing"] = discovery["existing"];
+            next["pending"] = discovery["pending"];
+            next["retryAfterSeconds"] = discovery["retryAfterSeconds"];
             next["failures"] = discovery["failures"];
         } catch (const std::exception& error) {
             next["status"] = "FAILED";
@@ -1466,14 +1501,37 @@ int main() {
         SteamCatalogDiscoveryJob steamCatalogDiscoveryJob;
         CatalogSyncJob catalogSyncJob(catalog);
         MobileCatalogSyncJob mobileCatalogSyncJob;
+        std::mutex catalogReloadMutex;
+        std::optional<std::pair<std::filesystem::file_time_type, std::uintmax_t>> catalogRevision;
+        const auto catalogFile = catalogPath();
 
         drogon::app().registerPreRoutingAdvice(
-            [](const drogon::HttpRequestPtr& request,
+            [&catalog, &catalogReloadMutex, &catalogRevision, catalogFile](const drogon::HttpRequestPtr& request,
                drogon::AdviceCallback&& callback,
                drogon::AdviceChainCallback&& next) {
                 if (request->method() == drogon::Options) {
                     callback(jsonResponse(Json::Value{}));
                     return;
+                }
+                if (request->path().rfind("/api/", 0) == 0) {
+                    std::lock_guard<std::mutex> lock(catalogReloadMutex);
+                    std::error_code fileError;
+                    const auto modified = std::filesystem::last_write_time(catalogFile, fileError);
+                    if (!fileError) {
+                        const auto size = std::filesystem::file_size(catalogFile, fileError);
+                        const auto revision = std::make_pair(modified, size);
+                        if (!fileError && (!catalogRevision || *catalogRevision != revision)) {
+                            catalogRevision = revision;
+                            try {
+                                // Background collectors replace the catalog atomically.
+                                // reload validates first, then swaps under its reader lock.
+                                catalog.reload(catalogFile);
+                            } catch (const std::exception& error) {
+                                std::cerr << "Catalog refresh failed; retaining last valid catalog: "
+                                          << error.what() << '\n';
+                            }
+                        }
+                    }
                 }
                 next();
             });

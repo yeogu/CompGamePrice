@@ -82,6 +82,27 @@ class CollectionSchedulerTest(unittest.TestCase):
                 )
         self.assertEqual(result, 2)
 
+    def test_busy_lock_retries_in_five_minutes_not_next_day(self):
+        waits = []
+        def wait(seconds, *args):
+            waits.append(seconds)
+            if len(waits) == 2: collection_scheduler.stop_requested = True
+        with tempfile.TemporaryDirectory() as directory:
+            lock = Path(directory) / "lock"
+            with lock.open("w") as held, patch.object(collection_scheduler.periodic_job_status, "wait_with_heartbeat", side_effect=wait):
+                collection_scheduler.fcntl.flock(held, collection_scheduler.fcntl.LOCK_EX | collection_scheduler.fcntl.LOCK_NB)
+                collection_scheduler.run_scheduler(ROOT, Path("tracker"), Path(directory) / "db", Path(directory) / "output", lock, 86400, 0, 20, status_path=Path(directory) / "status.json")
+        self.assertEqual(waits, [0, 300])
+
+    def test_interval_is_anchored_to_cycle_start(self):
+        waits = []
+        def wait(seconds, *args):
+            waits.append(seconds)
+            if len(waits) == 2: collection_scheduler.stop_requested = True
+        with tempfile.TemporaryDirectory() as directory, patch.object(collection_scheduler.periodic_job_status, "wait_with_heartbeat", side_effect=wait), patch.object(collection_scheduler, "run_once"), patch.object(collection_scheduler.time, "monotonic", side_effect=[0, 60]):
+            collection_scheduler.run_scheduler(ROOT, Path("tracker"), Path(directory) / "db", Path(directory) / "output", Path(directory) / "lock", 86400, 0, 20, status_path=Path(directory) / "status.json")
+        self.assertEqual(waits, [0, 86340])
+
 
 if __name__ == "__main__":
     unittest.main()

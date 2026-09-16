@@ -241,6 +241,18 @@ if(BUILD_TESTING)
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_storefront_price_pipeline.py
         )
         add_test(
+            NAME collection_progress_tests
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_collection_progress.py
+        )
+        add_test(
+            NAME daily_price_refresh_tests
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_daily_price_refresh.py
+        )
+        add_test(
+            NAME catalog_growth_tests
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_catalog_growth.py
+        )
+        add_test(
             NAME ecb_exchange_rate_tests
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_ecb_exchange_rates.py
         )

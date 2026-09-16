@@ -195,6 +195,8 @@ export interface PeriodicJobStatus {
   error?: string | null
 }
 export interface AdminHealthSummary {
+  catalogGrowth?: { gameCount: number; pendingCandidates: number; retryDeferred: number; pendingReviews: number; processedLast24Hours: number; registeredLast24Hours: number; reviewLast24Hours: number; skippedLast24Hours: number; failedLast24Hours: number; lastError?: string | null }
+  dailyPrices?: { day: string; gameCount: number; target: number; confirmed: number; failed: number; pending: number; status: string; elapsedSeconds: number | null; stores: { store: string; target: number; confirmed: number; failed: number }[] }
   metadata: { complete: number; incomplete: number; total: number }
   collection: {
     recentFailures: number
@@ -224,7 +226,7 @@ export interface AdminHealthSummary {
   stores: AdminStoreQuality[]
   notifications: { pending: number; retryable: number; exhausted: number; sent: number }
   emails: { pending: number; retryable: number; exhausted: number; sent: number; lastError?: string | null; lastAttemptAt?: string | null }
-  automation: { collection: PeriodicJobStatus; backup: PeriodicJobStatus }
+  automation: { collection: PeriodicJobStatus; backup: PeriodicJobStatus; catalogGrowth?: PeriodicJobStatus; catalogMaintenance?: PeriodicJobStatus }
   artwork: {
     checkedAt?: string | null
     candidates: number
@@ -252,11 +254,14 @@ export interface CatalogAdminResult {
   applied: boolean
   requiresApiRestart: boolean
 }
-export interface CatalogCollectionJob { id: number; store?: string; productId?: string; status: 'IDLE' | 'RUNNING' | 'SUCCEEDED' | 'PARTIAL' | 'FAILED'; error?: string; integrityIssueCount?: number }
+export interface CatalogCollectionJob { id: number; store?: string; productId?: string; status: 'IDLE' | 'RUNNING' | 'SUCCEEDED' | 'PARTIAL' | 'FAILED'; error?: string; integrityIssueCount?: number; phase?: 'PREPARING' | 'COLLECTING' | 'SAVING' | 'AUDITING' | 'FINISHED'; progress?: { total: number; processed: number; succeeded: number; failed: number } }
 export interface CatalogDiscoveryJob {
   provider: 'Steam'
-  status: 'IDLE' | 'RUNNING' | 'SUCCEEDED' | 'PARTIAL' | 'FAILED'
+  status: 'IDLE' | 'RUNNING' | 'SUCCEEDED' | 'PARTIAL' | 'FAILED' | 'DEFERRED'
   queued?: number
+  existing?: number
+  pending?: number
+  retryAfterSeconds?: number
   failures?: Array<{ source: string; page: number; error: string }>
   error?: string
 }
@@ -273,7 +278,7 @@ export interface CatalogGameRequest { query: string; status: string; requestCoun
 export interface CatalogSyncRun { id: number; status: string; startedAt: string; finishedAt?: string; processed: number; accepted: number; review: number; skipped: number; failed: number; error?: string }
 export interface CatalogSyncJob {
   provider: string
-  status: 'IDLE' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'
+  status: 'IDLE' | 'RUNNING' | 'SUCCEEDED' | 'PARTIAL_FAILURE' | 'FAILED'
   accepted: number
   review: number
   skipped: number
@@ -286,7 +291,7 @@ export interface CatalogSyncJob {
   gameRequests?: CatalogGameRequest[]
   recentRuns?: CatalogSyncRun[]
   priceCollection?: {
-    status: 'NOT_REQUIRED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'
+    status: 'NOT_REQUIRED' | 'RUNNING' | 'SUCCEEDED' | 'PARTIAL' | 'FAILED'
     attemptedAt?: string
     exitCode?: number
     error?: string

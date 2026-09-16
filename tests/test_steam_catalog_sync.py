@@ -5,6 +5,7 @@ from pathlib import Path
 import sqlite3
 import sys
 import tempfile
+import threading
 import unittest
 from unittest import mock
 
@@ -21,6 +22,9 @@ SPEC.loader.exec_module(sync)
 
 class SteamCatalogSyncTest(unittest.TestCase):
     def setUp(self):
+        self.environment = mock.patch.dict("os.environ", {"STEAM_CATALOG_SYNC_REQUEST_DELAY": "0"})
+        self.environment.start()
+        self.addCleanup(self.environment.stop)
         self.detail = json.loads(
             (ROOT / "tests/fixtures/steam_appdetails_413150.json").read_text()
         )
@@ -364,6 +368,146 @@ class SteamCatalogSyncTest(unittest.TestCase):
             with sync.exclusive_sync_lock(lock):
                 with self.assertRaises(sync.CatalogSyncAlreadyRunning):
                     sync.synchronize(Path("catalog.json"), database, 1)
+
+    def empty_catalog(self, directory):
+        root = Path(directory)
+        catalog, database = root / "catalog.json", root / "catalog.db"
+        catalog.write_text(json.dumps({"schemaVersion": 4, "games": []}))
+        with sqlite3.connect(database) as connection:
+            sync.initialize_state(connection)
+        return catalog, database
+
+    def enqueue(self, database, app_ids):
+        with sqlite3.connect(database) as connection:
+            connection.executemany(
+                "INSERT INTO catalog_discovery_candidates VALUES('Steam', ?, ?, 'test', ?, 'PENDING', ?, NULL)",
+                [(str(app_id), f"Game {app_id}", 1000 - index, sync.utc_now()) for index, app_id in enumerate(app_ids)],
+            )
+
+    def test_registered_and_seen_candidates_cannot_starve_new_queue_entries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            catalog, database = self.empty_catalog(directory)
+            existing = sync.catalog_import.catalog_game(self.detail_for("10"), "10")
+            catalog.write_text(json.dumps({"schemaVersion": 4, "games": [existing]}))
+            self.enqueue(database, [10, 20, 30])
+            with sqlite3.connect(database) as connection:
+                sync.record_seen(connection, "20", "SKIPPED", sync.utc_now())
+            report = sync.synchronize(catalog, database, 1, detail_fetcher=self.detail_for)
+            self.assertEqual(report["acceptedAppIds"], ["30"])
+            self.assertEqual(report["pendingCandidates"], 0)
+
+    def test_failed_head_candidates_are_deferred_and_do_not_block_healthy_tail(self):
+        with tempfile.TemporaryDirectory() as directory:
+            catalog, database = self.empty_catalog(directory)
+            self.enqueue(database, range(10, 18))
+            calls = []
+
+            def fetch(app_id):
+                calls.append(app_id)
+                if int(app_id) < 15:
+                    raise OSError("temporary network outage")
+                return self.detail_for(app_id)
+
+            first = sync.synchronize(catalog, database, 7, detail_fetcher=fetch)
+            self.assertEqual(first["status"], "PARTIAL_FAILURE")
+            self.assertEqual(first["acceptedAppIds"], ["15", "16"])
+            self.assertEqual(first["retryDeferred"], 5)
+            calls.clear()
+            second = sync.synchronize(catalog, database, 7, detail_fetcher=fetch)
+            self.assertEqual(second["acceptedAppIds"], ["17"])
+            self.assertEqual(calls, ["17"])
+            with sqlite3.connect(database) as connection:
+                connection.execute("UPDATE catalog_sync_retry SET next_retry_at = '2000-01-01T00:00:00Z'")
+            recovered = sync.synchronize(catalog, database, 7, detail_fetcher=self.detail_for)
+            self.assertEqual(recovered["accepted"], 5)
+            self.assertEqual(recovered["retryDeferred"], 0)
+
+    def test_identity_conflict_is_reviewed_without_aborting_other_games(self):
+        with tempfile.TemporaryDirectory() as directory:
+            catalog, database = self.empty_catalog(directory)
+            existing = sync.catalog_import.catalog_game(self.detail_for("1", "Same Name"), "1")
+            catalog.write_text(json.dumps({"schemaVersion": 4, "games": [existing]}))
+            self.enqueue(database, [10, 20])
+            report = sync.synchronize(
+                catalog, database, 2,
+                detail_fetcher=lambda app_id: self.detail_for(app_id, "Same Name" if app_id == "10" else "Another Game"),
+            )
+            self.assertEqual(report["status"], "SUCCEEDED")
+            self.assertEqual(report["review"], 1)
+            self.assertEqual(report["acceptedAppIds"], ["20"])
+            self.assertEqual(len(json.loads(catalog.read_text())["games"]), 2)
+
+    def test_localized_roman_numeral_slug_uses_english_identity(self):
+        game = sync.catalog_game_with_english_fallback(
+            self.detail_for("10", "옥토패스 트래블러 II"), "10",
+            lambda app_id: self.detail_for(app_id, "OCTOPATH TRAVELER II"),
+        )
+        self.assertEqual(game["id"], "octopath-traveler-ii")
+        self.assertEqual(game["aliases"], ["옥토패스 트래블러 II"])
+
+    def test_mixed_localized_title_does_not_use_short_ascii_fragment(self):
+        game = sync.catalog_game_with_english_fallback(
+            self.detail_for("10", "몬스터 헌터: WORLD"), "10",
+            lambda app_id: self.detail_for(app_id, "Monster Hunter: World"),
+        )
+        self.assertEqual(game["id"], "monster-hunter-world")
+        self.assertEqual(game["aliases"], ["몬스터 헌터: WORLD"])
+
+    def test_provider_rate_limit_stops_queued_requests_without_long_sleep(self):
+        with tempfile.TemporaryDirectory() as directory:
+            catalog, database = self.empty_catalog(directory)
+            self.enqueue(database, list(range(1, 21)))
+            calls = []
+            def rejected(app_id):
+                calls.append(app_id)
+                raise sync.steam.TransientCollectionError("Steam HTTP 429", retry_after=600)
+            with mock.patch.object(sync.time, "sleep") as sleeper:
+                report = sync.synchronize(catalog, database, 20, detail_fetcher=rejected, max_workers=2, request_delay=0)
+            self.assertEqual(report["status"], "FAILED")
+            self.assertEqual(report["retryDeferred"], 20)
+            self.assertLessEqual(len(calls), 2)
+            sleeper.assert_not_called()
+
+    def test_more_user_request_candidates_than_batch_are_not_lost(self):
+        with tempfile.TemporaryDirectory() as directory:
+            catalog, database = self.empty_catalog(directory)
+            sync.create_game_request(database, "A wanted game")
+            searcher = lambda query, limit: [{"externalProductId": str(value), "title": f"Game {value}"} for value in [10, 20, 30]]
+            first = sync.synchronize(catalog, database, 1, detail_fetcher=self.detail_for, candidate_searcher=searcher)
+            second = sync.synchronize(catalog, database, 2, detail_fetcher=self.detail_for)
+            self.assertEqual(first["accepted"], 1)
+            self.assertEqual(second["accepted"], 2)
+
+    def test_fetches_overlap_without_holding_database_write_lock(self):
+        with tempfile.TemporaryDirectory() as directory:
+            catalog, database = self.empty_catalog(directory)
+            self.enqueue(database, [10, 20])
+            barrier = threading.Barrier(2)
+
+            def fetch(app_id):
+                barrier.wait(timeout=3)
+                with sqlite3.connect(database, timeout=0.1) as connection:
+                    connection.execute("BEGIN IMMEDIATE")
+                    connection.rollback()
+                return self.detail_for(app_id, product_type="music" if app_id == "10" else "game")
+
+            report = sync.synchronize(catalog, database, 2, detail_fetcher=fetch, max_workers=2)
+            self.assertEqual(report["accepted"], 1)
+            self.assertEqual(report["skipped"], 1)
+            self.assertEqual(report["failed"], 0)
+
+    def test_bad_response_is_retryable_and_demo_is_not_saved_for_review(self):
+        with tempfile.TemporaryDirectory() as directory:
+            catalog, database = self.empty_catalog(directory)
+            self.enqueue(database, [10, 20])
+            report = sync.synchronize(
+                catalog, database, 2,
+                detail_fetcher=lambda app_id: b"{}" if app_id == "10" else self.detail_for(app_id, "Test Game Demo"),
+            )
+            self.assertEqual(report["failed"], 1)
+            self.assertEqual(report["skipped"], 1)
+            self.assertEqual(report["review"], 0)
+            self.assertEqual(report["retryDeferred"], 1)
 
 
 if __name__ == "__main__":

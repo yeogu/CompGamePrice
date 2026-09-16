@@ -1,10 +1,12 @@
 import importlib.util
 from pathlib import Path
 import unittest
+import sys
 from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools"))
 SPEC = importlib.util.spec_from_file_location(
     "daily_operations", ROOT / "tools" / "run_daily_operations.py"
 )
@@ -14,6 +16,27 @@ SPEC.loader.exec_module(daily_operations)
 
 
 class DailyOperationsTest(unittest.TestCase):
+    def test_maintenance_has_no_price_collection(self):
+        with patch.object(daily_operations, "run_step", side_effect=lambda name, command, environment: {"name": name, "exitCode": 0}):
+            results = daily_operations.run_operations(ROOT, Path("tracker"), Path("db"), Path("output"), None, mode="maintenance")
+        self.assertIn("steam-metadata-sync", [row["name"] for row in results])
+        self.assertNotIn("steam-discovery", [row["name"] for row in results])
+        self.assertNotIn("steam-catalog-sync", [row["name"] for row in results])
+        self.assertNotIn("steam", [row["name"] for row in results])
+
+    def test_catalog_growth_is_independent_of_slow_metadata_and_cross_store_matching(self):
+        import catalog_growth
+        with patch.object(catalog_growth, "run_growth", return_value=[]) as growth, patch.object(daily_operations, "run_step") as step:
+            daily_operations.run_operations(ROOT, Path("tracker"), Path("db"), Path("output"), None, 100, steam_discovery_pages=2, mode="catalog")
+        growth.assert_called_once()
+        step.assert_not_called()
+
+    def test_prices_delegate_to_full_inventory_without_discovery(self):
+        import daily_price_refresh
+        with patch.object(daily_price_refresh, "run_refresh", return_value=[{"name": "daily-prices", "exitCode": 0}]) as refresh, patch.object(daily_operations, "run_step", side_effect=lambda name, command, environment: {"name": name, "exitCode": 0}):
+            results = daily_operations.run_operations(ROOT, Path("tracker"), Path("db"), Path("output"), None, mode="prices")
+        refresh.assert_called_once()
+        self.assertEqual([row["name"] for row in results], ["daily-prices", "ecb-exchange-rates", "collection-health"])
     def test_classifies_success_partial_warning_and_failure(self):
         self.assertEqual(daily_operations.step_outcome("steam", 0), "SUCCEEDED")
         self.assertEqual(daily_operations.step_outcome("epic-games", 2), "PARTIAL")

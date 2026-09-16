@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from collection_progress import ProgressReporter
 import gzip
 import hashlib
 import json
@@ -17,6 +18,8 @@ from datetime import datetime, timezone
 from urllib.parse import urlencode
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
+from concurrent.futures import ThreadPoolExecutor
+import threading
 
 USER_AGENT = "CompGamePricePrototype/0.1 (local development)"
 ENDPOINT = "https://store.steampowered.com/api/appdetails"
@@ -365,6 +368,51 @@ def write_failure(
     )
 
 
+def collect_parallel_targets(targets, output_directory, country, language, timeout,
+                             request_delay, max_attempts, retry_delay, fetcher,
+                             sleeper, archive_directory, statistics, workers):
+    from storefront_price_support import AdaptiveThrottle
+    # Keep the global request spacing even with multiple in-flight requests.
+    throttle = AdaptiveThrottle(request_delay * workers, workers)
+    progress = ProgressReporter(len(targets))
+    statistics_lock = threading.Lock()
+
+    def collect_one(target):
+        app_id, game_id = target
+        error = None
+        for attempt in range(1, max_attempts + 1):
+            if attempt > 1 and statistics is not None:
+                with statistics_lock:
+                    statistics["retryCount"] = statistics.get("retryCount", 0) + 1
+            throttle.wait(sleeper)
+            try:
+                raw, status, source = fetcher(app_id, country, language, timeout)
+                row = write_raw_snapshot(raw, output_directory, app_id, game_id, source, status, archive_directory)
+                progress.completed(True)
+                return row, None
+            except PermanentCollectionError as exception:
+                error = exception
+                break
+            except Exception as exception:
+                error = exception
+                pause = getattr(exception, "retry_after", None)
+                pause = pause if pause is not None else retry_delay * (2 ** (attempt - 1))
+                if "429" in str(exception):
+                    throttle.penalize(max(1, pause))
+                if attempt < max_attempts and pause > 0:
+                    sleeper(pause)
+        write_failure(output_directory, app_id, game_id, attempt, error)
+        progress.completed(False)
+        return None, (app_id, str(error))
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        results = list(pool.map(collect_one, targets))
+    rows = [row for row, failure in results if row is not None]
+    if rows:
+        write_products_snapshot(output_directory, rows)
+    return len(rows), [failure for row, failure in results if failure is not None]
+
+
 def collect_targets(
     targets: list[tuple[str, str]],
     output_directory: Path,
@@ -381,9 +429,15 @@ def collect_targets(
 ) -> tuple[int, list[tuple[str, str]]]:
     if request_delay < 0 or retry_delay < 0 or max_attempts < 1:
         raise ValueError("Delays must be non-negative and max attempts must be positive")
+    workers = max(1, min(4, int(os.getenv("STEAM_COLLECTION_MAX_WORKERS", "1"))))
+    if workers > 1 and len(targets) > 1:
+        return collect_parallel_targets(targets, output_directory, country, language,
+                                        timeout, request_delay, max_attempts, retry_delay,
+                                        fetcher, sleeper, archive_directory, statistics, workers)
 
     rows: list[str] = []
     failures: list[tuple[str, str]] = []
+    progress = ProgressReporter(len(targets))
     for target_index, (app_id, game_id) in enumerate(targets):
         if target_index > 0 and request_delay > 0:
             sleeper(request_delay)
@@ -422,6 +476,7 @@ def collect_targets(
         if last_error is not None:
             write_failure(output_directory, app_id, game_id, attempts_used, last_error)
             failures.append((app_id, str(last_error)))
+        progress.completed(last_error is None)
 
     if rows:
         write_products_snapshot(output_directory, rows)

@@ -383,23 +383,52 @@ Steam과 Apple 수집, DB 반영, 수집 상태 점검, 알림 Outbox 처리를 
 
 ```bash
 python3 tools/run_daily_operations.py \
+  --mode all \
   --outbox-file snapshots/notification-outbox.jsonl
 ```
 
-Docker/NAS 배포에서는 `collector` 컨테이너가 같은 작업을 기본 6시간 간격으로
-자동 실행합니다. 전체 실행 잠금으로 scheduler 중복 기동을 막고, 각 Store 작업은
-독립적으로 처리합니다. 주기는 `.env`의 `COLLECTION_INTERVAL_SECONDS`로 변경하며
+Docker/NAS 배포에서는 `collector` 컨테이너가 가격 전용 작업을 기본 하루 간격으로
+자동 실행합니다. `catalog-growth`는 매시간 신규 게임을 등록하고 첫 가격을 수집합니다.
+`catalog-maintenance`는 다른 Store 연결·메타데이터·이미지 보완을 기본 6시간마다
+실행합니다. 세 작업과 관리자 재수집은 공통 잠금으로 중복 실행을 막습니다.
+가격 주기는 `.env`의 `COLLECTION_INTERVAL_SECONDS`로 변경하며
 최소값은 300초입니다. NAS 운영 명령과 로그 확인 방법은
 [NAS 배포 준비 문서](docs/nas-deployment.md#가격-수집-자동화)를 참고하세요.
 
-Steam 가격 수집은 전체 카탈로그를 한 번에 요청하지 않고, 가격을 한 번도 확인하지
-않은 상품과 마지막 성공 시각이 오래된 상품부터 기본 40개씩 처리합니다. 배치 크기는
-`.env`의 `COLLECTION_STEAM_PRICE_BATCH_SIZE`로 조정할 수 있습니다. 일시적인 HTTP
-오류는 최대 3회 지수 백오프로 재시도하며, 실행 보고서에는 배치 수·성공·실패·재시도
-횟수와 마지막 오류가 남습니다.
+가격 실행은 등록된 본편·번들 전체 대상을 확정하고 한국 시간 기준 오늘 정상 가격을
+확인하지 못한 상품을 끝까지 처리합니다. `COLLECTION_PRICE_BATCH_SIZE=40`은 배치
+크기일 뿐 하루 처리 상한이 아닙니다. 기본 스토어 동시 실행 수는 2이며, Steam도
+요청 간격을 유지한 채 동시 응답 대기를 2개로 제한합니다. 전체 첫 처리가 끝난 뒤
+실패 상품만 추가 시도하며 하루 최대 두 번으로 제한합니다. 403·404·지역 불일치는
+같은 날 반복 요청하지 않습니다. Epic은 구매 링크 전용으로 가격 대상에서 제외합니다.
+운영 대시보드의 오늘 대상·정상 확인·실패·미처리·소요 시간은 실제 DB 확인 기록을
+기준으로 집계합니다. 실패해도 실행을 성공한 것으로 표시하지 않습니다.
 
-`.env`에서 `COLLECTION_ENABLED=false`로 설정하면 기존 데이터는 유지한 채 자동
-수집만 중지됩니다. `backup-scheduler`는 DB와 카탈로그를 기본 하루 간격으로 검증
+기존 `.env`의 `COLLECTION_INTERVAL_SECONDS=21600`은 자동 변경되지 않습니다.
+하루 주기를 원하면 `86400`으로 변경하세요. 기존 `COLLECTION_STEAM_PRICE_BATCH_SIZE`는
+레거시 `--mode all` 작업에만 적용되며 새 가격 전용 작업의 처리 상한으로 쓰지 않습니다.
+신규 등록은 `CATALOG_INGEST_ENABLED=true`, `CATALOG_INGEST_INTERVAL_SECONDS=3600`,
+`CATALOG_INGEST_BATCH_SIZE=100`, `CATALOG_INGEST_MAX_BATCHES=2`로 제어합니다.
+한 번에 최대 200개 **후보**를 검사하며 실제 등록 수는 본편 판정·중복·검토 여부에 따라
+달라집니다. Steam 공개 검색 목록의 다음 페이지를 저장해 재시작 후 이어서 탐색하고,
+등록 대기 후보가 1,000개 이상이면 먼저 대기열을 처리합니다. 현재 신규 canonical
+게임 탐색은 Steam 중심이며 모바일·콘솔 작업은 기존 게임에 상품을 연결합니다.
+독점 게임 발견은 이 연결 작업만으로 이루어지지 않습니다.
+
+신규 등록 가격 수집은 새 상품만 조회합니다. 성공한 가격은 재시도 목록에서 개별 제거하고,
+실패한 가격은 뒤로 미루므로 하나의 실패가 다음 게임 등록을 막지 않습니다.
+운영 대시보드의 `신규 게임 등록`에서 최근 24시간 검사·등록·검토·실패 수와 실제 대기열,
+재시도 대기, 다음 자동 실행 시간을 확인할 수 있습니다.
+API는 카탈로그 파일 변경을 감지해 검색·상세 화면에 반영합니다. 재시작은 필요 없으며,
+잘못된 파일이 감지되면 마지막 정상 목록을 유지하고 서버 로그에 오류를 남깁니다.
+
+보완 작업은 `CATALOG_MAINTENANCE_ENABLED`와 `CATALOG_MAINTENANCE_INTERVAL_SECONDS`로
+별도로 제어합니다. 기본 실행은 배포 15분 뒤 시작하며, 가격 잠금을 확보하지 못하면
+다음 날이 아니라 5분 뒤 다시 확인합니다.
+
+`.env`에서 `COLLECTION_ENABLED=false`로 설정하면 자동 가격 갱신이 중지됩니다.
+신규 등록과 연결 보완까지 중지하려면 `CATALOG_INGEST_ENABLED=false`,
+`CATALOG_MAINTENANCE_ENABLED=false`도 설정합니다. `backup-scheduler`는 DB와 카탈로그를 기본 하루 간격으로 검증
 백업하고 최근 14일을 보관합니다. 자동 수집과 백업의 최근 상태는 관리자 운영
 대시보드에서 확인할 수 있습니다.
 

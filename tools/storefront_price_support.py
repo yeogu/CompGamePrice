@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+from collection_progress import ProgressReporter
 from pathlib import Path
 import tempfile
 import threading
@@ -75,6 +76,7 @@ def collect_with_retry(
     sleeper=time.sleep,
     max_workers: int | None = None,
 ) -> tuple[list[str], list[tuple[str, str]]]:
+    max_attempts = int(os.getenv("STORE_COLLECTION_MAX_ATTEMPTS", str(max_attempts)))
     if max_attempts < 1:
         raise ValueError("max attempts must be positive")
     if retry_delay < 0 or request_delay < 0:
@@ -86,6 +88,7 @@ def collect_with_retry(
         raise ValueError("max workers must be positive")
     selected_workers = min(selected_workers, max(1, len(targets)))
     throttle = AdaptiveThrottle(request_delay, selected_workers)
+    progress = ProgressReporter(len(targets))
 
     def collect_one(
         target: tuple[str, str, str],
@@ -114,8 +117,13 @@ def collect_with_retry(
                 sleeper(retry_delay * (2**attempt))
         return None, (product_id, last_error)
 
+    def collect_and_report(target):
+        result = collect_one(target)
+        progress.completed(result[0] is not None)
+        return result
+
     with ThreadPoolExecutor(max_workers=selected_workers) as executor:
-        results = list(executor.map(collect_one, targets))
+        results = list(executor.map(collect_and_report, targets))
     rows = [row for row, _failure in results if row is not None]
     failures = [failure for _row, failure in results if failure is not None]
     return rows, failures

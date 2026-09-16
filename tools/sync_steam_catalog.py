@@ -4,10 +4,12 @@
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import fcntl
 import json
+import os
 from pathlib import Path
 import re
 import sqlite3
@@ -17,6 +19,7 @@ from urllib.request import Request, urlopen
 import add_steam_catalog_game as catalog_import
 import collect_steam_snapshot as steam
 import search_steam_catalog as steam_search
+from storefront_price_support import AdaptiveThrottle
 
 
 APP_LIST_URL = "https://api.steampowered.com/ISteamApps/GetAppList/v2/"
@@ -32,6 +35,12 @@ class CatalogSyncAlreadyRunning(RuntimeError):
 
 class CatalogPersistenceError(RuntimeError):
     pass
+
+
+class CatalogProviderDeferred(RuntimeError):
+    def __init__(self, message: str, retry_after: float):
+        super().__init__(message)
+        self.retry_after = retry_after
 
 
 @contextmanager
@@ -102,6 +111,14 @@ def initialize_state(connection: sqlite3.Connection) -> None:
             checked_at TEXT NOT NULL,
             PRIMARY KEY(provider, external_product_id)
         );
+        CREATE TABLE IF NOT EXISTS catalog_sync_retry (
+            provider TEXT NOT NULL,
+            external_product_id TEXT NOT NULL,
+            attempts INTEGER NOT NULL,
+            next_retry_at TEXT NOT NULL,
+            error_message TEXT NOT NULL,
+            PRIMARY KEY(provider, external_product_id)
+        );
         CREATE TABLE IF NOT EXISTS catalog_sync_review (
             provider TEXT NOT NULL,
             external_product_id TEXT NOT NULL,
@@ -152,6 +169,8 @@ def initialize_state(connection: sqlite3.Connection) -> None:
             processed_at TEXT,
             PRIMARY KEY(provider, external_product_id)
         );
+        CREATE INDEX IF NOT EXISTS catalog_discovery_pending_order
+            ON catalog_discovery_candidates(provider, status, priority DESC, discovered_at);
         """
     )
 
@@ -178,8 +197,70 @@ def pending_apps(
             ("Steam",),
         )
     }
-    excluded = seen | existing_steam_ids(catalog)
-    return [app for app in apps if app["appId"] not in excluded][:batch_size]
+    excluded = seen | existing_steam_ids(catalog) | deferred_app_ids(connection)
+    result = []
+    for app in apps:
+        if len(result) >= batch_size:
+            break
+        if app["appId"] not in excluded:
+            result.append(app)
+            excluded.add(app["appId"])
+    return result
+
+
+def deferred_app_ids(connection: sqlite3.Connection) -> set[str]:
+    return {
+        row[0] for row in connection.execute(
+            "SELECT external_product_id FROM catalog_sync_retry "
+            "WHERE provider = 'Steam' AND next_retry_at > ?", (utc_now(),),
+        )
+    }
+
+
+def defer_failed_app(connection: sqlite3.Connection, app_id: str, error: Exception) -> None:
+    previous = connection.execute(
+        "SELECT attempts FROM catalog_sync_retry "
+        "WHERE provider = 'Steam' AND external_product_id = ?", (app_id,),
+    ).fetchone()
+    attempts = (previous[0] if previous else 0) + 1
+    # Failed candidates remain retryable without monopolizing each subsequent batch.
+    delay = min(86400, 300 * (2 ** min(attempts - 1, 8)))
+    if isinstance(error, steam.PermanentCollectionError):
+        delay = 86400
+    retry_after = getattr(error, "retry_after", None)
+    if retry_after is not None:
+        delay = max(delay, retry_after)
+    next_retry = (datetime.now(timezone.utc) + timedelta(seconds=delay)).isoformat().replace("+00:00", "Z")
+    connection.execute(
+        "INSERT INTO catalog_sync_retry VALUES('Steam', ?, ?, ?, ?) "
+        "ON CONFLICT(provider, external_product_id) DO UPDATE SET "
+        "attempts = excluded.attempts, next_retry_at = excluded.next_retry_at, "
+        "error_message = excluded.error_message",
+        (app_id, attempts, next_retry, str(error)),
+    )
+
+
+def clear_retry(connection: sqlite3.Connection, app_id: str) -> None:
+    connection.execute(
+        "DELETE FROM catalog_sync_retry WHERE provider = 'Steam' AND external_product_id = ?",
+        (app_id,),
+    )
+
+
+def reconcile_discovery_queue(connection: sqlite3.Connection, catalog: dict) -> None:
+    connection.execute(
+        "UPDATE catalog_discovery_candidates SET status = 'PROCESSED', processed_at = ? "
+        "WHERE provider = 'Steam' AND status = 'PENDING' AND EXISTS ("
+        "SELECT 1 FROM catalog_sync_seen s WHERE s.provider = 'Steam' "
+        "AND s.external_product_id = catalog_discovery_candidates.external_product_id)",
+        (utc_now(),),
+    )
+    connection.executemany(
+        "UPDATE catalog_discovery_candidates SET status = 'PROCESSED', processed_at = ? "
+        "WHERE provider = 'Steam' AND external_product_id = ? AND status = 'PENDING'",
+        [(utc_now(), app_id) for app_id in existing_steam_ids(catalog)],
+    )
+    connection.commit()
 
 
 def normalize_request_query(query: str) -> str:
@@ -251,6 +332,14 @@ def requested_apps(
                 if isinstance(app_id, str) and app_id.isdigit() and app_id not in seen:
                     candidates.append({"appId": app_id, "name": candidate.get("title", "")})
                     seen.add(app_id)
+                    connection.execute(
+                        "INSERT INTO catalog_discovery_candidates("
+                        "provider, external_product_id, title, source, priority, discovered_at) "
+                        "VALUES('Steam', ?, ?, 'user-request', 1000, ?) "
+                        "ON CONFLICT(provider, external_product_id) DO UPDATE SET "
+                        "priority = MAX(priority, 1000)",
+                        (app_id, candidate.get("title", ""), utc_now()),
+                    )
         except Exception as error:
             status = "PENDING"
             error_message = str(error)
@@ -262,6 +351,7 @@ def requested_apps(
             """,
             (status, utc_now(), error_message, normalized_query),
         )
+        connection.commit()
     return candidates
 
 
@@ -274,10 +364,21 @@ def queued_discovery_apps(
         SELECT external_product_id, title
         FROM catalog_discovery_candidates
         WHERE provider = 'Steam' AND status = 'PENDING'
+          AND NOT EXISTS (
+              SELECT 1 FROM catalog_sync_seen s
+              WHERE s.provider = 'Steam'
+                AND s.external_product_id = catalog_discovery_candidates.external_product_id
+          )
+          AND NOT EXISTS (
+              SELECT 1 FROM catalog_sync_retry r
+              WHERE r.provider = 'Steam'
+                AND r.external_product_id = catalog_discovery_candidates.external_product_id
+                AND r.next_retry_at > ?
+          )
         ORDER BY priority DESC, discovered_at ASC
         LIMIT ?
         """,
-        (limit,),
+        (utc_now(), limit),
     ).fetchall()
     return [{"appId": row[0], "name": row[1]} for row in rows]
 
@@ -364,7 +465,11 @@ def catalog_game_with_english_fallback(
     english_detail_fetcher,
 ) -> dict:
     try:
-        return catalog_import.catalog_game(localized_raw, app_id)
+        game = catalog_import.catalog_game(localized_raw, app_id)
+        # Mixed localized titles otherwise collapse to fragments such as "xi-s"
+        # or "world". Ignore non-letter marks (e.g. ™) when deciding to refetch.
+        if not any(ord(character) > 127 and character.isalpha() for character in game["title"]):
+            return game
     except catalog_import.CatalogImportError as error:
         if "canonical game id" not in str(error):
             raise
@@ -711,9 +816,16 @@ def synchronize_unlocked(
     detail_fetcher=None,
     candidate_searcher=steam_search.search,
     english_detail_fetcher=None,
+    *,
+    max_workers: int | None = None,
+    request_delay: float | None = None,
 ) -> dict:
     if not 1 <= batch_size <= 100:
         raise ValueError("batch size must be between 1 and 100")
+    workers = int(os.getenv("STEAM_CATALOG_SYNC_MAX_WORKERS", "2")) if max_workers is None else max_workers
+    delay = float(os.getenv("STEAM_CATALOG_SYNC_REQUEST_DELAY", "0.5")) if request_delay is None else request_delay
+    if not 1 <= workers <= 4 or not 0 <= delay <= 60:
+        raise ValueError("Steam catalog workers must be 1..4 and request delay 0..60 seconds")
     if detail_fetcher is None:
         detail_fetcher = lambda app_id: steam.fetch(
             app_id,
@@ -739,14 +851,20 @@ def synchronize_unlocked(
         "processed": 0,
         "lastAppId": None,
         "acceptedAppIds": [],
+        "failures": [],
     }
     catalog = catalog_import.load_catalog(catalog_path)
-    with sqlite3.connect(database_path) as connection:
+    with sqlite3.connect(database_path, timeout=30) as connection:
         initialize_state(connection)
         run_id = start_sync_run(connection, started_at)
         update_state(connection, "RUNNING", started_at, report)
         try:
-            localized_apps = localized_review_apps(connection)
+            reconcile_discovery_queue(connection, catalog)
+            excluded_localized = existing_steam_ids(catalog) | deferred_app_ids(connection)
+            localized_apps = [
+                app for app in localized_review_apps(connection)
+                if app["appId"] not in excluded_localized
+            ]
             localized_ids = {app["appId"] for app in localized_apps}
             priority_apps = list(localized_apps)
             priority_apps.extend(
@@ -765,21 +883,18 @@ def synchronize_unlocked(
                 for app in priority_apps
                 if app["appId"] not in localized_ids
             ]
-            selected = localized_apps[:batch_size]
-            selected.extend(
-                pending_apps(
-                    connection,
-                    regular_priority,
-                    catalog,
-                    batch_size - len(selected),
-                )
-            )
+            regular_apps = pending_apps(connection, regular_priority, catalog, batch_size)
+            # Rechecking old localized-title reviews must leave room for new games.
+            review_slots = batch_size // 4 if regular_apps else batch_size
+            selected = localized_apps[:review_slots]
+            selected.extend(regular_apps[:batch_size - len(selected)])
+            selected.extend(localized_apps[review_slots:review_slots + batch_size - len(selected)])
             if len(selected) < batch_size and app_list_fetcher is not None:
                 try:
                     apps = parse_app_list(app_list_fetcher())
                     fallback = pending_apps(
                         connection,
-                        apps,
+                        [app for app in apps if app["appId"] not in {item["appId"] for item in selected}],
                         catalog,
                         batch_size - len(selected),
                     )
@@ -793,25 +908,61 @@ def synchronize_unlocked(
                         "Steam App List is unavailable; processed only queued "
                         f"and requested candidates: {error}"
                     )
-            consecutive_failures = 0
-            for app in selected:
+            connection.commit()
+            throttle = AdaptiveThrottle(delay * workers, workers)
+            provider_failure = []
+
+            def paced_fetch(fetcher, app_id):
+                if provider_failure:
+                    raise CatalogProviderDeferred(*provider_failure[0])
+                throttle.wait(time.sleep)
+                if provider_failure:
+                    raise CatalogProviderDeferred(*provider_failure[0])
+                try:
+                    return fetcher(app_id)
+                except steam.TransientCollectionError as error:
+                    if "429" in str(error):
+                        provider_failure.append((str(error), max(300, error.retry_after or 0)))
+                        raise CatalogProviderDeferred(*provider_failure[0]) from error
+                    raise
+                except steam.PermanentCollectionError as error:
+                    if "403" in str(error) or "401" in str(error):
+                        provider_failure.append((str(error), 86400))
+                        raise CatalogProviderDeferred(*provider_failure[0]) from error
+                    raise
+
+            def prepare_candidate(app):
+                app_id = app["appId"]
+                try:
+                    raw = fetch_detail_with_retry(lambda value: paced_fetch(detail_fetcher, value), app_id)
+                    return catalog_game_with_english_fallback(
+                        raw, app_id,
+                        lambda value: paced_fetch(english_detail_fetcher, value),
+                    )
+                except Exception as error:
+                    return error
+
+            # Only network and response parsing run concurrently. Catalog and SQLite
+            # writes stay ordered in this thread, and no transaction spans network IO.
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                prepared = list(executor.map(prepare_candidate, selected))
+            for app, prepared_game in zip(selected, prepared):
                 app_id = app["appId"]
                 report["lastAppId"] = app_id
                 report["processed"] += 1
                 checked_at = utc_now()
                 try:
-                    raw_detail = fetch_detail_with_retry(detail_fetcher, app_id)
-                    game = catalog_game_with_english_fallback(
-                        raw_detail,
-                        app_id,
-                        english_detail_fetcher,
-                    )
+                    if isinstance(prepared_game, Exception):
+                        raise prepared_game
+                    game = prepared_game
                     reason = review_reason(game)
                     if reason:
                         record_review(connection, app, reason, game, checked_at)
                         record_seen(connection, app_id, "REVIEW", checked_at)
                         report["review"] += 1
                         mark_discovery_processed(connection, app_id)
+                        clear_retry(connection, app_id)
+                        connection.commit()
                         continue
                     def apply_game(current: dict) -> tuple[dict, dict]:
                         return catalog_import.updated_catalog(current, game), game
@@ -826,49 +977,77 @@ def synchronize_unlocked(
                             database_path=database_path,
                             actor="steam-catalog-sync",
                         )
+                    except catalog_import.CatalogImportError:
+                        # Identity conflicts need review; they must not abort the
+                        # whole batch as if the catalog disk write had failed.
+                        raise
                     except Exception as error:
                         raise CatalogPersistenceError(str(error)) from error
-                    catalog = catalog_import.load_catalog(catalog_path)
                     clear_pending_review(connection, app_id)
                     record_seen(connection, app_id, "ACCEPTED", checked_at)
                     report["accepted"] += 1
                     report["acceptedAppIds"].append(app_id)
-                    consecutive_failures = 0
                 except catalog_import.CatalogImportError as error:
                     reason = str(error)
                     if (
                         "Only Steam base games" in reason
                         or "Free Steam games" in reason
+                        or "demo products" in reason
                     ):
                         record_seen(connection, app_id, "SKIPPED", checked_at)
                         clear_pending_review(connection, app_id)
                         report["skipped"] += 1
+                    elif any(text in reason for text in ("malformed JSON", "no successful data", "unexpected app id")):
+                        defer_failed_app(connection, app_id, error)
+                        report["failed"] += 1
+                        report["failures"].append({"appId": app_id, "error": reason})
+                        connection.commit()
+                        continue
                     else:
                         record_review(connection, app, reason, None, checked_at)
                         record_seen(connection, app_id, "REVIEW", checked_at)
                         report["review"] += 1
                     mark_discovery_processed(connection, app_id)
+                    if "canonical game id" in reason:
+                        defer_failed_app(connection, app_id, error)
+                    else:
+                        clear_retry(connection, app_id)
                 except CatalogPersistenceError:
                     raise
-                except Exception:
+                except Exception as error:
                     report["failed"] += 1
-                    consecutive_failures += 1
-                    if consecutive_failures >= 5:
-                        break
+                    report["failures"].append({"appId": app_id, "error": str(error)})
+                    defer_failed_app(connection, app_id, error)
                 else:
                     mark_discovery_processed(connection, app_id)
-            report["status"] = "SUCCEEDED"
+                    clear_retry(connection, app_id)
+                connection.commit()
+            report["status"] = (
+                "SUCCEEDED" if not report["failed"] else
+                "FAILED" if report["failed"] == report["processed"] else "PARTIAL_FAILURE"
+            )
+            report["pendingCandidates"] = connection.execute(
+                "SELECT COUNT(*) FROM catalog_discovery_candidates WHERE provider = 'Steam' AND status = 'PENDING'"
+            ).fetchone()[0]
+            report["retryDeferred"] = len(deferred_app_ids(connection))
             warning = report.get("warning")
+            if report["failures"]:
+                failure_message = (
+                    f'{report["failed"]} Steam candidates deferred for retry: '
+                    f'{report["failures"][0]["error"]}'
+                )
+                warning = f"{warning}; {failure_message}" if warning else failure_message
+                report["error"] = failure_message
             finish_sync_run(
                 connection,
                 run_id,
-                "SUCCEEDED",
+                report["status"],
                 report,
                 warning,
             )
             update_state(
                 connection,
-                "SUCCEEDED",
+                report["status"],
                 started_at,
                 report,
                 warning,
@@ -890,6 +1069,9 @@ def synchronize(
     detail_fetcher=None,
     candidate_searcher=steam_search.search,
     english_detail_fetcher=None,
+    *,
+    max_workers: int | None = None,
+    request_delay: float | None = None,
 ) -> dict:
     if not 1 <= batch_size <= 100:
         raise ValueError("batch size must be between 1 and 100")
@@ -903,6 +1085,8 @@ def synchronize(
             detail_fetcher,
             candidate_searcher,
             english_detail_fetcher,
+            max_workers=max_workers,
+            request_delay=request_delay,
         )
 
 

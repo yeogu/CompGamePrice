@@ -14,6 +14,7 @@ import audit_catalog_metadata
 import catalog_storage
 import dispatch_notification_outbox
 import periodic_job_status
+from daily_price_refresh import coverage as daily_price_coverage
 
 
 STORE_NAMES = (
@@ -76,6 +77,40 @@ def parsed_time(value: str | None) -> datetime | None:
         return datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
         return None
+
+
+def catalog_growth_summary(document: dict, database: Path) -> dict:
+    result = {"gameCount": len(document["games"]), "pendingCandidates": 0,
+              "retryDeferred": 0, "pendingReviews": 0, "processedLast24Hours": 0,
+              "registeredLast24Hours": 0, "reviewLast24Hours": 0,
+              "skippedLast24Hours": 0, "failedLast24Hours": 0, "lastError": None}
+    if not database.exists():
+        return result
+    existing = {str(product["productId"]) for game in document["games"]
+                for product in game.get("products", []) if product.get("store") == "Steam"}
+    with sqlite3.connect(f"file:{database}?mode=ro", uri=True, timeout=30) as connection:
+        seen = set()
+        if table_exists(connection, "catalog_sync_seen"):
+            seen = {row[0] for row in connection.execute("SELECT external_product_id FROM catalog_sync_seen WHERE provider='Steam'")}
+        if table_exists(connection, "catalog_discovery_candidates"):
+            pending = {row[0] for row in connection.execute("SELECT external_product_id FROM catalog_discovery_candidates WHERE provider='Steam' AND status='PENDING'")} - existing - seen
+            deferred = set()
+            if table_exists(connection, "catalog_sync_retry"):
+                deferred = {row[0] for row in connection.execute("SELECT external_product_id FROM catalog_sync_retry WHERE provider='Steam' AND datetime(next_retry_at)>datetime('now')")}
+            result["pendingCandidates"] = len(pending - deferred)
+            result["retryDeferred"] = len(pending & deferred)
+        if table_exists(connection, "catalog_sync_review"):
+            result["pendingReviews"] = connection.execute("SELECT COUNT(*) FROM catalog_sync_review WHERE provider='Steam' AND status='PENDING'").fetchone()[0]
+        if table_exists(connection, "catalog_sync_runs"):
+            totals = connection.execute("""SELECT COALESCE(SUM(processed_count),0), COALESCE(SUM(accepted_count),0),
+                COALESCE(SUM(review_count),0), COALESCE(SUM(skipped_count),0), COALESCE(SUM(failed_count),0)
+                FROM catalog_sync_runs WHERE provider='Steam' AND datetime(started_at)>=datetime('now','-1 day')""").fetchone()
+            for key, total in zip(("processedLast24Hours", "registeredLast24Hours", "reviewLast24Hours", "skippedLast24Hours", "failedLast24Hours"), totals):
+                result[key] = total
+            if column_exists(connection, "catalog_sync_runs", "error_message"):
+                last = connection.execute("SELECT error_message FROM catalog_sync_runs WHERE provider='Steam' ORDER BY id DESC LIMIT 1").fetchone()
+                result["lastError"] = last[0] if last else None
+    return result
 
 
 def store_quality(document: dict, database: Path) -> list[dict]:
@@ -366,10 +401,14 @@ def summary(catalog: Path, database: Path) -> dict:
             "total": metadata["gameCount"],
         },
         "collection": collection_summary(database),
+        "dailyPrices": daily_price_coverage(document, database),
+        "catalogGrowth": catalog_growth_summary(document, database),
         "stores": store_quality(document, database),
         "notifications": delivery,
         "emails": email_delivery,
         "automation": {
+            "catalogGrowth": periodic_job_status.read_status(database.parent / "catalog-growth-status.json", "collection"),
+            "catalogMaintenance": periodic_job_status.read_status(database.parent / "catalog-maintenance-status.json", "collection"),
             "collection": periodic_job_status.read_status(
                 collection_status_path,
                 "collection",

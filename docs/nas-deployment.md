@@ -99,13 +99,31 @@ EMAIL_DISPATCH_INTERVAL_SECONDS=30
 
 ## 가격 수집 자동화
 
-Compose의 `collector` 서비스는 API가 정상 상태가 된 뒤 Steam, Google Play,
-Apple App Store, Nintendo eShop, PlayStation Store, Microsoft Store의 카탈로그
-탐색과 가격 수집을 실행한다. 기본 주기는 6시간이며
-`.env`에서 조정할 수 있다.
+Compose의 `collector`는 가격 전용 작업으로 등록된 본편·번들 전체를 매일 처리한다.
+Epic은 구매 링크 전용으로 제외한다. 오늘 정상 가격이 확인된 상품은 중복 요청하지
+않으며 실패 상품만 전체 첫 처리 이후 추가 시도한다. 신규 게임 등록은 매시간
+`catalog-growth`가 수행하고, 다른 Store 연결·메타데이터·이미지 보완은
+`catalog-maintenance`가 기본 6시간마다 수행한다.
 
 ```dotenv
-COLLECTION_INTERVAL_SECONDS=21600
+COLLECTION_INTERVAL_SECONDS=86400
+COLLECTION_PRICE_BATCH_SIZE=40
+COLLECTION_STORE_WORKERS=2
+STEAM_COLLECTION_MAX_WORKERS=2
+COLLECTION_RETRY_DELAY_SECONDS=30
+CATALOG_MAINTENANCE_ENABLED=true
+CATALOG_INGEST_ENABLED=true
+CATALOG_INGEST_INTERVAL_SECONDS=3600
+CATALOG_INGEST_INITIAL_DELAY_SECONDS=300
+CATALOG_INGEST_BATCH_SIZE=100
+CATALOG_INGEST_MAX_BATCHES=2
+STEAM_CATALOG_SYNC_MAX_WORKERS=2
+STEAM_CATALOG_SYNC_REQUEST_DELAY=0.5
+CATALOG_MAINTENANCE_INTERVAL_SECONDS=21600
+CATALOG_MAINTENANCE_INITIAL_DELAY_SECONDS=900
+CATALOG_LINK_BATCH_SIZE=100
+CATALOG_LINK_MAX_WORKERS=2
+CATALOG_LINK_REQUEST_DELAY=1
 COLLECTION_INITIAL_DELAY_SECONDS=120
 COLLECTION_CATALOG_BATCH_SIZE=50
 COLLECTION_METADATA_BATCH_SIZE=20
@@ -116,10 +134,19 @@ COLLECTION_ENABLED=true
 STORE_COLLECTION_MAX_WORKERS=
 ```
 
-기본값은 한 주기마다 Store별 50개 후보를 처리하고, Steam은 소스별 100개씩
-6페이지를 탐색합니다. 이 주기에는 대표 이미지와 신원 메타데이터가 없는 Steam
-게임을 최대 20개씩 보완하는 단계도 포함됩니다. NAS 부하나 Store 제한이 보이면
-배치 크기부터 낮추세요.
+신규 등록 서비스는 한 주기마다 Steam 공개 목록의 다음 2페이지씩을 탐색하고,
+최대 2배치 × 100개 후보를 검증한다. 페이지 위치·처리 결과·실패 재시도 대기를 DB에
+저장하므로 이미 처리한 후보를 반복하지 않는다. 배포 후 첫 실행은 5분 뒤이며,
+신규 등록 게임은 곧바로 첫 가격 수집 대상으로 전달한다. 이론상 하루 최대 4,800개
+후보를 검사할 수 있지만 실제 등록 게임 수나 요청 제한 없는 실행을 보장하는 수치는 아니다.
+구형 `.env`의 `COLLECTION_CATALOG_BATCH_SIZE`는 신규 등록 서비스의 상한을 낮추지 않는다.
+
+보완 서비스는 한 주기마다 Store별 100개 기존 게임의 상품 연결을 검사하고 Steam
+메타데이터를 20개씩 보완한다. 모바일·콘솔 독점 게임의 신규 발굴은 현재 지원하지 않는다.
+가격 작업의 40개 배치는 하루 처리 상한이 아니며 모든 배치를 끝까지 수행한다.
+세 서비스는 관리자 수집과 공통 잠금을
+사용한다. 잠금 충돌 시 5분 후 다시 확인한다. 기존 `.env`의 21600초는 자동 변경되지
+않으므로 하루 간격을 원하면 위 값을 적용해야 한다.
 가격 수집은 Store별 기본 동시성 범위 안에서 실행되고, HTTP 429가 발생하면 같은
 Store의 작업 전체가 자동으로 감속됩니다. 운영 환경에서 동시성을 직접 제한하려면
 `STORE_COLLECTION_MAX_WORKERS`를 1 이상의 값으로 설정하세요.

@@ -1,10 +1,14 @@
 import importlib.util
 import json
+import os
 from pathlib import Path
 import sqlite3
 import sys
 import tempfile
+import threading
 import unittest
+from unittest.mock import Mock, patch
+from urllib.error import HTTPError
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -53,6 +57,9 @@ def approved_metadata(raw: bytes, product_id: str) -> dict:
 
 class MobileCatalogSyncTest(unittest.TestCase):
     def setUp(self):
+        environment = patch.dict(os.environ, {"CATALOG_LINK_REQUEST_DELAY": "0"})
+        environment.start()
+        self.addCleanup(environment.stop)
         self.temporary = tempfile.TemporaryDirectory()
         self.directory = Path(self.temporary.name)
         self.catalog = self.directory / "catalog.json"
@@ -487,7 +494,7 @@ class MobileCatalogSyncTest(unittest.TestCase):
 
         self.assertEqual(
             attempts,
-            ["Stardew Valley", "Stardew Valley", "Stardew Valley", "스타듀 밸리"],
+            ["Stardew Valley", "Stardew Valley", "Stardew Valley"],
         )
         self.assertEqual(report["retries"], 2)
         status = sync.synchronization_status(self.database, "AppleAppStore")
@@ -521,6 +528,7 @@ class MobileCatalogSyncTest(unittest.TestCase):
 
     def test_one_game_failure_does_not_abort_next_game(self):
         document = catalog_document()
+        document["games"][0]["aliases"] = []
         document["games"].append(
             {
                 **document["games"][0],
@@ -555,7 +563,7 @@ class MobileCatalogSyncTest(unittest.TestCase):
         failures = status["recentRuns"][0]["failures"]
         self.assertEqual(failures[0]["gameId"], "stardew-valley")
         self.assertEqual(failures[0]["title"], "Stardew Valley")
-        self.assertEqual(failures[0]["reason"], "malformed response")
+        self.assertIn("malformed response", failures[0]["reason"])
 
     def test_failed_game_does_not_starve_later_game_in_next_batch(self):
         document = catalog_document()
@@ -602,6 +610,147 @@ class MobileCatalogSyncTest(unittest.TestCase):
                 """
             ).fetchone()[0]
         self.assertEqual(outcome, "FAILED")
+
+    def test_never_searched_games_precede_old_rechecks(self):
+        document = catalog_document()
+        document["games"].append({**document["games"][0], "id": "new-game"})
+        with sqlite3.connect(self.database) as connection:
+            sync.initialize_state(connection)
+            connection.execute(
+                "INSERT INTO catalog_sync_seen VALUES(?, ?, ?, ?)",
+                ("GooglePlay:game", "stardew-valley", "NO_MATCH", "2020-01-01T00:00:00Z"),
+            )
+            selected = sync.pending_games(connection, document, "GooglePlay", 1)
+        self.assertEqual([game["id"] for game in selected], ["new-game"])
+
+    def test_parallel_remote_reads_save_both_games_without_lost_updates(self):
+        document = catalog_document()
+        document["games"][0]["aliases"] = []
+        document["games"].append({**document["games"][0], "id": "second-game",
+                                   "title": "Second Game"})
+        self.catalog.write_text(json.dumps(document), encoding="utf-8")
+        barrier = threading.Barrier(2, timeout=5)
+        titles = {"123": "Stardew Valley", "456": "Second Game"}
+
+        def search(query, limit, timeout):
+            barrier.wait()
+            product_id = "123" if query == "Stardew Valley" else "456"
+            return [{"externalProductId": product_id, "title": query}]
+
+        def metadata(raw, product_id):
+            return {**approved_metadata(raw, product_id), "title": titles[product_id]}
+
+        report = sync.synchronize_provider(
+            self.catalog, self.database, "AppleAppStore", 10,
+            searcher=search, fetcher=lambda product_id, timeout: b"product",
+            metadata_parser=metadata, max_workers=2,
+        )
+        self.assertEqual(report["autoConnected"], 2, report)
+        games = json.loads(self.catalog.read_text(encoding="utf-8"))["games"]
+        self.assertEqual([game["products"][0]["productId"] for game in games], ["123", "456"])
+
+    def test_remote_reads_do_not_hold_sqlite_write_transaction(self):
+        document = catalog_document()
+        document["games"][0]["aliases"] = []
+        document["games"].append({**document["games"][0], "id": "second-game",
+                                   "title": "Second Game"})
+        self.catalog.write_text(json.dumps(document), encoding="utf-8")
+        queries = []
+
+        def search(query, limit, timeout):
+            # A worker may overlap the caller's short commit for the previous
+            # result, but must not wait for a remote operation to release it.
+            with sqlite3.connect(self.database, timeout=1) as writer:
+                writer.execute("BEGIN IMMEDIATE")
+                writer.execute("CREATE TABLE IF NOT EXISTS network_probe(value TEXT)")
+                writer.execute("INSERT INTO network_probe VALUES(?)", (query,))
+            queries.append(query)
+            return []
+
+        report = sync.synchronize_provider(
+            self.catalog, self.database, "GooglePlay", 10,
+            searcher=search, max_workers=1,
+        )
+        self.assertEqual(report["failed"], 0, report)
+        self.assertEqual(queries, ["Stardew Valley", "Second Game"])
+
+    def test_shared_candidate_is_fetched_once_per_batch(self):
+        document = catalog_document()
+        document["games"][0]["aliases"] = []
+        document["games"].append({**document["games"][0], "id": "another-game",
+                                   "title": "Another Game"})
+        self.catalog.write_text(json.dumps(document), encoding="utf-8")
+        fetcher = Mock(return_value=b"product")
+        report = sync.synchronize_provider(
+            self.catalog, self.database, "AppleAppStore", 10,
+            searcher=lambda query, limit, timeout: [
+                {"externalProductId": "123", "title": "Stardew Valley"}],
+            fetcher=fetcher, metadata_parser=approved_metadata, max_workers=2,
+        )
+        self.assertEqual(fetcher.call_count, 1)
+        self.assertEqual(report["autoConnected"], 1)
+        self.assertEqual(report["rejected"], 1)
+
+    def test_permanent_http_error_is_not_retried(self):
+        operation = Mock(side_effect=HTTPError("https://example.test", 404, "missing", {}, None))
+        retries = [0]
+        with self.assertRaises(HTTPError):
+            sync.call_with_retry(operation, 3, retries)
+        self.assertEqual(operation.call_count, 1)
+        self.assertEqual(retries, [0])
+
+    def test_access_denial_stops_requests_for_remaining_games(self):
+        document = catalog_document()
+        document["games"].append({**document["games"][0], "id": "another-game",
+                                   "title": "Another Game"})
+        self.catalog.write_text(json.dumps(document), encoding="utf-8")
+        search = Mock(side_effect=HTTPError("https://example.test", 403, "denied", {}, None))
+        report = sync.synchronize_provider(
+            self.catalog, self.database, "GooglePlay", 10,
+            searcher=search, max_workers=1,
+        )
+        self.assertEqual(search.call_count, 1)
+        self.assertEqual(report["processed"], 2)
+        self.assertEqual(report["failed"], 2)
+        self.assertIn("remaining requests", report["errors"][1]["reason"])
+
+    def test_rate_limit_waits_retry_after_and_slows_other_workers(self):
+        operation = Mock(side_effect=[
+            HTTPError("https://example.test", 429, "busy", {"Retry-After": "12"}, None),
+            "done",
+        ])
+        retries = [0]
+        pacer = Mock(spec=sync.RequestPacer)
+        with patch.object(sync.time, "sleep") as sleep:
+            result = sync.call_with_retry(operation, 3, retries, pacer)
+        self.assertEqual(result, "done")
+        self.assertEqual(retries, [1])
+        pacer.defer.assert_called_once_with(12)
+        sleep.assert_called_once_with(12)
+
+    def test_first_verified_match_does_not_search_remaining_aliases(self):
+        search = Mock(return_value=[{"externalProductId": "123", "title": "Stardew Valley"}])
+        report = sync.synchronize_provider(
+            self.catalog, self.database, "AppleAppStore", 10,
+            searcher=search, fetcher=lambda product_id, timeout: b"product",
+            metadata_parser=approved_metadata,
+        )
+        self.assertEqual(report["autoConnected"], 1)
+        self.assertEqual(search.call_count, 1)
+
+    def test_same_publisher_sequel_is_not_merged_by_title_substring(self):
+        report = sync.synchronize_provider(
+            self.catalog, self.database, "AppleAppStore", 10,
+            searcher=lambda query, limit, timeout: [
+                {"externalProductId": "123", "title": "Stardew Valley 2"}],
+            fetcher=lambda product_id, timeout: b"product",
+            metadata_parser=lambda raw, product_id: {
+                **approved_metadata(raw, product_id), "title": "Stardew Valley 2"},
+        )
+        self.assertEqual(report["autoConnected"], 0)
+        self.assertEqual(report["needsReview"], 1)
+        games = json.loads(self.catalog.read_text(encoding="utf-8"))["games"]
+        self.assertEqual(games[0]["products"], [])
 
 
 if __name__ == "__main__":

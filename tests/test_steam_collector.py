@@ -4,9 +4,13 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+import sys
+import threading
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools"))
 SPEC = importlib.util.spec_from_file_location(
     "steam_collector", ROOT / "tools" / "collect_steam_snapshot.py"
 )
@@ -16,6 +20,25 @@ SPEC.loader.exec_module(steam_collector)
 
 
 class SteamCollectorTest(unittest.TestCase):
+    def test_parallel_collection_keeps_all_rows_and_retry_statistics(self):
+        raw = json.loads((ROOT / "tests/fixtures/steam_appdetails_413150.json").read_bytes())["413150"]
+        barrier = threading.Barrier(2)
+        def fetch(app, country, language, timeout):
+            barrier.wait(timeout=3)
+            response = {**raw, "data": {**raw["data"], "steam_appid": int(app)}}
+            return json.dumps({app: response}).encode(), 200, "https://store.steampowered.com/api/appdetails"
+        with tempfile.TemporaryDirectory() as directory, patch.dict(steam_collector.os.environ, {"STEAM_COLLECTION_MAX_WORKERS": "2"}):
+            output = Path(directory)
+            statistics = {}
+            successes, failures = steam_collector.collect_targets(
+                [("413150", "stardew-valley"), ("105600", "terraria")], output,
+                "kr", "korean", 5, 0, 1, 0, fetcher=fetch, statistics=statistics,
+            )
+            self.assertEqual((successes, failures), (2, []))
+            snapshot = (output / "steam_products.txt").read_text()
+            self.assertIn("413150|stardew-valley", snapshot)
+            self.assertIn("105600|terraria", snapshot)
+
     def test_writes_raw_metadata_and_provider_snapshot(self):
         raw = (ROOT / "tests" / "fixtures" / "steam_appdetails_413150.json").read_bytes()
         with tempfile.TemporaryDirectory() as directory:

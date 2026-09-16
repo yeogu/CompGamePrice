@@ -724,6 +724,41 @@ grep -q '"productsRejected":0' "${response_body}"
 grep -q '"productsFailed":0' "${response_body}"
 grep -q '"retryCount":0' "${response_body}"
 
+# A background catalog update must become searchable without an API restart.
+python3 - "${test_catalog}" <<'PY'
+import json
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+document = json.loads(path.read_text())
+game = dict(document["games"][0])
+game.update(id="background-new-game", title="Background New Game", aliases=[])
+game["products"] = [{"store": "Steam", "productId": "999999991", "productUrl": "https://store.steampowered.com/app/999999991", "platforms": ["Windows"], "region": "KR", "edition": "Standard", "offerType": "BaseGame"}]
+game["platforms"] = ["Windows"]
+document["games"].append(game)
+temporary = path.with_suffix(".next")
+temporary.write_text(json.dumps(document))
+temporary.replace(path)
+PY
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/games?query=Background%20New%20Game")
+[[ "${status}" == "200" ]]
+grep -q '"id":"background-new-game"' "${response_body}"
+
+# An invalid replacement must preserve the last valid in-memory catalog.
+python3 - "${test_catalog}" <<'PY'
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+temporary = path.with_suffix(".next")
+temporary.write_text('{"games": invalid}')
+temporary.replace(path)
+PY
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/games?query=Background%20New%20Game")
+[[ "${status}" == "200" ]]
+grep -q '"id":"background-new-game"' "${response_body}"
+
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
     -b "${cookie_jar}" \
     "${api_base}/api/collection-runs?limit=invalid")
