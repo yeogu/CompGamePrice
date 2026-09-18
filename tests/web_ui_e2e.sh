@@ -55,7 +55,7 @@ for _ in {1..300}; do
             --role ADMIN >/dev/null
         WEB_E2E_BASE_URL="http://127.0.0.1:${web_port}" \
             "${project_directory}/web/node_modules/.bin/playwright" test \
-            --config "${project_directory}/web/playwright.config.ts"
+            --config "${project_directory}/web/playwright.config.ts" "${@:3}"
         exit
     fi
     sleep 0.1

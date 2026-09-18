@@ -19,6 +19,7 @@ from urllib.request import Request, urlopen
 import add_steam_catalog_game as catalog_import
 import collect_steam_snapshot as steam
 import search_steam_catalog as steam_search
+import steam_registration_cache
 from storefront_price_support import AdaptiveThrottle
 
 
@@ -935,17 +936,50 @@ def synchronize_unlocked(
                 app_id = app["appId"]
                 try:
                     raw = fetch_detail_with_retry(lambda value: paced_fetch(detail_fetcher, value), app_id)
-                    return catalog_game_with_english_fallback(
+                    fetched_at = time.time()
+                    game = catalog_game_with_english_fallback(
                         raw, app_id,
                         lambda value: paced_fetch(english_detail_fetcher, value),
                     )
+                    return game, raw, fetched_at
                 except Exception as error:
                     return error
 
             # Only network and response parsing run concurrently. Catalog and SQLite
             # writes stay ordered in this thread, and no transaction spans network IO.
+            fetch_started = time.monotonic()
             with ThreadPoolExecutor(max_workers=workers) as executor:
                 prepared = list(executor.map(prepare_candidate, selected))
+            report["metadataFetchSeconds"] = round(time.monotonic() - fetch_started, 3)
+            save_started = time.monotonic()
+            # Resolve collisions against the latest catalog under its lock, then
+            # publish the entire accepted batch once. Queue state is changed only
+            # after durable publication; a crash can safely reconcile on restart.
+            audit_entries = []
+            def apply_batch(current):
+                for index, (app, item) in enumerate(zip(selected, prepared)):
+                    if isinstance(item, Exception) or review_reason(item[0]):
+                        continue
+                    game = item[0]
+                    try:
+                        updated = catalog_import.updated_catalog(current, game)
+                    except catalog_import.CatalogImportError as error:
+                        prepared[index] = error
+                        continue
+                    audit_entries.append({"store": "Steam", "product_id": app["appId"],
+                                          "game_id": game["id"], "changed": updated != current})
+                    current = updated
+                return current, {}
+            if any(not isinstance(item, Exception) and not review_reason(item[0]) for item in prepared):
+                connection.commit()
+                try:
+                    catalog_import.catalog_storage.update_catalog(
+                        catalog_path, apply_batch, store="Steam", product_id="", game_id="",
+                        database_path=database_path, actor="steam-catalog-sync", audit_entries=audit_entries)
+                except Exception as error:
+                    raise CatalogPersistenceError(str(error)) from error
+            report["catalogSaveSeconds"] = round(time.monotonic() - save_started, 3)
+            report["catalogBatchWrites"] = int(any(entry["changed"] for entry in audit_entries))
             for app, prepared_game in zip(selected, prepared):
                 app_id = app["appId"]
                 report["lastAppId"] = app_id
@@ -954,7 +988,7 @@ def synchronize_unlocked(
                 try:
                     if isinstance(prepared_game, Exception):
                         raise prepared_game
-                    game = prepared_game
+                    game, raw, fetched_at = prepared_game
                     reason = review_reason(game)
                     if reason:
                         record_review(connection, app, reason, game, checked_at)
@@ -964,29 +998,12 @@ def synchronize_unlocked(
                         clear_retry(connection, app_id)
                         connection.commit()
                         continue
-                    def apply_game(current: dict) -> tuple[dict, dict]:
-                        return catalog_import.updated_catalog(current, game), game
-                    connection.commit()
-                    try:
-                        catalog_import.catalog_storage.update_catalog(
-                            catalog_path,
-                            apply_game,
-                            store="Steam",
-                            product_id=app_id,
-                            game_id=game["id"],
-                            database_path=database_path,
-                            actor="steam-catalog-sync",
-                        )
-                    except catalog_import.CatalogImportError:
-                        # Identity conflicts need review; they must not abort the
-                        # whole batch as if the catalog disk write had failed.
-                        raise
-                    except Exception as error:
-                        raise CatalogPersistenceError(str(error)) from error
                     clear_pending_review(connection, app_id)
                     record_seen(connection, app_id, "ACCEPTED", checked_at)
                     report["accepted"] += 1
                     report["acceptedAppIds"].append(app_id)
+                    if steam_registration_cache.save(connection, app_id, game["id"], raw, fetched_at):
+                        report["reusablePrices"] = report.get("reusablePrices", 0) + 1
                 except catalog_import.CatalogImportError as error:
                     reason = str(error)
                     if (

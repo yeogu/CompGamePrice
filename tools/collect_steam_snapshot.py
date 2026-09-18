@@ -384,10 +384,14 @@ def collect_parallel_targets(targets, output_directory, country, language, timeo
             if attempt > 1 and statistics is not None:
                 with statistics_lock:
                     statistics["retryCount"] = statistics.get("retryCount", 0) + 1
-            throttle.wait(sleeper)
             try:
-                raw, status, source = fetcher(app_id, country, language, timeout)
+                cached = fetcher.cached_response(app_id, country) if hasattr(fetcher, "cached_response") else None
+                if cached is None:
+                    throttle.wait(sleeper)
+                raw, status, source = cached if cached is not None else fetcher(app_id, country, language, timeout)
                 row = write_raw_snapshot(raw, output_directory, app_id, game_id, source, status, archive_directory)
+                if cached is None:
+                    throttle.succeeded()
                 progress.completed(True)
                 return row, None
             except PermanentCollectionError as exception:
@@ -439,9 +443,6 @@ def collect_targets(
     failures: list[tuple[str, str]] = []
     progress = ProgressReporter(len(targets))
     for target_index, (app_id, game_id) in enumerate(targets):
-        if target_index > 0 and request_delay > 0:
-            sleeper(request_delay)
-
         last_error: Exception | None = None
         attempts_used = 0
         for attempt in range(1, max_attempts + 1):
@@ -449,9 +450,10 @@ def collect_targets(
             if attempt > 1 and statistics is not None:
                 statistics["retryCount"] = statistics.get("retryCount", 0) + 1
             try:
-                raw, status, source_url = fetcher(
-                    app_id, country, language, timeout
-                )
+                cached = fetcher.cached_response(app_id, country) if hasattr(fetcher, "cached_response") else None
+                if cached is None and attempt == 1 and target_index > 0 and request_delay > 0:
+                    sleeper(request_delay)
+                raw, status, source_url = cached if cached is not None else fetcher(app_id, country, language, timeout)
                 rows.append(
                     write_raw_snapshot(
                         raw, output_directory, app_id, game_id, source_url, status,

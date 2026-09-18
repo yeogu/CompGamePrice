@@ -27,6 +27,10 @@ class GooglePlayCatalogSearchTest(unittest.TestCase):
         raw = b'<a href="/store/apps/details?id=one.game" aria-label="One"></a><a href="/store/apps/details?id=one.game" aria-label="Duplicate"></a>'
         self.assertEqual(len(search.parse_results(raw)), 1)
 
+    def test_current_markup_without_anchor_label(self):
+        raw = b'<a href="/store/apps/details?id=one.game"><img alt="thumbnail"><span class="DdYX5">One Game</span><span>Publisher</span></a>'
+        self.assertEqual(search.parse_results(raw)[0]["title"], "One Game")
+
 
 if __name__ == "__main__":
     unittest.main()

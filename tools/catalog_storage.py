@@ -200,6 +200,7 @@ def update_catalog(
     actor: str = "catalog-admin",
     action: str = "CONNECT_STORE_PRODUCT",
     detail: str | None = None,
+    audit_entries: list[dict] | None = None,
 ) -> tuple[dict, bool]:
     with catalog_lock(catalog_path):
         original_bytes = catalog_path.read_bytes()
@@ -210,32 +211,24 @@ def update_catalog(
         changed = updated != current
         before_hash = catalog_hash(current)
         after_hash = catalog_hash(updated)
-        connection = sqlite3.connect(database_path) if database_path else None
-        audit_id = None
+        connection = sqlite3.connect(database_path, timeout=30) if database_path else None
+        audit_ids = []
         try:
             if connection is not None:
                 connection.execute("BEGIN IMMEDIATE")
-                audit_id = begin_audit(
-                    connection,
-                    actor,
-                    action,
-                    store,
-                    product_id,
-                    game_id,
-                    before_hash,
-                )
+                entries = audit_entries if audit_entries is not None else [
+                    {"store": store, "product_id": product_id, "game_id": game_id, "changed": changed}]
+                for entry in entries:
+                    audit_ids.append((begin_audit(connection, actor, action, entry["store"],
+                        entry["product_id"], entry["game_id"], before_hash), entry.get("changed", changed)))
             if changed:
                 backup = catalog_path.with_suffix(catalog_path.suffix + ".bak")
                 shutil.copy2(catalog_path, backup)
                 atomic_write(catalog_path, encoded_catalog(updated))
-            if connection is not None and audit_id is not None:
-                finish_audit(
-                    connection,
-                    audit_id,
-                    "APPLIED" if changed else "NO_OP",
-                    after_hash,
-                    detail if changed else "Catalog already contained the requested state",
-                )
+            if connection is not None:
+                for audit_id, item_changed in audit_ids:
+                    finish_audit(connection, audit_id, "APPLIED" if item_changed else "NO_OP",
+                                 after_hash, detail if item_changed else "Catalog already contained the requested state")
                 connection.commit()
         except Exception:
             if changed:

@@ -459,6 +459,14 @@ def run_operations(
             "google-play-catalog-discovery", "apple-catalog-discovery", "nintendo-catalog-discovery",
             "playstation-catalog-discovery", "microsoft-catalog-discovery",
         }]
+    if mode in {"maintenance", "all"}:
+        for provider in ("AppleAppStore", "GooglePlay"):
+            steps.append((f"{provider}-paid-game-discovery", [
+                python, str(project / "tools/mobile_catalog_growth.py"),
+                "--provider", provider, "--catalog", str(catalog),
+                "--database", str(database), "--tracker", str(tracker),
+                "--output", str(output_directory / "mobile-growth"),
+            ]))
     return [run_step(name, command, environment) for name, command in steps]
 
 

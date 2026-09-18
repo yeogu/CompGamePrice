@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+trap 'echo "API integration failed at line ${LINENO}" >&2' ERR
 
 api_binary="$1"
 tracker_binary="$2"
@@ -67,7 +68,7 @@ catalog["games"].append({
 catalog["games"].append({
     "id": "bundle-price-test",
     "title": "Bundle Price Test",
-    "platforms": ["PlayStation5"],
+    "platforms": ["PlayStation5", "iOS"],
     "genres": ["Test"],
     "tags": [],
     "aliases": [],
@@ -90,6 +91,14 @@ catalog["games"].append({
         "edition": "Standard",
         "offerType": "Bundle",
         "offerName": "Jennie Bundle",
+    }, {
+        "store": "AppleAppStore",
+        "productId": "mobile-free-download",
+        "productUrl": "https://example.invalid/mobile-free-download",
+        "platforms": ["iOS"],
+        "region": "KR",
+        "edition": "Standard",
+        "offerType": "BaseGame",
     }],
 })
 with open(sys.argv[2], "w", encoding="utf-8") as output:
@@ -389,6 +398,28 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
 grep -q '"page":2' "${response_body}"
 grep -q '"pageSize":2' "${response_body}"
 [[ $(grep -o '"id"' "${response_body}" | wc -l | tr -d ' ') == "2" ]]
+python3 - "${response_body}" "${test_catalog}" <<'PY'
+import json
+import sys
+with open(sys.argv[1]) as source:
+    response = json.load(source)
+with open(sys.argv[2]) as source:
+    catalog = json.load(source)
+expected = sorted(catalog['games'], key=lambda game: (game['title'], game['id']))
+assert response['total'] == len(expected)
+assert [game['id'] for game in response['games']] == [game['id'] for game in expected[2:4]]
+PY
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/games?page=100000&pageSize=12&sort=titleAsc")
+[[ "${status}" == "200" ]]
+python3 - "${response_body}" <<'PY'
+import json
+import sys
+with open(sys.argv[1]) as source:
+    response = json.load(source)
+assert response['games'] == [] and response['total'] > 0
+PY
 
 for sort in titleAsc titleDesc updatedDesc updatedAsc discountDesc discountAsc lowestPrice; do
     status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
@@ -725,6 +756,44 @@ grep -q '"productsFailed":0' "${response_body}"
 grep -q '"retryCount":0' "${response_body}"
 
 # A background catalog update must become searchable without an API restart.
+python3 - "${api_base}" "${test_database}" <<'PY'
+import json
+import sqlite3
+import sys
+import time
+from urllib.request import urlopen
+
+url = sys.argv[1] + '/api/games?query=Background%20New%20Game&pageSize=12'
+def fetch():
+    with urlopen(url) as response:
+        assert 'app;dur=' in response.headers['Server-Timing']
+        assert response.headers['Cache-Control'] == 'no-store'
+        return response.headers['X-Search-Cache'], json.load(response)
+
+assert fetch()[0] == 'MISS'
+assert fetch()[0] == 'HIT'
+with sqlite3.connect(sys.argv[2]) as connection:
+    connection.execute("UPDATE store_products SET last_checked_at='2026-01-01T00:00:00Z' WHERE rowid=(SELECT MIN(rowid) FROM store_products)")
+assert fetch()[0] == 'MISS', 'External collector writes must invalidate search cache'
+assert fetch()[0] == 'HIT'
+time.sleep(10.1)
+assert fetch()[0] == 'MISS', 'Cache must expire even when the database is unchanged'
+# Warm the exact key used after replacing the catalog below, including empty results.
+with sqlite3.connect(sys.argv[2]) as connection:
+    connection.execute("""INSERT INTO store_products(
+        store,external_product_id,game_id,price_minor,currency,purchasable,region,edition,offer_type,last_successful_check_at)
+        VALUES('Apple App Store','mobile-free-download','bundle-price-test',0,'KRW',1,'KR','Standard','BaseGame',
+        strftime('%Y-%m-%dT%H:%M:%fZ','now'))""")
+with urlopen(sys.argv[1] + '/api/games?query=Bundle%20Price%20Test') as response:
+    game = json.load(response)['games'][0]
+    assert game['lowestPrice']['minorAmount'] > 0, 'Mobile downloads must not become a zero full-game price'
+with urlopen(sys.argv[1] + '/api/games?query=Bundle%20Price%20Test&store=Apple%20App%20Store') as response:
+    game = json.load(response)['games'][0]
+    assert game['priceStatus'] == 'DownloadOnly'
+    assert 'lowestPrice' not in game
+with urlopen(sys.argv[1] + '/api/games?query=Background%20New%20Game') as response:
+    assert json.load(response)['games'] == []
+PY
 python3 - "${test_catalog}" <<'PY'
 import json
 from pathlib import Path

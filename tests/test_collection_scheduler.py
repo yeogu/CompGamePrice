@@ -103,6 +103,29 @@ class CollectionSchedulerTest(unittest.TestCase):
             collection_scheduler.run_scheduler(ROOT, Path("tracker"), Path(directory) / "db", Path(directory) / "output", Path(directory) / "lock", 86400, 0, 20, status_path=Path(directory) / "status.json")
         self.assertEqual(waits, [0, 86340])
 
+    def test_full_catalog_batch_continues_after_five_seconds(self):
+        waits = []
+        def wait(seconds, *args):
+            waits.append(seconds)
+            if len(waits) == 2: collection_scheduler.stop_requested = True
+        summary = {"steps": [{"name": "steam-registration-1", "report": {
+            "status": "SUCCEEDED", "processed": 100, "failed": 0}}]}
+        with tempfile.TemporaryDirectory() as directory, patch.object(collection_scheduler.periodic_job_status, "wait_with_heartbeat", side_effect=wait), patch.object(collection_scheduler, "run_once", return_value=summary):
+            root = Path(directory)
+            collection_scheduler.run_scheduler(ROOT, root / "tracker", root / "db", root / "out", root / "lock", 3600, 0, 100, status_path=root / "status", mode="catalog")
+        self.assertEqual(waits, [0, 5])
+        summary["steps"][0]["report"]["failed"] = 1
+        self.assertFalse(collection_scheduler.catalog_has_more_work(summary, 100))
+
+    def test_due_price_reservation_blocks_catalog_even_when_main_lock_is_free(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(collection_scheduler, "run_once") as run:
+            root = Path(directory)
+            with (root / "lock.prices").open("a+") as reservation:
+                collection_scheduler.fcntl.flock(reservation, collection_scheduler.fcntl.LOCK_EX)
+                result = collection_scheduler.run_scheduler(ROOT, root / "tracker", root / "db", root / "out", root / "lock", 3600, 0, 100, single_run=True, status_path=root / "status", mode="catalog")
+            self.assertEqual(result, 2)
+            run.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

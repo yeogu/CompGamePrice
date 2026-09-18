@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +20,34 @@ SPEC.loader.exec_module(pipeline)
 
 
 class CatalogSyncPipelineTest(unittest.TestCase):
+    @unittest.skipUnless((ROOT / "build/game_price_tracker").exists(), "tracker binary required")
+    def test_registration_response_reaches_real_price_database_without_refetch(self):
+        import run_steam_pipeline
+        import steam_registration_cache
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            database, catalog = root / "db", root / "catalog.json"
+            catalog.write_text(json.dumps({"schemaVersion": 4, "games": []}))
+            raw = (ROOT / "tests/fixtures/steam_appdetails_413150.json").read_bytes()
+            report = pipeline.catalog_sync.synchronize(catalog, database, 1,
+                app_list_fetcher=lambda: json.dumps({"applist": {"apps": [{"appid": 413150, "name": "Stardew Valley"}]}}).encode(),
+                detail_fetcher=lambda app_id: raw, request_delay=0)
+            self.assertEqual(report["accepted"], 1)
+            def forbidden(*args):
+                self.fail("initial price must reuse registration response")
+            def run(command, check, env):
+                with patch.dict("os.environ", env):
+                    code = run_steam_pipeline.run_pipeline(ROOT / "build/game_price_tracker",
+                        Path(command[command.index("--catalog") + 1]),
+                        Path(command[command.index("--output-dir") + 1]),
+                        database_path=database, request_delay=0,
+                        fetcher=steam_registration_cache.fetcher(database, forbidden))
+                return subprocess.CompletedProcess(command, code)
+            prices, code = pipeline.collect_registered_prices(ROOT, catalog, database,
+                ROOT / "build/game_price_tracker", root / "out", report["acceptedAppIds"], run)
+            self.assertEqual(code, 0)
+            self.assertEqual(prices["confirmed"], 1)
+
     def save_price(self, database, app_id="10", game_id="new"):
         with sqlite3.connect(database) as connection:
             connection.execute("CREATE TABLE IF NOT EXISTS store_products(store TEXT,external_product_id TEXT,game_id TEXT,last_successful_check_at TEXT)")
@@ -72,6 +101,7 @@ class CatalogSyncPipelineTest(unittest.TestCase):
         self.assertEqual(report["priceCollection"]["status"], "SUCCEEDED")
         self.assertEqual(len(commands), 1)
         self.assertIn("run_steam_pipeline.py", commands[0][0][1])
+        self.assertIn("--skip-database-backup", commands[0][0])
         status = pipeline.catalog_sync.synchronization_status(database)
         self.assertEqual(status["priceCollection"]["status"], "SUCCEEDED")
 

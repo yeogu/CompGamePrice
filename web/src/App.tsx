@@ -4,6 +4,7 @@ import { addAlertRule, addFavorite, confirmPasswordReset, deleteAlertRule, delet
 import PriceHistoryChart from './PriceHistoryChart'
 import { GameCatalogView, GameDetailView } from './GameViews'
 import GameArtwork from './GameArtwork'
+import { isAbortError } from './api'
 import { PlatformBadge, StoreBadge } from './VisualBadges'
 import { gameDetailPath, gameIdFromLocation } from './gameRoutes'
 import type { AdminHealthSummary, AdminUser, AdminUserAudit, AlertRule, AlertRuleType, CatalogAdminResult, CatalogChangeAudit, CatalogCollectionJob, CatalogDiscoveryJob, CatalogFilterOptions, CatalogMetadataUpdateResult, CatalogPriceIntegrity, CatalogPriceIntegrityIssue, CatalogSyncJob, CollectionRun, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSort, GameSummary, MetadataSyncStatus, MobileCatalogSyncJob, MobileCatalogSyncReview, Money, Notification, StoreProductCandidate, User, UserPreferences } from './types'
@@ -50,6 +51,7 @@ const catalogPriceStatus = (game: GameSummary) => {
   if (game.priceStatus === 'Stale') {
     return '가격 갱신 필요'
   }
+  if (game.priceStatus === 'DownloadOnly') return '무료 다운로드 · 인앱 구매 가능'
   if (game.priceStatus !== 'Available' || !game.lowestPrice) {
     return '가격 수집 중'
   }
@@ -470,6 +472,13 @@ function App() {
   const [error, setError] = useState('')
   const [detailError, setDetailError] = useState('')
   const requestSequence = useRef(0)
+  const gameRequest = useRef<AbortController | null>(null)
+  const beginGameRequest = () => {
+    gameRequest.current?.abort()
+    const controller = new AbortController()
+    gameRequest.current = controller
+    return controller
+  }
   const [token, setToken] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('oauth') === 'success' || localStorage.getItem('game-price-session') === '1' ? 'cookie' : '')
   const [user, setUser] = useState<User | null>(null)
   const initialResetToken = new URLSearchParams(window.location.search).get('resetToken') ?? ''
@@ -724,6 +733,9 @@ function App() {
   }
 
   const closeGameDetail = () => {
+    requestSequence.current += 1
+    gameRequest.current?.abort()
+    setLoading(false)
     if (window.history.state?.dealQuestDetail) {
       window.history.back()
       return
@@ -788,6 +800,7 @@ function App() {
 
   const browseCatalog = async (filters: GameCatalogFilters) => {
     const requestId = ++requestSequence.current
+    const controller = beginGameRequest()
     setLoading(true)
     setError('')
     setSelectedGameId('')
@@ -797,7 +810,7 @@ function App() {
     setShowGameResults(true)
     setBrowseMode(true)
     try {
-      const result = await getGamePage('', { pageSize: 12, ...filters })
+      const result = await getGamePage('', { pageSize: 12, ...filters }, controller.signal)
       if (requestId === requestSequence.current) {
         setGames(result.games)
         setCatalogPage(result.page)
@@ -824,7 +837,7 @@ function App() {
         window.history.replaceState(null, '', address)
       }
     } catch (reason) {
-      if (requestId === requestSequence.current) {
+      if (requestId === requestSequence.current && !isAbortError(reason)) {
         setError(reason instanceof Error ? reason.message : '게임 카탈로그를 탐색하지 못했습니다.')
       }
     } finally {
@@ -1468,6 +1481,7 @@ function App() {
   ) => {
     const changingGame = selectedGameId !== '' && selectedGameId !== game.id
     const requestId = ++requestSequence.current
+    const controller = beginGameRequest()
     setLoading(true)
     setError('')
     setDetailError('')
@@ -1512,22 +1526,25 @@ function App() {
     }
     try {
       const [priceReport, priceHistory] = await Promise.all([
-        getGamePrices(game.id, platform),
-        getGamePriceHistory(game.id, undefined, platform),
+        getGamePrices(game.id, platform, controller.signal),
+        getGamePriceHistory(game.id, undefined, platform, controller.signal),
       ])
       if (requestId === requestSequence.current) {
         setReport(priceReport)
         const visibleProducts = new Set(
-          priceReport.products.map((product) => `${product.store}:${product.productId}`),
+          priceReport.products.filter((product) => !isMobileFreeOffer(product.store, product.price))
+            .map((product) => `${product.store}:${product.productId}`),
         )
         setHistory({
           ...priceHistory,
           histories: priceHistory.histories.filter((item) =>
-            visibleProducts.has(`${item.store}:${item.productId}`)),
+            visibleProducts.has(`${item.store}:${item.productId}`)).map((item) => ({
+              ...item, observations: item.observations.filter((point) => !isMobileFreeOffer(item.store, point.price)),
+            })),
         })
       }
     } catch (reason) {
-      if (requestId === requestSequence.current) {
+      if (requestId === requestSequence.current && !isAbortError(reason)) {
         const message = reason instanceof Error ? reason.message : '가격을 불러오지 못했습니다.'
         setDetailError(message.includes('not found') ? '존재하지 않는 게임입니다.' : message)
       }
@@ -1539,6 +1556,7 @@ function App() {
   const submitSearch = async (event?: FormEvent) => {
     event?.preventDefault()
     const requestId = ++requestSequence.current
+    const controller = beginGameRequest()
     setLoading(true)
     setError('')
     setGames([])
@@ -1550,12 +1568,12 @@ function App() {
     setBrowseMode(false)
     setSuggestionsOpen(false)
     try {
-      const matches = await getGames(query.trim())
+      const matches = await getGames(query.trim(), {}, controller.signal)
       if (requestId !== requestSequence.current) return
       setGames(matches)
       if (matches.length === 0) setError('일치하는 게임이 없습니다.')
     } catch (reason) {
-      if (requestId === requestSequence.current) {
+      if (requestId === requestSequence.current && !isAbortError(reason)) {
         setError(reason instanceof Error ? reason.message : '검색에 실패했습니다.')
       }
     } finally {
@@ -1564,8 +1582,11 @@ function App() {
   }
 
   useEffect(() => {
-    void getGames()
+    const initialRequestId = ++requestSequence.current
+    const controller = beginGameRequest()
+    void getGames('', { pageSize: 12 }, controller.signal)
       .then((catalogGames) => {
+        if (initialRequestId !== requestSequence.current) return
         setGames(catalogGames)
         if (catalogGames.length === 0) {
           setError('등록된 게임이 없습니다.')
@@ -1589,6 +1610,7 @@ function App() {
         )
       })
       .catch((reason) => {
+        if (isAbortError(reason) || initialRequestId !== requestSequence.current) return
         setError(reason instanceof Error ? reason.message : '게임 목록을 불러오지 못했습니다.')
       })
     void getCatalogFilters()
@@ -1622,6 +1644,10 @@ function App() {
         }
       })
       .catch(() => setCatalogAdminEnabled(false))
+    return () => {
+      requestSequence.current += 1
+      gameRequest.current?.abort()
+    }
     // Load the catalog and initial game once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -1631,6 +1657,8 @@ function App() {
       const routeGameId = gameIdFromLocation(window.location)
       if (!routeGameId) {
         requestSequence.current += 1
+        gameRequest.current?.abort()
+        setLoading(false)
         const catalog = event.state?.catalog
         setSelectedGameId('')
         setSelectedPlatform('')
@@ -1741,15 +1769,16 @@ function App() {
 
   useEffect(() => {
     const value = query.trim()
+    const requestId = ++suggestionSequence.current
     if (value.length === 0) {
       setSuggestions([])
       setSuggestionsOpen(false)
       setActiveSuggestion(-1)
       return
     }
-    const requestId = ++suggestionSequence.current
+    const controller = new AbortController()
     const timer = window.setTimeout(() => {
-      void getGames(value)
+      void getGames(value, { pageSize: 6 }, controller.signal)
         .then((matches) => {
           if (requestId !== suggestionSequence.current) {
             return
@@ -1758,14 +1787,18 @@ function App() {
           setSuggestionsOpen(true)
           setActiveSuggestion(-1)
         })
-        .catch(() => {
+        .catch((reason) => {
+          if (isAbortError(reason)) return
           if (requestId === suggestionSequence.current) {
             setSuggestions([])
             setSuggestionsOpen(true)
           }
         })
     }, 250)
-    return () => window.clearTimeout(timer)
+    return () => {
+      window.clearTimeout(timer)
+      controller.abort()
+    }
   }, [query])
 
   useEffect(() => {
@@ -2123,7 +2156,7 @@ function App() {
           </div>
           {browseMode && Object.entries(activeBrowseFilters).some(([, value]) => value) && <div className="filter-chips" aria-label="적용된 필터">{Object.entries(activeBrowseFilters).filter(([, value]) => value).map(([name, value]) => <button key={name} type="button" onClick={() => clearBrowseFilter(name as keyof typeof activeBrowseFilters)}>{value} ×</button>)}</div>}
           <div className="game-list">
-            {games.map((game) => (
+            {games.map((game, index) => (
               <button
                 className={selectedGameId === game.id ? 'selected' : ''}
                 aria-pressed={selectedGameId === game.id}
@@ -2131,7 +2164,7 @@ function App() {
                 key={game.id}
                 onClick={() => void selectGame(game)}
               >
-                <GameArtwork imageUrl={game.imageUrl} title={game.title} />
+                <GameArtwork imageUrl={game.imageUrl} title={game.title} priority={index === 0} />
                 <strong>{game.title}</strong>
                 <small className="platform-badge-list catalog-platform-icons">{game.platforms.map((platform) => <PlatformBadge compact iconOnly key={platform} platform={platform} />)}</small>
                 <span>{game.genres.join(' · ') || '장르 정보 수집 중'}</span>
@@ -2184,7 +2217,7 @@ function App() {
         <>
         <section className="results">
           <div className="result-heading">
-            <GameArtwork imageUrl={report.game.imageUrl} title={report.game.title} />
+            <GameArtwork imageUrl={report.game.imageUrl} title={report.game.title} priority />
             <div>
               <h2>{report.game.title}</h2>
               <div className="game-platforms platform-overview">
@@ -2213,8 +2246,8 @@ function App() {
 
           <div className="game-summary" aria-label="게임 가격 요약">
             <div><span>비교 Store</span><strong>{report.products.length}곳</strong></div>
-            <div><span>역대 최저</span><strong>{report.products.some((product) => product.history) ? formatMoney(lowestComparableMoney(report.products.flatMap((product) => product.history ? [product.history.lowestPrice] : []))) : '데이터 없음'}</strong></div>
-            <div><span>최대 할인</span><strong>{Math.max(0, ...report.products.map((product) => product.discountPercent))}%</strong></div>
+            <div><span>역대 최저</span><strong>{report.products.some((product) => product.history && !isMobileFreeOffer(product.store, product.history.lowestPrice)) ? formatMoney(lowestComparableMoney(report.products.flatMap((product) => product.history && !isMobileFreeOffer(product.store, product.history.lowestPrice) ? [product.history.lowestPrice] : []))) : '데이터 없음'}</strong></div>
+            <div><span>최대 할인</span><strong>{Math.max(0, ...report.products.filter((product) => !isMobileFreeOffer(product.store, product.price)).map((product) => product.discountPercent))}%</strong></div>
             <div><span>최신 가격</span><strong>{report.products.filter((product) => !product.stale).length}/{report.products.length}</strong></div>
           </div>
 
@@ -2263,7 +2296,7 @@ function App() {
                       </small>
                     </div>
                   )}
-                  {isMobileFreeOffer(product.store, product.price) && <p className="iap-notice"><strong>인앱 결제 안내</strong><span>다운로드는 무료지만 체험판이거나 전체 콘텐츠 이용에 별도 인앱 결제가 필요할 수 있습니다.</span></p>}
+                  {isMobileFreeOffer(product.store, product.price) && <p className="iap-notice"><strong>무료 다운로드 · 인앱 구매 가능</strong><span>전체 콘텐츠 이용에 별도 결제가 필요할 수 있습니다. 본편 가격이 확인되지 않아 최저가 비교에서 제외합니다.</span></p>}
                   {product.regularPrice && product.discountPercent > 0 && (
                     <div className="discount-summary">
                       <span className="discount-rate">{product.discountPercent}% 할인</span>
@@ -2291,9 +2324,9 @@ function App() {
                   </a>
                   <div className="history">
                     <span>역대 최저</span>
-                    <strong>{product.history ? formatMoney(product.history.lowestPrice) : '데이터 없음'}</strong>
+                    <strong>{product.history ? offerPriceLabel(product.store, product.history.lowestPrice) : '데이터 없음'}</strong>
                   </div>
-                  {product.recommendation ? (
+                  {product.recommendation && !isMobileFreeOffer(product.store, product.price) ? (
                     <div className={`recommendation ${product.recommendation.rating.toLowerCase()}`}>
                       <strong>
                         {recommendationLabel[product.recommendation.rating] ?? product.recommendation.rating}
@@ -2312,7 +2345,9 @@ function App() {
                     </div>
                   ) : (
                     <p className="recommendation pending">
-                      {product.stale
+                      {isMobileFreeOffer(product.store, product.price)
+                        ? '무료 다운로드 상품은 본편 구매 추천에서 제외됩니다.'
+                        : product.stale
                         ? '오래된 가격은 구매 추천에서 제외됩니다.'
                         : '추천 분석을 위한 가격 이력이 없습니다.'}
                     </p>

@@ -15,6 +15,8 @@ export class ApiRequestError extends Error {
 export const isAuthenticationError = (reason: unknown) =>
   reason instanceof ApiRequestError && reason.status === 401
 
+export const isAbortError = (reason: unknown) => reason instanceof Error && reason.name === 'AbortError'
+
 async function requestJson<T>(path: string, init: RequestInit = {}, token = ''): Promise<T> {
   const response = await fetch(`${apiBaseUrl}${path}`, {
     ...init,
@@ -30,9 +32,9 @@ async function requestJson<T>(path: string, init: RequestInit = {}, token = ''):
   }
   return response.json() as Promise<T>
 }
-const getJson = <T,>(path: string) => requestJson<T>(path)
+const getJson = <T,>(path: string, signal?: AbortSignal) => requestJson<T>(path, { signal })
 
-export async function getGamePage(query = '', filters: GameCatalogFilters = {}): Promise<GameCatalogPage> {
+export async function getGamePage(query = '', filters: GameCatalogFilters = {}, signal?: AbortSignal): Promise<GameCatalogPage> {
   const parameters = new URLSearchParams()
   if (query) {
     parameters.set('query', query)
@@ -61,14 +63,15 @@ export async function getGamePage(query = '', filters: GameCatalogFilters = {}):
   const search = parameters.size > 0 ? `?${parameters}` : ''
   return getJson<GameCatalogPage>(
     `/api/games${search}`,
+    signal,
   )
 }
 
-export async function getGames(query = '', filters: GameCatalogFilters = {}): Promise<GameSummary[]> {
+export async function getGames(query = '', filters: GameCatalogFilters = {}, signal?: AbortSignal): Promise<GameSummary[]> {
   return (await getGamePage(query, {
     ...filters,
     pageSize: filters.pageSize ?? 100,
-  })).games
+  }, signal)).games
 }
 
 export const getCatalogFilters = () => getJson<CatalogFilterOptions>('/api/catalog/filters')
@@ -76,12 +79,14 @@ export const getCatalogFilters = () => getJson<CatalogFilterOptions>('/api/catal
 export function getGamePrices(
   gameId: string,
   platform = '',
+  signal?: AbortSignal,
 ): Promise<GamePriceResponse> {
   const parameters = new URLSearchParams({ includeForeignCurrencies: 'true' })
   if (platform) parameters.set('platform', platform)
   const query = `?${parameters}`
   return getJson<GamePriceResponse>(
     `/api/games/${encodeURIComponent(gameId)}/prices${query}`,
+    signal,
   )
 }
 
@@ -89,6 +94,7 @@ export function getGamePriceHistory(
   gameId: string,
   since?: string,
   platform = '',
+  signal?: AbortSignal,
 ): Promise<GamePriceHistoryResponse> {
   const parameters = new URLSearchParams()
   parameters.set('includeForeignCurrencies', 'true')
@@ -97,6 +103,7 @@ export function getGamePriceHistory(
   const query = parameters.size > 0 ? `?${parameters}` : ''
   return getJson<GamePriceHistoryResponse>(
     `/api/games/${encodeURIComponent(gameId)}/price-history${query}`,
+    signal,
   )
 }
 

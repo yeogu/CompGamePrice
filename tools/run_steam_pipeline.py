@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 import collect_steam_snapshot as collector
 import storage_retention
 import database_backup
+import steam_registration_cache
 
 
 class PipelineAlreadyRunning(RuntimeError):
@@ -232,7 +233,11 @@ def main() -> int:
     parser.add_argument("--log-max-bytes", default=1_048_576, type=int)
     parser.add_argument("--log-keep-bytes", default=524_288, type=int)
     parser.add_argument("--database", type=Path)
+    parser.add_argument("--registration-cache", type=Path,
+                        help="Reuse fresh validated KRW registration responses for initial prices.")
     parser.add_argument("--database-backup-dir", type=Path)
+    parser.add_argument("--skip-database-backup", action="store_true",
+                        help="For scheduled sub-batches covered by the independent backup scheduler.")
     parser.add_argument("--database-backup-retention-days", default=30, type=int)
     parser.add_argument("--batch-size", type=int)
     parser.add_argument("--product-id")
@@ -244,6 +249,8 @@ def main() -> int:
     arguments = parser.parse_args()
 
     fetcher = None
+    if arguments.registration_cache:
+        fetcher = steam_registration_cache.fetcher(arguments.registration_cache)
     if arguments.input:
         raw = arguments.input.read_bytes()
 
@@ -283,7 +290,7 @@ def main() -> int:
             arguments.log_max_bytes,
             arguments.log_keep_bytes,
             database_path,
-            arguments.database_backup_dir or arguments.output_dir.parent / "db-backups",
+            None if arguments.skip_database_backup else arguments.database_backup_dir or arguments.output_dir.parent / "db-backups",
             arguments.database_backup_retention_days,
             arguments.batch_size,
             fetcher,

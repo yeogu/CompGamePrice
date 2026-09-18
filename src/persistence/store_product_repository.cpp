@@ -8,6 +8,7 @@
 #include <sqlite3.h>
 
 #include <cstdlib>
+#include <algorithm>
 #include <stdexcept>
 #include <string>
 
@@ -756,6 +757,7 @@ void StoreProductRepository::initializeSchema() const {
                 );
             )sql");
         }
+        database_.execute("CREATE INDEX IF NOT EXISTS idx_store_products_game_id ON store_products(game_id);");
         database_.execute("PRAGMA user_version = 19;");
         database_.execute("COMMIT;");
     } catch (...) {
@@ -1005,65 +1007,63 @@ void StoreProductRepository::saveNormalizedProducts(
 
 std::vector<StoreProduct> StoreProductRepository::findProductsByGameId(
     const std::string& gameId) const {
-    Statement productsStatement(database_.handle(), R"sql(
-        SELECT store, external_product_id, game_id,
+    return findProductsByGameIds({gameId});
+}
+
+std::string StoreProductRepository::dataRevision() const {
+    Statement statement(database_.handle(), "PRAGMA data_version;");
+    if (!statement.next()) throw std::runtime_error("Cannot read database revision");
+    // data_version covers collector/other connections; total_changes covers this
+    // API connection. Conservative invalidation also reacts to non-price writes.
+    return std::to_string(sqlite3_column_int64(statement.get(), 0)) + ":" +
+        std::to_string(sqlite3_total_changes64(database_.handle()));
+}
+
+std::vector<StoreProduct> StoreProductRepository::findProductsByGameIds(
+    const std::vector<std::string>& gameIds) const {
+    std::vector<StoreProduct> products;
+    // Bound parameters stay below SQLite's conservative 999-variable limit.
+    for (std::size_t offset = 0; offset < gameIds.size(); offset += 500) {
+    const auto count = std::min<std::size_t>(500, gameIds.size() - offset);
+    std::string sql = R"sql(
+        SELECT p.store, p.external_product_id, p.game_id,
                price_minor, regular_price_minor, discount_percent,
                currency, purchasable, region, edition, offer_type,
                last_checked_at, last_successful_check_at,
                CASE
                    WHEN last_successful_check_at IS NULL THEN 'Unknown'
                    WHEN last_successful_check_at >=
-                        strftime('%Y-%m-%dT%H:%M:%fZ','now',?2) THEN 'Fresh'
+                        strftime('%Y-%m-%dT%H:%M:%fZ','now',?1) THEN 'Fresh'
                    ELSE 'Stale'
-               END
-        FROM store_products
-        WHERE game_id = ?1
-        ORDER BY store, external_product_id;
-    )sql");
-    bindText(productsStatement.get(), 1, gameId);
+               END, pp.platform, pc.platform, pc.status
+        FROM store_products p
+        LEFT JOIN product_platforms pp
+          ON pp.store=p.store AND pp.external_product_id=p.external_product_id
+        LEFT JOIN product_compatibility pc
+          ON pc.store=p.store AND pc.external_product_id=p.external_product_id
+        WHERE p.game_id IN (
+    )sql";
+    for (std::size_t i = 0; i < count; ++i) {
+        if (i) sql += ',';
+        sql += '?' + std::to_string(i + 2);
+    }
+    sql += ") ORDER BY p.game_id,p.store,p.external_product_id,pp.platform,pc.platform;";
+    Statement productsStatement(database_.handle(), sql.c_str());
     bindText(
-        productsStatement.get(), 2,
+        productsStatement.get(), 1,
         "-" + std::to_string(StaleAfterHours) + " hours");
+    for (std::size_t i = 0; i < count; ++i) bindText(productsStatement.get(), static_cast<int>(i + 2), gameIds[offset + i]);
 
-    std::vector<StoreProduct> products;
     while (productsStatement.next()) {
         const std::string storeName = columnText(productsStatement.get(), 0);
         const std::string productId = columnText(productsStatement.get(), 1);
 
-        Statement platformsStatement(database_.handle(), R"sql(
-            SELECT platform
-            FROM product_platforms
-            WHERE store = ? AND external_product_id = ?
-            ORDER BY platform;
-        )sql");
-        bindText(platformsStatement.get(), 1, storeName);
-        bindText(platformsStatement.get(), 2, productId);
-
-        std::vector<Platform> platforms;
-        while (platformsStatement.next()) {
-            platforms.push_back(parsePlatform(columnText(platformsStatement.get(), 0)));
-        }
-
-        Statement compatibilityStatement(database_.handle(), R"sql(
-            SELECT platform, status
-            FROM product_compatibility
-            WHERE store = ? AND external_product_id = ?
-            ORDER BY platform;
-        )sql");
-        bindText(compatibilityStatement.get(), 1, storeName);
-        bindText(compatibilityStatement.get(), 2, productId);
-        std::vector<PlatformCompatibility> compatibility;
-        while (compatibilityStatement.next()) {
-            compatibility.push_back(PlatformCompatibility{
-                parsePlatform(columnText(compatibilityStatement.get(), 0)),
-                parseCompatibilityStatus(columnText(compatibilityStatement.get(), 1))});
-        }
-
+        if (products.empty() || products.back().productId != productId || products.back().store != parseStore(storeName)) {
         products.push_back(StoreProduct{
             productId,
             columnText(productsStatement.get(), 2),
             parseStore(storeName),
-            std::move(platforms),
+            {},
             Money{
                 sqlite3_column_int64(productsStatement.get(), 3),
                 parseCurrency(columnText(productsStatement.get(), 6))},
@@ -1078,7 +1078,7 @@ std::vector<StoreProduct> StoreProductRepository::findProductsByGameId(
             parseRegion(columnText(productsStatement.get(), 8)),
             parseEdition(columnText(productsStatement.get(), 9)),
             parseOfferType(columnText(productsStatement.get(), 10)),
-            std::move(compatibility),
+            {},
             sqlite3_column_type(productsStatement.get(), 11) == SQLITE_NULL
                 ? std::nullopt
                 : std::optional<std::string>{columnText(productsStatement.get(), 11)},
@@ -1090,6 +1090,19 @@ std::vector<StoreProduct> StoreProductRepository::findProductsByGameId(
                 : columnText(productsStatement.get(), 13) == "Stale"
                     ? PriceFreshness::Stale
                     : PriceFreshness::Unknown});
+        }
+        auto& product = products.back();
+        if (sqlite3_column_type(productsStatement.get(), 14) != SQLITE_NULL) {
+            const auto platform = parsePlatform(columnText(productsStatement.get(), 14));
+            if (std::find(product.supportedPlatforms.begin(), product.supportedPlatforms.end(), platform) == product.supportedPlatforms.end())
+                product.supportedPlatforms.push_back(platform);
+        }
+        if (sqlite3_column_type(productsStatement.get(), 15) != SQLITE_NULL) {
+            const auto platform = parsePlatform(columnText(productsStatement.get(), 15));
+            if (std::none_of(product.compatibility.begin(), product.compatibility.end(), [platform](const auto& entry) { return entry.platform == platform; }))
+                product.compatibility.push_back({platform, parseCompatibilityStatus(columnText(productsStatement.get(), 16))});
+        }
+    }
     }
     return products;
 }

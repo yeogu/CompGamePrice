@@ -30,9 +30,15 @@ std::optional<PriceComparisonResult> PriceComparisonService::compareByGameId(
 PriceComparisonResult PriceComparisonService::compare(
     const Game& game,
     const PriceComparisonCriteria& criteria) const {
+    return compareProducts(game, repository_.findProductsByGameId(game.id), criteria);
+}
+
+PriceComparisonResult PriceComparisonService::compareProducts(
+    const Game& game, const std::vector<StoreProduct>& products,
+    const PriceComparisonCriteria& criteria) {
     PriceComparisonResult result{game, {}, std::nullopt};
 
-    for (const auto& product : repository_.findProductsByGameId(game.id)) {
+    for (const auto& product : products) {
         if (std::find(criteria.excludedStores.begin(), criteria.excludedStores.end(),
                       product.store) != criteria.excludedStores.end()) continue;
         if (!product.purchasable) continue;
@@ -59,6 +65,10 @@ PriceComparisonResult PriceComparisonService::compare(
             if (!native && !compatible) continue;
         }
         result.products.push_back(product);
+        // A free mobile download does not establish the price of the full game.
+        // Keep the purchase option visible, but never call it the cheapest offer.
+        if ((product.store == Store::GooglePlay || product.store == Store::AppleAppStore) &&
+            product.currentPrice.minorAmount == 0) continue;
         const bool preferredCurrency =
             product.currentPrice.currency == criteria.currency;
         const bool currentCheapestIsPreferred = result.cheapestProduct &&

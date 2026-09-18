@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <shared_mutex>
+#include <cstdint>
 
 namespace game_price {
 
@@ -35,6 +36,7 @@ class GameCatalog {
 public:
     explicit GameCatalog(const std::string& dataPath);
     void reload(const std::string& dataPath);
+    std::uint64_t revision() const;
 
     std::optional<Game> findByName(const std::string& name) const;
     std::optional<Game> findById(const std::string& id) const;
@@ -50,6 +52,7 @@ private:
     std::vector<Game> games_;
     std::vector<CatalogStoreProduct> storeProducts_;
     mutable std::shared_mutex mutex_;
+    std::uint64_t revision_{0};
 };
 
 }  // namespace game_price

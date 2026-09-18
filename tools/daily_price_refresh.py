@@ -141,7 +141,7 @@ def run_refresh(project, tracker, database, catalog, output, command_runner=run_
                          for g in document["games"]]
                 snapshot.write_text(json.dumps({**document, "games": [g for g in games if g["products"]]}, ensure_ascii=False))
                 if store == "Steam":
-                    script, arguments = "run_steam_pipeline.py", ["--max-attempts", "1", "--request-delay", "0.5"]
+                    script, arguments = "run_steam_pipeline.py", ["--max-attempts", "1", "--request-delay", "0.5", "--skip-database-backup"]
                 elif store in {"GooglePlay", "AppleAppStore"}:
                     script = "run_google_play_pipeline.py" if store == "GooglePlay" else "run_apple_pipeline.py"
                     arguments = []

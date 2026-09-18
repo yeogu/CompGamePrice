@@ -2,8 +2,24 @@
 
 #include "game_price/pricing/price_history_service.h"
 #include "game_price/recommendation/purchase_recommendation_service.h"
+#include <unordered_map>
 
 namespace game_price {
+
+std::vector<PriceComparisonResult> GameQueryService::getCatalogComparisons(
+    const std::vector<Game>& games, const PriceComparisonCriteria& criteria) const {
+    std::vector<std::string> ids;
+    ids.reserve(games.size());
+    for (const auto& game : games) ids.push_back(game.id);
+    std::unordered_map<std::string, std::vector<StoreProduct>> products;
+    for (auto& product : repository_.findProductsByGameIds(ids))
+        products[product.gameId].push_back(std::move(product));
+    std::vector<PriceComparisonResult> results;
+    results.reserve(games.size());
+    for (const auto& game : games)
+        results.push_back(PriceComparisonService::compareProducts(game, products[game.id], criteria));
+    return results;
+}
 
 GameQueryService::GameQueryService(
     const GameCatalog& catalog,

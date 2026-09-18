@@ -271,6 +271,20 @@ void testEpicEndToEndComparison() {
                comparison->cheapestProduct->currentPrice.minorAmount == 25000,
            "Epic should be the cheapest Hades Store");
 
+    auto withMobile = comparison->products;
+    auto mobile = withMobile.front();
+    mobile.store = Store::AppleAppStore;
+    mobile.currentPrice.minorAmount = 0;
+    mobile.freshness = PriceFreshness::Fresh;
+    withMobile.push_back(mobile);
+    const auto mobileComparison = PriceComparisonService::compareProducts(*game, withMobile, {});
+    expect(mobileComparison.products.size() == 4 && mobileComparison.cheapestProduct &&
+               mobileComparison.cheapestProduct->store == Store::EpicGamesStore,
+           "Free mobile downloads remain visible without becoming the cheapest full game");
+    mobile.store = Store::GooglePlay;
+    expect(!PriceComparisonService::compareProducts(*game, {mobile}, {}).cheapestProduct,
+           "A free-only mobile offer has no verified full-game cheapest price");
+
     const auto report = GameQueryService(catalog, repository)
                             .getGamePriceReportById("hades");
     const auto epicReport = std::find_if(
@@ -1123,6 +1137,39 @@ void testGameQueryServiceReport() {
            "Raw history should contain one product");
     expect(history->productHistories.front().observations.size() == 1,
            "Raw history should contain one observation");
+
+    std::vector<std::string> statements;
+    sqlite3_trace_v2(database.handle(), SQLITE_TRACE_STMT,
+        [](unsigned, void* context, void* statement, void*) -> int {
+            static_cast<std::vector<std::string>*>(context)->push_back(
+                sqlite3_sql(static_cast<sqlite3_stmt*>(statement)));
+            return 0;
+        }, &statements);
+    const auto comparisons = service.getCatalogComparisons(catalog.allGames());
+    sqlite3_trace_v2(database.handle(), 0, nullptr, nullptr);
+    expect(comparisons.size() == catalog.allGames().size(),
+           "Lightweight results must preserve unpriced games and catalog order");
+    expect(statements.size() == 1 && statements.front().find("price_history") == std::string::npos,
+           "Catalog comparison must use one batched price query without history analysis");
+    const auto lightweight = std::find_if(comparisons.begin(), comparisons.end(),
+        [&](const auto& item) { return item.game.id == game->id; });
+    expect(lightweight != comparisons.end() && lightweight->cheapestProduct &&
+               lightweight->cheapestProduct->currentPrice.minorAmount == report->comparison.cheapestProduct->currentPrice.minorAmount,
+           "Lightweight and detail paths must agree on current price");
+
+    std::vector<std::string> ids{game->id};
+    for (int i = 0; i < 1049; ++i) ids.push_back("missing-" + std::to_string(i));
+    statements.clear();
+    sqlite3_trace_v2(database.handle(), SQLITE_TRACE_STMT,
+        [](unsigned, void* context, void* statement, void*) -> int {
+            static_cast<std::vector<std::string>*>(context)->push_back(sqlite3_sql(static_cast<sqlite3_stmt*>(statement)));
+            return 0;
+        }, &statements);
+    const auto batched = repository.findProductsByGameIds(ids);
+    sqlite3_trace_v2(database.handle(), 0, nullptr, nullptr);
+    expect(statements.size() == 3 && batched.size() == 1,
+           "1050 game ids must fit in three bounded queries without per-product queries");
+    expect(repository.findProductsByGameIds({}).empty(), "Empty catalog batch must return no products");
 }
 
 void testIsoDateValidation() {
@@ -1293,7 +1340,9 @@ void testAuthenticationAndPriceAlerts() {
 void expectOfferDoesNotTriggerDefaultPriceAlert(
     const std::string& productId,
     GameEdition edition,
-    OfferType offerType) {
+    OfferType offerType,
+    Store store = Store::Steam,
+    int price = 100) {
     Database database(":memory:");
     StoreProductRepository products(database);
     products.initializeSchema();
@@ -1310,9 +1359,9 @@ void expectOfferDoesNotTriggerDefaultPriceAlert(
     const StoreProduct product{
         productId,
         game.id,
-        Store::Steam,
+        store,
         {Platform::Windows},
-        Money{100, Currency::KRW},
+        Money{price, Currency::KRW},
         true,
         "2026-01-01T00:00:00.000Z",
         std::nullopt,
@@ -1336,6 +1385,13 @@ void testDlcDoesNotTriggerDefaultPriceAlert() {
         "cheap-dlc",
         GameEdition::Standard,
         OfferType::DLC);
+}
+
+void testFreeMobileDoesNotTriggerPriceAlert() {
+    for (const auto store : {Store::GooglePlay, Store::AppleAppStore}) {
+        expectOfferDoesNotTriggerDefaultPriceAlert(
+            "free-mobile-download", GameEdition::Standard, OfferType::BaseGame, store, 0);
+    }
 }
 
 void testDeluxeDoesNotTriggerDefaultPriceAlert() {
@@ -1875,6 +1931,7 @@ int main() {
          testStandardBaseGameTriggersDefaultPriceAlert},
         {"DLC excluded from default price alerts",
          testDlcDoesNotTriggerDefaultPriceAlert},
+        {"Free mobile downloads excluded from price alerts", testFreeMobileDoesNotTriggerPriceAlert},
         {"Deluxe excluded from default price alerts",
          testDeluxeDoesNotTriggerDefaultPriceAlert},
         {"Bundle excluded from default price alerts",

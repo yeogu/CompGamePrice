@@ -8,7 +8,7 @@ export interface GameSummary {
   aliases: string[]
   developers: string[]
   publishers: string[]
-  priceStatus?: 'Available' | 'Collecting' | 'Stale' | 'LinkOnly'
+  priceStatus?: 'Available' | 'Collecting' | 'Stale' | 'LinkOnly' | 'DownloadOnly'
   lowestPrice?: Money
   maxDiscountPercent?: number
   lastUpdatedAt?: string

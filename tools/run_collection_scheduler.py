@@ -131,6 +131,28 @@ def run_scheduler(
     status_path: Path | None = None,
     mode: str = "prices",
 ) -> int:
+    # Hold a separate reservation while a due price job waits for the main lock.
+    # OS locks are released on process exit, unlike stale PID/flag files.
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with lock_path.with_suffix(lock_path.suffix + ".prices").open("a+") as priority:
+        return _run_scheduler(project, tracker, database, output_directory, lock_path,
+                              interval_seconds, initial_delay_seconds, catalog_batch_size,
+                              single_run, status_path, mode, priority)
+
+
+def catalog_has_more_work(summary, batch_size):
+    registrations = [step.get("report", {}) for step in (summary or {}).get("steps", [])
+                     if step.get("name", "").startswith("steam-registration-")]
+    if not registrations:
+        return False
+    last = registrations[-1]
+    return (last.get("processed", 0) >= batch_size and not last.get("failed", 0)
+            and last.get("status") == "SUCCEEDED")
+
+
+def _run_scheduler(project, tracker, database, output_directory, lock_path,
+                   interval_seconds, initial_delay_seconds, catalog_batch_size,
+                   single_run, status_path, mode, priority):
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     output_directory.mkdir(parents=True, exist_ok=True)
     if status_path is None:
@@ -144,8 +166,12 @@ def run_scheduler(
     while not stop_requested:
         cycle_started_at = time.monotonic()
         lock_busy = False
+        summary = None
         with lock_path.open("w", encoding="utf-8") as lock_file:
             try:
+                fcntl.flock(priority, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                if mode != "prices":
+                    fcntl.flock(priority, fcntl.LOCK_UN)
                 fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except BlockingIOError:
                 lock_busy = True
@@ -155,7 +181,7 @@ def run_scheduler(
                 lock_file.write(str(os.getpid()))
                 lock_file.flush()
                 try:
-                    run_once(
+                    summary = run_once(
                         project,
                         tracker,
                         database,
@@ -183,10 +209,15 @@ def run_scheduler(
                                 "error": str(error),
                             },
                         )
+                finally:
+                    fcntl.flock(priority, fcntl.LOCK_UN)
         if single_run:
             return 2 if lock_busy else 0
         # Anchor to the start, not completion; a busy lock must not skip a day.
         wait_seconds = min(300, interval_seconds) if lock_busy else max(300, interval_seconds - int(time.monotonic() - cycle_started_at))
+        if not lock_busy and mode == "catalog" and catalog_has_more_work(summary, catalog_batch_size):
+            # Release the main lock every bounded cycle; do not cap growth per hour.
+            wait_seconds = 5
         if status_path is not None:
             current = periodic_job_status.read_status(status_path, "collection")
             periodic_job_status.write_status(

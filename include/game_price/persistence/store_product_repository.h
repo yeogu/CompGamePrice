@@ -23,6 +23,8 @@ public:
         const Game& game,
         const std::vector<StoreProduct>& products) const;
     std::vector<StoreProduct> findProductsByGameId(const std::string& gameId) const;
+    std::vector<StoreProduct> findProductsByGameIds(const std::vector<std::string>& gameIds) const;
+    std::string dataRevision() const;
     std::vector<PriceObservation> findPriceHistory(
         Store store,
         const std::string& productId) const;

@@ -18,16 +18,25 @@ class SearchResultParser(HTMLParser):
         self.limit = limit
         self.results = []
         self.packages = set()
+        self.pending_href = ""
+        self.pending_title = ""
+        self.capture_title = False
 
     def handle_starttag(self, tag, attributes):
+        values = dict(attributes)
+        if self.pending_href and tag == "span" and "DdYX5" in values.get("class", "").split():
+            self.capture_title = True
         if tag != "a" or len(self.results) >= self.limit:
             return
-        values = dict(attributes)
         href = values.get("href", "")
         if not href.startswith("/store/apps/details?"):
             return
         package_name = parse_qs(urlparse(href).query).get("id", [""])[0]
         title = values.get("aria-label", "").strip()
+        if package_name and not title:
+            self.pending_href = href
+            self.pending_title = ""
+            return
         if not package_name or not title or package_name in self.packages:
             return
         self.packages.add(package_name)
@@ -43,6 +52,21 @@ class SearchResultParser(HTMLParser):
                 "platforms": ["Android"],
             }
         )
+
+    def handle_data(self, data):
+        if self.capture_title:
+            self.pending_title += data
+
+    def handle_endtag(self, tag):
+        if tag == "span":
+            self.capture_title = False
+        if tag == "a" and self.pending_href:
+            href, title = self.pending_href, self.pending_title.strip()
+            self.pending_href = ""
+            self.pending_title = ""
+            self.capture_title = False
+            if title:
+                self.handle_starttag("a", [("href", href), ("aria-label", title)])
 
 
 def parse_results(raw: bytes, limit: int = 10) -> list[dict]:

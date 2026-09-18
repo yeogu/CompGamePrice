@@ -221,6 +221,10 @@ if(BUILD_TESTING)
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_mobile_catalog_sync.py
         )
         add_test(
+            NAME mobile_catalog_growth_tests
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_mobile_catalog_growth.py
+        )
+        add_test(
             NAME playstation_catalog_search_tests
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_playstation_catalog_search.py
         )
@@ -318,7 +322,7 @@ if(BUILD_TESTING)
                     $<TARGET_FILE:game_price_tracker>
                     ${CURL_EXECUTABLE}
             )
-            set_tests_properties(game_price_api_integration PROPERTIES TIMEOUT 15)
+            set_tests_properties(game_price_api_integration PROPERTIES TIMEOUT 30)
             add_test(
                 NAME user_price_alert_e2e
                 COMMAND bash

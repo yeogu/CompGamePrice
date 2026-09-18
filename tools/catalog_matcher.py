@@ -11,6 +11,8 @@ EXCLUDED_TITLE_WORDS = {
     "wallpaper",
     "soundtrack",
     "demo",
+    "trial",
+    "체험판",
     "companion",
     "가이드",
     "공략",

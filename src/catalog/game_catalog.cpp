@@ -428,6 +428,12 @@ void GameCatalog::reload(const std::string& dataPath) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
     games_.swap(refreshed.games_);
     storeProducts_.swap(refreshed.storeProducts_);
+    ++revision_;
+}
+
+std::uint64_t GameCatalog::revision() const {
+    std::shared_lock<std::shared_mutex> lock(mutex_);
+    return revision_;
 }
 
 std::optional<Game> GameCatalog::findByName(const std::string& name) const {

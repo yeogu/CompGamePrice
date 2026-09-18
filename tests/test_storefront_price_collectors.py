@@ -23,6 +23,43 @@ import storefront_price_support as support
 
 
 class StorefrontPriceCollectorsTest(unittest.TestCase):
+    def test_long_retry_after_defers_remaining_batch_without_blocking_workers(self):
+        calls, sleeps = [], []
+        def fetch(*args):
+            calls.append(args[0])
+            raise HTTPError("https://store.test", 429, "limited", {"Retry-After": "1200"}, None)
+        rows, failures = support.collect_with_retry(
+            [(str(i), "game", "https://store.test") for i in range(20)],
+            lambda *args: "row", fetch, 1, 3, 2, 0, sleeper=sleeps.append, max_workers=1)
+        self.assertEqual(rows, [])
+        self.assertEqual(len(failures), 20)
+        self.assertEqual(calls, ["0"])
+        self.assertEqual(sleeps, [])
+        self.assertTrue(all("1200s" in error for _, error in failures))
+
+    def test_rate_limit_reduces_speed_and_success_restores_only_configured_rate(self):
+        throttle = support.AdaptiveThrottle(2, 2)
+        self.assertEqual(throttle._spacing, 1)
+        throttle.penalize(5)
+        self.assertEqual(throttle._spacing, 2)
+        for _ in range(40):
+            throttle.succeeded()
+        self.assertEqual(throttle._spacing, 1)
+        with patch.object(support.time, "time", return_value=0):
+            self.assertEqual(support.retry_after_seconds({"Retry-After": "Thu, 01 Jan 1970 00:02:00 GMT"}, 1), 120)
+
+    def test_waiting_worker_observes_new_rate_limit_penalty(self):
+        with patch.object(support.time, "monotonic", return_value=0):
+            throttle = support.AdaptiveThrottle(1, 1)
+            throttle.wait(lambda seconds: None)
+            sleeps = []
+            def sleep(seconds):
+                sleeps.append(seconds)
+                if len(sleeps) == 1:
+                    throttle.penalize(10)
+            throttle.wait(sleep)
+            self.assertEqual(sleeps, [1, 10])
+
     def setUp(self):
         self.catalog = {
             "schemaVersion": 4,

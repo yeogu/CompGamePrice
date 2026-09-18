@@ -6,6 +6,8 @@ import sys
 import tempfile
 import unittest
 import sqlite3
+import inspect
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,6 +27,14 @@ class Completed:
 
 
 class SteamPipelineTest(unittest.TestCase):
+    def test_only_explicit_scheduled_sub_batches_skip_full_database_backup(self):
+        signature = inspect.signature(steam_pipeline.run_pipeline)
+        for extra, should_skip in [([], False), (["--skip-database-backup"], True)]:
+            with patch.object(sys, "argv", ["run_steam_pipeline.py", *extra]), patch.object(steam_pipeline, "run_pipeline", return_value=0) as run:
+                self.assertEqual(steam_pipeline.main(), 0)
+                arguments = signature.bind(*run.call_args.args, **run.call_args.kwargs)
+                self.assertEqual(arguments.arguments["database_backup_directory"] is None, should_skip)
+
     def test_prioritizes_never_collected_then_oldest_products(self):
         with tempfile.TemporaryDirectory() as directory:
             database = Path(directory) / "prices.db"

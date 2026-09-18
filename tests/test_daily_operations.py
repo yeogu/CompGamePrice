@@ -59,7 +59,7 @@ class DailyOperationsTest(unittest.TestCase):
             self.assertTrue(command)
             self.assertIn("GAME_PRICE_DATABASE_PATH", environment)
             self.assertIn("GAME_PRICE_CATALOG_PATH", environment)
-            return {"name": name, "exitCode": next(exit_codes)}
+            return {"name": name, "exitCode": 0 if name.endswith("paid-game-discovery") else next(exit_codes)}
 
         with patch.object(daily_operations, "run_step", side_effect=fake_run) as run_step:
             results = daily_operations.run_operations(
@@ -113,10 +113,12 @@ class DailyOperationsTest(unittest.TestCase):
                 "apple",
                 "collection-health",
                 "notification-outbox",
+                "AppleAppStore-paid-game-discovery",
+                "GooglePlay-paid-game-discovery",
             ],
         )
         self.assertEqual(results[1]["exitCode"], 1)
-        self.assertEqual(len(results), 26)
+        self.assertEqual(len(results), 28)
 
 
 if __name__ == "__main__":

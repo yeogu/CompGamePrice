@@ -21,6 +21,44 @@ SPEC.loader.exec_module(sync)
 
 
 class SteamCatalogSyncTest(unittest.TestCase):
+    def test_batch_publishes_once_with_individual_audits_and_reusable_prices(self):
+        apps = [{"appid": i, "name": f"Unique Game {i}"} for i in range(10, 20)]
+        storage = sync.catalog_import.catalog_storage
+        with mock.patch.object(storage, "atomic_write", wraps=storage.atomic_write) as write:
+            report, catalog, database = self.run_sync(apps, {
+                str(i): self.detail_for(str(i), f"Unique Game {i}") for i in range(10, 20)})
+        self.assertEqual(report["accepted"], 10)
+        self.assertEqual(report["reusablePrices"], 10)
+        self.assertEqual(write.call_count, 1)
+        with sqlite3.connect(database) as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM catalog_change_audit WHERE outcome='APPLIED'").fetchone()[0], 10)
+        fallback = mock.Mock(side_effect=AssertionError("must not re-fetch valid registration price"))
+        fetch = sync.steam_registration_cache.fetcher(database, fallback)
+        raw, status, source = fetch("10", "kr", "korean", 15)
+        self.assertEqual(status, 200)
+        self.assertTrue(source.startswith("registration-cache://"))
+        sync.steam.normalized_row(raw, "10", "unique-game-10")
+        for workers in (1, 2):
+            with mock.patch.dict("os.environ", {"STEAM_COLLECTION_MAX_WORKERS": str(workers)}):
+                count, failures = sync.steam.collect_targets(
+                    [(str(i), f"unique-game-{i}") for i in range(10, 20)],
+                    catalog.parent / f"cached-{workers}", "kr", "korean", 15, 1, 1, 0,
+                    fetcher=fetch, sleeper=lambda seconds: self.fail("cached prices must not wait for network pacing"))
+                self.assertEqual((count, failures), (10, []))
+        with sqlite3.connect(database) as connection:
+            connection.execute("UPDATE steam_registration_responses SET fetched_at=0")
+        fallback.side_effect = None
+        fallback.return_value = (b"fresh", 200, "network")
+        self.assertEqual(fetch("10", "kr", "korean", 15)[0], b"fresh")
+        fallback.assert_called_once()
+
+    def test_registration_cache_rejects_missing_or_foreign_price(self):
+        with sqlite3.connect(":memory:") as connection:
+            for price in [None, {"currency": "USD", "initial": 1000, "final": 1000, "discount_percent": 0}]:
+                payload = json.loads(self.detail_for("10", "Paid Game"))
+                payload["10"]["data"]["price_overview"] = price
+                self.assertFalse(sync.steam_registration_cache.save(connection, "10", "paid-game", json.dumps(payload).encode()))
+
     def setUp(self):
         self.environment = mock.patch.dict("os.environ", {"STEAM_CATALOG_SYNC_REQUEST_DELAY": "0"})
         self.environment.start()

@@ -30,6 +30,8 @@ struct PriceComparisonResult {
 
 class PriceComparisonService {
 public:
+    static PriceComparisonResult compareProducts(const Game& game,
+        const std::vector<StoreProduct>& products, const PriceComparisonCriteria& criteria = {});
     PriceComparisonService(const GameCatalog& catalog, const StoreProductRepository& repository);
 
     std::optional<PriceComparisonResult> compareByGameName(

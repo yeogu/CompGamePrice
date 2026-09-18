@@ -48,6 +48,40 @@ struct CatalogGameSummary {
     std::string priceStatus;
 };
 
+class CatalogSearchCache {
+    struct Entry {
+        std::string revision;
+        Json::Value response;
+        std::chrono::steady_clock::time_point created;
+    };
+    std::mutex mutex_;
+    std::map<std::string, Entry> entries_;
+public:
+    std::optional<Json::Value> get(const std::string& key, const std::string& revision) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        const auto found = entries_.find(key);
+        if (found == entries_.end()) return std::nullopt;
+        if (found->second.revision != revision ||
+            std::chrono::steady_clock::now() - found->second.created >= std::chrono::seconds(10)) {
+            entries_.erase(found);
+            return std::nullopt;
+        }
+        return found->second.response;
+    }
+    void put(const std::string& key, const std::string& revision, const Json::Value& response) {
+        // Both cardinality and individual response size are bounded.
+        if (response.toStyledString().size() > 262144) return;
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (entries_.size() >= 64 && entries_.count(key) == 0) {
+            auto oldest = std::min_element(entries_.begin(), entries_.end(), [](const auto& a, const auto& b) {
+                return a.second.created < b.second.created;
+            });
+            entries_.erase(oldest);
+        }
+        entries_[key] = Entry{revision, response, std::chrono::steady_clock::now()};
+    }
+};
+
 bool supportedGameSort(const std::string& sort) {
     static const std::set<std::string> supported{
         "title",
@@ -1494,6 +1528,7 @@ int main() {
         repository.initializeSchema();
         GameCatalog catalog(catalogPath());
         GameQueryService queryService(catalog, repository);
+        CatalogSearchCache catalogSearchCache;
         AccountRepository accountRepository(database);
         AuthService authService(accountRepository);
         OAuthService oauthService(accountRepository);
@@ -2977,8 +3012,9 @@ int main() {
 
         drogon::app().registerHandler(
             "/api/games",
-            [&queryService, &catalog](const drogon::HttpRequestPtr& request,
+            [&queryService, &catalog, &repository, &catalogSearchCache](const drogon::HttpRequestPtr& request,
                             std::function<void(const HttpResponsePtr&)>&& callback) {
+                const auto started = std::chrono::steady_clock::now();
                 const auto query = request->getParameter("query");
                 const auto store = request->getParameter("store");
                 const auto platform = request->getParameter("platform");
@@ -3011,6 +3047,36 @@ int main() {
                     callback(jsonError(drogon::k400BadRequest, error.what()));
                     return;
                 }
+                const auto revision = [&]() { return repository.dataRevision() + ":" + std::to_string(catalog.revision()); };
+                const auto requestRevision = revision();
+                Json::Value keyParts(Json::arrayValue);
+                for (const auto& part : {query, store, platform, genre, tag, sort, std::to_string(page), std::to_string(pageSize)})
+                    keyParts.append(part);
+                const auto cacheKey = keyParts.toStyledString();
+                const auto respond = [&](const Json::Value& body, bool cacheHit, double dbMs) {
+                    const auto elapsed = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();
+                    auto response = jsonResponse(body);
+                    response->addHeader("Cache-Control", "no-store");
+                    response->addHeader("X-Search-Cache", cacheHit ? "HIT" : "MISS");
+                    response->addHeader("Server-Timing", "app;dur=" + std::to_string(elapsed) + ", db;dur=" + std::to_string(dbMs));
+                    Json::Value metric;
+                    metric["event"] = "catalog_search";
+                    metric["durationMs"] = elapsed;
+                    metric["dbMs"] = dbMs;
+                    metric["cacheHit"] = cacheHit;
+                    metric["page"] = Json::UInt64(page);
+                    metric["returned"] = body["games"].size();
+                    metric["total"] = body["total"];
+                    // Never log search text, cookies, or user identifiers.
+                    Json::StreamWriterBuilder writer;
+                    writer["indentation"] = "";
+                    std::clog << Json::writeString(writer, metric) << '\n';
+                    callback(response);
+                };
+                if (const auto cached = catalogSearchCache.get(cacheKey, requestRevision)) {
+                    respond(*cached, true, 0);
+                    return;
+                }
                 std::vector<CatalogGameSummary> summaries;
                 auto catalogFilter = filter;
                 // Runtime product compatibility (for example a Switch title
@@ -3018,23 +3084,36 @@ int main() {
                 // necessarily in the canonical game's native platform list.
                 // Let the price comparison apply the platform filter below.
                 catalogFilter.platform.reset();
-                const auto games = queryService.filterGames(catalogFilter);
-                for (const auto& game : games) {
-                    PriceComparisonCriteria criteria;
-                    criteria.excludedStores = {Store::EpicGamesStore};
-                    bool hasPurchaseLink = false;
-                    for (const auto& linked : catalog.storeProducts(Store::EpicGamesStore)) {
-                        if (linked.gameId == game.id && (!filter.store || *filter.store == linked.store) &&
-                            (!filter.platform || std::find(linked.supportedPlatforms.begin(), linked.supportedPlatforms.end(),
-                             *filter.platform) != linked.supportedPlatforms.end())) hasPurchaseLink = true;
-                    }
-                    criteria.platform = filter.platform;
-                    criteria.includeForeignCurrencies = true;
-                    const auto report = queryService.getGamePriceReportById(
-                        game.id,
-                        std::nullopt,
-                        criteria);
-                    if (!report || report->productReports.empty()) {
+                auto games = queryService.filterGames(catalogFilter);
+                const auto catalogTotal = games.size();
+                const bool pageBeforePrices = !filter.store && !filter.platform &&
+                    (sort.empty() || sort == "title" || sort == "titleAsc" || sort == "titleDesc");
+                if (pageBeforePrices) {
+                    std::sort(games.begin(), games.end(), [&](const auto& left, const auto& right) {
+                        if (left.title == right.title) return left.id < right.id;
+                        return sort == "titleDesc" ? left.title > right.title : left.title < right.title;
+                    });
+                    const auto first = std::min((page - 1) * pageSize, games.size());
+                    const auto last = std::min(first + pageSize, games.size());
+                    games = std::vector<Game>(games.begin() + first, games.begin() + last);
+                }
+                PriceComparisonCriteria criteria;
+                criteria.excludedStores = {Store::EpicGamesStore};
+                criteria.platform = filter.platform;
+                criteria.includeForeignCurrencies = true;
+                std::set<std::string> purchaseLinkGames;
+                for (const auto& linked : catalog.storeProducts(Store::EpicGamesStore)) {
+                    if ((!filter.store || *filter.store == linked.store) &&
+                        (!filter.platform || std::find(linked.supportedPlatforms.begin(), linked.supportedPlatforms.end(),
+                            *filter.platform) != linked.supportedPlatforms.end())) purchaseLinkGames.insert(linked.gameId);
+                }
+                const auto dbStarted = std::chrono::steady_clock::now();
+                const auto comparisons = queryService.getCatalogComparisons(games, criteria);
+                const auto dbMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - dbStarted).count();
+                for (const auto& comparison : comparisons) {
+                    const auto& game = comparison.game;
+                    const bool hasPurchaseLink = purchaseLinkGames.count(game.id) != 0;
+                    if (comparison.products.empty()) {
                         if ((filter.store || filter.platform) && !hasPurchaseLink) {
                             continue;
                         }
@@ -3060,11 +3139,17 @@ int main() {
                     std::optional<int> maxDiscountPercent;
                     std::string lastUpdatedAt;
                     bool hasMatchingProduct = hasPurchaseLink;
-                    for (const auto& product : report->comparison.products) {
+                    bool hasFreeMobileDownload = false;
+                    for (const auto& product : comparison.products) {
                         if (filter.store && product.store != *filter.store) {
                             continue;
                         }
                         hasMatchingProduct = true;
+                        if ((product.store == Store::GooglePlay || product.store == Store::AppleAppStore) &&
+                            product.currentPrice.minorAmount == 0) {
+                            hasFreeMobileDownload = hasFreeMobileDownload || product.freshness == PriceFreshness::Fresh;
+                            continue;
+                        }
                         if (product.freshness != PriceFreshness::Fresh) {
                             continue;
                         }
@@ -3108,7 +3193,7 @@ int main() {
                         std::nullopt,
                         {},
                         filter.store && *filter.store == Store::EpicGamesStore && hasPurchaseLink
-                            ? "LinkOnly" : "Stale"});
+                            ? "LinkOnly" : hasFreeMobileDownload ? "DownloadOnly" : "Stale"});
                 }
                 const auto selectedSort = sort.empty() ? "titleAsc" : sort;
                 std::sort(summaries.begin(), summaries.end(), [&](const auto& left, const auto& right) {
@@ -3118,8 +3203,8 @@ int main() {
                 response["games"] = Json::arrayValue;
                 response["page"] = Json::UInt64(page);
                 response["pageSize"] = Json::UInt64(pageSize);
-                response["total"] = Json::UInt64(summaries.size());
-                const auto begin = std::min((page - 1) * pageSize, summaries.size());
+                response["total"] = Json::UInt64(pageBeforePrices ? catalogTotal : summaries.size());
+                const auto begin = pageBeforePrices ? 0 : std::min((page - 1) * pageSize, summaries.size());
                 const auto end = std::min(begin + pageSize, summaries.size());
                 for (auto index = begin; index < end; ++index) {
                     const auto& summary = summaries[index];
@@ -3136,7 +3221,8 @@ int main() {
                     }
                     response["games"].append(std::move(item));
                 }
-                callback(jsonResponse(response));
+                if (revision() == requestRevision) catalogSearchCache.put(cacheKey, requestRevision, response);
+                respond(response, false, dbMs);
             },
             {drogon::Get});
 

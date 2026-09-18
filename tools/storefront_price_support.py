@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import os
+import math
+from email.utils import parsedate_to_datetime
 from collection_progress import ProgressReporter
 from pathlib import Path
 import tempfile
@@ -26,6 +28,9 @@ class AdaptiveThrottle:
 
     def __init__(self, request_delay: float, max_workers: int):
         self._spacing = request_delay / max(1, max_workers)
+        self._baseline = self._spacing
+        self._successes = 0
+        self._penalty_revision = 0
         self._next_request_at = 0.0
         self._lock = threading.Lock()
 
@@ -34,15 +39,52 @@ class AdaptiveThrottle:
             now = time.monotonic()
             delay = max(0.0, self._next_request_at - now)
             self._next_request_at = max(now, self._next_request_at) + self._spacing
+            revision = self._penalty_revision
         if delay > 0:
             sleeper(delay)
+        # A different worker may receive Retry-After while this worker sleeps.
+        # Re-reserve after a penalty rather than send at the old scheduled time.
+        while True:
+            with self._lock:
+                if revision == self._penalty_revision:
+                    return
+                now = time.monotonic()
+                delay = max(0.0, self._next_request_at - now)
+                self._next_request_at = max(now, self._next_request_at) + self._spacing
+                revision = self._penalty_revision
+            if delay > 0:
+                sleeper(delay)
 
     def penalize(self, seconds: float) -> None:
         with self._lock:
+            self._spacing = min(max(30, self._baseline), max(0.1, self._spacing * 2))
+            self._successes = 0
+            self._penalty_revision += 1
             self._next_request_at = max(
                 self._next_request_at,
                 time.monotonic() + seconds,
             )
+
+    def succeeded(self) -> None:
+        with self._lock:
+            self._successes += 1
+            if self._successes >= 20:
+                self._spacing = max(self._baseline, self._spacing / 2)
+                self._successes = 0
+
+
+def retry_after_seconds(headers, default):
+    value = (headers or {}).get("Retry-After")
+    if value:
+        try:
+            seconds = float(value)
+            return max(0, seconds) if math.isfinite(seconds) else default
+        except ValueError:
+            try:
+                return max(0, parsedate_to_datetime(value).timestamp() - time.time())
+            except (ValueError, TypeError, OverflowError):
+                pass
+    return default
 
 
 def atomic_write_text(path: Path, text: str) -> None:
@@ -86,8 +128,10 @@ def collect_with_retry(
         selected_workers = int(os.getenv("STORE_COLLECTION_MAX_WORKERS", "1"))
     if selected_workers < 1:
         raise ValueError("max workers must be positive")
-    selected_workers = min(selected_workers, max(1, len(targets)))
+    selected_workers = min(4, selected_workers, max(1, len(targets)))
     throttle = AdaptiveThrottle(request_delay, selected_workers)
+    provider_blocked = threading.Event()
+    provider_error = []
     progress = ProgressReporter(len(targets))
 
     def collect_one(
@@ -96,25 +140,42 @@ def collect_with_retry(
         product_id, game_id, product_url = target
         last_error = ""
         for attempt in range(max_attempts):
+            if provider_blocked.is_set():
+                return None, (product_id, provider_error[0])
             throttle.wait(sleeper)
+            if provider_blocked.is_set():
+                return None, (product_id, provider_error[0])
+            retry_pause = retry_delay * (2**attempt)
             try:
                 raw = fetcher(product_id, game_id, product_url, timeout)
-                return normalizer(raw, product_id, game_id, product_url), None
+                row = normalizer(raw, product_id, game_id, product_url)
+                throttle.succeeded()
+                return row, None
             except PermanentCollectionError as error:
                 last_error = str(error)
                 break
             except HTTPError as error:
                 last_error = f"HTTP {error.code}"
+                if error.code in {401, 403}:
+                    provider_error.append(last_error + ": provider access denied; remaining requests deferred")
+                    provider_blocked.set()
                 if error.code not in {408, 429} and error.code < 500:
                     break
                 if error.code == 429:
-                    throttle.penalize(retry_delay * (2**attempt))
+                    pause = retry_after_seconds(error.headers, max(1, retry_pause))
+                    if pause > 30 or attempt + 1 >= max_attempts:
+                        provider_error.append(f"HTTP 429: provider deferred; retry after {pause:g}s")
+                        provider_blocked.set()
+                        last_error = provider_error[0]
+                        break
+                    throttle.penalize(pause)
+                    retry_pause = 0  # The shared throttle applies Retry-After.
             except (TimeoutError, URLError) as error:
                 last_error = str(error)
             except Exception as error:
                 last_error = str(error)
-            if attempt + 1 < max_attempts and retry_delay > 0:
-                sleeper(retry_delay * (2**attempt))
+            if attempt + 1 < max_attempts and retry_pause > 0:
+                sleeper(retry_pause)
         return None, (product_id, last_error)
 
     def collect_and_report(target):

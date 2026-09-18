@@ -22,6 +22,7 @@ std::size_t AlertService::evaluateGame(const std::string& gameId) const {
              (SELECT h.observed_at FROM price_history h WHERE h.store=p.store AND h.external_product_id=p.external_product_id AND h.purchasable=1 ORDER BY h.observed_at DESC,h.id DESC LIMIT 1)
       FROM alert_rules r JOIN store_products p ON p.game_id=r.game_id
       WHERE r.game_id=? AND r.active=1 AND p.purchasable=1
+      AND NOT (p.store IN ('Google Play','Apple App Store') AND p.price_minor=0)
       AND p.region=? AND p.edition=? AND p.offer_type=? AND p.currency=?
       AND p.last_successful_check_at IS NOT NULL
       AND p.last_successful_check_at >=

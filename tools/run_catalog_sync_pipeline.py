@@ -73,6 +73,8 @@ def collect_registered_prices(project, catalog, database, tracker, output_direct
                 sys.executable, str(project / "tools/run_steam_pipeline.py"),
                 "--tracker", str(tracker), "--catalog", str(snapshot),
                 "--output-dir", str(temporary), "--database", str(database), "--max-attempts", "1",
+                "--registration-cache", str(database),
+                "--skip-database-backup",
             ], check=False, env={**os.environ, "GAME_PRICE_DATABASE_PATH": str(database),
                                  "GAME_PRICE_CATALOG_PATH": str(snapshot)})
         code = completed.returncode
@@ -109,10 +111,12 @@ def run_pipeline(
     command_runner=run_initial_price_command,
 ) -> tuple[dict, int]:
     report = synchronizer(catalog, database, batch_size)
+    price_started = time.monotonic()
     report["priceCollection"], price_code = collect_registered_prices(
         project, catalog, database, tracker, output_directory,
         report.get("acceptedAppIds", []), command_runner,
     )
+    report["initialPriceSeconds"] = round(time.monotonic() - price_started, 3)
     sync_code = 1 if report["status"] == "FAILED" else 2 if report.get("failed", 0) else 0
     code = 1 if 1 in (sync_code, price_code) else max(sync_code, price_code)
     return report, code
