@@ -1103,6 +1103,11 @@ void testGameCatalogValidation() {
         }
         expect(rejected, std::string("Catalog should reject invalid fixture: ") + filename);
     }
+    GameCatalog duplicateMetadata(fixtures + "game_catalog_duplicate_metadata.json");
+    const auto recovered = duplicateMetadata.findById("duplicate-metadata");
+    expect(recovered && recovered->developers.size() == 1 &&
+               recovered->publishers.size() == 1,
+           "Duplicate optional Store metadata should not prevent API startup");
 }
 
 void testGameQueryServiceReport() {

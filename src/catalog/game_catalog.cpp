@@ -174,11 +174,12 @@ std::vector<std::string> parseOptionalStringArray(
     while (values.next()) {
         const auto value = values.optionalText(0);
         requireJsonString(value, values.optionalText(1), field + "[]");
-        if (std::find(result.begin(), result.end(), *value) != result.end()) {
-            throw std::runtime_error(
-                "Duplicate Game Catalog " + field + " value: " + *value);
+        // Identity metadata comes from third-party Store APIs. Some responses
+        // repeat an identical developer or publisher. Treat that as harmless
+        // source noise so one bad game cannot prevent the entire API starting.
+        if (std::find(result.begin(), result.end(), *value) == result.end()) {
+            result.push_back(*value);
         }
-        result.push_back(*value);
     }
     return result;
 }

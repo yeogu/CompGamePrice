@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 4,
+  "games": [
+    {
+      "id": "duplicate-metadata",
+      "title": "Duplicate Metadata",
+      "platforms": ["Windows"],
+      "developers": ["Oedipe Games", "Oedipe Games"],
+      "publishers": ["Example", "Example"],
+      "products": [
+        {
+          "store": "Steam",
+          "productId": "999001",
+          "productUrl": "https://store.steampowered.com/app/999001",
+          "platforms": ["Windows"],
+          "region": "KR",
+          "edition": "Standard",
+          "offerType": "BaseGame"
+        }
+      ]
+    }
+  ]
+}

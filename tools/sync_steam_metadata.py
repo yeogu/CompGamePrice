@@ -56,23 +56,23 @@ def proposed_metadata(raw: bytes, app_id: str) -> dict:
         raise ValueError(f"Steam product {app_id} is not a base game")
     return {
         "imageUrl": str(data.get("header_image", "")).strip(),
-        "developers": [
+        "developers": list(dict.fromkeys([
             value.strip()
             for value in data.get("developers", [])
             if isinstance(value, str) and value.strip()
-        ],
-        "publishers": [
+        ])),
+        "publishers": list(dict.fromkeys([
             value.strip()
             for value in data.get("publishers", [])
             if isinstance(value, str) and value.strip()
-        ],
-        "genres": [
+        ])),
+        "genres": list(dict.fromkeys([
             item["description"].strip()
             for item in data.get("genres", [])
             if isinstance(item, dict)
             and isinstance(item.get("description"), str)
             and item["description"].strip()
-        ],
+        ])),
     }
 
 

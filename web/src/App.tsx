@@ -577,9 +577,11 @@ function App() {
   const adminPanelRef = useRef<HTMLElement>(null)
   const suggestionSequence = useRef(0)
 
-  const refreshAccount = async (activeToken: string) => {
-    const [me, nextRules, nextNotifications] = await Promise.all([
-      getMe(activeToken),
+  const refreshAccount = async (activeToken: string, isCurrent = () => true) => {
+    const me = await getMe(activeToken)
+    if (!isCurrent()) return
+    setUser(me)
+    const [nextRules, nextNotifications] = await Promise.all([
       getAlertRules(activeToken),
       getNotifications(activeToken),
     ])
@@ -591,11 +593,13 @@ function App() {
         currency: 'KRW' as const,
       })),
     ])
-    setUser(me)
+    if (!isCurrent()) return
     const adminStatus = await getCatalogAdminStatus().catch(() => ({ enabled: false }))
+    if (!isCurrent()) return
     setCatalogAdminEnabled(adminStatus.enabled && me.role === 'ADMIN')
     if (adminStatus.enabled && me.role === 'ADMIN') {
       const runs = await getCollectionRuns().catch(() => [])
+      if (!isCurrent()) return
       setCollectionRuns(runs)
       setCollectionStatusError('')
     }
@@ -891,6 +895,7 @@ function App() {
     setNotifications([])
     setFavorites([])
     setCatalogAdminEnabled(false)
+    setError('')
     navigate('games')
   }
 
@@ -1817,15 +1822,23 @@ function App() {
     if (oauthSuccess) localStorage.setItem('game-price-session', '1')
     if (oauthSuccess || hash.has('oauth_linked')) window.history.replaceState(null, '', window.location.pathname + window.location.search)
     if (!token) return
-    void refreshAccount(token).catch((reason) => {
+    let active = true
+    void refreshAccount(token, () => active).catch((reason) => {
+      if (!active) return
       if (isAuthenticationError(reason)) {
         localStorage.removeItem('game-price-session')
         setToken('')
         setUser(null)
+        setRules([])
+        setNotifications([])
+        setFavorites([])
+        setCatalogAdminEnabled(false)
+        setError('로그인 세션이 만료되었거나 유효하지 않습니다. 다시 로그인해주세요.')
         return
       }
-      setError('계정 정보를 일시적으로 불러오지 못했습니다. 로그인 상태는 유지됩니다.')
+      setError('계정 정보를 불러오지 못했습니다. 연결 상태를 확인한 뒤 새로고침해주세요.')
     })
+    return () => { active = false }
   }, [token])
 
   const loadAdminUsers = async (page = adminUserPage) => {

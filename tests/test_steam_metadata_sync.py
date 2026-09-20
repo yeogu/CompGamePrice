@@ -23,6 +23,17 @@ def steam_fixture_with_artwork() -> bytes:
 
 
 class SteamMetadataSyncTest(unittest.TestCase):
+    def test_duplicate_store_identity_metadata_is_deduplicated(self):
+        raw = json.dumps({"1": {"success": True, "data": {
+            "type": "game", "developers": ["Oedipe Games", "Oedipe Games"],
+            "publishers": ["Publisher", "Publisher"],
+            "genres": [{"description": "Action"}, {"description": "Action"}],
+        }}}).encode()
+        proposed = sync_steam_metadata.proposed_metadata(raw, "1")
+        self.assertEqual(proposed["developers"], ["Oedipe Games"])
+        self.assertEqual(proposed["publishers"], ["Publisher"])
+        self.assertEqual(proposed["genres"], ["Action"])
+
     def test_automatically_fills_only_missing_verified_fields(self):
         raw = steam_fixture_with_artwork()
         catalog = {

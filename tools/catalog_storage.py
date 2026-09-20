@@ -19,6 +19,29 @@ class CatalogStorageError(ValueError):
     pass
 
 
+def deduplicated_strings(values):
+    result = []
+    seen = set()
+    for value in values if isinstance(values, list) else []:
+        if not isinstance(value, str) or not value.strip():
+            continue
+        normalized = value.strip()
+        if normalized not in seen:
+            result.append(normalized)
+            seen.add(normalized)
+    return result
+
+
+def normalize_catalog_metadata(document: dict) -> dict:
+    for game in document.get("games", []):
+        if not isinstance(game, dict):
+            continue
+        for field in ("developers", "publishers", "genres", "tags", "aliases"):
+            if field in game:
+                game[field] = deduplicated_strings(game[field])
+    return document
+
+
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
@@ -204,11 +227,11 @@ def update_catalog(
 ) -> tuple[dict, bool]:
     with catalog_lock(catalog_path):
         original_bytes = catalog_path.read_bytes()
-        current = json.loads(original_bytes)
+        current = normalize_catalog_metadata(json.loads(original_bytes))
         validate_catalog(current)
         updated, result = updater(current)
         validate_catalog(updated)
-        changed = updated != current
+        changed = updated != current or encoded_catalog(current) != original_bytes
         before_hash = catalog_hash(current)
         after_hash = catalog_hash(updated)
         connection = sqlite3.connect(database_path, timeout=30) if database_path else None

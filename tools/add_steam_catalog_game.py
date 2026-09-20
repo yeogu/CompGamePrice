@@ -113,16 +113,16 @@ def catalog_game(raw: bytes, app_id: str, game_id: str | None = None) -> dict:
         "title": title.strip(),
         "imageUrl": str(data.get("header_image", "")).strip(),
         "aliases": [],
-        "developers": [
+        "developers": list(dict.fromkeys([
             value.strip()
             for value in data.get("developers", [])
             if isinstance(value, str) and value.strip()
-        ],
-        "publishers": [
+        ])),
+        "publishers": list(dict.fromkeys([
             value.strip()
             for value in data.get("publishers", [])
             if isinstance(value, str) and value.strip()
-        ],
+        ])),
         "platforms": platforms,
         "genres": mapped_descriptions(data.get("genres"), GENRE_MAPPING),
         "tags": mapped_descriptions(data.get("categories"), CATEGORY_TAG_MAPPING),

@@ -40,6 +40,16 @@ def game(game_id: str, product_id: str) -> dict:
 
 
 class CatalogStorageTest(unittest.TestCase):
+    def test_existing_duplicate_metadata_is_repaired_on_next_update(self):
+        value = game("first", "1")
+        value["developers"] = [" Oedipe Games ", "Oedipe Games"]
+        self.catalog.write_text(json.dumps({"schemaVersion": 4, "games": [value]}))
+        storage.update_catalog(
+            self.catalog, lambda current: (current, current["games"][0]),
+            store="Steam", product_id="1", game_id="first")
+        repaired = json.loads(self.catalog.read_text())
+        self.assertEqual(repaired["games"][0]["developers"], ["Oedipe Games"])
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.directory = Path(self.temporary.name)
