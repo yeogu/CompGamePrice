@@ -2086,7 +2086,7 @@ function App() {
   }, [priceIntegrity])
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell mobile-tab-${mobilePrimaryTab}`}>
       <aside className="sidebar">
         <button className="brand" onClick={openGameFinder}>
           <span>DQ</span>
