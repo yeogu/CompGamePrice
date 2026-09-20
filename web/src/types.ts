@@ -14,6 +14,7 @@ export interface GameSummary {
   lastUpdatedAt?: string
   addedAt?: string
   atHistoricalLow?: boolean
+  featuredStore?: string
 }
 
 export interface HomeDiscovery {

@@ -182,6 +182,7 @@ struct HomeCatalogSignal {
     int discountPercent{};
     std::string lastUpdatedAt;
     std::string addedAt;
+    std::string store;
 };
 
 Json::Value gameJson(const Game& game);
@@ -209,6 +210,7 @@ std::vector<HomeCatalogSignal> queryHomeCatalogSignals(
             sqlite3_column_int(statement, 3),
             text(4),
             text(5),
+            text(6),
         });
     }
     sqlite3_finalize(statement);
@@ -228,10 +230,24 @@ Json::Value homeCatalogSection(
         item["lowestPrice"]["minorAmount"] = Json::Int64(signal.priceMinor);
         item["lowestPrice"]["currency"] = signal.currency;
         item["maxDiscountPercent"] = signal.discountPercent;
+        item["featuredStore"] = signal.store;
         if (!signal.lastUpdatedAt.empty()) item["lastUpdatedAt"] = signal.lastUpdatedAt;
         if (!signal.addedAt.empty()) item["addedAt"] = signal.addedAt;
         if (historicalLow) item["atHistoricalLow"] = true;
         result.append(std::move(item));
+    }
+    return result;
+}
+
+std::vector<HomeCatalogSignal> uniqueHomeSignals(
+    const std::vector<HomeCatalogSignal>& candidates,
+    std::set<std::string>& usedGameIds,
+    std::size_t limit = 10) {
+    std::vector<HomeCatalogSignal> result;
+    for (const auto& candidate : candidates) {
+        if (!usedGameIds.insert(candidate.gameId).second) continue;
+        result.push_back(candidate);
+        if (result.size() == limit) break;
     }
     return result;
 }
@@ -3076,47 +3092,67 @@ int main() {
             [&database, &catalog](const drogon::HttpRequestPtr&,
                                   std::function<void(const HttpResponsePtr&)>&& callback) {
                 try {
-                    const auto deals = queryHomeCatalogSignals(database, R"sql(
-                        SELECT sp.game_id, MIN(sp.price_minor), 'KRW',
-                               MAX(sp.discount_percent), MAX(sp.last_successful_check_at), ''
-                        FROM store_products sp
-                        WHERE sp.purchasable = 1 AND sp.price_minor > 0
-                          AND sp.currency = 'KRW' AND sp.region = 'KR'
-                          AND sp.offer_type = 'BaseGame'
-                          AND sp.store != 'Epic Games Store'
-                          AND sp.discount_percent > 0
-                          AND julianday(sp.last_successful_check_at) >= julianday('now', '-48 hours')
-                        GROUP BY sp.game_id
-                        ORDER BY MAX(sp.discount_percent) DESC,
-                                 MIN(sp.price_minor) ASC,
-                                 MAX(sp.last_successful_check_at) DESC
+                    const auto dealCandidates = queryHomeCatalogSignals(database, R"sql(
+                        WITH ranked AS (
+                            SELECT sp.*,
+                                   ROW_NUMBER() OVER (
+                                       PARTITION BY sp.game_id
+                                       ORDER BY sp.discount_percent DESC,
+                                                sp.price_minor ASC,
+                                                sp.last_successful_check_at DESC
+                                   ) AS position
+                            FROM store_products sp
+                            WHERE sp.purchasable = 1 AND sp.price_minor > 0
+                              AND sp.currency = 'KRW' AND sp.region = 'KR'
+                              AND sp.offer_type = 'BaseGame'
+                              AND sp.store != 'Epic Games Store'
+                              AND sp.discount_percent > 0
+                              AND julianday(sp.last_successful_check_at) >= julianday('now', '-48 hours')
+                        )
+                        SELECT game_id, price_minor, currency, discount_percent,
+                               last_successful_check_at, '', store
+                        FROM ranked
+                        WHERE position = 1
+                        ORDER BY discount_percent DESC, price_minor ASC,
+                                 last_successful_check_at DESC
                         LIMIT ?
-                    )sql");
-                    const auto historicalLows = queryHomeCatalogSignals(database, R"sql(
-                        SELECT sp.game_id, MIN(sp.price_minor), 'KRW',
-                               MAX(sp.discount_percent), MAX(sp.last_successful_check_at), ''
-                        FROM store_products sp
-                        WHERE sp.purchasable = 1 AND sp.price_minor > 0
-                          AND sp.currency = 'KRW' AND sp.region = 'KR'
-                          AND sp.offer_type = 'BaseGame'
-                          AND sp.store != 'Epic Games Store'
-                          AND julianday(sp.last_successful_check_at) >= julianday('now', '-48 hours')
-                          AND sp.price_minor = (
-                              SELECT MIN(ph.price_minor)
-                              FROM price_history ph
-                              WHERE ph.store = sp.store
-                                AND ph.external_product_id = sp.external_product_id
-                                AND ph.currency = sp.currency
-                                AND ph.purchasable = 1
-                                AND ph.price_minor > 0
-                          )
-                        GROUP BY sp.game_id
-                        ORDER BY MAX(sp.discount_percent) DESC,
-                                 MAX(sp.last_successful_check_at) DESC,
-                                 MIN(sp.price_minor) ASC
+                    )sql", 40);
+                    const auto historicalCandidates = queryHomeCatalogSignals(database, R"sql(
+                        WITH history_lows AS (
+                            SELECT store, external_product_id, currency,
+                                   MIN(price_minor) AS lowest_price
+                            FROM price_history
+                            WHERE purchasable = 1 AND price_minor > 0
+                            GROUP BY store, external_product_id, currency
+                        ), ranked AS (
+                            SELECT sp.*,
+                                   ROW_NUMBER() OVER (
+                                       PARTITION BY sp.game_id
+                                       ORDER BY sp.discount_percent DESC,
+                                                sp.price_minor ASC,
+                                                sp.last_successful_check_at DESC
+                                   ) AS position
+                            FROM store_products sp
+                            JOIN history_lows history
+                              ON history.store = sp.store
+                             AND history.external_product_id = sp.external_product_id
+                             AND history.currency = sp.currency
+                             AND history.lowest_price = sp.price_minor
+                            WHERE sp.purchasable = 1 AND sp.price_minor > 0
+                              AND sp.currency = 'KRW' AND sp.region = 'KR'
+                              AND sp.offer_type = 'BaseGame'
+                              AND sp.store != 'Epic Games Store'
+                              AND julianday(sp.last_successful_check_at) >= julianday('now', '-48 hours')
+                        )
+                        SELECT game_id, price_minor, currency, discount_percent,
+                               last_successful_check_at, '', store
+                        FROM ranked
+                        WHERE position = 1
+                        ORDER BY discount_percent DESC, last_successful_check_at DESC,
+                                 price_minor ASC
                         LIMIT ?
-                    )sql");
-                    const auto recent = queryHomeCatalogSignals(database, R"sql(
+                    )sql", 40);
+                    const auto recentCandidates = queryHomeCatalogSignals(database, R"sql(
                         WITH first_seen AS (
                             SELECT sp.game_id, MIN(ph.observed_at) AS added_at
                             FROM store_products sp
@@ -3125,21 +3161,33 @@ int main() {
                              AND ph.external_product_id = sp.external_product_id
                             WHERE ph.purchasable = 1 AND ph.price_minor > 0
                             GROUP BY sp.game_id
+                        ), ranked AS (
+                            SELECT sp.*, first_seen.added_at,
+                                   ROW_NUMBER() OVER (
+                                       PARTITION BY sp.game_id
+                                       ORDER BY sp.price_minor ASC,
+                                                sp.discount_percent DESC,
+                                                sp.last_successful_check_at DESC
+                                   ) AS position
+                            FROM first_seen
+                            JOIN store_products sp ON sp.game_id = first_seen.game_id
+                            WHERE sp.purchasable = 1 AND sp.price_minor > 0
+                              AND sp.currency = 'KRW' AND sp.region = 'KR'
+                              AND sp.offer_type = 'BaseGame'
+                              AND sp.store != 'Epic Games Store'
+                              AND julianday(sp.last_successful_check_at) >= julianday('now', '-48 hours')
                         )
-                        SELECT sp.game_id, MIN(sp.price_minor), 'KRW',
-                               MAX(sp.discount_percent), MAX(sp.last_successful_check_at),
-                               first_seen.added_at
-                        FROM first_seen
-                        JOIN store_products sp ON sp.game_id = first_seen.game_id
-                        WHERE sp.purchasable = 1 AND sp.price_minor > 0
-                          AND sp.currency = 'KRW' AND sp.region = 'KR'
-                          AND sp.offer_type = 'BaseGame'
-                          AND sp.store != 'Epic Games Store'
-                          AND julianday(sp.last_successful_check_at) >= julianday('now', '-48 hours')
-                        GROUP BY sp.game_id, first_seen.added_at
-                        ORDER BY first_seen.added_at DESC
+                        SELECT game_id, price_minor, currency, discount_percent,
+                               last_successful_check_at, added_at, store
+                        FROM ranked
+                        WHERE position = 1
+                        ORDER BY added_at DESC
                         LIMIT ?
-                    )sql");
+                    )sql", 40);
+                    std::set<std::string> usedGameIds;
+                    const auto deals = uniqueHomeSignals(dealCandidates, usedGameIds);
+                    const auto historicalLows = uniqueHomeSignals(historicalCandidates, usedGameIds);
+                    const auto recent = uniqueHomeSignals(recentCandidates, usedGameIds);
                     Json::Value body;
                     body["deals"] = homeCatalogSection(catalog, deals);
                     body["historicalLows"] = homeCatalogSection(catalog, historicalLows, true);

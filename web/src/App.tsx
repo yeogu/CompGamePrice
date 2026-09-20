@@ -80,6 +80,7 @@ function HomeGameRail({
         <span className={`home-card-label ${kind}`}>{kind === 'deal' ? `${game.maxDiscountPercent ?? 0}% 할인` : kind === 'historical' ? '역대 최저' : 'NEW'}</span>
         <strong>{game.title}</strong>
         <span className="home-card-price">{game.lowestPrice ? formatMoney(game.lowestPrice) : '가격 확인 중'}</span>
+        {game.featuredStore && <StoreBadge compact store={game.featuredStore} />}
         <small>{kind === 'recent' && game.addedAt ? `${new Date(game.addedAt).toLocaleDateString('ko-KR')} 추가` : game.lastUpdatedAt ? `${new Date(game.lastUpdatedAt).toLocaleDateString('ko-KR')} 확인` : '최신 가격'}</small>
       </button>)}
     </div>

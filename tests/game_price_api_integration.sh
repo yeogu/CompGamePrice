@@ -479,11 +479,14 @@ with open(sys.argv[1], encoding="utf-8") as source:
     home = json.load(source)
 assert set(home) == {"deals", "historicalLows", "recentlyAdded"}
 assert all(isinstance(home[section], list) for section in home)
+all_ids = [game["id"] for section in home.values() for game in section]
+assert len(all_ids) == len(set(all_ids)), "Home sections must not repeat games"
 for section in home.values():
     for game in section:
         assert game["priceStatus"] == "Available"
         assert game["lowestPrice"]["minorAmount"] > 0
         assert game["lowestPrice"]["currency"] == "KRW"
+        assert game["featuredStore"]
 PY
 grep -q '"stores":.*"Microsoft Store"' "${response_body}"
 grep -q '"platforms":.*"Nintendo Switch 2"' "${response_body}"
