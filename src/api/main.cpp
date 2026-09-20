@@ -175,6 +175,67 @@ Json::Value moneyJson(const Money& money) {
     return json;
 }
 
+struct HomeCatalogSignal {
+    std::string gameId;
+    std::int64_t priceMinor{};
+    std::string currency;
+    int discountPercent{};
+    std::string lastUpdatedAt;
+    std::string addedAt;
+};
+
+Json::Value gameJson(const Game& game);
+
+std::vector<HomeCatalogSignal> queryHomeCatalogSignals(
+    Database& database,
+    const std::string& sql,
+    int limit = 10) {
+    sqlite3_stmt* statement = nullptr;
+    if (sqlite3_prepare_v2(database.handle(), sql.c_str(), -1, &statement, nullptr) !=
+        SQLITE_OK) {
+        throw std::runtime_error("Could not prepare home catalog query");
+    }
+    sqlite3_bind_int(statement, 1, limit);
+    std::vector<HomeCatalogSignal> result;
+    while (sqlite3_step(statement) == SQLITE_ROW) {
+        const auto text = [&](int column) {
+            const auto* value = sqlite3_column_text(statement, column);
+            return value ? std::string(reinterpret_cast<const char*>(value)) : std::string{};
+        };
+        result.push_back(HomeCatalogSignal{
+            text(0),
+            sqlite3_column_int64(statement, 1),
+            text(2),
+            sqlite3_column_int(statement, 3),
+            text(4),
+            text(5),
+        });
+    }
+    sqlite3_finalize(statement);
+    return result;
+}
+
+Json::Value homeCatalogSection(
+    const GameCatalog& catalog,
+    const std::vector<HomeCatalogSignal>& signals,
+    bool historicalLow = false) {
+    Json::Value result(Json::arrayValue);
+    for (const auto& signal : signals) {
+        const auto game = catalog.findById(signal.gameId);
+        if (!game) continue;
+        auto item = gameJson(*game);
+        item["priceStatus"] = "Available";
+        item["lowestPrice"]["minorAmount"] = Json::Int64(signal.priceMinor);
+        item["lowestPrice"]["currency"] = signal.currency;
+        item["maxDiscountPercent"] = signal.discountPercent;
+        if (!signal.lastUpdatedAt.empty()) item["lastUpdatedAt"] = signal.lastUpdatedAt;
+        if (!signal.addedAt.empty()) item["addedAt"] = signal.addedAt;
+        if (historicalLow) item["atHistoricalLow"] = true;
+        result.append(std::move(item));
+    }
+    return result;
+}
+
 Json::Value gameJson(const Game& game) {
     Json::Value json;
     json["id"] = game.id;
@@ -3009,6 +3070,88 @@ int main() {
                 }
             },
             {drogon::Post});
+
+        drogon::app().registerHandler(
+            "/api/home",
+            [&database, &catalog](const drogon::HttpRequestPtr&,
+                                  std::function<void(const HttpResponsePtr&)>&& callback) {
+                try {
+                    const auto deals = queryHomeCatalogSignals(database, R"sql(
+                        SELECT sp.game_id, MIN(sp.price_minor), 'KRW',
+                               MAX(sp.discount_percent), MAX(sp.last_successful_check_at), ''
+                        FROM store_products sp
+                        WHERE sp.purchasable = 1 AND sp.price_minor > 0
+                          AND sp.currency = 'KRW' AND sp.region = 'KR'
+                          AND sp.offer_type = 'BaseGame'
+                          AND sp.store != 'Epic Games Store'
+                          AND sp.discount_percent > 0
+                          AND julianday(sp.last_successful_check_at) >= julianday('now', '-48 hours')
+                        GROUP BY sp.game_id
+                        ORDER BY MAX(sp.discount_percent) DESC,
+                                 MIN(sp.price_minor) ASC,
+                                 MAX(sp.last_successful_check_at) DESC
+                        LIMIT ?
+                    )sql");
+                    const auto historicalLows = queryHomeCatalogSignals(database, R"sql(
+                        SELECT sp.game_id, MIN(sp.price_minor), 'KRW',
+                               MAX(sp.discount_percent), MAX(sp.last_successful_check_at), ''
+                        FROM store_products sp
+                        WHERE sp.purchasable = 1 AND sp.price_minor > 0
+                          AND sp.currency = 'KRW' AND sp.region = 'KR'
+                          AND sp.offer_type = 'BaseGame'
+                          AND sp.store != 'Epic Games Store'
+                          AND julianday(sp.last_successful_check_at) >= julianday('now', '-48 hours')
+                          AND sp.price_minor = (
+                              SELECT MIN(ph.price_minor)
+                              FROM price_history ph
+                              WHERE ph.store = sp.store
+                                AND ph.external_product_id = sp.external_product_id
+                                AND ph.currency = sp.currency
+                                AND ph.purchasable = 1
+                                AND ph.price_minor > 0
+                          )
+                        GROUP BY sp.game_id
+                        ORDER BY MAX(sp.discount_percent) DESC,
+                                 MAX(sp.last_successful_check_at) DESC,
+                                 MIN(sp.price_minor) ASC
+                        LIMIT ?
+                    )sql");
+                    const auto recent = queryHomeCatalogSignals(database, R"sql(
+                        WITH first_seen AS (
+                            SELECT sp.game_id, MIN(ph.observed_at) AS added_at
+                            FROM store_products sp
+                            JOIN price_history ph
+                              ON ph.store = sp.store
+                             AND ph.external_product_id = sp.external_product_id
+                            WHERE ph.purchasable = 1 AND ph.price_minor > 0
+                            GROUP BY sp.game_id
+                        )
+                        SELECT sp.game_id, MIN(sp.price_minor), 'KRW',
+                               MAX(sp.discount_percent), MAX(sp.last_successful_check_at),
+                               first_seen.added_at
+                        FROM first_seen
+                        JOIN store_products sp ON sp.game_id = first_seen.game_id
+                        WHERE sp.purchasable = 1 AND sp.price_minor > 0
+                          AND sp.currency = 'KRW' AND sp.region = 'KR'
+                          AND sp.offer_type = 'BaseGame'
+                          AND sp.store != 'Epic Games Store'
+                          AND julianday(sp.last_successful_check_at) >= julianday('now', '-48 hours')
+                        GROUP BY sp.game_id, first_seen.added_at
+                        ORDER BY first_seen.added_at DESC
+                        LIMIT ?
+                    )sql");
+                    Json::Value body;
+                    body["deals"] = homeCatalogSection(catalog, deals);
+                    body["historicalLows"] = homeCatalogSection(catalog, historicalLows, true);
+                    body["recentlyAdded"] = homeCatalogSection(catalog, recent);
+                    auto response = jsonResponse(body);
+                    response->addHeader("Cache-Control", "public, max-age=60");
+                    callback(response);
+                } catch (const std::exception& error) {
+                    callback(jsonError(drogon::k500InternalServerError, error.what()));
+                }
+            },
+            {drogon::Get});
 
         drogon::app().registerHandler(
             "/api/games",

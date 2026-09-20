@@ -12,6 +12,14 @@ export interface GameSummary {
   lowestPrice?: Money
   maxDiscountPercent?: number
   lastUpdatedAt?: string
+  addedAt?: string
+  atHistoricalLow?: boolean
+}
+
+export interface HomeDiscovery {
+  deals: GameSummary[]
+  historicalLows: GameSummary[]
+  recentlyAdded: GameSummary[]
 }
 
 export interface CatalogFilterOptions { stores: string[]; platforms: string[]; genres: string[]; tags: string[] }

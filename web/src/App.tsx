@@ -1,13 +1,13 @@
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { deleteAccount } from './api'
-import { addAlertRule, addFavorite, confirmPasswordReset, deleteAlertRule, deleteFavorite, disconnectCatalogProduct, getAdminHealthSummary, getAdminUser, getAdminUserAudits, getAdminUsers, getAlertRules, getCatalogAdminStatus, getCatalogChangeAudits, getCatalogCollectionJob, getCatalogDiscoveryJob, getCatalogFilters, getCatalogPriceIntegrity, getCatalogSyncJob, getCollectionRuns, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getMe, getMetadataSyncStatus, getMobileCatalogSyncJob, getNotifications, getPreferences, importAppleCatalogGame, importGooglePlayCatalogGame, importSteamCatalogGame, importStorefrontCatalogGame, isAuthenticationError, login, logout, markNotificationRead, register, requestCatalogGame, requestPasswordReset, resolveCatalogSyncReview, resolveMetadataReview, resolveMobileCatalogSyncReview, searchStoreCandidates, sendAdminPasswordReset, startCatalogCollection, startCatalogDiscovery, startCatalogSync, startMetadataSync, startMobileCatalogSync, updateAdminUserStatus, updateCatalogGameMetadata, updatePreferences } from './api'
+import { addAlertRule, addFavorite, confirmPasswordReset, deleteAlertRule, deleteFavorite, disconnectCatalogProduct, getAdminHealthSummary, getAdminUser, getAdminUserAudits, getAdminUsers, getAlertRules, getCatalogAdminStatus, getCatalogChangeAudits, getCatalogCollectionJob, getCatalogDiscoveryJob, getCatalogFilters, getCatalogPriceIntegrity, getCatalogSyncJob, getCollectionRuns, getFavorites, getGamePage, getGamePriceHistory, getGamePrices, getGames, getHomeDiscovery, getMe, getMetadataSyncStatus, getMobileCatalogSyncJob, getNotifications, getPreferences, importAppleCatalogGame, importGooglePlayCatalogGame, importSteamCatalogGame, importStorefrontCatalogGame, isAuthenticationError, login, logout, markNotificationRead, register, requestCatalogGame, requestPasswordReset, resolveCatalogSyncReview, resolveMetadataReview, resolveMobileCatalogSyncReview, searchStoreCandidates, sendAdminPasswordReset, startCatalogCollection, startCatalogDiscovery, startCatalogSync, startMetadataSync, startMobileCatalogSync, updateAdminUserStatus, updateCatalogGameMetadata, updatePreferences } from './api'
 import PriceHistoryChart from './PriceHistoryChart'
 import { GameCatalogView, GameDetailView } from './GameViews'
 import GameArtwork from './GameArtwork'
 import { isAbortError } from './api'
 import { PlatformBadge, StoreBadge } from './VisualBadges'
 import { gameDetailPath, gameIdFromLocation } from './gameRoutes'
-import type { AdminHealthSummary, AdminUser, AdminUserAudit, AlertRule, AlertRuleType, CatalogAdminResult, CatalogChangeAudit, CatalogCollectionJob, CatalogDiscoveryJob, CatalogFilterOptions, CatalogMetadataUpdateResult, CatalogPriceIntegrity, CatalogPriceIntegrityIssue, CatalogSyncJob, CollectionRun, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSort, GameSummary, MetadataSyncStatus, MobileCatalogSyncJob, MobileCatalogSyncReview, Money, Notification, StoreProductCandidate, User, UserPreferences } from './types'
+import type { AdminHealthSummary, AdminUser, AdminUserAudit, AlertRule, AlertRuleType, CatalogAdminResult, CatalogChangeAudit, CatalogCollectionJob, CatalogDiscoveryJob, CatalogFilterOptions, CatalogMetadataUpdateResult, CatalogPriceIntegrity, CatalogPriceIntegrityIssue, CatalogSyncJob, CollectionRun, GameCatalogFilters, GamePriceHistoryResponse, GamePriceResponse, GameSort, GameSummary, HomeDiscovery, MetadataSyncStatus, MobileCatalogSyncJob, MobileCatalogSyncReview, Money, Notification, StoreProductCandidate, User, UserPreferences } from './types'
 
 const formatMoney = (money: Money) => {
   const zeroDecimalCurrency = money.currency === 'KRW' || money.currency === 'JPY'
@@ -56,6 +56,34 @@ const catalogPriceStatus = (game: GameSummary) => {
     return '가격 수집 중'
   }
   return formatMoney(game.lowestPrice)
+}
+
+function HomeGameRail({
+  title,
+  description,
+  games,
+  kind,
+  onSelect,
+}: {
+  title: string
+  description: string
+  games: GameSummary[]
+  kind: 'deal' | 'historical' | 'recent'
+  onSelect: (game: GameSummary) => void
+}) {
+  if (games.length === 0) return null
+  return <section className="home-discovery-section" aria-labelledby={`home-${kind}-title`}>
+    <header><div><h2 id={`home-${kind}-title`}>{title}</h2><p>{description}</p></div></header>
+    <div className="home-game-rail">
+      {games.map((game, index) => <button key={game.id} onClick={() => onSelect(game)}>
+        <GameArtwork imageUrl={game.imageUrl} title={game.title} priority={index < 2} />
+        <span className={`home-card-label ${kind}`}>{kind === 'deal' ? `${game.maxDiscountPercent ?? 0}% 할인` : kind === 'historical' ? '역대 최저' : 'NEW'}</span>
+        <strong>{game.title}</strong>
+        <span className="home-card-price">{game.lowestPrice ? formatMoney(game.lowestPrice) : '가격 확인 중'}</span>
+        <small>{kind === 'recent' && game.addedAt ? `${new Date(game.addedAt).toLocaleDateString('ko-KR')} 추가` : game.lastUpdatedAt ? `${new Date(game.lastUpdatedAt).toLocaleDateString('ko-KR')} 확인` : '최신 가격'}</small>
+      </button>)}
+    </div>
+  </section>
 }
 
 function CollectionProgress({ job }: { job: CatalogCollectionJob }) {
@@ -594,6 +622,7 @@ function App() {
   const [catalogRequestSubmitting, setCatalogRequestSubmitting] = useState(false)
   const [catalogRequestMessage, setCatalogRequestMessage] = useState('')
   const [catalogFilters, setCatalogFilters] = useState<CatalogFilterOptions>(initialCatalogFilters)
+  const [homeDiscovery, setHomeDiscovery] = useState<HomeDiscovery | null>(null)
   const initialParameters = new URLSearchParams(window.location.search)
   const [selectedStore, setSelectedStore] = useState(initialParameters.get('store') ?? '')
   const [browsePlatform, setBrowsePlatform] = useState(initialParameters.get('browsePlatform') ?? '')
@@ -1691,6 +1720,9 @@ function App() {
       // The primary Store/platform controls remain usable while the API is
       // starting or temporarily unavailable.
       .catch(() => setCatalogFilters(initialCatalogFilters))
+    void getHomeDiscovery()
+      .then(setHomeDiscovery)
+      .catch(() => setHomeDiscovery(null))
     void getCatalogAdminStatus()
       .then((status) => {
         setCatalogAdminEnabled(status.enabled)
@@ -2199,6 +2231,12 @@ function App() {
           </form>
         </section>
       </header>
+
+      {!showGameResults && homeDiscovery && <div className="home-discovery" aria-label="홈 게임 추천">
+        <HomeGameRail title="오늘의 특가" description="48시간 안에 확인된 할인 가격만 모았어요." games={homeDiscovery.deals} kind="deal" onSelect={(game) => void selectGame(game)} />
+        <HomeGameRail title="역대 최저가" description="현재 판매가가 실제 수집 이력의 최저가인 게임이에요." games={homeDiscovery.historicalLows} kind="historical" onSelect={(game) => void selectGame(game)} />
+        <HomeGameRail title="최근 추가된 게임" description="가격 비교를 새로 시작한 게임을 확인해보세요." games={homeDiscovery.recentlyAdded} kind="recent" onSelect={(game) => void selectGame(game)} />
+      </div>}
 
       {showGameResults && games.length > 0 && (
         <section className="panel">

@@ -35,6 +35,16 @@ for (const width of [360, 390, 430]) {
       await expectNoPageOverflow(page)
     })
 
+    test('home discovery rails stay inside the page viewport', async ({ page }) => {
+      await page.goto('/')
+      const discovery = page.getByLabel('홈 게임 추천')
+      await expect(discovery).toBeVisible()
+      await expect(discovery.getByRole('heading', { name: '오늘의 특가' })).toBeVisible()
+      await expect(discovery.getByRole('heading', { name: '역대 최저가' })).toBeVisible()
+      await expect(discovery.getByRole('heading', { name: '최근 추가된 게임' })).toBeVisible()
+      await expectNoPageOverflow(page)
+    })
+
     test('bottom navigation opens search and account without covering content', async ({ page }) => {
       await page.goto('/')
       const navigation = page.getByRole('navigation', { name: '모바일 주 메뉴' })

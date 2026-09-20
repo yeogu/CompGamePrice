@@ -468,6 +468,23 @@ status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
 [[ "${status}" == "200" ]]
 grep -q '"stores":.*"Steam"' "${response_body}"
 grep -q '"stores":.*"PlayStation Store"' "${response_body}"
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/home")
+[[ "${status}" == "200" ]]
+python3 - "${response_body}" <<'PY'
+import json
+import sys
+with open(sys.argv[1], encoding="utf-8") as source:
+    home = json.load(source)
+assert set(home) == {"deals", "historicalLows", "recentlyAdded"}
+assert all(isinstance(home[section], list) for section in home)
+for section in home.values():
+    for game in section:
+        assert game["priceStatus"] == "Available"
+        assert game["lowestPrice"]["minorAmount"] > 0
+        assert game["lowestPrice"]["currency"] == "KRW"
+PY
 grep -q '"stores":.*"Microsoft Store"' "${response_body}"
 grep -q '"platforms":.*"Nintendo Switch 2"' "${response_body}"
 grep -q '"platforms":.*"PlayStation 4"' "${response_body}"

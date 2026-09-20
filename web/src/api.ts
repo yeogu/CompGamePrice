@@ -1,4 +1,4 @@
-import type { AdminUser, AdminUserAudit, AdminUserPage, AlertRule, AlertRuleType, AuthResult, CatalogAdminResult, CatalogCollectionJob, CatalogFilterOptions, CatalogSyncJob, CollectionRun, ExternalIdentity, GameCatalogFilters, GameCatalogPage, GamePriceHistoryResponse, GamePriceResponse, GameSummary, MobileCatalogSyncJob, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
+import type { AdminUser, AdminUserAudit, AdminUserPage, AlertRule, AlertRuleType, AuthResult, CatalogAdminResult, CatalogCollectionJob, CatalogFilterOptions, CatalogSyncJob, CollectionRun, ExternalIdentity, GameCatalogFilters, GameCatalogPage, GamePriceHistoryResponse, GamePriceResponse, GameSummary, HomeDiscovery, MobileCatalogSyncJob, Notification, OAuthProvider, StoreProductCandidate, User, UserPreferences } from './types'
 
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8080'
 
@@ -75,6 +75,7 @@ export async function getGames(query = '', filters: GameCatalogFilters = {}, sig
 }
 
 export const getCatalogFilters = () => getJson<CatalogFilterOptions>('/api/catalog/filters')
+export const getHomeDiscovery = () => getJson<HomeDiscovery>('/api/home')
 
 export function getGamePrices(
   gameId: string,

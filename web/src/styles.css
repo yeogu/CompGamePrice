@@ -84,6 +84,21 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .catalog-filter-selects select { min-width: 0; padding: 11px; color: #eef8f2; background: #0b1812; border: 1px solid #315141; border-radius: 9px; }
 .catalog-filter-selects > button { min-height: 41px; padding: 10px 15px; color: #07110d; font-weight: 800; background: #73e2a7; border: 0; border-radius: 9px; }
 .catalog-filter-selects > button:disabled { opacity: .65; cursor: wait; }
+.home-discovery { display: grid; gap: 44px; margin: -28px 0 54px; }
+.home-discovery-section { min-width: 0; }
+.home-discovery-section > header { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 15px; }
+.home-discovery-section h2 { margin: 0; font-size: clamp(1.35rem, 3vw, 2rem); }
+.home-discovery-section header p { margin: 5px 0 0; color: #82968b; font-size: .84rem; }
+.home-game-rail { display: grid; grid-auto-columns: minmax(190px, 23%); grid-auto-flow: column; gap: 12px; padding: 2px 2px 12px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scrollbar-color: #315141 transparent; }
+.home-game-rail > button { position: relative; display: grid; min-width: 0; padding: 0 14px 15px; overflow: hidden; color: #eaf7f0; background: #101f18; border: 1px solid #294838; border-radius: 16px; scroll-snap-align: start; text-align: left; }
+.home-game-rail > button:hover { border-color: #58ae82; transform: translateY(-2px); }
+.home-game-rail .game-artwork { width: calc(100% + 28px); margin: 0 -14px 12px; aspect-ratio: 16 / 9; border-radius: 0; }
+.home-game-rail strong { overflow: hidden; margin: 9px 0 4px; text-overflow: ellipsis; white-space: nowrap; }
+.home-game-rail small { margin-top: 5px; color: #71877a; }
+.home-card-price { color: #73e2a7; font-size: 1.02rem; font-weight: 900; }
+.home-card-label { position: absolute; top: 10px; left: 10px; z-index: 1; padding: 5px 8px; color: #07110d; background: #73e2a7; border-radius: 999px; box-shadow: 0 3px 12px rgba(0, 0, 0, .35); font-size: .68rem; font-weight: 900; }
+.home-card-label.historical { background: #f4cf71; }
+.home-card-label.recent { color: #eaf7f0; background: #315141; }
 
 .notice, .panel { padding: 18px 20px; background: #111f19; border: 1px solid #263c31; border-radius: 14px; }
 .account-panel { margin-bottom: 42px; padding: 24px; background: #101f18; border: 1px solid #315141; border-radius: 18px; }
@@ -653,6 +668,11 @@ h2 { margin: 6px 0 0; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.04
   .catalog-filter-options .platform-badge, .catalog-filter-options .visual-store-badge { max-width: calc(100vw - 94px); }
   .filter-swipe-hint { display: block; margin-top: 3px; color: #71877a; font-size: .68rem; text-align: right; }
   .account-shortcuts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .home-discovery { gap: 34px; margin-top: -34px; }
+  .home-discovery-section { margin-right: -12px; }
+  .home-discovery-section > header { padding-right: 12px; }
+  .home-game-rail { grid-auto-columns: minmax(172px, 72vw); padding-right: 24px; scrollbar-width: none; }
+  .home-game-rail::-webkit-scrollbar { display: none; }
   .catalog-platform-icons { gap: 10px; padding: 2px 4px 4px 0; }
   .detail-navigation { top: 70px; }
   .detail-state { min-height: 45vh; padding: 28px 18px; }
