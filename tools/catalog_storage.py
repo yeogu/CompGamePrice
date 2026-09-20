@@ -19,6 +19,18 @@ class CatalogStorageError(ValueError):
     pass
 
 
+def normalized_catalog_identity(value: str) -> str:
+    """Match the API's ASCII case/whitespace identity normalization."""
+    trimmed = value.strip(" \t\n\r\f\v")
+    collapsed = re.sub(r"[ \t\n\r\f\v]+", " ", trimmed)
+    return "".join(
+        chr(ord(character) + 32)
+        if "A" <= character <= "Z"
+        else character
+        for character in collapsed
+    )
+
+
 def deduplicated_strings(values):
     result = []
     seen = set()
@@ -61,6 +73,7 @@ def validate_catalog(document: dict) -> None:
     if document.get("schemaVersion") != 4 or not isinstance(games, list):
         raise CatalogStorageError("Game catalog requires schemaVersion 4 and games")
     game_ids = set()
+    catalog_identities = set()
     product_ids = set()
     for game in games:
         if not isinstance(game, dict):
@@ -77,6 +90,30 @@ def validate_catalog(document: dict) -> None:
             raise CatalogStorageError(f"Duplicate canonical game id: {game_id}")
         if not isinstance(title, str) or not title.strip():
             raise CatalogStorageError(f"Game has no title: {game_id}")
+        normalized_title = normalized_catalog_identity(title)
+        if not normalized_title:
+            raise CatalogStorageError(f"Game title normalizes to empty: {game_id}")
+        aliases = game.get("aliases", [])
+        if not isinstance(aliases, list):
+            raise CatalogStorageError(f"Game aliases must be an array: {game_id}")
+        normalized_aliases = []
+        for alias in aliases:
+            if not isinstance(alias, str):
+                raise CatalogStorageError(f"Game has an invalid alias: {game_id}")
+            normalized_alias = normalized_catalog_identity(alias)
+            if (
+                not normalized_alias
+                or normalized_alias == normalized_title
+                or normalized_alias in normalized_aliases
+            ):
+                raise CatalogStorageError(
+                    f"Invalid or duplicate Game Catalog alias: {alias}"
+                )
+            normalized_aliases.append(normalized_alias)
+        identities = [normalized_title, *normalized_aliases]
+        if any(identity in catalog_identities for identity in identities):
+            raise CatalogStorageError(f"Duplicate Game Catalog identity: {game_id}")
+        catalog_identities.update(identities)
         game_ids.add(game_id)
         for product in game.get("products", []):
             if not isinstance(product, dict):

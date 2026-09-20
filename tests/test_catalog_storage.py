@@ -155,6 +155,38 @@ class CatalogStorageTest(unittest.TestCase):
             )
         self.assertEqual(self.catalog.read_bytes(), original)
 
+    def test_rejects_duplicate_normalized_title_before_replacing_file(self):
+        original = self.catalog.read_bytes()
+        first = game("first", "1")
+        second = game("second", "2")
+        second["title"] = "  FIRST  "
+        duplicate_document = {
+            "schemaVersion": 4,
+            "games": [first, second],
+        }
+        with self.assertRaisesRegex(ValueError, "Duplicate Game Catalog identity: second"):
+            storage.update_catalog(
+                self.catalog,
+                lambda current: (duplicate_document, None),
+                store="Steam",
+                product_id="2",
+                game_id="second",
+            )
+        self.assertEqual(self.catalog.read_bytes(), original)
+
+    def test_rejects_alias_colliding_with_another_title(self):
+        first = game("first", "1")
+        second = game("second", "2")
+        second["aliases"] = ["First"]
+        with self.assertRaisesRegex(ValueError, "Duplicate Game Catalog identity: second"):
+            storage.validate_catalog({"schemaVersion": 4, "games": [first, second]})
+
+    def test_rejects_duplicate_normalized_alias_within_game(self):
+        value = game("first", "1")
+        value["aliases"] = ["Alternate", " alternate "]
+        with self.assertRaisesRegex(ValueError, "Invalid or duplicate Game Catalog alias"):
+            storage.validate_catalog({"schemaVersion": 4, "games": [value]})
+
 
 if __name__ == "__main__":
     unittest.main()
