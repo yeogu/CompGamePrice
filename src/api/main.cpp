@@ -3279,8 +3279,10 @@ int main() {
                         displayGame.supportedPlatforms.push_back(*filter.platform);
                     }
                     std::optional<Money> lowestPrice;
+                    std::optional<Money> staleLowestPrice;
                     std::optional<int> maxDiscountPercent;
                     std::string lastUpdatedAt;
+                    std::string staleLastUpdatedAt;
                     bool hasMatchingProduct = hasPurchaseLink;
                     bool hasFreeMobileDownload = false;
                     for (const auto& product : comparison.products) {
@@ -3294,6 +3296,22 @@ int main() {
                             continue;
                         }
                         if (product.freshness != PriceFreshness::Fresh) {
+                            const bool preferredCurrency =
+                                product.currentPrice.currency == Currency::KRW;
+                            const bool currentLowestIsPreferred = staleLowestPrice &&
+                                staleLowestPrice->currency == Currency::KRW;
+                            const bool comparable = staleLowestPrice &&
+                                staleLowestPrice->currency == product.currentPrice.currency;
+                            if (!staleLowestPrice ||
+                                (preferredCurrency && !currentLowestIsPreferred) ||
+                                (comparable && product.currentPrice.minorAmount <
+                                    staleLowestPrice->minorAmount)) {
+                                staleLowestPrice = product.currentPrice;
+                            }
+                            if (product.lastSuccessfulCheckAt &&
+                                *product.lastSuccessfulCheckAt > staleLastUpdatedAt) {
+                                staleLastUpdatedAt = *product.lastSuccessfulCheckAt;
+                            }
                             continue;
                         }
                         const bool preferredCurrency =
@@ -3332,9 +3350,9 @@ int main() {
                     }
                     summaries.push_back(CatalogGameSummary{
                         displayGame,
+                        staleLowestPrice,
                         std::nullopt,
-                        std::nullopt,
-                        {},
+                        std::move(staleLastUpdatedAt),
                         filter.store && *filter.store == Store::EpicGamesStore && hasPurchaseLink
                             ? "LinkOnly" : hasFreeMobileDownload ? "DownloadOnly" : "Stale"});
                 }

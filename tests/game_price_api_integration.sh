@@ -541,7 +541,8 @@ with open(sys.argv[1], encoding="utf-8") as source:
 
 hades = next(game for game in games if game["id"] == "hades")
 assert hades["priceStatus"] == "Stale"
-assert "lowestPrice" not in hades
+assert hades["lowestPrice"]["minorAmount"] > 0
+assert "lastUpdatedAt" in hades
 PY
 
 status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \

@@ -49,7 +49,7 @@ const lowestComparableMoney = (prices: Money[]) => prices.reduce((lowest, price)
 const catalogPriceStatus = (game: GameSummary) => {
   if (game.priceStatus === 'LinkOnly') return '공식 Store에서 가격 확인'
   if (game.priceStatus === 'Stale') {
-    return '가격 갱신 필요'
+    return game.lowestPrice ? formatMoney(game.lowestPrice) : '가격 갱신 필요'
   }
   if (game.priceStatus === 'DownloadOnly') return '무료 다운로드 · 인앱 구매 가능'
   if (game.priceStatus !== 'Available' || !game.lowestPrice) {
@@ -2279,7 +2279,7 @@ function App() {
                 <small className="platform-badge-list catalog-platform-icons">{game.platforms.map((platform) => <PlatformBadge compact iconOnly key={platform} platform={platform} />)}</small>
                 <span>{game.genres.join(' · ') || '장르 정보 수집 중'}</span>
                 <span className="catalog-price-row"><em>{catalogPriceStatus(game)}</em>{game.priceStatus === 'Available' && game.maxDiscountPercent !== undefined && game.maxDiscountPercent > 0 && <b>-{game.maxDiscountPercent}%</b>}</span>
-                <small className={`catalog-freshness ${game.priceStatus === 'Stale' ? 'stale' : ''}`}>{game.priceStatus === 'Available' && game.lastUpdatedAt ? `가격 확인 ${new Date(game.lastUpdatedAt).toLocaleDateString('ko-KR')}` : game.priceStatus === 'Stale' ? '오래된 가격은 비교에서 제외됨' : '가격 확인 대기 중'}</small>
+                <small className={`catalog-freshness ${game.priceStatus === 'Stale' ? 'stale' : ''}`}>{game.priceStatus === 'Available' && game.lastUpdatedAt ? `가격 확인 ${new Date(game.lastUpdatedAt).toLocaleDateString('ko-KR')}` : game.priceStatus === 'Stale' ? `오래된 가격 · ${game.lastUpdatedAt ? `${new Date(game.lastUpdatedAt).toLocaleDateString('ko-KR')} 확인 · ` : ''}상세에서 최신 여부 확인` : '가격 확인 대기 중'}</small>
               </button>
             ))}
           </div>
