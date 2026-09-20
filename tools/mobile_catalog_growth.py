@@ -96,6 +96,7 @@ def run(provider, catalog, database, tracker, output, batch_size=50):
     if not 1 <= batch_size <= 100:
         raise ValueError("mobile batch size must be 1..100")
     config = STORE_CONFIG[provider]
+    started_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     report = {"provider": provider, "registered": 0, "linked": 0, "failed": 0,
               "review": 0, "excluded": 0, "priceFailed": 0}
     with sqlite3.connect(database, timeout=30) as db:
@@ -104,6 +105,15 @@ def run(provider, catalog, database, tracker, output, batch_size=50):
             provider TEXT, product_id TEXT, outcome TEXT NOT NULL DEFAULT 'PENDING',
             checked_at REAL NOT NULL DEFAULT 0, price_pending INTEGER NOT NULL DEFAULT 0,
             detail TEXT, PRIMARY KEY(provider, product_id))""")
+        db.execute("""CREATE TABLE IF NOT EXISTS mobile_growth_runs(
+            id INTEGER PRIMARY KEY AUTOINCREMENT, provider TEXT NOT NULL,
+            status TEXT NOT NULL, started_at TEXT NOT NULL, finished_at TEXT NOT NULL,
+            registered_count INTEGER NOT NULL DEFAULT 0,
+            linked_count INTEGER NOT NULL DEFAULT 0,
+            excluded_count INTEGER NOT NULL DEFAULT 0,
+            review_count INTEGER NOT NULL DEFAULT 0,
+            failed_count INTEGER NOT NULL DEFAULT 0,
+            price_failed_count INTEGER NOT NULL DEFAULT 0)""")
         cursor = db.execute("SELECT cursor FROM mobile_growth_cursor WHERE provider=?", (provider,)).fetchone()
         cursor = cursor[0] if cursor else 0
         if provider == "AppleAppStore":
@@ -167,6 +177,17 @@ def run(provider, catalog, database, tracker, output, batch_size=50):
                 db.commit()
                 if getattr(error, "code", None) in {401, 403, 429}:
                     break
+        finished_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        status = "PARTIAL" if report["failed"] or report["priceFailed"] else "SUCCEEDED"
+        db.execute("""INSERT INTO mobile_growth_runs(
+            provider,status,started_at,finished_at,registered_count,linked_count,
+            excluded_count,review_count,failed_count,price_failed_count)
+            VALUES(?,?,?,?,?,?,?,?,?,?)""", (
+                provider, status, started_at, finished_at, report["registered"],
+                report["linked"], report["excluded"], report["review"],
+                report["failed"], report["priceFailed"],
+            ))
+        db.commit()
     print(json.dumps(report, ensure_ascii=False), flush=True)
     return 2 if report["failed"] or report["priceFailed"] else 0
 

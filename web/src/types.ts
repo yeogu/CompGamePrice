@@ -196,6 +196,14 @@ export interface PeriodicJobStatus {
 }
 export interface AdminHealthSummary {
   catalogGrowth?: { gameCount: number; pendingCandidates: number; retryDeferred: number; pendingReviews: number; processedLast24Hours: number; registeredLast24Hours: number; reviewLast24Hours: number; skippedLast24Hours: number; failedLast24Hours: number; lastError?: string | null }
+  mobileGrowth?: {
+    providers: Array<{
+      provider: 'AppleAppStore' | 'GooglePlay'
+      latest: null | { id: number; provider: string; status: 'SUCCEEDED' | 'PARTIAL'; startedAt: string; finishedAt: string; registered: number; linked: number; excluded: number; review: number; failed: number; priceFailed: number }
+      cumulative: { registered: number; linked: number; excluded: number; review: number; pricePending: number }
+    }>
+    recentRuns: Array<{ id: number; provider: string; status: 'SUCCEEDED' | 'PARTIAL'; startedAt: string; finishedAt: string; registered: number; linked: number; excluded: number; review: number; failed: number; priceFailed: number }>
+  }
   dailyPrices?: { day: string; gameCount: number; target: number; confirmed: number; failed: number; pending: number; status: string; elapsedSeconds: number | null; stores: { store: string; target: number; confirmed: number; failed: number }[] }
   metadata: { complete: number; incomplete: number; total: number }
   collection: {

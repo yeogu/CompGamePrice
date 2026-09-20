@@ -123,7 +123,16 @@ function PriceHistoryChart({ histories }: Props) {
   )
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set())
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
+  const [compactChart, setCompactChart] = useState(false)
   const chartWrapRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 600px)')
+    const update = () => setCompactChart(media.matches)
+    update()
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
 
   useEffect(() => {
     setHiddenSeries((current) => new Set(
@@ -152,10 +161,10 @@ function PriceHistoryChart({ histories }: Props) {
       : observedHigh
     const firstTime = Math.min(...times)
     const lastTime = Math.max(...times)
-    const width = 760
-    const height = 220
-    const leftPadding = 72
-    const rightPadding = 22
+    const width = compactChart ? 360 : 760
+    const height = compactChart ? 205 : 220
+    const leftPadding = compactChart ? 58 : 72
+    const rightPadding = compactChart ? 10 : 22
     const topPadding = 20
     const bottomPadding = 28
     const priceRange = Math.max(high - low, 1)
@@ -175,7 +184,7 @@ function PriceHistoryChart({ histories }: Props) {
       y: height - bottomPadding - ((amount - low) * plotHeight) / priceRange,
     }))
     return { low, high, firstTime, lastTime, width, height, leftPadding, rightPadding, series, ticks }
-  }, [visible])
+  }, [compactChart, visible])
 
   if (available.length === 0) {
     return <p className="notice">아직 저장된 가격 관측값이 없습니다.</p>

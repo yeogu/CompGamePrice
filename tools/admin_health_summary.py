@@ -113,6 +113,68 @@ def catalog_growth_summary(document: dict, database: Path) -> dict:
     return result
 
 
+def mobile_growth_summary(database: Path) -> dict:
+    providers = ("AppleAppStore", "GooglePlay")
+    result = {
+        "providers": [
+            {
+                "provider": provider,
+                "latest": None,
+                "cumulative": {
+                    "registered": 0,
+                    "linked": 0,
+                    "excluded": 0,
+                    "review": 0,
+                    "pricePending": 0,
+                },
+            }
+            for provider in providers
+        ],
+        "recentRuns": [],
+    }
+    if not database.exists():
+        return result
+    by_provider = {item["provider"]: item for item in result["providers"]}
+    with sqlite3.connect(f"file:{database}?mode=ro", uri=True, timeout=30) as connection:
+        if table_exists(connection, "mobile_growth_candidates"):
+            rows = connection.execute(
+                """SELECT provider,
+                    SUM(CASE WHEN outcome='REGISTERED' THEN 1 ELSE 0 END),
+                    SUM(CASE WHEN outcome='LINKED' THEN 1 ELSE 0 END),
+                    SUM(CASE WHEN outcome IN ('EXCLUDED','FREE_ONLY_EXCLUDED') THEN 1 ELSE 0 END),
+                    SUM(CASE WHEN outcome='NEEDS_REVIEW' THEN 1 ELSE 0 END),
+                    SUM(CASE WHEN price_pending=1 THEN 1 ELSE 0 END)
+                    FROM mobile_growth_candidates GROUP BY provider"""
+            ).fetchall()
+            for provider, registered, linked, excluded, review, price_pending in rows:
+                if provider not in by_provider:
+                    continue
+                by_provider[provider]["cumulative"] = {
+                    "registered": registered or 0,
+                    "linked": linked or 0,
+                    "excluded": excluded or 0,
+                    "review": review or 0,
+                    "pricePending": price_pending or 0,
+                }
+        if table_exists(connection, "mobile_growth_runs"):
+            rows = connection.execute(
+                """SELECT id,provider,status,started_at,finished_at,registered_count,
+                    linked_count,excluded_count,review_count,failed_count,price_failed_count
+                    FROM mobile_growth_runs ORDER BY id DESC LIMIT 10"""
+            ).fetchall()
+            for row in rows:
+                run = {
+                    "id": row[0], "provider": row[1], "status": row[2],
+                    "startedAt": row[3], "finishedAt": row[4],
+                    "registered": row[5], "linked": row[6], "excluded": row[7],
+                    "review": row[8], "failed": row[9], "priceFailed": row[10],
+                }
+                result["recentRuns"].append(run)
+                if row[1] in by_provider and by_provider[row[1]]["latest"] is None:
+                    by_provider[row[1]]["latest"] = run
+    return result
+
+
 def store_quality(document: dict, database: Path) -> list[dict]:
     stores = {
         product["store"]
@@ -403,6 +465,7 @@ def summary(catalog: Path, database: Path) -> dict:
         "collection": collection_summary(database),
         "dailyPrices": daily_price_coverage(document, database),
         "catalogGrowth": catalog_growth_summary(document, database),
+        "mobileGrowth": mobile_growth_summary(database),
         "stores": store_quality(document, database),
         "notifications": delivery,
         "emails": email_delivery,

@@ -83,11 +83,41 @@ function CatalogGrowthStatus({ health }: { health: AdminHealthSummary }) {
   </section>
 }
 
+function MobileGrowthStatus({ data }: { data: NonNullable<AdminHealthSummary['mobileGrowth']> }) {
+  const storeName = (provider: string) => provider === 'AppleAppStore' ? 'Apple App Store' : 'Google Play'
+  return <section className="mobile-growth-status" aria-label="모바일 게임 카탈로그 확장 상태">
+    <header><div><h3>모바일 게임 신규 등록</h3><p>유료 신규 게임과 기존 게임 연결 결과를 Store별로 확인합니다.</p></div><small>최근 실행 결과 · 현재 누적 상태</small></header>
+    <div className="mobile-growth-provider-grid">{data.providers.map(({ provider, latest, cumulative }) => <article key={provider}>
+      <header><StoreBadge compact store={storeName(provider)} /><span className={latest?.status === 'PARTIAL' ? 'warning' : 'success'}>{latest ? latest.status === 'SUCCEEDED' ? '성공' : '일부 실패' : '실행 기록 없음'}</span></header>
+      {latest ? <><small>최근 완료 {new Date(latest.finishedAt).toLocaleString('ko-KR')}</small><div className="mobile-growth-metrics" aria-label="최근 실행 결과"><span>신규 등록 <strong>{latest.registered}</strong></span><span>기존 연결 <strong>{latest.linked}</strong></span><span>제외 <strong>{latest.excluded}</strong></span><span>검토 <strong>{latest.review}</strong></span><span className={latest.priceFailed > 0 ? 'warning' : ''}>최초 가격 실패 <strong>{latest.priceFailed}</strong></span></div></> : <p className="empty-state">배포 후 모바일 카탈로그 작업이 실행되면 결과가 표시됩니다.</p>}
+      <details><summary>현재 누적 상태</summary><div className="mobile-growth-metrics cumulative"><span>신규 등록 <strong>{cumulative.registered}</strong></span><span>기존 연결 <strong>{cumulative.linked}</strong></span><span>제외 <strong>{cumulative.excluded}</strong></span><span>검토 <strong>{cumulative.review}</strong></span><span className={cumulative.pricePending > 0 ? 'warning' : ''}>최초 가격 대기 <strong>{cumulative.pricePending}</strong></span></div></details>
+    </article>)}</div>
+    {data.recentRuns.length > 0 && <details className="mobile-growth-history"><summary>최근 실행 이력 {data.recentRuns.length}건</summary><div>{data.recentRuns.map((run) => <p key={run.id}><StoreBadge compact store={storeName(run.provider)} /><time>{new Date(run.finishedAt).toLocaleString('ko-KR')}</time><span>등록 {run.registered} · 연결 {run.linked} · 제외 {run.excluded} · 검토 {run.review} · 가격 실패 {run.priceFailed}</span></p>)}</div></details>}
+  </section>
+}
+
 const recommendationLabel: Record<string, string> = {
   StrongBuy: '구매 추천',
   Buy: '구매 고려',
   Wait: '조금 더 기다리기',
   InsufficientData: '데이터 수집 중',
+}
+
+// Store/platform names are part of the deployed UI contract, so they do not
+// need to wait for the catalog API. Genres and tags still come from live data.
+const initialCatalogFilters: CatalogFilterOptions = {
+  stores: [
+    'Steam', 'Epic Games Store', 'Nintendo eShop', 'PlayStation Store',
+    'Microsoft Store', 'Google Play', 'Apple App Store', 'Ubisoft Store',
+    'GOG', 'Meta Quest Store', 'EA app', 'Battle.net', 'itch.io', 'Humble Store',
+  ],
+  platforms: [
+    'Windows', 'macOS', 'Linux', 'Android', 'iOS', 'iPadOS',
+    'Nintendo Switch', 'Nintendo Switch 2', 'PlayStation 4', 'PlayStation 5',
+    'Xbox One', 'Xbox Series X|S', 'Meta Quest',
+  ],
+  genres: [],
+  tags: [],
 }
 
 const recommendationReason: Record<string, string> = {
@@ -563,7 +593,7 @@ function App() {
   const [activeSuggestion, setActiveSuggestion] = useState(-1)
   const [catalogRequestSubmitting, setCatalogRequestSubmitting] = useState(false)
   const [catalogRequestMessage, setCatalogRequestMessage] = useState('')
-  const [catalogFilters, setCatalogFilters] = useState<CatalogFilterOptions>({ stores: [], platforms: [], genres: [], tags: [] })
+  const [catalogFilters, setCatalogFilters] = useState<CatalogFilterOptions>(initialCatalogFilters)
   const initialParameters = new URLSearchParams(window.location.search)
   const [selectedStore, setSelectedStore] = useState(initialParameters.get('store') ?? '')
   const [browsePlatform, setBrowsePlatform] = useState(initialParameters.get('browsePlatform') ?? '')
@@ -1621,7 +1651,12 @@ function App() {
       })
     void getCatalogFilters()
       .then((filters) => {
-        setCatalogFilters(filters)
+        setCatalogFilters({
+          stores: filters.stores.length > 0 ? filters.stores : initialCatalogFilters.stores,
+          platforms: filters.platforms.length > 0 ? filters.platforms : initialCatalogFilters.platforms,
+          genres: filters.genres,
+          tags: filters.tags,
+        })
         if (selectedStore || browsePlatform || selectedGenre || selectedTag) {
           void browseCatalog({
             store: selectedStore || undefined,
@@ -1633,7 +1668,9 @@ function App() {
           })
         }
       })
-      .catch(() => setCatalogFilters({ stores: [], platforms: [], genres: [], tags: [] }))
+      // The primary Store/platform controls remain usable while the API is
+      // starting or temporarily unavailable.
+      .catch(() => setCatalogFilters(initialCatalogFilters))
     void getCatalogAdminStatus()
       .then((status) => {
         setCatalogAdminEnabled(status.enabled)
@@ -2098,6 +2135,7 @@ function App() {
                   <StoreBadge compact store={store} />
                 </button>)}
               </div>
+              <small className="filter-swipe-hint">옆으로 밀어 구매처 더 보기 →</small>
             </fieldset>
             <fieldset className="catalog-filter-group">
               <legend>플레이 환경</legend>
@@ -2120,6 +2158,7 @@ function App() {
                   <PlatformBadge compact platform={platform} />
                 </button>)}
               </div>
+              <small className="filter-swipe-hint">옆으로 밀어 플레이 환경 더 보기 →</small>
             </fieldset>
             <div className="catalog-filter-selects">
               <label>
@@ -2232,7 +2271,7 @@ function App() {
         <section className="results">
           <div className="result-heading">
             <GameArtwork imageUrl={report.game.imageUrl} title={report.game.title} priority />
-            <div>
+            <div className="game-identity">
               <h2>{report.game.title}</h2>
               <div className="game-platforms platform-overview">
                 <span>플레이 가능</span>
@@ -2506,6 +2545,7 @@ function App() {
           <button className={adminSection === 'integrity' ? 'active' : ''} onClick={() => selectAdminSection('integrity')}>데이터 정합성 {priceIntegrity?.issueCount ?? 0}</button>
           <button className={adminSection === 'audit' ? 'active' : ''} onClick={() => selectAdminSection('audit')}>변경 기록</button>
         </nav>
+        {adminSection === 'dashboard' && adminHealth?.mobileGrowth && <MobileGrowthStatus data={adminHealth.mobileGrowth} />}
         {adminSection === 'dashboard' && <section className="artwork-admin-panel" aria-label="대표 이미지 직접 교체"><div><h2>대표 이미지 직접 교체</h2><p>현재 이미지와 새 후보를 비교한 뒤 저장할 수 있습니다. 자동 판정 결과는 아래 운영 상태에 표시됩니다.</p></div><div className="artwork-admin-search"><input value={artworkGameQuery} onChange={(event) => setArtworkGameQuery(event.target.value)} placeholder="게임 이름 또는 canonical ID" /><button disabled={!artworkGameQuery.trim()} onClick={() => void findArtworkGame()}>게임 찾기</button></div>{artworkGame && <div className="artwork-admin-editor"><div className="artwork-comparison"><figure><figcaption>현재 이미지</figcaption><GameArtwork imageUrl={artworkGame.imageUrl} title={artworkGame.title} /></figure><figure><figcaption>교체 미리보기</figcaption><GameArtwork imageUrl={artworkReplacementUrl} title={artworkGame.title} /></figure></div><div><strong>{artworkGame.title}</strong><small>{artworkGame.id}</small><label>대표 이미지 URL<input value={artworkReplacementUrl} onChange={(event) => setArtworkReplacementUrl(event.target.value)} placeholder="https://..." /></label><div className="artwork-admin-actions"><button onClick={() => void replaceArtwork()}>대표 이미지 저장</button><button className="secondary" disabled={!artworkPreviousUrl} onClick={() => void restoreArtwork()}>직전 이미지로 되돌리기</button></div></div></div>}{artworkMessage && <p className="admin-feedback" role="status">{artworkMessage}</p>}</section>}
 {adminSection === 'dashboard' && <div className="admin-dashboard"><div><h2>운영 상태</h2><p>Store 작업을 시작하기 전에 데이터와 알림 상태를 확인합니다.</p></div>{adminHealth && <><CatalogGrowthStatus health={adminHealth} />{adminHealth.dailyPrices && <DailyPriceCoverage data={adminHealth.dailyPrices} />}<section className="admin-health-grid" aria-label="운영 상태 요약"><article><strong>메타데이터 완성률</strong><span>{adminHealth.metadata.complete} / {adminHealth.metadata.total}</span><small>보완 필요 {adminHealth.metadata.incomplete}개</small></article><article><strong>최근 수집 실패</strong><span>{adminHealth.collection.recentFailures}건</span><small>{adminHealth.collection.lastFailure ? `${adminHealth.collection.lastFailure.store} · ${adminHealth.collection.lastFailure.error ?? '원인 없음'}` : '실패 없음'}</small></article><article><strong>가격 알림 메일</strong><span>대기 {adminHealth.notifications.pending} · 재시도 {adminHealth.notifications.retryable}</span><small>재시도 소진 {adminHealth.notifications.exhausted}건</small></article><article><strong>계정 이메일</strong><span>대기 {adminHealth.emails.pending} · 재시도 {adminHealth.emails.retryable}</span><small>{adminHealth.emails.lastError ? `최근 오류: ${adminHealth.emails.lastError}` : `발송 완료 ${adminHealth.emails.sent}건 · 실패 없음`}</small></article><article><strong>자동 가격 수집</strong><span>{jobStatusLabel[adminHealth.automation.collection.status] ?? adminHealth.automation.collection.status}</span><small>{adminHealth.automation.collection.status === 'DISABLED' ? '.env에서 COLLECTION_ENABLED=true로 재개할 수 있습니다.' : `마지막 완료 ${formatJobTime(adminHealth.automation.collection.lastFinishedAt)} · 다음 ${formatJobTime(adminHealth.automation.collection.nextRunAt)}`}</small><small>worker 확인 {formatJobTime(adminHealth.automation.collection.updatedAt)}</small>{adminHealth.automation.collection.partialSteps?.length ? <small className="warning">일부 상품 실패 {adminHealth.automation.collection.partialSteps.join(', ')}</small> : null}{adminHealth.automation.collection.failedSteps?.length ? <small className="error-text">실행 실패 {adminHealth.automation.collection.failedSteps.join(', ')}</small> : null}</article><article><strong>자동 백업</strong><span>{jobStatusLabel[adminHealth.automation.backup.status] ?? adminHealth.automation.backup.status}</span><small>{adminHealth.automation.backup.lastBackup ? `최근 파일 ${adminHealth.automation.backup.lastBackup}` : `마지막 완료 ${formatJobTime(adminHealth.automation.backup.lastFinishedAt)}`}</small><small>worker 확인 {formatJobTime(adminHealth.automation.backup.updatedAt)}</small>{adminHealth.automation.backup.error ? <small className="warning">{adminHealth.automation.backup.error}</small> : null}</article></section><section className="store-quality-grid" aria-label="Store별 데이터 품질">{adminHealth.stores.filter((store) => store.registeredProducts > 0 || store.pendingReviews > 0 || store.catalogProcessed > 0).map((store) => <article key={store.store}><header><StoreBadge compact store={collectionStoreName(store.store)} /><span>{store.registeredProducts}개 상품</span></header><div><span>최신 가격 <strong>{store.freshPrices}</strong></span><span className={store.stalePrices > 0 ? 'warning' : ''}>오래된 가격 <strong>{store.stalePrices}</strong></span><span>검토 대기 <strong>{store.pendingReviews}</strong></span></div><div><span>최근 탐색 <strong>{store.catalogProcessed}</strong></span><span>자동 등록 <strong>{store.catalogAccepted}</strong></span><span>최근 7일 추가 <strong>{store.catalogAddedLast7Days}</strong></span></div><small>검토 {store.catalogReview} · 제외/건너뜀 {store.catalogSkippedOrRejected} · 실패 {store.catalogFailed}</small><small>{store.lastCatalogSyncAt ? `마지막 카탈로그 동기화 ${new Date(store.lastCatalogSyncAt).toLocaleString('ko-KR')}` : '카탈로그 동기화 기록 없음'}</small><small>{store.lastSuccessfulCollectionAt ? `마지막 가격 수집 성공 ${new Date(store.lastSuccessfulCollectionAt).toLocaleString('ko-KR')}` : '성공한 가격 수집 기록 없음'}</small></article>)}</section></>}<section className="admin-store-shortcuts" aria-label="Store별 관리 바로가기"><div><h3>Store별 관리</h3><p>Store를 선택해 후보 탐색, 검토, 상품 연결과 가격 수집을 관리합니다.</p></div><div><button onClick={() => selectAdminSection('steam')}><StoreBadge compact label="Steam 관리" store="Steam" /></button><button onClick={() => selectAdminSection('epic-games')}><StoreBadge compact label="Epic Games 관리" store="Epic Games Store" /></button><button onClick={() => selectAdminSection('nintendo-eshop')}><StoreBadge compact label="Nintendo eShop 관리" store="Nintendo eShop" /></button><button onClick={() => selectAdminSection('playstation-store')}><StoreBadge compact label="PlayStation Store 관리" store="PlayStation Store" /></button><button onClick={() => selectAdminSection('microsoft-store')}><StoreBadge compact label="Microsoft Store 관리" store="Microsoft Store" /></button><button onClick={() => selectAdminSection('google-play')}><StoreBadge compact label="Google Play 관리" store="Google Play" /></button><button onClick={() => selectAdminSection('apple-app-store')}><StoreBadge compact label="Apple App Store 관리" store="Apple App Store" /></button></div></section></div>}
         {adminSection === 'dashboard' && adminHealth && <section className="artwork-health" aria-label="대표 이미지 품질 상태"><header><h3>대표 이미지 품질</h3><small>{adminHealth.artwork.checkedAt ? `마지막 검사 ${new Date(adminHealth.artwork.checkedAt).toLocaleString('ko-KR')}` : '아직 자동 검사를 실행하지 않았습니다.'}</small></header><div><span>검사 후보 <strong>{adminHealth.artwork.candidates}</strong></span><span>확인 <strong>{adminHealth.artwork.attempted}</strong></span><span>자동 교체 <strong>{adminHealth.artwork.updated}</strong></span><span>기존 유지 <strong>{adminHealth.artwork.qualityRejected}</strong></span><span className={adminHealth.artwork.broken > 0 ? 'warning' : ''}>깨짐/실패 <strong>{adminHealth.artwork.broken}</strong></span></div>{adminHealth.artwork.decisions.length > 0 && <details><summary>최근 판정 보기</summary><ul>{adminHealth.artwork.decisions.map((decision, index) => <li key={`${decision.gameId}-${index}`}><strong>{decision.gameId}</strong><span>{decision.status === 'UPDATED' ? '교체' : decision.status === 'BROKEN' ? '확인 실패' : '유지'}{decision.score !== undefined && decision.score !== null ? ` · ${decision.score}점` : ''}</span><small>{decision.reasons?.join(', ') || '추가 감점 사유 없음'}</small></li>)}</ul></details>}</section>}

@@ -77,6 +77,8 @@ class MobileGrowthTests(unittest.TestCase):
                 self.assertEqual(collect.call_count, 2)
                 with sqlite3.connect(database) as db:
                     self.assertEqual(db.execute("SELECT price_pending FROM mobile_growth_candidates").fetchone()[0], 0)
+                    runs = db.execute("SELECT status,registered_count,price_failed_count FROM mobile_growth_runs ORDER BY id").fetchall()
+                    self.assertEqual(runs, [("PARTIAL", 1, 1), ("SUCCEEDED", 0, 0)])
 
     def test_success_requires_actual_recent_price(self):
         with tempfile.TemporaryDirectory() as directory:

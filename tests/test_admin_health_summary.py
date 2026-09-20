@@ -136,6 +136,24 @@ class AdminHealthSummaryTest(unittest.TestCase):
                         'EpicGamesStore', 'FAILED',
                         '2026-01-01T01:00:00Z', 1, 'HTTP 403'
                     );
+                    CREATE TABLE mobile_growth_candidates(
+                        provider TEXT, product_id TEXT, outcome TEXT,
+                        checked_at REAL, price_pending INTEGER, detail TEXT
+                    );
+                    INSERT INTO mobile_growth_candidates VALUES('AppleAppStore','1','REGISTERED',1,0,NULL);
+                    INSERT INTO mobile_growth_candidates VALUES('AppleAppStore','2','NEEDS_REVIEW',1,0,NULL);
+                    INSERT INTO mobile_growth_candidates VALUES('AppleAppStore','3','LINKED',1,1,NULL);
+                    CREATE TABLE mobile_growth_runs(
+                        id INTEGER PRIMARY KEY, provider TEXT, status TEXT,
+                        started_at TEXT, finished_at TEXT,
+                        registered_count INTEGER, linked_count INTEGER,
+                        excluded_count INTEGER, review_count INTEGER,
+                        failed_count INTEGER, price_failed_count INTEGER
+                    );
+                    INSERT INTO mobile_growth_runs VALUES(
+                        1,'AppleAppStore','PARTIAL','2026-01-03T00:00:00Z','2026-01-03T00:01:00Z',
+                        1,1,2,1,0,1
+                    );
                     """
                 )
             result = admin_health_summary.summary(catalog, database)
@@ -195,6 +213,12 @@ class AdminHealthSummaryTest(unittest.TestCase):
             )
             self.assertEqual(epic["lastPriceCollectionStatus"], "FAILED")
             self.assertEqual(epic["lastPriceCollectionError"], "HTTP 403")
+            apple_growth = next(item for item in result["mobileGrowth"]["providers"] if item["provider"] == "AppleAppStore")
+            self.assertEqual(apple_growth["latest"]["priceFailed"], 1)
+            self.assertEqual(apple_growth["cumulative"], {
+                "registered": 1, "linked": 1, "excluded": 0,
+                "review": 1, "pricePending": 1,
+            })
 
 
 if __name__ == "__main__":
