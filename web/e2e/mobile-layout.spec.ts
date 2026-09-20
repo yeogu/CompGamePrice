@@ -21,6 +21,8 @@ for (const width of [360, 390, 430]) {
       const groups = page.locator('.catalog-filter-options')
       await expect(groups).toHaveCount(2)
       await expect(groups.first().locator('button').nth(1)).toBeVisible()
+      await expect(groups.nth(1).getByText('iPhone', { exact: true })).toBeVisible()
+      await expect(groups.nth(1).getByText('iOS', { exact: true })).toHaveCount(0)
       await expect(page.getByText(/옆으로 밀어 구매처 더 보기/)).toBeVisible()
       for (let index = 0; index < await groups.count(); index += 1) {
         const overlap = await groups.nth(index).locator('button').evaluateAll((buttons) => {

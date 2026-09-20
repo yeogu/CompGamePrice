@@ -2206,7 +2206,7 @@ function App() {
                   onClick={() => setBrowsePlatform(platform)}
                   type="button"
                 >
-                  <PlatformBadge compact platform={platform} />
+                  <PlatformBadge compact label={platform === 'iOS' ? 'iPhone' : undefined} platform={platform} />
                 </button>)}
               </div>
               <small className="filter-swipe-hint">옆으로 밀어 플레이 환경 더 보기 →</small>
