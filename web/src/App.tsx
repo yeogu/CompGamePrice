@@ -586,7 +586,7 @@ function App() {
   const [authOpen, setAuthOpen] = useState(Boolean(initialResetToken))
   const [authError, setAuthError] = useState('')
   const [authSubmitting, setAuthSubmitting] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [mobilePrimaryTab, setMobilePrimaryTab] = useState<'home' | 'search' | 'account'>('home')
   const [showGameResults, setShowGameResults] = useState(false)
   const [suggestions, setSuggestions] = useState<GameSummary[]>([])
   const [suggestionsOpen, setSuggestionsOpen] = useState(false)
@@ -605,6 +605,7 @@ function App() {
   const [catalogTotal, setCatalogTotal] = useState(0)
   const [browseMode, setBrowseMode] = useState(false)
   const autocompleteRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const adminPanelRef = useRef<HTMLElement>(null)
   const suggestionSequence = useRef(0)
 
@@ -699,7 +700,8 @@ function App() {
 
   const navigate = (view: AppView) => {
     setActiveView(view)
-    setSidebarOpen(false)
+    if (view === 'games') setMobilePrimaryTab('home')
+    if (view === 'account') setMobilePrimaryTab('account')
   }
 
   const selectAdminSection = (section: AdminSection) => {
@@ -765,6 +767,24 @@ function App() {
     setBrowseMode(false)
     window.history.pushState({ dealQuestList: true, scrollY: 0 }, '', '/')
     window.scrollTo({ top: 0 })
+  }
+
+  const openMobileSearch = () => {
+    openGameFinder()
+    setMobilePrimaryTab('search')
+    window.requestAnimationFrame(() => {
+      searchInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      searchInputRef.current?.focus({ preventScroll: true })
+    })
+  }
+
+  const openMobileAccount = () => {
+    setMobilePrimaryTab('account')
+    if (user) {
+      navigate('account')
+    } else {
+      openAuth('login')
+    }
   }
 
   const closeGameDetail = () => {
@@ -2035,9 +2055,7 @@ function App() {
 
   return (
     <div className="app-shell">
-      <button className="mobile-menu" aria-label="메뉴 열기" onClick={() => setSidebarOpen(true)}>☰</button>
-      {sidebarOpen && <button className="sidebar-backdrop" aria-label="메뉴 닫기" onClick={() => setSidebarOpen(false)} />}
-      <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
+      <aside className="sidebar">
         <button className="brand" onClick={openGameFinder}>
           <span>DQ</span>
           <strong>DealQuest</strong>
@@ -2080,6 +2098,7 @@ function App() {
         <form onSubmit={submitSearch} className="search-form">
           <div className="autocomplete" ref={autocompleteRef}>
             <input
+              ref={searchInputRef}
               aria-label="게임 이름"
               aria-autocomplete="list"
               aria-controls="game-suggestions"
@@ -2450,6 +2469,12 @@ function App() {
         <p className="eyebrow">ACCOUNT</p>
         <h1 className="view-title">계정 설정</h1>
         <div className="profile-card"><span className="avatar large">{user.email.slice(0, 1).toUpperCase()}</span><div><strong>{user.email}</strong><p>가격 알림 {rules.length}개 · 읽지 않은 알림 {notifications.filter((item) => !item.read).length}개</p></div></div>
+        <nav className="account-shortcuts" aria-label="내 서비스 바로가기">
+          <button onClick={() => navigate('favorites')}>관심 게임</button>
+          <button onClick={() => navigate('alerts')}>가격 알림</button>
+          <button onClick={() => navigate('notifications')}>알림함{notifications.filter((item) => !item.read).length > 0 ? ` ${notifications.filter((item) => !item.read).length}` : ''}</button>
+          {catalogAdminEnabled && user.role === 'ADMIN' && <button onClick={() => navigate('admin')}>관리자 메뉴</button>}
+        </nav>
         <div className="preference-card">
           <div><h3>이메일 가격 알림</h3><p>목표 가격 도달 알림을 이메일 발송 대기열에 추가합니다.</p></div>
           <label className="toggle"><input type="checkbox" checked={preferences.emailNotificationsEnabled} onChange={(event) => void savePreferences(event.target.checked)} /><span>{preferences.emailNotificationsEnabled ? '사용' : '사용 안 함'}</span></label>
@@ -2758,6 +2783,21 @@ function App() {
         </article>}
       </section>}
     </main>
+
+    <nav className="mobile-bottom-nav" aria-label="모바일 주 메뉴">
+      <button className={mobilePrimaryTab === 'home' ? 'active' : ''} aria-current={mobilePrimaryTab === 'home' ? 'page' : undefined} onClick={() => { openGameFinder(); setMobilePrimaryTab('home') }}>
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5v8a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" /></svg>
+        <span>홈</span>
+      </button>
+      <button className={mobilePrimaryTab === 'search' ? 'active' : ''} aria-current={mobilePrimaryTab === 'search' ? 'page' : undefined} onClick={openMobileSearch}>
+        <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m15.5 15.5 5 5" /></svg>
+        <span>검색</span>
+      </button>
+      <button className={mobilePrimaryTab === 'account' ? 'active' : ''} aria-current={mobilePrimaryTab === 'account' ? 'page' : undefined} onClick={openMobileAccount}>
+        <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4.5 21a7.5 7.5 0 0 1 15 0" /></svg>
+        <span>마이</span>
+      </button>
+    </nav>
 
     {authOpen && <div className="modal-backdrop" role="presentation" onMouseDown={() => setAuthOpen(false)}>
       <section className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title" onMouseDown={(event) => event.stopPropagation()}>

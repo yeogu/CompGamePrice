@@ -16,6 +16,8 @@ for (const width of [360, 390, 430]) {
 
     test('catalog filters remain separated inside horizontal rails', async ({ page }) => {
       await page.goto('/')
+      await expect(page.getByRole('navigation', { name: '모바일 주 메뉴' })).toBeVisible()
+      await expect(page.getByRole('button', { name: '메뉴 열기' })).toHaveCount(0)
       const groups = page.locator('.catalog-filter-options')
       await expect(groups).toHaveCount(2)
       await expect(groups.first().locator('button').nth(1)).toBeVisible()
@@ -30,6 +32,19 @@ for (const width of [360, 390, 430]) {
         })
         expect(overlap).toBe(false)
       }
+      await expectNoPageOverflow(page)
+    })
+
+    test('bottom navigation opens search and account without covering content', async ({ page }) => {
+      await page.goto('/')
+      const navigation = page.getByRole('navigation', { name: '모바일 주 메뉴' })
+      await navigation.getByRole('button', { name: '검색' }).click()
+      await expect(page.getByRole('combobox', { name: '게임 이름' })).toBeFocused()
+      await navigation.getByRole('button', { name: '마이' }).click()
+      await expect(page.getByRole('dialog')).toBeVisible()
+      const navBox = await navigation.boundingBox()
+      expect(navBox).not.toBeNull()
+      expect(navBox!.y + navBox!.height).toBeLessThanOrEqual(844)
       await expectNoPageOverflow(page)
     })
 
