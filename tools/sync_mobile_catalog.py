@@ -499,6 +499,13 @@ def record_candidate(
             title = excluded.title,
             reason = excluded.reason,
             candidate_json = excluded.candidate_json,
+            status = CASE
+                WHEN catalog_sync_review.status = 'REJECTED'
+                 AND catalog_sync_review.decision = 'Rejected'
+                 AND excluded.decision = 'NeedsReview'
+                THEN 'PENDING'
+                ELSE catalog_sync_review.status
+            END,
             game_id = excluded.game_id,
             decision = excluded.decision
         """,
@@ -514,6 +521,43 @@ def record_candidate(
             decision["status"],
         ),
     )
+
+
+def reopen_exact_title_port_reviews(
+    connection: sqlite3.Connection,
+    catalog: dict,
+    provider: str,
+) -> int:
+    games = {game.get("id"): game for game in catalog.get("games", [])}
+    reopened = 0
+    rows = connection.execute(
+        """SELECT external_product_id,game_id,candidate_json
+           FROM catalog_sync_review
+           WHERE provider=? AND status='REJECTED' AND decision='Rejected'""",
+        (provider,),
+    ).fetchall()
+    for product_id, game_id, payload_json in rows:
+        game = games.get(game_id)
+        if not game:
+            continue
+        try:
+            payload = json.loads(payload_json)
+            decision = catalog_matcher.evaluate(game, payload)
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+            continue
+        if decision["status"] != "NeedsReview" or not decision.get("exactTitleMatched"):
+            continue
+        payload["matchDecision"] = decision
+        connection.execute(
+            """UPDATE catalog_sync_review
+               SET status='PENDING', decision='NeedsReview', reason=?, candidate_json=?
+               WHERE provider=? AND external_product_id=?
+                 AND status='REJECTED' AND decision='Rejected'""",
+            ("; ".join(decision["reasons"]), json.dumps(payload, ensure_ascii=False),
+             provider, product_id),
+        )
+        reopened += 1
+    return reopened
 
 
 def connect_approved_candidate(
@@ -651,6 +695,8 @@ def synchronize_provider(
     started_at = utc_now()
     with sqlite3.connect(database_path, timeout=30) as connection:
         initialize_state(connection)
+        report["reopenedReviews"] = reopen_exact_title_port_reviews(
+            connection, catalog, provider)
         run_id = start_run(connection, provider, started_at)
         games = pending_games(connection, catalog, provider, batch_size)
         connection.commit()

@@ -101,11 +101,11 @@ class AppleCatalogImportTest(unittest.TestCase):
         self.assertEqual(decision["status"], "NeedsReview")
         self.assertEqual(decision["priceStatus"], "PRICE_UNKNOWN")
 
-    def test_rejects_developer_mismatch_and_cross_game_track_id(self):
+    def test_reviews_exact_title_developer_mismatch_and_rejects_cross_game_track_id(self):
         metadata = catalog_import.apple_product(self.raw, "1406710800")
         metadata["developer"] = "Different Studio"
         decision = catalog_import.catalog_matcher.evaluate(self.catalog["games"][0], metadata)
-        self.assertEqual(decision["status"], "Rejected")
+        self.assertEqual(decision["status"], "NeedsReview")
         self.catalog["games"][0]["products"] = [{"store": "AppleAppStore", "productId": "1406710800"}]
         self.catalog["games"].append({
             "id": "different-game",

@@ -195,6 +195,7 @@ const matchReasonMessage = (reason: string) => {
     'Developer differs from the canonical game': '개발사가 canonical Game 정보와 다릅니다.',
     'Official publisher matches the canonical game': '공식 퍼블리셔가 canonical Game 정보와 일치합니다.',
     'Developer or publisher differs from the canonical game': '개발사와 퍼블리셔가 canonical Game 정보와 다릅니다.',
+    'Exact title matches but developer or publisher differs; manual confirmation required': '게임 제목은 정확히 같지만 모바일 포팅·배급 과정에서 개발사 또는 퍼블리셔가 달라졌을 수 있어 관리자 확인이 필요합니다.',
     'Developer and publisher information is incomplete': 'Store 또는 canonical Game의 개발사·퍼블리셔 정보가 부족해 자동으로 확인할 수 없습니다.',
     'Title does not match the canonical title or aliases': '상품명이 canonical Game 제목 또는 별칭과 일치하지 않습니다.',
     'Store category is not a game': 'Store에서 게임 상품으로 분류되지 않았습니다.',

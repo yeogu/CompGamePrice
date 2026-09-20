@@ -51,15 +51,16 @@ class GooglePlayCatalogImportTest(unittest.TestCase):
         )
         self.assertEqual(game["matchDecision"]["status"], "Rejected")
 
-    def test_rejects_matching_title_with_different_developer(self):
+    def test_exact_title_with_different_port_publisher_requires_review(self):
         self.catalog["games"][0]["developers"] = ["Different Studio"]
         metadata = catalog_import.verified_product(self.raw, "com.chucklefish.stardewvalley")
         decision = catalog_import.catalog_matcher.evaluate(self.catalog["games"][0], metadata)
-        self.assertEqual(decision["status"], "Rejected")
+        self.assertEqual(decision["status"], "NeedsReview")
         self.assertIn(
-            "Developer or publisher differs from the canonical game",
+            "Exact title matches but developer or publisher differs; manual confirmation required",
             decision["reasons"],
         )
+        self.assertTrue(decision["exactTitleMatched"])
 
     def test_approves_official_publisher_when_store_developer_differs(self):
         self.catalog["games"][0]["publishers"] = ["505 Games"]

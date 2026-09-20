@@ -108,6 +108,11 @@ def evaluate(game: dict, offer: dict) -> dict:
 
     product_title = normalized_identity(offer["title"])
     canonical_titles = [game.get("title", ""), *game.get("aliases", [])]
+    exact_title_match = any(
+        normalized_identity(title) == product_title
+        for title in canonical_titles
+        if normalized_identity(title)
+    )
     title_source = next(
         (
             title
@@ -144,8 +149,13 @@ def evaluate(game: dict, offer: dict) -> dict:
     elif publisher_matches:
         reasons.append("Official publisher matches the canonical game")
     elif (canonical_developers or canonical_publishers) and product_developer:
-        reasons.append("Developer or publisher differs from the canonical game")
-        if not is_bundle:
+        if exact_title_match and not is_bundle:
+            reasons.append(
+                "Exact title matches but developer or publisher differs; manual confirmation required"
+            )
+            needs_review = True
+        else:
+            reasons.append("Developer or publisher differs from the canonical game")
             rejected = True
     else:
         reasons.append("Developer and publisher information is incomplete")
@@ -160,6 +170,7 @@ def evaluate(game: dict, offer: dict) -> dict:
         "status": status,
         "reasons": reasons,
         "titleMatchSource": title_source,
+        "exactTitleMatched": exact_title_match,
         "developerMatched": developer_matches,
         "publisherMatched": publisher_matches,
         "priceStatus": offer_price_status,

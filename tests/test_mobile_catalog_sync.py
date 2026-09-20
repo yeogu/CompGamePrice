@@ -335,6 +335,52 @@ class MobileCatalogSyncTest(unittest.TestCase):
             1,
         )
 
+    def test_new_exact_title_rule_reopens_only_automatic_rejections(self):
+        with sqlite3.connect(self.database) as connection:
+            sync.initialize_state(connection)
+            game = json.loads(self.catalog.read_text())["games"][0]
+            candidate = {"externalProductId": "com.example.port", "title": game["title"]}
+            rejected = approved_metadata(b"", "")
+            rejected["developer"] = "Different Mobile Publisher"
+            old_decision = {"status": "Rejected", "reasons": ["old strict rule"]}
+            sync.record_candidate(connection, "GooglePlay", game, candidate, rejected, old_decision)
+            connection.commit()
+            review_decision = sync.catalog_matcher.evaluate(game, rejected)
+            self.assertEqual(review_decision["status"], "NeedsReview")
+            sync.record_candidate(connection, "GooglePlay", game, candidate, rejected, review_decision)
+            connection.commit()
+            self.assertEqual(connection.execute(
+                "SELECT status FROM catalog_sync_review WHERE provider='GooglePlay' AND external_product_id='com.example.port'"
+            ).fetchone()[0], "PENDING")
+
+            connection.execute("UPDATE catalog_sync_review SET status='REJECTED', decision='NeedsReview'")
+            sync.record_candidate(connection, "GooglePlay", game, candidate, rejected, review_decision)
+            connection.commit()
+            self.assertEqual(connection.execute(
+                "SELECT status FROM catalog_sync_review WHERE provider='GooglePlay' AND external_product_id='com.example.port'"
+            ).fetchone()[0], "REJECTED")
+
+    def test_existing_exact_title_port_rejection_is_migrated_to_review(self):
+        with sqlite3.connect(self.database) as connection:
+            sync.initialize_state(connection)
+            game = json.loads(self.catalog.read_text())["games"][0]
+            metadata = approved_metadata(b"", "")
+            metadata["developer"] = "Mobile Port Publisher"
+            candidate = {"externalProductId": "port", "title": game["title"]}
+            payload = {**candidate, **metadata, "gameId": game["id"],
+                       "matchDecision": {"status": "Rejected"}}
+            connection.execute("""INSERT INTO catalog_sync_review(
+                provider,external_product_id,title,reason,candidate_json,status,created_at,game_id,decision)
+                VALUES('GooglePlay','port',?,'Developer or publisher differs from the canonical game',
+                       ?,'REJECTED','2026-01-01T00:00:00Z',?,'Rejected')""",
+                (game["title"], json.dumps(payload), game["id"]))
+            connection.commit()
+            self.assertEqual(sync.reopen_exact_title_port_reviews(
+                connection, {"schemaVersion": 4, "games": [game]}, "GooglePlay"), 1)
+            row = connection.execute("SELECT status,decision,reason FROM catalog_sync_review").fetchone()
+            self.assertEqual(row[:2], ("PENDING", "NeedsReview"))
+            self.assertIn("manual confirmation required", row[2])
+
     def test_no_search_result_is_reported_as_a_rejection_reason(self):
         report = sync.synchronize_provider(
             self.catalog,
