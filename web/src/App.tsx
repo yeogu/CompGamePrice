@@ -2328,7 +2328,7 @@ function App() {
       {showGameResults && games.length === 0 && browseMode && <section className="panel empty-catalog-result"><h2>조건에 맞는 게임이 없습니다.</h2><p>필터를 줄이거나 이름으로 검색해보세요.</p></section>}
       </GameCatalogView>}
 
-      {activeView === 'games' && selectedGameId && <GameDetailView error={detailError} loading={loading && !report} onBack={closeGameDetail}>
+      {activeView === 'games' && selectedGameId && <GameDetailView error={detailError} loading={loading && !report} onBack={closeGameDetail} title={report?.game.title}>
       {report && <section className="inline-alert-card">
         <div><strong>{report.game.title} 가격 알림</strong><span>{selectedPlatform || '모든 플랫폼'}{report.cheapest ? ` · 현재 ${offerPriceLabel(report.cheapest.store, report.cheapest.price)}` : ''}</span></div>
         <input type="number" min="0" value={targetPrice} onChange={(event) => setTargetPrice(event.target.value)} placeholder="목표 가격(KRW)" />

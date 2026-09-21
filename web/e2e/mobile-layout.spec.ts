@@ -67,6 +67,14 @@ for (const width of [360, 390, 430]) {
     test('game detail artwork, chart, and cards stay within the viewport', async ({ page }) => {
       await page.goto('/games/hades')
       await expect(page.getByRole('heading', { name: 'Hades' }).last()).toBeVisible()
+      const detailNavigation = page.getByRole('navigation', { name: '모바일 게임 상세 탐색' })
+      await expect(detailNavigation).toBeVisible()
+      await expect(detailNavigation.getByRole('button', { name: '게임 목록으로' })).toBeVisible()
+      await expect(detailNavigation.getByRole('button', { name: '게임 공유' })).toBeVisible()
+      await expect(detailNavigation).not.toHaveClass(/compact/)
+      await page.locator('.game-summary').scrollIntoViewIfNeeded()
+      await expect(detailNavigation).toHaveClass(/compact/)
+      await expect(detailNavigation.locator('strong')).toHaveText('Hades')
       for (const selector of ['.result-heading > .game-artwork', '.price-card', '.trend-panel']) {
         const overflowCount = await page.locator(selector).evaluateAll((elements) => elements.filter((element) => {
           const box = element.getBoundingClientRect()
