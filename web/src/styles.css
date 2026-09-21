@@ -85,6 +85,9 @@ h1 { margin: 14px 0; font-size: clamp(2.6rem, 7vw, 5.3rem); line-height: 0.98; l
 .catalog-filter-selects > button { min-height: 41px; padding: 10px 15px; color: #07110d; font-weight: 800; background: #73e2a7; border: 0; border-radius: 9px; }
 .catalog-filter-selects > button:disabled { opacity: .65; cursor: wait; }
 .home-discovery { display: grid; gap: 44px; margin: -28px 0 54px; }
+.home-discovery-loading { display: flex; align-items: center; gap: 10px; min-height: 84px; margin: -28px 0 54px; color: #82968b; font-size: .88rem; }
+.home-loading-pulse { width: 10px; height: 10px; flex: 0 0 auto; border-radius: 50%; background: #73e2a7; box-shadow: 0 0 0 0 rgba(115, 226, 167, .45); animation: home-loading-pulse 1.3s ease-out infinite; }
+@keyframes home-loading-pulse { 70% { box-shadow: 0 0 0 8px rgba(115, 226, 167, 0); } 100% { box-shadow: 0 0 0 0 rgba(115, 226, 167, 0); } }
 .home-discovery-section { min-width: 0; }
 .home-discovery-section > header { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 15px; }
 .home-discovery-section h2 { margin: 0; font-size: clamp(1.35rem, 3vw, 2rem); }

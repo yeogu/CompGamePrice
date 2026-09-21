@@ -624,6 +624,7 @@ function App() {
   const [catalogRequestMessage, setCatalogRequestMessage] = useState('')
   const [catalogFilters, setCatalogFilters] = useState<CatalogFilterOptions>(initialCatalogFilters)
   const [homeDiscovery, setHomeDiscovery] = useState<HomeDiscovery | null>(null)
+  const [homeDiscoveryLoading, setHomeDiscoveryLoading] = useState(true)
   const initialParameters = new URLSearchParams(window.location.search)
   const [selectedStore, setSelectedStore] = useState(initialParameters.get('store') ?? '')
   const [browsePlatform, setBrowsePlatform] = useState(initialParameters.get('browsePlatform') ?? '')
@@ -1724,6 +1725,7 @@ function App() {
     void getHomeDiscovery()
       .then(setHomeDiscovery)
       .catch(() => setHomeDiscovery(null))
+      .finally(() => setHomeDiscoveryLoading(false))
     void getCatalogAdminStatus()
       .then((status) => {
         setCatalogAdminEnabled(status.enabled)
@@ -2232,6 +2234,15 @@ function App() {
           </form>
         </section>
       </header>
+
+      {!showGameResults && homeDiscoveryLoading && <div className="home-discovery-loading" role="status">
+        <span className="home-loading-pulse" />
+        <span>오늘의 가격 정보를 불러오고 있어요.</span>
+      </div>}
+
+      {!showGameResults && !homeDiscoveryLoading && !homeDiscovery && <div className="home-discovery-loading" role="status">
+        <span>추천 정보를 불러오지 못했습니다. 검색 기능은 정상적으로 사용할 수 있어요.</span>
+      </div>}
 
       {!showGameResults && homeDiscovery && <div className="home-discovery" aria-label="홈 게임 추천">
         <HomeGameRail title="오늘의 특가" description="48시간 안에 확인된 할인 가격만 모았어요." games={homeDiscovery.deals} kind="deal" onSelect={(game) => void selectGame(game)} />

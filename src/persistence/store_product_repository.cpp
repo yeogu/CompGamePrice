@@ -758,6 +758,12 @@ void StoreProductRepository::initializeSchema() const {
             )sql");
         }
         database_.execute("CREATE INDEX IF NOT EXISTS idx_store_products_game_id ON store_products(game_id);");
+        database_.execute(R"sql(
+            CREATE INDEX IF NOT EXISTS idx_price_history_home_lookup
+                ON price_history(
+                    store, external_product_id, currency,
+                    purchasable, price_minor, observed_at);
+        )sql");
         database_.execute("PRAGMA user_version = 19;");
         database_.execute("COMMIT;");
     } catch (...) {
