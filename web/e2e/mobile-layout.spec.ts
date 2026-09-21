@@ -72,6 +72,14 @@ for (const width of [360, 390, 430]) {
       await expect(detailNavigation.getByRole('button', { name: '게임 목록으로' })).toBeVisible()
       await expect(detailNavigation.getByRole('button', { name: '게임 공유' })).toBeVisible()
       await expect(detailNavigation).not.toHaveClass(/compact/)
+      const detailOrder = await page.locator('.results').evaluate((results) => {
+        const artwork = results.querySelector('.result-heading > .game-artwork')!.getBoundingClientRect()
+        const favorite = results.querySelector('.favorite-button')!.getBoundingClientRect()
+        const alert = results.querySelector('.inline-alert-card')!.getBoundingClientRect()
+        return { artworkTop: artwork.top, favoriteBottom: favorite.bottom, alertTop: alert.top }
+      })
+      expect(detailOrder.artworkTop).toBeLessThan(detailOrder.alertTop)
+      expect(detailOrder.favoriteBottom).toBeLessThanOrEqual(detailOrder.alertTop)
       await page.locator('.game-summary').scrollIntoViewIfNeeded()
       await expect(detailNavigation).toHaveClass(/compact/)
       await expect(detailNavigation.locator('strong')).toHaveText('Hades')

@@ -2329,12 +2329,6 @@ function App() {
       </GameCatalogView>}
 
       {activeView === 'games' && selectedGameId && <GameDetailView error={detailError} loading={loading && !report} onBack={closeGameDetail} title={report?.game.title}>
-      {report && <section className="inline-alert-card">
-        <div><strong>{report.game.title} 가격 알림</strong><span>{selectedPlatform || '모든 플랫폼'}{report.cheapest ? ` · 현재 ${offerPriceLabel(report.cheapest.store, report.cheapest.price)}` : ''}</span></div>
-        <input type="number" min="0" value={targetPrice} onChange={(event) => setTargetPrice(event.target.value)} placeholder="목표 가격(KRW)" />
-        {user ? <button onClick={() => void createRule('BelowTargetPrice')}>목표가 알림</button> : <button onClick={() => openAuth('login')}>로그인하고 알림 받기</button>}
-      </section>}
-
       {report && (
         <>
         <section className="results">
@@ -2365,6 +2359,12 @@ function App() {
               {favorites.some((game) => game.id === report.game.id) ? '★ 관심 게임 등록됨' : '☆ 관심 게임 추가'}
             </button>
           </div>
+
+          <section className="inline-alert-card">
+            <div><strong>{report.game.title} 가격 알림</strong><span>{selectedPlatform || '모든 플랫폼'}{report.cheapest ? ` · 현재 ${offerPriceLabel(report.cheapest.store, report.cheapest.price)}` : ''}</span></div>
+            <input type="number" min="0" value={targetPrice} onChange={(event) => setTargetPrice(event.target.value)} placeholder="목표 가격(KRW)" />
+            {user ? <button onClick={() => void createRule('BelowTargetPrice')}>목표가 알림</button> : <button onClick={() => openAuth('login')}>로그인하고 알림 받기</button>}
+          </section>
 
           <div className="game-summary" aria-label="게임 가격 요약">
             <div><span>비교 Store</span><strong>{report.products.length}곳</strong></div>
