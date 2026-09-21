@@ -457,6 +457,27 @@ class StorefrontCatalogTest(unittest.TestCase):
         )
         self.assertEqual(metadata["platforms"], ["NintendoSwitch2"])
 
+    def test_reads_switch_2_target_console_without_title_suffix(self):
+        document = """
+        <div class="product-attribute label_platform_attr">
+          <div class="product-attribute-val">Nintendo Switch 2</div>
+        </div>
+        """
+        self.assertEqual(
+            storefront_catalog.nintendo_platforms(document),
+            ["NintendoSwitch2"],
+        )
+
+    def test_reads_nintendo_magento_price(self):
+        document = (
+            '"price_info":{"final_price":89800,"max_regular_price":99800}'
+            ',"currency_code":"KRW"'
+        )
+        self.assertEqual(
+            storefront_catalog.nintendo_magento_price(document),
+            (89800, 99800, "KRW"),
+        )
+
     def test_reads_nintendo_korean_publisher_for_identity_matching(self):
         raw = (ROOT / "tests/fixtures/nintendo_hades_product.html").read_bytes()
         metadata = storefront_catalog.verified_product(

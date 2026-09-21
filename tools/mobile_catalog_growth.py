@@ -10,7 +10,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 import sqlite3
 import time
-from urllib.request import urlopen
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
 import catalog_matcher
 import catalog_storage
@@ -35,8 +36,48 @@ def apple_paid_candidates():
             for entry in entries]
 
 
+def nintendo_switch2_candidates(timeout=15):
+    """Discover purchasable full games from Nintendo Korea's official list."""
+    page = 1
+    total = None
+    page_size = 24  # Nintendo's API currently caps this endpoint at 24.
+    while total is None or (page - 1) * page_size < total:
+        parameters = urlencode({"size": page_size, "spage": page, "sftab": "all"})
+        request = Request(
+            f"https://www.nintendo.com/kr/api/games/switch2?{parameters}",
+            headers={"User-Agent": "Mozilla/5.0", "Accept-Language": "ko-KR"},
+        )
+        with urlopen(request, timeout=timeout,
+                     context=network_support.tls_context()) as response:
+            document = json.load(response)
+        total = int(document.get("total", 0))
+        items = document.get("items", [])
+        if not items:
+            break
+        for item in items:
+            product_id = str(item.get("nsuid", "")).strip()
+            categories = set(item.get("category") or [])
+            page_link = str(item.get("pageLink", ""))
+            if (not product_id.isdigit() or product_id == "0000"
+                    or "체험판" in categories
+                    or not ("store.nintendo.co.kr" in page_link
+                            or "{NSUID}" in page_link)):
+                continue
+            yield {
+                "externalProductId": product_id,
+                "title": str(item.get("title", "")).strip(),
+                "platforms": ["NintendoSwitch2"],
+                "releaseDate": str(item.get("releaseDate", "")),
+            }
+        page += 1
+
+
 def price_confirmed(database, provider, product_id, started_at):
-    store = {"AppleAppStore": "Apple App Store", "GooglePlay": "Google Play"}[provider]
+    store = {
+        "AppleAppStore": "Apple App Store",
+        "GooglePlay": "Google Play",
+        "NintendoEShop": "Nintendo eShop",
+    }[provider]
     with sqlite3.connect(database, timeout=30) as db:
         columns = {row[1] for row in db.execute("PRAGMA table_info(store_products)")}
         if "last_successful_check_at" not in columns:
@@ -59,6 +100,9 @@ def apply_candidate(catalog: dict, provider: str, product_id: str, metadata: dic
         return catalog, {"outcome": "EXCLUDED"}
     if provider == "AppleAppStore" and not set(metadata.get("platforms", [])) & {"iOS", "iPadOS"}:
         return catalog, {"outcome": "EXCLUDED"}
+    if provider == "NintendoEShop" and not set(metadata.get("platforms", [])) & {
+            "NintendoSwitch", "NintendoSwitch2"}:
+        return catalog, {"outcome": "EXCLUDED"}
     title = catalog_matcher.normalized_identity(metadata["title"])
     possible = [game for game in catalog["games"] if any(
         title == catalog_matcher.normalized_identity(value)
@@ -77,13 +121,19 @@ def apply_candidate(catalog: dict, provider: str, product_id: str, metadata: dic
     # Never turn an ambiguous cross-store match into a duplicate canonical game.
     if possible:
         return catalog, {"outcome": "NEEDS_REVIEW", "possibleGameIds": [game["id"] for game in possible]}
-    if catalog_matcher.price_status(metadata) == "FREE":
+    if catalog_matcher.price_status(metadata) == "FREE" and provider != "NintendoEShop":
         return catalog, {"outcome": "FREE_ONLY_EXCLUDED"}
     if not metadata.get("developer", "").strip():
         return catalog, {"outcome": "NEEDS_REVIEW"}
-    game_id = "mobile-" + hashlib.sha256(f"{provider}:{product_id}".encode()).hexdigest()[:20]
+    prefix = "nintendo-" if provider == "NintendoEShop" else "mobile-"
+    game_id = prefix + hashlib.sha256(f"{provider}:{product_id}".encode()).hexdigest()[:20]
+    platforms = (
+        metadata.get("platforms", [])
+        if provider in {"AppleAppStore", "NintendoEShop"}
+        else ["Android"]
+    )
     game = {"id": game_id, "title": metadata["title"], "aliases": [],
-            "platforms": metadata.get("platforms", []) if provider == "AppleAppStore" else ["Android"],
+            "platforms": platforms,
             "developers": [metadata["developer"]], "publishers": [],
             "genres": [], "tags": [], "products": [],
             "imageUrl": metadata.get("imageUrl", "")}
@@ -124,15 +174,31 @@ def run(provider, catalog, database, tracker, output, batch_size=50):
             except Exception as error:
                 report["paidChartError"] = str(error)
                 report["failed"] += 1
+        elif provider == "NintendoEShop":
+            try:
+                candidates = list(nintendo_switch2_candidates())
+                now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+                # Process released titles first while preserving Nintendo's
+                # newest-first order within that group. Preorders follow.
+                candidates.sort(key=lambda item: item["releaseDate"] > now)
+                for candidate in candidates:
+                    db.execute(
+                        "INSERT OR IGNORE INTO mobile_growth_candidates(provider,product_id) VALUES(?,?)",
+                        (provider, candidate["externalProductId"]),
+                    )
+            except Exception as error:
+                report["officialCatalogError"] = str(error)
+                report["failed"] += 1
         # Discovery failure must not prevent retrying existing queued work.
-        try:
-            for candidate in config["search"](QUERIES[cursor % len(QUERIES)], 20, 15):
-                db.execute("INSERT OR IGNORE INTO mobile_growth_candidates(provider,product_id) VALUES(?,?)",
-                           (provider, str(candidate["externalProductId"])))
-            db.execute("INSERT OR REPLACE INTO mobile_growth_cursor VALUES(?,?)", (provider, cursor + 1))
-        except Exception as error:
-            report["discoveryError"] = str(error)
-            report["failed"] += 1
+        if provider != "NintendoEShop":
+            try:
+                for candidate in config["search"](QUERIES[cursor % len(QUERIES)], 20, 15):
+                    db.execute("INSERT OR IGNORE INTO mobile_growth_candidates(provider,product_id) VALUES(?,?)",
+                               (provider, str(candidate["externalProductId"])))
+                db.execute("INSERT OR REPLACE INTO mobile_growth_cursor VALUES(?,?)", (provider, cursor + 1))
+            except Exception as error:
+                report["discoveryError"] = str(error)
+                report["failed"] += 1
         db.commit()
         targets = db.execute("""SELECT product_id,price_pending FROM mobile_growth_candidates
             WHERE provider=? AND (outcome='PENDING' OR
@@ -158,12 +224,19 @@ def run(provider, catalog, database, tracker, output, batch_size=50):
                                (outcome, price_pending, time.time(), json.dumps({**result, "metadata": metadata}, ensure_ascii=False), provider, product_id))
                     db.commit()
                 if price_pending:
+                    started_at = time.time()
                     if provider == "AppleAppStore":
                         from run_apple_pipeline import run_pipeline
-                    else:
+                        code = run_pipeline(tracker, catalog, output, database, product_id)
+                    elif provider == "GooglePlay":
                         from run_google_play_pipeline import run_pipeline
-                    started_at = time.time()
-                    code = run_pipeline(tracker, catalog, output, database, product_id)
+                        code = run_pipeline(tracker, catalog, output, database, product_id)
+                    else:
+                        from run_storefront_price_pipeline import run_pipeline
+                        code = run_pipeline(
+                            "NintendoEShop", tracker, catalog, output,
+                            database, product_id,
+                        )
                     if code or not price_confirmed(database, provider, product_id, started_at):
                         report["priceFailed"] += 1
                     else:
@@ -194,7 +267,11 @@ def run(provider, catalog, database, tracker, output, batch_size=50):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--provider", choices=("AppleAppStore", "GooglePlay"), required=True)
+    parser.add_argument(
+        "--provider",
+        choices=("AppleAppStore", "GooglePlay", "NintendoEShop"),
+        required=True,
+    )
     parser.add_argument("--batch-size", type=int, default=int(os.getenv("MOBILE_CATALOG_BATCH_SIZE", "50")))
     for name in ("catalog", "database", "tracker", "output"):
         parser.add_argument("--" + name, type=Path, required=True)

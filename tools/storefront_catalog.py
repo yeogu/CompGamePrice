@@ -544,6 +544,35 @@ def nintendo_publisher(document: str) -> str:
     return " ".join(unescape(without_tags).split())
 
 
+def nintendo_platforms(document: str) -> list[str]:
+    """Read the authoritative target console from the Korean product page."""
+    match = re.search(
+        r'class="product-attribute\s+label_platform(?:_attr)?[^\"]*".*?'
+        r'class="(?:attribute-item-val|product-attribute-val)"[^>]*>(.*?)</div>',
+        document,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if not match:
+        return []
+    label = " ".join(unescape(re.sub(r"<[^>]+>", " ", match.group(1))).split())
+    if "Nintendo Switch 2" in label:
+        return ["NintendoSwitch2"]
+    if "Nintendo Switch" in label:
+        return ["NintendoSwitch"]
+    return []
+
+
+def nintendo_magento_price(document: str) -> tuple[int | None, int | None, str]:
+    price = re.search(r'"price_info":\{"final_price":([0-9]+(?:\.[0-9]+)?)', document)
+    regular = re.search(r'"max_regular_price":([0-9]+(?:\.[0-9]+)?)', document)
+    currency = re.search(r'"currency_code":"([A-Z]{3})"', document)
+    return (
+        round(float(price.group(1))) if price else None,
+        round(float(regular.group(1))) if regular else None,
+        currency.group(1) if currency else "",
+    )
+
+
 def verified_product(raw: bytes, store: str, product_url: str) -> dict:
     if store == "HumbleStore":
         html_document = raw.decode("utf-8", errors="replace")
@@ -887,6 +916,16 @@ def verified_product(raw: bytes, store: str, product_url: str) -> dict:
             price_minor = int(normalized)
     regular_price_minor = price_minor
     discount_percent = 0
+    if store == "NintendoEShop":
+        magento_price, magento_regular, magento_currency = nintendo_magento_price(
+            html_document)
+        if magento_price is not None:
+            price_minor = magento_price
+            regular_price_minor = magento_regular or magento_price
+            offer = {**offer, "priceCurrency": magento_currency or "KRW"}
+            if regular_price_minor >= price_minor and regular_price_minor > 0:
+                discount_percent = round(
+                    (regular_price_minor - price_minor) * 100 / regular_price_minor)
     product_id = named_value(product.get("sku"))
     if not product_id:
         product_id = str(product.get("productID", "")).strip()
@@ -898,8 +937,10 @@ def verified_product(raw: bytes, store: str, product_url: str) -> dict:
     if not developer and store == "NintendoEShop":
         developer = nintendo_publisher(html_document)
     platforms = config(store)["platforms"]
-    if store == "NintendoEShop" and "nintendo switch 2" in title.lower():
-        platforms = ["NintendoSwitch2"]
+    if store == "NintendoEShop":
+        platforms = nintendo_platforms(html_document) or platforms
+        if "nintendo switch 2" in title.lower():
+            platforms = ["NintendoSwitch2"]
     normalized_document = html_document.casefold()
     if store == "PlayStationStore":
         decoded_document = unescape(html_document)

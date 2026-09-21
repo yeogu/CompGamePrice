@@ -28,6 +28,26 @@ class MobileGrowthTests(unittest.TestCase):
                 self.assertEqual(again, catalog)
                 self.assertEqual(result["outcome"], "EXISTING")
 
+    def test_nintendo_switch_2_game_can_be_registered(self):
+        product = metadata(
+            title="Mario Kart World",
+            productId="70010000094003",
+            platforms=["NintendoSwitch2"],
+        )
+        catalog, result = growth.apply_candidate(
+            {"schemaVersion": 4, "games": []},
+            "NintendoEShop",
+            "70010000094003",
+            product,
+        )
+        self.assertEqual(result["outcome"], "REGISTERED")
+        self.assertTrue(catalog["games"][0]["id"].startswith("nintendo-"))
+        self.assertEqual(catalog["games"][0]["platforms"], ["NintendoSwitch2"])
+        self.assertEqual(
+            catalog["games"][0]["products"][0]["store"],
+            "NintendoEShop",
+        )
+
     def test_free_only_and_invalid_apps_not_registered(self):
         for changes in ({"priceMinor": 0}, {"isGame": False}, {"excludedWords": ["demo"]},
                         {"supportsTargetPlatform": False}, {"priceMinor": -1},

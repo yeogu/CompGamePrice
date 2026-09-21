@@ -415,6 +415,19 @@ def prepare_game(
         except Exception as error:
             errors.append(f"{query}: {error}")
             continue
+        # Nintendo's Magento search behaves like a loose token search. Avoid
+        # downloading unrelated product pages (and counting their failures)
+        # unless the result can plausibly be this title or one of its aliases.
+        if provider == "NintendoEShop":
+            candidates = [candidate for candidate in candidates if any(
+                candidate_title == title
+                or candidate_title in title
+                or title in candidate_title
+                for candidate_title in [catalog_matcher.normalized_identity(
+                    str(candidate.get("title", "")))]
+                if candidate_title
+                for title in titles
+            )]
         # Verify the likely exact result first, before fetching unrelated hits.
         candidates = sorted(candidates, key=lambda candidate:
                             catalog_matcher.normalized_identity(

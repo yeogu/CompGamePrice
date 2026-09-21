@@ -115,10 +115,11 @@ class DailyOperationsTest(unittest.TestCase):
                 "notification-outbox",
                 "AppleAppStore-paid-game-discovery",
                 "GooglePlay-paid-game-discovery",
+                "NintendoEShop-paid-game-discovery",
             ],
         )
         self.assertEqual(results[1]["exitCode"], 1)
-        self.assertEqual(len(results), 28)
+        self.assertEqual(len(results), 29)
 
 
 if __name__ == "__main__":

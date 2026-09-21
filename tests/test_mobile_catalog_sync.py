@@ -245,6 +245,26 @@ class MobileCatalogSyncTest(unittest.TestCase):
             "https://store.nintendo.co.kr/70010000033128",
         )
 
+    def test_nintendo_unrelated_search_hits_are_not_fetched_or_failed(self):
+        fetcher = Mock(side_effect=AssertionError("unrelated product was fetched"))
+        report = sync.synchronize_provider(
+            self.catalog,
+            self.database,
+            "NintendoEShop",
+            10,
+            searcher=lambda query, limit, timeout: [{
+                "externalProductId": "70010000049017",
+                "title": "Despot's Game",
+            }],
+            fetcher=fetcher,
+            metadata_parser=approved_metadata,
+        )
+
+        self.assertEqual(report["failed"], 0)
+        self.assertEqual(report["rejected"], 1)
+        self.assertEqual(report["reasonCounts"], {"No Store search results": 1})
+        fetcher.assert_not_called()
+
     def test_approved_playstation_candidate_keeps_detected_generations(self):
         def playstation_metadata(raw, product_id):
             del raw

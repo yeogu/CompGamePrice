@@ -460,7 +460,7 @@ def run_operations(
             "playstation-catalog-discovery", "microsoft-catalog-discovery",
         }]
     if mode in {"maintenance", "all"}:
-        for provider in ("AppleAppStore", "GooglePlay"):
+        for provider in ("AppleAppStore", "GooglePlay", "NintendoEShop"):
             steps.append((f"{provider}-paid-game-discovery", [
                 python, str(project / "tools/mobile_catalog_growth.py"),
                 "--provider", provider, "--catalog", str(catalog),
