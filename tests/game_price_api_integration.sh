@@ -488,6 +488,14 @@ for section in home.values():
         assert game["lowestPrice"]["currency"] == "KRW"
         assert game["featuredStore"]
 PY
+
+home_cache_header=$("${curl_binary}" -sS -D - -o /dev/null \
+    "${api_base}/api/home" | tr -d '\r' | awk -F': ' 'tolower($1) == "x-home-cache" {print $2}')
+[[ "${home_cache_header}" == "HIT" ]]
+
+status=$("${curl_binary}" -sS -o "${response_body}" -w '%{http_code}' \
+    "${api_base}/api/catalog/filters")
+[[ "${status}" == "200" ]]
 grep -q '"stores":.*"Microsoft Store"' "${response_body}"
 grep -q '"platforms":.*"Nintendo Switch 2"' "${response_body}"
 grep -q '"platforms":.*"PlayStation 4"' "${response_body}"

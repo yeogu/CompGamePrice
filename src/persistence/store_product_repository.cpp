@@ -764,6 +764,11 @@ void StoreProductRepository::initializeSchema() const {
                     store, external_product_id, currency,
                     purchasable, price_minor, observed_at);
         )sql");
+        database_.execute(R"sql(
+            CREATE INDEX IF NOT EXISTS idx_price_history_home_first_seen
+                ON price_history(
+                    store, external_product_id, purchasable, observed_at);
+        )sql");
         database_.execute("PRAGMA user_version = 19;");
         database_.execute("COMMIT;");
     } catch (...) {

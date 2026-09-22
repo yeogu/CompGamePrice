@@ -40,6 +40,11 @@ for (const width of [360, 390, 430]) {
     })
 
     test('home discovery rails stay inside the page viewport', async ({ page }) => {
+      const catalogRequests: string[] = []
+      page.on('request', (request) => {
+        const url = new URL(request.url())
+        if (url.pathname === '/api/games') catalogRequests.push(url.href)
+      })
       await page.goto('/')
       const discovery = page.getByLabel('홈 게임 추천')
       await expect(discovery).toBeVisible()
@@ -47,6 +52,8 @@ for (const width of [360, 390, 430]) {
       await expect(discovery.getByRole('heading', { name: '오늘의 특가' })).toBeVisible()
       await expect(discovery.getByRole('heading', { name: '역대 최저가' })).toBeVisible()
       await expect(discovery.getByRole('heading', { name: '최근 추가된 게임' })).toBeVisible()
+      expect(catalogRequests).toEqual([])
+      await expect.poll(() => page.evaluate(() => localStorage.getItem('dealquest-home-discovery-v1'))).not.toBeNull()
       await expectNoPageOverflow(page)
     })
 

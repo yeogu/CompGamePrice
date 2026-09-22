@@ -58,6 +58,32 @@ const catalogPriceStatus = (game: GameSummary) => {
   return formatMoney(game.lowestPrice)
 }
 
+const homeDiscoveryCacheKey = 'dealquest-home-discovery-v1'
+const homeDiscoveryCacheLifetime = 10 * 60 * 1000
+
+const readCachedHomeDiscovery = (): HomeDiscovery | null => {
+  try {
+    const cached = JSON.parse(localStorage.getItem(homeDiscoveryCacheKey) ?? 'null') as {
+      savedAt?: number
+      value?: HomeDiscovery
+    } | null
+    if (!cached?.savedAt || Date.now() - cached.savedAt > homeDiscoveryCacheLifetime) return null
+    if (!cached.value || !Array.isArray(cached.value.deals) ||
+        !Array.isArray(cached.value.historicalLows) || !Array.isArray(cached.value.recentlyAdded)) return null
+    return cached.value
+  } catch {
+    return null
+  }
+}
+
+const cacheHomeDiscovery = (value: HomeDiscovery) => {
+  try {
+    localStorage.setItem(homeDiscoveryCacheKey, JSON.stringify({ savedAt: Date.now(), value }))
+  } catch {
+    // Storage can be unavailable in private browsing. Fresh API data still renders normally.
+  }
+}
+
 function HomeGameRail({
   title,
   description,
@@ -623,8 +649,9 @@ function App() {
   const [catalogRequestSubmitting, setCatalogRequestSubmitting] = useState(false)
   const [catalogRequestMessage, setCatalogRequestMessage] = useState('')
   const [catalogFilters, setCatalogFilters] = useState<CatalogFilterOptions>(initialCatalogFilters)
-  const [homeDiscovery, setHomeDiscovery] = useState<HomeDiscovery | null>(null)
-  const [homeDiscoveryLoading, setHomeDiscoveryLoading] = useState(true)
+  const initialHomeDiscovery = useMemo(readCachedHomeDiscovery, [])
+  const [homeDiscovery, setHomeDiscovery] = useState<HomeDiscovery | null>(initialHomeDiscovery)
+  const [homeDiscoveryLoading, setHomeDiscoveryLoading] = useState(!initialHomeDiscovery)
   const initialParameters = new URLSearchParams(window.location.search)
   const [selectedStore, setSelectedStore] = useState(initialParameters.get('store') ?? '')
   const [browsePlatform, setBrowsePlatform] = useState(initialParameters.get('browsePlatform') ?? '')
@@ -1669,37 +1696,15 @@ function App() {
   }
 
   useEffect(() => {
-    const initialRequestId = ++requestSequence.current
-    const controller = beginGameRequest()
-    void getGames('', { pageSize: 12 }, controller.signal)
-      .then((catalogGames) => {
-        if (initialRequestId !== requestSequence.current) return
-        setGames(catalogGames)
-        if (catalogGames.length === 0) {
-          setError('등록된 게임이 없습니다.')
-          return
-        }
-        const requestedGameId = gameIdFromLocation(window.location)
-        const requestedPlatform = new URLSearchParams(window.location.search).get('platform') ?? ''
-        const initialGame = catalogGames.find((game) => game.id === requestedGameId)
-        if (!requestedGameId) {
-          return
-        }
-        setShowGameResults(true)
-        const routeGame = initialGame ?? routeGameSummary(requestedGameId)
-        const initialPlatform = !initialGame || initialGame.platforms.includes(requestedPlatform)
-          ? requestedPlatform
-          : ''
-        void selectGame(
-          routeGame,
-          window.location.pathname === '/' || requestedPlatform !== initialPlatform,
-          initialPlatform,
-        )
-      })
-      .catch((reason) => {
-        if (isAbortError(reason) || initialRequestId !== requestSequence.current) return
-        setError(reason instanceof Error ? reason.message : '게임 목록을 불러오지 못했습니다.')
-      })
+    const requestedGameId = gameIdFromLocation(window.location)
+    if (requestedGameId) {
+      setShowGameResults(true)
+      void selectGame(
+        routeGameSummary(requestedGameId),
+        false,
+        new URLSearchParams(window.location.search).get('platform') ?? '',
+      )
+    }
     void getCatalogFilters()
       .then((filters) => {
         setCatalogFilters({
@@ -1723,8 +1728,13 @@ function App() {
       // starting or temporarily unavailable.
       .catch(() => setCatalogFilters(initialCatalogFilters))
     void getHomeDiscovery()
-      .then(setHomeDiscovery)
-      .catch(() => setHomeDiscovery(null))
+      .then((discovery) => {
+        setHomeDiscovery(discovery)
+        cacheHomeDiscovery(discovery)
+      })
+      .catch(() => {
+        if (!initialHomeDiscovery) setHomeDiscovery(null)
+      })
       .finally(() => setHomeDiscoveryLoading(false))
     void getCatalogAdminStatus()
       .then((status) => {

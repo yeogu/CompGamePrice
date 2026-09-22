@@ -1606,6 +1606,8 @@ int main() {
         GameCatalog catalog(catalogPath());
         GameQueryService queryService(catalog, repository);
         CatalogSearchCache catalogSearchCache;
+        std::mutex homeDiscoveryCacheMutex;
+        std::optional<std::pair<std::chrono::steady_clock::time_point, Json::Value>> homeDiscoveryCache;
         AccountRepository accountRepository(database);
         AuthService authService(accountRepository);
         OAuthService oauthService(accountRepository);
@@ -3089,9 +3091,19 @@ int main() {
 
         drogon::app().registerHandler(
             "/api/home",
-            [&database, &catalog](const drogon::HttpRequestPtr&,
+            [&database, &catalog, &homeDiscoveryCacheMutex, &homeDiscoveryCache](const drogon::HttpRequestPtr&,
                                   std::function<void(const HttpResponsePtr&)>&& callback) {
                 try {
+                    std::lock_guard<std::mutex> cacheLock(homeDiscoveryCacheMutex);
+                    const auto now = std::chrono::steady_clock::now();
+                    if (homeDiscoveryCache &&
+                        now - homeDiscoveryCache->first < std::chrono::seconds(60)) {
+                        auto response = jsonResponse(homeDiscoveryCache->second);
+                        response->addHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+                        response->addHeader("X-Home-Cache", "HIT");
+                        callback(response);
+                        return;
+                    }
                     const auto dealCandidates = queryHomeCatalogSignals(database, R"sql(
                         WITH ranked AS (
                             SELECT sp.*,
@@ -3198,8 +3210,10 @@ int main() {
                     body["deals"] = homeCatalogSection(catalog, deals);
                     body["historicalLows"] = homeCatalogSection(catalog, historicalLows, true);
                     body["recentlyAdded"] = homeCatalogSection(catalog, recent);
+                    homeDiscoveryCache = std::make_pair(now, body);
                     auto response = jsonResponse(body);
-                    response->addHeader("Cache-Control", "public, max-age=60");
+                    response->addHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+                    response->addHeader("X-Home-Cache", "MISS");
                     callback(response);
                 } catch (const std::exception& error) {
                     callback(jsonError(drogon::k500InternalServerError, error.what()));
