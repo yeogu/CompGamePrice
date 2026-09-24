@@ -66,6 +66,20 @@ sudo "${docker_binary}" build \
     -t compgameprice_api:latest \
     .
 
+echo "[4/7] 운영 카탈로그가 새 API에서 기동 가능한지 검사합니다."
+sudo "${docker_binary}" run --rm \
+    -v "${data_volume}:/data:ro" \
+    compgameprice_api:latest \
+    python3 -c '
+import json
+import sys
+from pathlib import Path
+sys.path.insert(0, "/app/tools")
+import catalog_storage
+catalog_storage.validate_catalog(json.loads(Path("/data/game_catalog.json").read_text(encoding="utf-8")))
+print("운영 카탈로그 검증 완료")
+'
+
 echo "[5/7] Web 이미지를 빌드합니다."
 deploy_revision=$(date -u +%Y%m%dT%H%M%SZ)
 sudo "${docker_binary}" build \
