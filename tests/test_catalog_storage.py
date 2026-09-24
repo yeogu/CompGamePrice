@@ -187,6 +187,26 @@ class CatalogStorageTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Invalid or duplicate Game Catalog alias"):
             storage.validate_catalog({"schemaVersion": 4, "games": [value]})
 
+    def test_rejects_missing_game_platforms_before_replacing_file(self):
+        original = self.catalog.read_bytes()
+        invalid = game("missing-platforms", "2")
+        invalid.pop("platforms")
+        with self.assertRaisesRegex(ValueError, "platforms must be a non-empty array"):
+            storage.update_catalog(
+                self.catalog,
+                self.add(invalid),
+                store="Steam",
+                product_id="2",
+                game_id="missing-platforms",
+            )
+        self.assertEqual(self.catalog.read_bytes(), original)
+
+    def test_rejects_product_platform_outside_game_platforms(self):
+        invalid = game("platform-mismatch", "2")
+        invalid["products"][0]["platforms"] = ["Linux"]
+        with self.assertRaisesRegex(ValueError, "not supported by its Game"):
+            storage.validate_catalog({"schemaVersion": 4, "games": [invalid]})
+
 
 if __name__ == "__main__":
     unittest.main()

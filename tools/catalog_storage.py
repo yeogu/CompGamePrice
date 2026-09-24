@@ -19,6 +19,13 @@ class CatalogStorageError(ValueError):
     pass
 
 
+SUPPORTED_PLATFORMS = {
+    "Windows", "macOS", "Linux", "Android", "iOS", "iPadOS",
+    "NintendoSwitch", "NintendoSwitch2", "PlayStation4", "PlayStation5",
+    "XboxOne", "XboxSeries", "MetaQuest",
+}
+
+
 def normalized_catalog_identity(value: str) -> str:
     """Match the API's ASCII case/whitespace identity normalization."""
     trimmed = value.strip(" \t\n\r\f\v")
@@ -90,6 +97,21 @@ def validate_catalog(document: dict) -> None:
             raise CatalogStorageError(f"Duplicate canonical game id: {game_id}")
         if not isinstance(title, str) or not title.strip():
             raise CatalogStorageError(f"Game has no title: {game_id}")
+        platforms = game.get("platforms")
+        if not isinstance(platforms, list) or not platforms:
+            raise CatalogStorageError(
+                f"Game platforms must be a non-empty array: {game_id}"
+            )
+        if any(not isinstance(platform, str) or platform not in SUPPORTED_PLATFORMS
+               for platform in platforms):
+            raise CatalogStorageError(f"Game has an unsupported platform: {game_id}")
+        if len(platforms) != len(set(platforms)):
+            raise CatalogStorageError(f"Game has duplicate platforms: {game_id}")
+        products = game.get("products")
+        if not isinstance(products, list) or not products:
+            raise CatalogStorageError(
+                f"Game products must be a non-empty array: {game_id}"
+            )
         normalized_title = normalized_catalog_identity(title)
         if not normalized_title:
             raise CatalogStorageError(f"Game title normalizes to empty: {game_id}")
@@ -115,7 +137,7 @@ def validate_catalog(document: dict) -> None:
             raise CatalogStorageError(f"Duplicate Game Catalog identity: {game_id}")
         catalog_identities.update(identities)
         game_ids.add(game_id)
-        for product in game.get("products", []):
+        for product in products:
             if not isinstance(product, dict):
                 raise CatalogStorageError(f"Game has an invalid Store product: {game_id}")
             store = product.get("store")
@@ -124,6 +146,28 @@ def validate_catalog(document: dict) -> None:
                 raise CatalogStorageError(f"Store product has no Store: {game_id}")
             if not isinstance(product_id, str) or not product_id:
                 raise CatalogStorageError(f"Store product has no product id: {game_id}")
+            product_platforms = product.get("platforms")
+            if not isinstance(product_platforms, list) or not product_platforms:
+                raise CatalogStorageError(
+                    f"Store product platforms must be a non-empty array: {game_id}"
+                )
+            if any(platform not in SUPPORTED_PLATFORMS for platform in product_platforms):
+                raise CatalogStorageError(
+                    f"Store product has an unsupported platform: {game_id}"
+                )
+            if any(platform not in platforms for platform in product_platforms):
+                raise CatalogStorageError(
+                    f"Store product platform is not supported by its Game: {game_id}"
+                )
+            for field in ("productUrl", "region", "edition", "offerType"):
+                if not isinstance(product.get(field), str) or not product[field]:
+                    raise CatalogStorageError(
+                        f"Store product has no {field}: {game_id}"
+                    )
+            if not product["productUrl"].startswith("https://"):
+                raise CatalogStorageError(
+                    f"Store product URL must use HTTPS: {game_id}"
+                )
             offer_name = product.get("offerName")
             if offer_name is not None and (
                 not isinstance(offer_name, str) or not offer_name.strip()
